@@ -58,6 +58,49 @@ This file defines two sorts of primitives. All of them are provided into any mod
 (define-for-syntax (parse-type stx) ((dynamic-require 'typed-racket/private/parse-type 'parse-type) stx))
 (define-for-syntax (type->contract stx) ((dynamic-require 'typed-racket/private/type-contract 'type->contract) stx))
 
+(define-syntax (require/typed/no-check stx)
+  (define-syntax-class opt-rename
+    #:attributes (nm spec)
+    (pattern nm:id
+             #:with spec #'nm)
+    (pattern (orig-nm:id internal-nm:id)
+	     #:with spec #'(orig-nm internal-nm)
+	     #:with nm #'internal-nm))
+  (define-syntax-class simple-clause
+    #:attributes (nm ty)
+    (pattern [nm:opt-rename ty]))
+  (define-syntax-class struct-clause
+    ;#:literals (struct)
+    #:attributes (nm (body 1))
+    (pattern [struct nm:opt-rename (body ...)]
+             #:fail-unless (eq? 'struct (syntax-e #'struct)) #f))
+  (define-syntax-class opaque-clause
+    ;#:literals (opaque)
+    #:attributes (ty pred opt)
+    (pattern [opaque ty:id pred:id]
+             #:fail-unless (eq? 'opaque (syntax-e #'opaque)) #f
+             #:with opt #'())
+    (pattern [opaque ty:id pred:id #:name-exists]
+             #:fail-unless (eq? 'opaque (syntax-e #'opaque)) #f
+             #:with opt #'(#:name-exists)))
+  (syntax-parse stx
+    [(_ lib (~or sc:simple-clause strc:struct-clause oc:opaque-clause) ...)
+     #'(begin
+	 (require/opaque-type/no-check oc.ty oc.pred lib . oc.opt) ...
+	 (require/typed/no-check sc.nm sc.ty lib) ...
+	 (require-typed-struct/no-check strc.nm (strc.body ...) lib) ...)]
+    [(_ nm:opt-rename ty lib (~optional [~seq #:struct-maker parent]) ...)
+     #'(require (only-in lib nm.spec))]))
+
+(define-syntax-rule (require/opaque-type/no-check ty pred lib . _)
+  (require (only-in lib pred)))
+
+(define-syntax (require-typed-struct/no-check stx)
+  (syntax-parse stx #:literals (:)
+    [(_ (~or nm:id (nm:id _:id)) ([fld : ty] ...) lib)
+     (with-syntax ([(struct-info maker pred sel ...) (build-struct-names #'nm (syntax->list #'(fld ...)) #f #t)])
+       #'(require (only-in lib struct-info maker pred sel ...)))]))
+
 
 (define-syntaxes (require/typed-legacy require/typed)
  (let ()
@@ -115,6 +158,9 @@ This file defines two sorts of primitives. All of them are provided into any mod
 
   (define ((r/t-maker legacy) stx)
     (syntax-parse stx
+      [(_ . args) 
+       #:when (not (unbox typed-context?))
+       (syntax/loc stx (require/typed/no-check . args))]
       [(_ lib:expr (~var c (clause legacy #'lib)) ...)
        (unless (< 0 (length (syntax->list #'(c ...))))
          (raise-syntax-error #f "at least one specification is required" stx))
@@ -181,6 +227,9 @@ This file defines two sorts of primitives. All of them are provided into any mod
   (define-syntax-class name-exists-kw
     (pattern #:name-exists))
   (syntax-parse stx
+    [(_ . args) 
+     #:when (not (unbox typed-context?))
+     (syntax/loc stx (require/opaque-type/no-check . args))]
     [(_ ty:id pred:id lib (~optional ne:name-exists-kw) ...)
      (register-type-name #'ty (make-Opaque #'pred (syntax-local-certifier)))
      (with-syntax ([hidden (generate-temporary #'pred)])
@@ -449,6 +498,9 @@ This file defines two sorts of primitives. All of them are provided into any mod
 
   (define ((rts legacy) stx)
     (syntax-parse stx #:literals (:)
+      [(_ . args) 
+       #:when (not (unbox typed-context?))
+       (syntax/loc stx (require-typed-struct/no-check . args))]
       [(_ name:opt-parent ([fld : ty] ...) (~var input-maker (constructor-term legacy #'name.nm)) lib)
        (with-syntax* ([nm #'name.nm]
                       [parent #'name.parent]

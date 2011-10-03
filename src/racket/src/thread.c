@@ -589,7 +589,7 @@ void scheme_init_thread_places(void) {
   REGISTER_SO(place_local_misc_table);
   REGISTER_SO(gc_info_prefab);
   REGISTER_SO(initial_config);
-  gc_info_prefab = scheme_lookup_prefab_type(scheme_intern_symbol("gc-info"), 10);
+  gc_info_prefab = scheme_lookup_prefab_type(scheme_intern_symbol("gc-info"), 11);
 }
 
 void scheme_init_memtrace(Scheme_Env *env)
@@ -8448,7 +8448,7 @@ static void inform_GC(int master_gc, int major_gc,
 
     vec = scheme_false;
     if (!master_gc && gc_info_prefab) {
-      vec = scheme_make_vector(11, scheme_false);
+      vec = scheme_make_vector(12, scheme_false);
       SCHEME_VEC_ELS(vec)[1] = (major_gc ? scheme_true : scheme_false);
       SCHEME_VEC_ELS(vec)[2] = scheme_make_integer(pre_used);
       SCHEME_VEC_ELS(vec)[3] = scheme_make_integer(pre_admin);
@@ -8463,6 +8463,12 @@ static void inform_GC(int master_gc, int major_gc,
       SCHEME_VEC_ELS(vec)[9] = v;
       v = scheme_make_double(end_this_gc_real_time);
       SCHEME_VEC_ELS(vec)[10] = v;
+      SCHEME_VEC_ELS(vec)[11] =
+#ifdef MZ_USE_PLACES
+        scheme_make_integer(scheme_current_place_id);
+#else
+        scheme_make_integer(0);
+#endif
       vec = scheme_make_prefab_struct_instance(gc_info_prefab, vec);
     }
 

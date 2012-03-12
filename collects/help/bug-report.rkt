@@ -3,11 +3,14 @@
          net/head
          racket/gui/base
          framework
-         racket/class
+         racket/class racket/dict
          racket/port
          net/url
-         net/uri-codec
+         net/uri-codec net/base64
          browser/htmltext
+         gnats-parser/convert
+         gnats-parser/config
+         json
          "private/bug-report-controls.rkt"
          "private/buginfo.rkt"
          "private/save-bug-report.rkt")
@@ -16,6 +19,10 @@
          (struct-out brinfo)
          saved-bug-report-titles/ids
          discard-all-saved-bug-reports)
+
+
+(define repo "samth/test-bugs")
+(define github-url (string->url (format "https://api.github.com/repos/~a/issues" repo)))
 
 (define (bug-server-url path)
   (string->url (string-append "http://bugs.racket-lang.org/" path)))
@@ -29,6 +36,8 @@
 
 (preferences:set-default 'drracket:email "" string? #:aliases '(drscheme:email))
 (preferences:set-default 'drracket:full-name "" string? #:aliases '(drscheme:full-name))
+
+(preferences:set-default 'drracket:gh-user "" string?)
 
 (define open-frames '())
 
@@ -201,65 +210,112 @@
     (set! cancel-kill-cust (make-custodian))
     (define response-chan (make-channel))
     (define exn-chan (make-channel))
+    
+    (define query-result (get-query))
+    
+    
+    (define (do-post-bug bug-report-url post-data [headers '()])
+      (with-handlers ([exn:fail? (λ (x) (channel-put exn-chan x))])
+        (call/input-url
+         bug-report-url
+         (lambda (x) (post-impure-port x post-data headers))
+         (lambda (port)
+           (define error?
+             (cond [(regexp-match #rx"^HTTP/[0-9.]+ +([0-9]+) *(.*)$"
+                                  (read-line port 'any))
+                    => (lambda (m)
+                         ;; ignore the status text -- the reply should
+                         ;; have a better indication of what went wrong
+                         ((string->number (cadr m)) . >= . 400))]
+                   [else #f]))
+           ;; skip HTTP headers
+           (regexp-match-positions #rx"\r?\n\r?\n" port)
+           (if error?
+               ;; error status => show as error
+               (begin (with-pending-text
+                       (λ ()
+                         (send pending-text erase)
+                         (render-html-to-text port pending-text #t #f)))
+                      (channel-put exn-chan #f)) ; #f = "already rendered"
+               ;; (hopefully) a good result
+               (let ([response-text (new html-text%)])
+                 (render-html-to-text port response-text #t #f)
+                 (send response-text auto-wrap #t)
+                 (send response-text lock #t)
+                 (channel-put response-chan response-text)))))))
+    
+    (define github?
+      (and (dict-ref query-result 'gh-user)
+           (dict-ref query-result 'gh-pass)))
+    
+    (define (http-authorization-header username password)
+      (let ([username-bytes (string->bytes/utf-8 username)]
+            [password-bytes (string->bytes/utf-8 password)])
+        (string-append
+         "Authorization: Basic "
+         (bytes->string/utf-8
+          (base64-encode
+           (bytes-append username-bytes #":" password-bytes) #"")))))
+    
+    
+    (define (make-body bug)
+      (define how-to (dict-ref bug 'how-to-repeat))
+      (define env (dict-ref bug 'platform))
+      (define rel (dict-ref bug 'release))
+      (string-append*
+       (dict-ref bug 'description)
+       "\n"
+       (section how-to "Steps to Reproduce" #f)
+       (section rel "Release" 'force)
+       (section env "Environment" 'force)))
+    
+    (define (dr-bug->json bug)
+      (hash 'title (dict-ref bug 'subject)
+            'body (make-body bug)
+            'labels (filter values
+                            (list (dict-ref classes (string->symbol
+                                                     (dict-ref bug 'class)))))))
+    
+    (define (github-worker)      
+      (do-post-bug github-url
+                   (string->bytes/utf-8  
+                    (jsexpr->string (dr-bug->json query-result)))
+                   (list (http-authorization-header
+                          (dict-ref query-result 'gh-user)
+                          (dict-ref query-result 'gh-pass)))))
+    
+    (define (gnats-worker)
+      ;; Note that this UI is not great: every submission asks for a
+      ;; captcha and nothing is kept.  This is fine since this is only in
+      ;; case it needs to be used in the future -- if/when that happens,
+      ;; the code can be improved to remember some of it, and the server
+      ;; can have some better policy to send the same captcha to the same
+      ;; client.  So the only case where you'd suffer the bad UI is if a
+      ;; captcha is added *and* you have this version of the code (which
+      ;; will be outdated by that time).
+      (define captcha-question (get-captcha-text))
+      (define captcha-answer
+        (and captcha-question
+             (get-text-from-user
+              "Are you human?" ; FIXME: use string-constant
+              captcha-question bug-frame)))
+      (define post-data
+        (let* ([q (if captcha-answer
+                      `([captcha . ,captcha-answer]
+                        ;; send back the question too: if things get really
+                        ;; bad, then the server can make up random captchas
+                        ;; and check the reply against the challenge that
+                        ;; was used
+                        [captcha-question . ,captcha-question]
+                        ,@query-result)
+                      query-result)])
+          (string->bytes/utf-8 (alist->form-urlencoded q))))
+      (do-post-bug bug-report-url post-data))
+    
     (define worker-thread
       (parameterize ([current-custodian cancel-kill-cust]
                      [current-alist-separator-mode 'amp])
-        (thread
-         (λ ()
-           ;; Note that this UI is not great: every submission asks for a
-           ;; captcha and nothing is kept.  This is fine since this is only in
-           ;; case it needs to be used in the future -- if/when that happens,
-           ;; the code can be improved to remember some of it, and the server
-           ;; can have some better policy to send the same captcha to the same
-           ;; client.  So the only case where you'd suffer the bad UI is if a
-           ;; captcha is added *and* you have this version of the code (which
-           ;; will be outdated by that time).
-           (define captcha-question (get-captcha-text))
-           (define captcha-answer
-             (and captcha-question
-                  (get-text-from-user
-                   "Are you human?" ; FIXME: use string-constant
-                   captcha-question bug-frame)))
-           (define post-data
-             (let* ([q (get-query)]
-                    [q (if captcha-answer
-                         `([captcha . ,captcha-answer]
-                           ;; send back the question too: if things get really
-                           ;; bad, then the server can make up random captchas
-                           ;; and check the reply against the challenge that
-                           ;; was used
-                           [captcha-question . ,captcha-question]
-                           ,@q)
-                         q)])
-               (string->bytes/utf-8 (alist->form-urlencoded q))))
-           (with-handlers ([exn:fail? (λ (x) (channel-put exn-chan x))])
-             (call/input-url
-              bug-report-url
-              (lambda (x) (post-impure-port x post-data))
-              (lambda (port)
-                (define error?
-                  (cond [(regexp-match #rx"^HTTP/[0-9.]+ +([0-9]+) *(.*)$"
-                                       (read-line port 'any))
-                         => (lambda (m)
-                              ;; ignore the status text -- the reply should
-                              ;; have a better indication of what went wrong
-                              ((string->number (cadr m)) . >= . 400))]
-                        [else #f]))
-                ;; skip HTTP headers
-                (regexp-match-positions #rx"\r?\n\r?\n" port)
-                (if error?
-                  ;; error status => show as error
-                  (begin (with-pending-text
-                          (λ ()
-                            (send pending-text erase)
-                            (render-html-to-text port pending-text #t #f)))
-                         (channel-put exn-chan #f)) ; #f = "already rendered"
-                  ;; (hopefully) a good result
-                  (let ([response-text (new html-text%)])
-                    (render-html-to-text port response-text #t #f)
-                    (send response-text auto-wrap #t)
-                    (send response-text lock #t)
-                    (channel-put response-chan response-text))))))))))
+        (thread (if github? github-worker gnats-worker))))
     (define (render-error to-render)
       (cond
         [(string? to-render)

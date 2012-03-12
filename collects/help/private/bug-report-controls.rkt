@@ -89,6 +89,32 @@
             (preferences:get 'drracket:email)))))
      #f))
   
+  (define github-password #f)
+  
+  (define gh-user  
+    (build/label
+     "GitHub user name"
+     (lambda (panel)
+       (keymap:call/text-keymap-initializer
+        (lambda ()
+          (make-object text-field% #f panel
+            (lambda (text event)
+              (preferences:set 'drracket:gh-user (send text get-value)))
+            (preferences:get 'drracket:gh-user)))))
+     #f))
+  
+  (define gh-pass
+    (build/label
+     "GitHub password"
+     (lambda (panel)
+       (keymap:call/text-keymap-initializer
+        (lambda ()
+          (make-object text-field% #f panel
+            (lambda (text event)
+              (set! github-password (send text get-value)))
+            ""))))
+     #f))
+  
   (define summary
     (build/label
      (string-constant bug-report-field-summary) 
@@ -101,21 +127,7 @@
                           [callback (λ (a b) (bug-report-out-of-date))]))
           (send tf set-value (saved-report-lookup init-bug-report 'subject))
           tf)))
-     #f))
-  
-  (define severity
-    (build/label 
-     (string-constant bug-report-field-severity) 
-     (lambda (panel)
-       (define choice
-         (make-object choice% 
-           #f
-           bug-severities
-           panel
-           (λ (a b) (bug-report-out-of-date))))
-       (send choice set-string-selection (saved-report-lookup init-bug-report 'severity))
-       choice)
-     #f))
+     #f))  
   
   (define bug-class
     (build/label
@@ -280,7 +292,7 @@
     (when still-save?
       (save-bug-report 
        (saved-report-id init-bug-report)
-       #:severity (send severity get-string-selection)
+       #:severity "serious"
        #:class (send bug-class get-string-selection)
        #:subject (send summary get-value)
        #:description (get-content description)
@@ -298,8 +310,10 @@
     (append (list (cons 'help-desk "true")
                   (cons 'replyto (preferences:get 'drracket:email))
                   (cons 'originator (preferences:get 'drracket:full-name))
+                  (cons 'gh-user (preferences:get 'drracket:gh-user))
+                  (cons 'gh-pass github-password)
                   (cons 'subject (send summary get-value))
-                  (cons 'severity (send severity get-string-selection))
+                  (cons 'severity "")
                   (cons 'class (translate-class (send bug-class get-string-selection)))
                   (cons 'release (send version-tf get-value))
                   (cons 'description (get-content description))
@@ -445,7 +459,6 @@
     (and (empty-editor? reproduce)
          (empty-editor? description)
          (empty-editor? summary)
-         (equal? (send severity get-selection) default-severity)
          (equal? (send bug-class get-selection) default-class)))
   
   (values compose-view-focus

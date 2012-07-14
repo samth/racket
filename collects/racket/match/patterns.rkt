@@ -2,9 +2,12 @@
 
 (require syntax/boundmap
          racket/contract
+         "stxtime.rkt"
          (for-syntax racket/base))
 
-(provide (except-out (all-defined-out)
+(provide (except-out (combine-out 
+                      (all-defined-out)
+                      (all-from-out "stxtime.rkt"))
                      struct-key-ht
                      get-key
                      (struct-out Row)))
@@ -176,8 +179,6 @@
     [(Exact? p) null]
     [else (error 'match "bad pattern: ~a" p)]))
 
-(define match-...-nesting (make-parameter 0))
-
 (define current-renaming (make-parameter (make-free-identifier-mapping)))
 
 (define (copy-mapping ht)
@@ -208,29 +209,6 @@
                                [vars-seen (listof (cons/c identifier?
                                                           identifier?))])))
 
-
-(struct acc-prop (n acc))
-(define (make-struct-type-property/accessor name [guard #f] [supers null])
-  (define-values (p pred? acc)
-    (make-struct-type-property name
-     (λ (pval sinfo)
-	(cond [(exact-nonnegative-integer? pval)
-	       (acc-prop pval (cadddr sinfo))]
-	      [else (if (procedure? guard) 
-			(guard pval sinfo)
-			pval)]))
-     supers))
-  (values p pred? (lambda (v)
-		    (define v* (acc v))
-		    (if (acc-prop? v*)
-			((acc-prop-acc v*) v (acc-prop-n v*))
-			v*))))
-
-(define-values (prop:match-expander match-expander? match-expander-proc) 
-  (make-struct-type-property/accessor 'prop:match-expander))
-
-(define-values (prop:legacy-match-expander legacy-match-expander? legacy-match-expander-proc)
-  (make-struct-type-property/accessor 'prop:legacy-match-expander ))
 
 (define make-match-expander
   (let ()

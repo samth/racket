@@ -197,6 +197,20 @@ scheme_init_unsafe_vector (Scheme_Env *env)
   SCHEME_PRIM_PROC_FLAGS(p) |= SCHEME_PRIM_IS_NARY_INLINED;
   scheme_add_global_constant("unsafe-vector*-set!", p, env);  
 
+  p = scheme_make_immed_prim(scheme_unsafe_make_struct_instance, "unsafe-make-struct-instance", 1, -1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= (SCHEME_PRIM_IS_UNARY_INLINED
+                                | SCHEME_PRIM_IS_BINARY_INLINED
+                                | SCHEME_PRIM_IS_NARY_INLINED
+                                | SCHEME_PRIM_IS_OMITABLE);
+  scheme_add_global_constant("unsafe-make-struct-instance", p, env);
+
+
+  p = scheme_make_immed_prim(unsafe_struct_ref, "unsafe-struct-ref", 2, 2);
+  SCHEME_PRIM_PROC_FLAGS(p) |= (SCHEME_PRIM_IS_BINARY_INLINED
+                                | SCHEME_PRIM_IS_UNSAFE_OMITABLE
+                                | SCHEME_PRIM_IS_OMITABLE);
+  scheme_add_global_constant("unsafe-struct-ref", p, env);
+
   p = scheme_make_immed_prim(unsafe_struct_ref, "unsafe-struct-ref", 2, 2);
   SCHEME_PRIM_PROC_FLAGS(p) |= (SCHEME_PRIM_IS_BINARY_INLINED
                                 | SCHEME_PRIM_IS_UNSAFE_OMITABLE
@@ -903,6 +917,30 @@ static Scheme_Object *unsafe_vector_star_set (int argc, Scheme_Object *argv[])
 {
   SCHEME_VEC_ELS(argv[0])[SCHEME_INT_VAL(argv[1])] = argv[2];
   return scheme_void;
+}
+
+/* _stype must not have any automatic fields or guards
+ */
+Scheme_Object *
+scheme_unsafe_make_struct_instance(Scheme_Object *_stype, int argc, Scheme_Object **args)
+{
+  Scheme_Structure *inst;
+  Scheme_Struct_type *stype;
+  int c;
+
+  stype = (Scheme_Struct_Type *)_stype;
+
+  c = stype->num_slots;
+  inst = (Scheme_Structure *)
+    scheme_malloc_tagged(sizeof(Scheme_Structure) 
+			 + ((c - mzFLEX_DELTA) * sizeof(Scheme_Object *)));
+
+  inst->so.type = scheme_structure_type;
+  inst->stype = stype;
+
+  while (c--) inst->slots[c] = args[c];
+
+  return (Scheme_Object *)inst; 
 }
 
 static Scheme_Object *unsafe_struct_ref (int argc, Scheme_Object *argv[])

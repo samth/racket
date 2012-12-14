@@ -358,7 +358,8 @@ reference point is computed by @racket[y-placer].
 
 @defmodule[unstable/gui/pslide]
 
-@defform[(pslide ppict-do-fragment ...)]{
+@defform/subs[(pslide title ppict-do-fragment ...)
+              [(title (code:line) (code:line #:title title-expr))]]{
 
 Produce slide(s) using @tech{progressive picts}. See @racket[ppict-do]
 for an explanation of @racket[ppict-do-fragment]s.
@@ -369,6 +370,9 @@ number of slides produced is one greater than the number of
 
 Remember to include @racket[gap-size] after updating the current
 placer if you want @racket[slide]-like spacing.
+
+If provided, @racket[_title-expr] is used for the title of all of the
+slides.
 
 @examples[#:eval the-eval
 (eval:alts (pslide #:go (coord 0 0 'lt)

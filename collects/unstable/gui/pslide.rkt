@@ -16,26 +16,31 @@
 (define pslide-default-placer
   (make-parameter (coord 1/2 1/2 'cc)))
 
-;; pslide* : symbol (pict -> (values pict (listof pict)) -> void
-(define (pslide* who proc)
-  (let* ([init-pict ((pslide-base-pict))]
-         [init-placer (pslide-default-placer)])
-    (let-values ([(final picts)
-                  (proc (ppict-go init-pict init-placer))])
-      (for-each slide picts)
-      (slide final)
-      (void))))
+;; pslide* : symbol (pict -> (values pict (listof pict)) (or/c #f pict string)
+;;           -> void
+(define (pslide* who proc title)
+  (define init-pict ((pslide-base-pict)))
+  (define init-placer (pslide-default-placer))
+  (define-values (final picts)
+    (proc (ppict-go init-pict init-placer)))
+  (define (show p) 
+    (slide #:layout 'center #:title title p))
+  (for-each show picts)
+  (show final)
+  (void))
 
 ;; ----
 
 (define-syntax (pslide stx)
-  (syntax-parse stx
-    [(_ . fs)
+  (syntax-parse stx    
+    [(_ #:title t . fs)
      #:declare fs (fragment-sequence 'pslide #'xp #'rpss)
      #'(pslide* 'pslide
                 (lambda (xp)
                   (let ([rpss null])
-                    fs.code)))]))
+                    fs.code))
+                t)]
+    [(_ . fs) #'(pslide #:title #f . fs)]))
 
 ;; ============================================================
 ;; Exports

@@ -3,9 +3,7 @@
 ;; Top-level type environment
 ;; maps identifiers to their types, updated by mutation
 
-(require "../types/tc-error.rkt"
-         syntax/id-table
-         racket/lazy-require) 
+(require syntax/id-table racket/lazy-require) 
 (provide register-type register-type-if-undefined
          finish-register-type
          maybe-finish-register-type
@@ -16,7 +14,8 @@
          check-all-registered-types
          type-env-map)
 
-(lazy-require ["../rep/type-rep.rkt" (Type/c? type-equal?)])
+(lazy-require ["../rep/type-rep.rkt" (Type/c? type-equal?)]
+              ["../types/tc-error.rkt" (tc-error/expr lookup-type-fail)])
 
 ;; free-id-table from id -> type or Box[type]
 ;; where id is a variable, and type is the type of the variable

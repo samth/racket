@@ -5,7 +5,7 @@
          unstable/list racket/syntax syntax/parse
          mzlib/etc racket/list
          racket/match
-         "signatures.rkt"
+         "signatures.rkt" "../utils/timing.rkt"
          "tc-structs.rkt"
          "typechecker.rkt"
          ;; to appease syntax-parse
@@ -291,63 +291,69 @@
 
 ;; actually do the work on a module
 ;; produces prelude and post-lude syntax objects
-;; syntax-list -> (values syntax syntax)
-(define (type-check forms0)
-  (define forms (syntax->list forms0))
+;; list[syntax] -> (values syntax syntax)
+(define (type-check forms)
   (define-values (type-aliases struct-defs stx-defs0 val-defs0 provs reqs)
-    (filter-multiple
-     forms
-     (internal-syntax-pred define-type-alias-internal)
-     (lambda (e) (or ((internal-syntax-pred define-typed-struct-internal) e)
-                     ((internal-syntax-pred define-typed-struct/exec-internal) e)))
-     parse-syntax-def
-     parse-def
-     provide?
-     define/fixup-contract?))
-  (do-time "Form splitting done")
-  ;(printf "before parsing type aliases~n")
-  (for-each (compose register-type-alias parse-type-alias) type-aliases)
-  ;; Add the struct names to the type table, but not with a type
-  ;(printf "before adding type names~n")
-  (for-each (compose add-type-name! names-of-struct) struct-defs)
-  (for-each add-constant-variance! struct-defs)
-  ;(printf "after adding type names~n")
-  ;; resolve all the type aliases, and error if there are cycles
-  (resolve-type-aliases parse-type)
-  ;; Parse and register the structure types
-  (define parsed-structs
-    (for/list ((def struct-defs))
-      (define parsed (parse-define-struct-internal def))
-      (register-parsed-struct-sty! parsed)
+    (log-time 
+     "Splitting forms"
+     (filter-multiple
+      forms
+      (internal-syntax-pred define-type-alias-internal)
+      (lambda (e) (or ((internal-syntax-pred define-typed-struct-internal) e)
+                      ((internal-syntax-pred define-typed-struct/exec-internal) e)))
+      parse-syntax-def
+      parse-def
+      provide?
+      define/fixup-contract?)))
+  (log-time 
+   "type-alias"
+   (for-each (compose register-type-alias parse-type-alias) type-aliases))
+  (log-time "struct-names"
+   ;; Add the struct names to the type table, but not with a type
+   (for-each (compose add-type-name! names-of-struct) struct-defs)
+   (for-each add-constant-variance! struct-defs)
+   ;; resolve all the type aliases, and error if there are cycles
+   (resolve-type-aliases parse-type))
+  (log-time "parse structs"
+   ;; Parse and register the structure types
+   (define parsed-structs
+     (for/list ((def (in-list struct-defs)))
+       (define parsed (parse-define-struct-internal def))
+       (register-parsed-struct-sty! parsed)
       parsed))
 
-  (refine-struct-variance! parsed-structs)
+   (refine-struct-variance! parsed-structs)
 
   ;; register the bindings of the structs
   (define struct-bindings (map register-parsed-struct-bindings! parsed-structs))
-  ;(printf "after resolving type aliases~n")
-  ;(displayln "Starting pass1")
+  (void)) ;; FIXME -- improve `log-time` to not need this `void`
+
   ;; do pass 1, and collect the defintions
-  (define defs (apply append 
-                      (append
-                       struct-bindings
-                       (filter list? (map tc-toplevel/pass1 forms)))))
+  (define defs 
+    (log-time 
+     "pass 1"
+     (apply append 
+            (append
+             struct-bindings
+             (filter list? (map tc-toplevel/pass1 forms))))))
   ;(displayln "Finished pass1")
   ;; separate the definitions into structures we'll handle for provides
   (define def-tbl
-    (for/fold ([h (make-immutable-free-id-table)])
+    (log-time "def-tbl"
+     (for/fold ([h (make-immutable-free-id-table)])
       ([def (in-list defs)])
-      (dict-set h (binding-name def) def)))
+      (dict-set h (binding-name def) def))))
   ;; typecheck the expressions and the rhss of defintions
   ;(displayln "Starting pass2")
-  (for-each tc-toplevel/pass2 forms)
+  (log-time "pass 2" (for-each tc-toplevel/pass2 forms))
   ;(displayln "Finished pass2")
   ;; check that declarations correspond to definitions
-  (check-all-registered-types)
+  (log-time "checking registered types" (check-all-registered-types))
   ;; report delayed errors
-  (report-all-errors)
+  (log-time "report errors" (report-all-errors))
   (define syntax-provide? #f)
   (define provide-tbl
+    (log-time "construct provide table"
     (for/fold ([h (make-immutable-free-id-table)]) ([p (in-list provs)])
       (define-syntax-class unknown-provide-form
         (pattern
@@ -373,13 +379,14 @@
                [(name:unknown-provide-form . _)
                 (tc-error "provide: ~a not supported by Typed Racket" (syntax-e #'name.name))]
                [_ (int-err "unknown provide form")])))]
-        [_ (int-err "non-provide form! ~a" (syntax->datum p))])))
+        [_ (int-err "non-provide form! ~a" (syntax->datum p))]))))
   ;; compute the new provides
+  (log-time "compute new provides"
   (define-values (new-stx/pre new-stx/post) 
     (with-syntax*
      ([the-variable-reference (generate-temporary #'blame)])
      (define-values (code aliasess)
-       (generate-prov def-tbl provide-tbl #'the-variable-reference))
+       (log-time "generate-prov" (generate-prov def-tbl provide-tbl #'the-variable-reference)))
      (define aliases (apply append aliasess))
      (define/with-syntax (new-provs ...) code)
      (values
@@ -389,30 +396,31 @@
               (require typed-racket/types/numeric-tower typed-racket/env/type-name-env
                        typed-racket/env/global-env typed-racket/env/type-alias-env
                        typed-racket/types/type-table)
-              #,(env-init-code syntax-provide? provide-tbl def-tbl)
-              #,(talias-env-init-code)
-              #,(tname-env-init-code)
-              #,(tvariance-env-init-code)
-              #,(mvar-env-init-code mvar-env)
-              #,(make-struct-table-code)
-              #,@(for/list ([a (in-list aliases)])
-                   (match a
-                     [(list from to)
-                      #`(add-alias (quote-syntax #,from) (quote-syntax #,to))]))))
+              #,(% env-init-code syntax-provide? provide-tbl def-tbl)
+              #,(% talias-env-init-code)
+              #,(% tname-env-init-code)
+              #,(% tvariance-env-init-code)
+              #,(% mvar-env-init-code mvar-env)
+              #,(% make-struct-table-code)
+              #,@(log-time 
+                  "aliases"
+                  (for/list ([a (in-list aliases)])
+                    (match a
+                      [(list from to)
+                       #`(add-alias (quote-syntax #,from) (quote-syntax #,to))])))))
           (begin-for-syntax (add-mod! (quote-module-path))))
       #`(begin
           #,(if (null? (syntax-e #'(new-provs ...)))
                 #'(begin)
                 #'(define the-variable-reference (quote-module-name)))
           new-provs ...))))
-  (do-time "finished provide generation")
-  (values new-stx/pre new-stx/post))
+  (values new-stx/pre new-stx/post)))
 
 ;; typecheck a whole module
 ;; syntax -> (values syntax syntax)
-(define (tc-module stx)
-  (syntax-parse stx
-    [(pmb . forms) (type-check #'forms)]))
+(define (tc-module stx) (type-check (cdr (syntax->list stx))))
+;  (syntax-case stx ()
+;    [(pmb . forms) (type-check #'forms)]))
 
 ;; typecheck a top-level form
 ;; used only from #%top-interaction

@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require (for-syntax racket/base syntax/parse))
+(require (for-syntax racket/base syntax/parse "../utils/timing.rkt"))
 
 (define-syntax (#%module-begin stx)
   (syntax-parse stx #:literals (require provide)
@@ -17,8 +17,8 @@
               (require 
                (only-in typed-racket/env/init-envs initialize-type-name-env))
               (require . args) ...
-              (initialize-type-name-env
-               (list (list #'nm ty) ...))))))]))
+              (define types (log-time "constructing types list" (list (list #'nm ty) ...)))
+              (log-time "initializing types" (initialize-type-name-env types))))))]))
 
 (provide #%module-begin require
          (all-from-out racket/base)

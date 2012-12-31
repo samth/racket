@@ -11,7 +11,7 @@
          (rep type-rep)
          (env env-req)
          (for-template (only-in (base-env prims) :type :print-type :query-type/result))
-         (utils utils tc-utils arm)
+         (utils utils tc-utils arm timing)
          "tc-setup.rkt" "utils/debug.rkt")
 
 (provide mb-core ti-core wt-core)
@@ -20,30 +20,36 @@
   (syntax-parse stx
     [(mb (~optional (~or (~and #:optimize    (~bind [opt? #'#t])) ; kept for backward compatibility
                          (~and #:no-optimize (~bind [opt? #'#f]))))
-         forms ...)
-     (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))])
-       (parameterize ([optimize? (or (and (not (attribute opt?)) (optimize?))
-                                     (and (attribute opt?) (syntax-e (attribute opt?))))])
-         (tc-setup
-          stx pmb-form 'module-begin new-mod init tc-module before-code after-code
-          (with-syntax*
-           (;; pmb = #%plain-module-begin
-            [(pmb . body2) new-mod]
-            ;; perform the provide transformation from [Culpepper 07]
-            [transformed-body (begin0 (remove-provides #'body2) (do-time "Removed provides"))]
-            ;; add the real definitions of contracts on requires
-            [transformed-body (begin0 (change-contract-fixups #'transformed-body) (do-time "Fixed contract ids"))]
-            ;; potentially optimize the code based on the type information
-            [(optimized-body ...) (maybe-optimize #'transformed-body)] ;; has own call to do-time
-            ;; add in syntax property on useless expression to draw check-syntax arrows
-            [check-syntax-help (syntax-property
-                                (syntax-property
-                                 #'(void)
-                                 'disappeared-binding (disappeared-bindings-todo))
-                                'disappeared-use (disappeared-use-todo))])
-           ;; reconstruct the module with the extra code
-           ;; use the regular %#module-begin from `racket/base' for top-level printing
-           (arm #`(#%module-begin #,before-code optimized-body ... #,after-code check-syntax-help))))))]))
+         . forms)
+     (define pmb-form (syntax/loc stx (#%plain-module-begin . forms)))
+     (parameterize ([optimize? (or (and (not (attribute opt?)) (optimize?))
+                                   (and (attribute opt?) (syntax-e (attribute opt?))))])
+       (tc-setup
+        stx pmb-form 'module-begin new-mod init tc-module before-code after-code
+        (with-syntax*
+         (;; pmb = #%plain-module-begin
+          [(pmb . body2) new-mod]
+          ;; perform the provide transformation from [Culpepper 07]
+          [transformed-body 
+           (log-time "remove provides" (remove-provides #'body2))]
+          ;; add the real definitions of contracts on requires
+          [transformed-body 
+           (log-time "contract fixups" 
+                     (change-contract-fixups #'transformed-body))]
+          ;; potentially optimize the code based on the type information
+          ;; has own timing
+          [(optimized-body ...) (maybe-optimize #'transformed-body)] 
+          ;; add in syntax property on useless expression to draw check-syntax arrows
+          [check-syntax-help (syntax-property
+                              (syntax-property
+                               #'(void)
+                               'disappeared-binding (disappeared-bindings-todo))
+                              'disappeared-use (disappeared-use-todo))])
+         ;; reconstruct the module with the extra code
+         ;; use the regular %#module-begin from `racket/base' for top-level printing
+         (log-time 
+          "construct final syntax"
+          (arm #`(#%module-begin #,before-code optimized-body ... #,after-code check-syntax-help))))))]))
 
 (define did-I-suggest-:print-type-already? #f)
 (define :print-type-message " ... [Use (:print-type <expr>) to see more.]")

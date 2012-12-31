@@ -1,10 +1,11 @@
 #lang racket/base
 
-(require "utils/utils.rkt"
+(require "utils/utils.rkt" "utils/timing.rkt"
          (except-in syntax/parse id)
          racket/pretty racket/promise
          (private type-contract)
          (types utils)
+         racket/lazy-require
          (typecheck typechecker provide-handling tc-toplevel)
          (env tvar-env type-name-env type-alias-env env-req mvar-env)
          (utils tc-utils disarm mutated-vars debug)
@@ -18,23 +19,23 @@
   #:literals (define-values define-syntaxes #%require #%provide begin)
   (pattern (~or define-values define-syntaxes #%require #%provide begin)))
 
+(lazy-require [typed-racket/optimizer/optimizer (optimize-top)])
+
 (define (maybe-optimize body)
   ;; do we optimize?
-  (if (optimize?)
-      (let ([optimize-top
-             (begin0 (dynamic-require 'typed-racket/optimizer/optimizer
-                                      'optimize-top)
-               (do-time "Loading optimizer"))])
-        (begin0 (map optimize-top (syntax->list body))
-          (do-time "Optimized")))
-      body))
+  (when (optimize?)
+    (log-time "optimize"
+              (map optimize-top (syntax->list body)))
+  body))
 
-(define-syntax-rule (tc-setup orig-stx stx expand-ctxt fully-expanded-stx init checker pre-result post-result . body)
+(define-syntax-rule (tc-setup orig-stx stx expand-ctxt fully-expanded-stx
+                              init checker pre-result post-result . body)
   (let ()
     (set-box! typed-context? #t)
     ;(start-timing (syntax-property stx 'enclosing-module-name))
     (with-handlers
-        (#;[(λ (e) (and (exn:fail? e) (not (exn:fail:syntax? e)) (not (exn:fail:filesystem? e))))
+        (#;[(λ (e) (and (exn:fail? e) (not (exn:fail:syntax? e))
+                        (not (exn:fail:filesystem? e))))
           (λ (e) (tc-error "Internal Typed Racket Error : ~a" e))])
       (parameterize (;; do we report multiple errors
                      [delay-errors? #t]
@@ -52,17 +53,15 @@
                      ;; reinitialize disappeared uses
                      [disappeared-use-todo      null]
                      [disappeared-bindings-todo null])
-        (define fully-expanded-stx (disarm* (local-expand stx expand-ctxt (list #'module*))))
+        (define fully-expanded-stx
+          (log-time "local-expand" (disarm* (local-expand stx expand-ctxt (list #'module*)))))
         (when (show-input?)
           (pretty-print (syntax->datum fully-expanded-stx)))
-        (do-time "Local Expand Done")
-        (init)
-        (do-time "Initialized Envs")
-        (find-mutated-vars fully-expanded-stx mvar-env)
+        (log-time "initialize envs" (init))
+        (log-time "find-mutated-vars" (find-mutated-vars fully-expanded-stx mvar-env))
         (parameterize ([orig-module-stx (or (orig-module-stx) orig-stx)]
                        [expanded-module-stx fully-expanded-stx]
-                       [debugging? #f])
-          (do-time "Starting `checker'")
-          (define-values (pre-result post-result) (checker fully-expanded-stx))
-          (do-time "Typechecking Done")
-          (let () . body))))))
+                       [debugging? #f])          
+          (define-values (pre-result post-result)
+            (log-time "`checker`" (checker fully-expanded-stx)))
+          (log-time "tc-setup finish" (let () . body)))))))

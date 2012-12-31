@@ -7,13 +7,11 @@ at least theoretically.
 
 (require (for-syntax racket/base syntax/parse racket/string)
          racket/require-syntax racket/provide-syntax         
-         racket/struct-info "timing.rkt")
+         racket/struct-info)
 
 (provide
  ;; optimization
  optimize?
- ;; timing
- start-timing do-time
  ;; logging
  show-input?
  ;; provide macros

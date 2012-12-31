@@ -6,8 +6,10 @@ don't depend on any other portion of the system
 |#
 
 (provide (all-defined-out) (all-from-out "disappeared-use.rkt"))
-(require "syntax-traversal.rkt" racket/dict "disappeared-use.rkt" racket/promise
-	 syntax/parse (for-syntax racket/base syntax/parse) racket/match)
+(require "syntax-traversal.rkt" racket/dict
+         "disappeared-use.rkt" racket/promise
+         syntax/parse  racket/match
+         (for-syntax racket/base syntax/parse))
 
 ;; a parameter representing the original location of the syntax being
 ;; currently checked
@@ -42,21 +44,15 @@ don't depend on any other portion of the system
 
 (define warn-unreachable? (make-parameter #t))
 
+(define-logger tr)
+
 (define (warn-unreachable e)
-  (let ([l (current-logger)]
-        [stx (locate-stx e)])
-    (when (and (warn-unreachable?)
-               (log-level? l 'warning)
-               (and (syntax-transforming?)
-                    (syntax-original? (syntax-local-introduce e)))
-               #;(and (orig-module-stx)
-                      (eq? (debugf syntax-source-module e)
-                           (debugf syntax-source-module (orig-module-stx))))
-               #;(syntax-source-module stx))
-      (log-message l 'warning
-                   (format "Typed Racket has detected unreachable code: ~.s"
-                           (syntax->datum (locate-stx e)))
-                   e))))
+  (when (and (warn-unreachable?)
+             (syntax-transforming?)
+             (syntax-original? (syntax-local-introduce e)))
+    (log-tr-warning
+     "Typed Racket has detected unreachable code: ~.s"
+     (syntax->datum (locate-stx e)))))
 
 (define (locate-stx stx)
   (define omodule (orig-module-stx))

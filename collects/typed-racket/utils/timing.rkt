@@ -1,38 +1,37 @@
 #lang racket/base
-(require (for-syntax racket/base))
-(provide start-timing do-time)
+(require (for-syntax racket/base syntax/parse racket/format) racket/block)
+(provide log-time (struct-out tr-event) timing-logger %)
 
-;; some macros to do some timing, only when `timing?' is #t
-(define-for-syntax timing? #f)
+(define-logger timing)
 
-(define last-time #f) (define initial-time #f)
-(define (set!-initial-time t) (set! initial-time t))
-(define (set!-last-time t) (set! last-time t))
-(define (pad str len pad-char)
-  (define l (string-length str))
-  (if (>= l len)
-      str
-      (string-append str (make-string (- len l) pad-char))))
-(define-syntaxes (start-timing do-time)
-  (if timing?
-      (values
-       (syntax-rules ()
-         [(_ msg)
-          (begin
-            (when last-time
-              (error 'start-timing "Timing already started"))
-            (set!-last-time (current-process-milliseconds))
-            (set!-initial-time last-time)
-            (log-debug (format "TR Timing: ~a at ~a" (pad "Starting" 32 #\space) initial-time)))])
-       (syntax-rules ()
-         [(_ msg)
-          (begin
-            (unless last-time
-              (start-timing msg))
-            (let* ([t (current-process-milliseconds)]
-                   [old last-time]
-                   [diff (- t old)]
-                   [new-msg (pad msg 32 #\space)])
-              (set!-last-time t)
-              (log-debug (format "TR Timing: ~a at ~a\tlast step: ~a\ttotal: ~a" new-msg t diff (- t initial-time)))))]))
-      (values (lambda _ #'(void)) (lambda _ #'(void)))))
+(struct tr-event (start? msec name) #:prefab)
+
+(define-syntax (log-time stx)
+  (syntax-parse stx
+    [(_ (~and name (~or _:str ((~literal format) . _)))
+        ;; the above check is to make sure we don't forget
+        ;; the name string
+        e:expr ... last:expr)
+     (quasisyntax/loc stx
+       (#,(if (eq? 'expression (syntax-local-context))
+              #'block 
+              #'begin)
+        (define before (current-inexact-milliseconds)) 
+        (when (log-level? timing-logger 'debug)
+          (log-message timing-logger 'debug 'timing
+                       (format "starting tr event ~a" name)
+                       (tr-event #t before name)))
+        e ...
+        (begin0
+          last
+          (when (log-level? timing-logger 'debug)
+            (log-message timing-logger 'debug 'timing
+                         (format "finishing tr event ~a" name)
+                         (tr-event #f 
+                                   (- (current-inexact-milliseconds) before)
+                                   name))))))]))
+
+(define-syntax (% stx)
+  (syntax-case stx ()
+    [(_ e . rest)
+     #`(log-time #,(~a (syntax->datum #'e)) (e . rest))]))

@@ -14,35 +14,33 @@
          with-type
          (for-syntax do-standard-inits))
 
+(begin-for-syntax 
+  (define-syntax-rule (dyn-req/time mod id)
+    (let ([v (log-time (format "loading `~a`" 'mod) (dynamic-require 'mod 'id))])
+      (log-time (format "invoking `~a`" 'mod) (v)))))
+
 (define-for-syntax initialized #f)
 (define-for-syntax (do-standard-inits)
   (unless initialized
-    (do-time "Starting initialization")
-    ((dynamic-require 'typed-racket/base-env/base-structs 'initialize-structs))
-    (do-time "Finshed base-structs")
-    ((dynamic-require 'typed-racket/base-env/base-env-indexing 'initialize-indexing))
-    (do-time "Finshed base-env-indexing")
-    ((dynamic-require 'typed-racket/base-env/base-env 'init))
-    (do-time "Finshed base-env")
-    ((dynamic-require 'typed-racket/base-env/base-env-numeric 'init))
-    (do-time "Finshed base-env-numeric")
-    ((dynamic-require 'typed-racket/base-env/base-special-env 'initialize-special))
-    (do-time "Finished base-special-env")
-    ((dynamic-require 'typed-racket/base-env/base-contracted 'initialize-contracted))
-    (do-time "Finished base-contracted")
-    (dynamic-require '(submod typed-racket/base-env/base-types #%type-decl) #f)
-    (do-time "Finished base-types")
+    (dyn-req/time typed-racket/base-env/base-structs initialize-structs)
+    (dyn-req/time typed-racket/base-env/base-env-indexing initialize-indexing)
+    (dyn-req/time typed-racket/base-env/base-env init)
+    (dyn-req/time typed-racket/base-env/base-env-numeric init)
+    (dyn-req/time typed-racket/base-env/base-special-env initialize-special)
+    (dyn-req/time typed-racket/base-env/base-contracted initialize-contracted)
+    (log-time "loading `base-types`"
+              (dynamic-require 
+               '(submod typed-racket/base-env/base-types #%type-decl) #f))
     (set! initialized #t))
-  (do-requires))
+  (log-time "do-requires" (do-requires)))
 
 (define-syntax-rule (drivers [name sym] ...)
   (begin
     (define-syntax (name stx)
-      (do-time (format "Calling ~a driver" 'name))      
-      (define f (dynamic-require 'typed-racket/core 'sym))
-      (do-time (format "Loaded core ~a" 'sym))
-      (begin0 (f stx do-standard-inits)
-              (do-time "Finished, returning to Racket")))
+      (log-time 
+       (format "running ~a" (syntax-source stx))
+       (define f (log-time "loading core" (dynamic-require 'typed-racket/core 'sym)))      
+       (log-time "calling core" (f stx do-standard-inits))))
     ...))
 
 (drivers [module-begin mb-core] [top-interaction ti-core] [with-type wt-core])

@@ -10,7 +10,7 @@
 ;; identifier -> identifier
 ;; get the alternate field of the renaming, if it exists
 (define (get-alternate id)
-  (define-values (v new-id) (syntax-local-value/immediate id (λ _ (values #f #f))))
+  (define-values (v new-id) (syntax-local-value/immediate id (λ () (values #f #f))))
   (cond [(typed-renaming? v)
          (typed-renaming-alternate v)]
         [(rename-transformer? v)
@@ -28,9 +28,8 @@
 ;;
 ;; The syntax-transforming check is for unit tests
 (define (un-rename id)
-  (if (syntax-transforming?)
-      (let-values (((binding new-id) (syntax-local-value/immediate id (lambda () (values #f #f)))))
-        (if (typed-renaming? binding)
-            new-id
-            id))
-      id))
+  (cond [(syntax-transforming?)
+         (define-values (binding new-id) 
+           (syntax-local-value/immediate id (λ () (values #f #f))))
+         (if (typed-renaming? binding) new-id id)]
+        [else id]))

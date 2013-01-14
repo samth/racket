@@ -43,32 +43,37 @@
 ;; find the type of identifier i, looking first in the lexical env, then in the top-level env
 ;; identifier -> Type
 (define (lookup-type/lexical i [env (lexical-env)] #:fail [fail #f])
-  (lookup env i (λ (i) (lookup-type i (λ () 
-                                        (cond 
-                                          [(syntax-property i 'constructor-for)
-                                           => (λ (prop)
-                                                (define orig (un-rename prop))
-                                                (define t (lookup-type/lexical orig env))
-                                                (register-type i t)
-                                                t)]
-                                          [(syntax-procedure-alias-property i) 
-                                           => (λ (prop)
-                                                (define orig (car (flatten prop)))
-                                                (define t (lookup-type/lexical orig env))
-                                                (register-type i t)
-                                                t)]
-                                          [(syntax-procedure-converted-arguments-property i)
-                                           => (λ (prop)
-                                                (define orig (car (flatten prop)))
-                                                (define pre-t
-                                                  (lookup-type/lexical orig env
-                                                    #:fail (lambda (i) (lookup-fail i) #f)))
-                                                (define t (if pre-t
-                                                              (kw-convert pre-t)
-                                                              Err))
-                                                (register-type i t)
-                                                t)]
-                                          [else ((or fail lookup-fail) i)]))))))
+  
+  (define (handler)
+    (cond 
+      [(and (syntax-property i 'constructor-for)
+            (syntax-procedure-alias-property i))
+       => (λ (prop)
+            (define orig (un-rename prop))
+            (define t (lookup-type/lexical orig env))
+            (register-type i t)
+            t)]
+     [(syntax-procedure-alias-property i) 
+       => (λ (prop)
+            (define orig (car (flatten prop)))
+            (define t (lookup-type/lexical orig env))
+            (register-type i t) ;; so that we don't hit this cae again
+            t)]
+      [(syntax-procedure-converted-arguments-property i)
+       => (λ (prop)
+            (define orig (car (flatten prop)))
+            (define pre-t
+              (lookup-type/lexical orig env
+                                   #:fail (lambda (i) (lookup-fail i) #f)))
+            (define t (if pre-t
+
+                          (kw-convert pre-t)
+                          Err))
+            (register-type i t)
+            t)]
+      [else ((or fail lookup-fail) i)]))
+
+  (lookup env i (λ (i) (lookup-type i handler))))
 
 
 ;; refine the type of i in the lexical env

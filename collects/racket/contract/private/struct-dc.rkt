@@ -512,7 +512,9 @@
        (define (ensure-valid-field sel-name)
          (define selector-candidate (name->sel-id #'id sel-name))
          (unless (for/or ([selector (in-list (list-ref info 3))])
-                   (and selector (free-identifier=? selector-candidate selector)))
+                   (printf ">>> candidate is: ~a sel is: ~a\n" (syntax-e selector-candidate) (and selector (syntax-e selector)))
+                   (and selector (or (free-identifier=? sel-name selector)
+                                     (free-identifier=? selector-candidate selector))))
            (raise-syntax-error 'struct/dc 
                                "expected an identifier that names a field or a sequence with a field name, the #:parent keyword, and the parent struct"
                                stx

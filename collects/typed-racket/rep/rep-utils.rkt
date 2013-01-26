@@ -28,13 +28,12 @@
 ;; seq: interning-generated count that is used to compare types (type<).
 ;; free-vars: cached free type variables
 ;; free-idxs: cached free dot sequence variables
-;; stx: originating syntax for error-reporting
-(define-struct Rep (seq free-vars free-idxs stx) #:transparent)
+(define-struct Rep (seq free-vars free-idxs) #:transparent)
 
 ;; evil tricks for hygienic yet unhygienic-looking reference
 ;; in say def-type for type-ref-id
 (define-for-syntax fold-target #'fold-target)
-(define-for-syntax default-fields (list #'seq #'free-vars #'free-idxs #'stx))
+(define-for-syntax default-fields (list #'seq #'free-vars #'free-idxs))
 
 ;; parent is for struct inheritance.
 ;; ht-stx is the identifier of the intern-table
@@ -151,7 +150,7 @@
                           ;; defaults to folding down all fields.
                           #:defaults ([contract
                                        #'(->* (flds.contract ...)
-                                              (#:syntax (or/c syntax? #f))
+                                              ()
                                               flds.pred)]))
                (~optional (~and #:no-provide no-provide?))) ...)
        (with-syntax
@@ -194,7 +193,6 @@
                            flds.maker intern?
                            #:extra-args
                            frees.f1 frees.f2
-                           #:syntax [orig-stx #f]
                            #,@(key->list key? #'key-expr)))))
             provides))])))
 
@@ -358,11 +356,12 @@
     [(? (lambda (e) (or (Filter? e)
                         (Object? e)
                         (PathElem? e)))
-        (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi stx vals)))
+        (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi vals)))
      vals]
     [(? Type?
-        (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi stx key vals)))
-     vals]))
+        (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi key vals)))
+     vals]
+    [_ (error 'rep-values "Internal Error: broken Rep value")]))
 
 
 (provide
@@ -373,5 +372,4 @@
 
 (provide/cond-contract (struct Rep ([seq exact-nonnegative-integer?]
                                     [free-vars (hash/c symbol? variance?)]
-                                    [free-idxs (hash/c symbol? variance?)]
-                                    [stx (or/c #f syntax?)])))
+                                    [free-idxs (hash/c symbol? variance?)])))

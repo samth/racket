@@ -185,7 +185,6 @@
 (def-type Poly (n body) #:no-provide
   [#:contract (->i ([n natural-number/c]
                     [body (n) (scope-depth n)])
-                   (#:syntax [stx (or/c #f syntax?)])
                    [result Poly?])]
   [#:frees (λ (f) (f body))]
   [#:fold-rhs (let ([body* (remove-scopes n body)])
@@ -198,7 +197,6 @@
 (def-type PolyDots (n body) #:no-provide
   [#:contract (->i ([n natural-number/c]
                     [body (n) (scope-depth n)])
-                   (#:syntax [stx (or/c #f syntax?)])
                    [result PolyDots?])]
   [#:key (Type-key body)]
   [#:frees (λ (f) (f body))]

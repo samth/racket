@@ -214,9 +214,6 @@
       [(Pair: a e) (cons a (tuple-elems e))]
       [(Value: '()) null]))
   (match c
-    ;; if we know how it was written, print that
-    [(? Rep-stx a)
-     (fp "~a" (syntax->datum (Rep-stx a)))]
     [(Univ:) (fp "Any")]
     ;; names are just the printed as the original syntax
     [(Name: stx) (fp "~a" (syntax-e stx))]

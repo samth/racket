@@ -45,7 +45,6 @@
 (def-filter FilterSet (thn els)
   [#:contract (->i ([t any/c]
                     [e any/c])
-                   (#:syntax [stx #f])
                    #:pre (t e)
                    (and (cond [(Bot? t) #t]
                               [(Bot? e) (Top? t)]

@@ -20,12 +20,9 @@
        #'(define *name
            (let ([table (make-ht)])
              (lambda (arg ... extra-formals ... ...)
-               (let ([key key-expr])
-                 (hash-ref table key
-                           (lambda ()
-                             (let ([new (make-name (count!) es.e ... arg ...)])
-                               (hash-set! table key new)
-                               new))))))))]))
+               (hash-ref! table key-expr
+                          (lambda ()
+                            (make-name (count!) es.e ... arg ...)))))))]))
 
 (define (make-count!)
   (let ([state 0])

@@ -1,4 +1,4 @@
 #lang setup/infotab
 
-(define deps '("parser-tools"))
+(define single-collection "profile")
 (define build-deps '("racket-doc"))

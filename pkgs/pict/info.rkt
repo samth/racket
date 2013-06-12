@@ -1,4 +1,4 @@
 #lang setup/infotab
 
-(define deps '("parser-tools"))
+(define deps '("draw-lib" "snip"))
 (define build-deps '("racket-doc"))

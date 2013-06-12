@@ -1,4 +1,5 @@
 #lang setup/infotab
 
-(define deps '("syntax-color-lib"
-               "syntax-color-doc"))
+(define deps '("parser-tools"))
+(define scribblings '(("syntax-color.scrbl" () (gui-library))))
+(define single-collection "syntax-color")

@@ -4,7 +4,7 @@ env:
 compiler:
   - gcc
   - clang
-# Change this to your needs
+# Just run tests for the core
 script:
   - make PKGS="racket-test"
   - racket -f pkgs/racket-pkgs/racket-test/tests/racket/quiet.rktl

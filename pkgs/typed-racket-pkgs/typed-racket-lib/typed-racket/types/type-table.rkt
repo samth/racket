@@ -12,6 +12,7 @@
 (define (reset-type-table) (set! table (make-hasheq)))
 
 (define (add-typeof-expr e t)
+  (log-message online-check-syntax 'info #f "type of expression" (list e t))
   (when (optimize?)
     (hash-update! table e
                   ;; when typechecking a case-> type, types get added for

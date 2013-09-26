@@ -17,10 +17,13 @@ at least theoretically.
  ;; logging
  show-input?
  ;; provide macros
- rep utils typecheck infer env private types)
+ rep utils typecheck infer env private types
+ online-check-syntax)
 
 (define optimize? (make-parameter #t))
 (define-for-syntax enable-contracts? #f)
+
+(define-logger online-check-syntax)
 
 (define-syntax do-contract-req
   (if enable-contracts?

@@ -34,6 +34,8 @@
     (type-alias-env-map (lambda (id ty)
                           (cons (syntax-e id) ty))))))
 
+(define-logger online-check-syntax)
+
 (define-syntax-rule (tc-setup orig-stx stx expand-ctxt fully-expanded-stx init checker pre-result post-result . body)
   (let ()
     (set-box! typed-context? #t)
@@ -54,6 +56,7 @@
         (define fully-expanded-stx (disarm* (local-expand stx expand-ctxt (list #'module*))))
         (when (show-input?)
           (pretty-print (syntax->datum fully-expanded-stx)))
+        (log-message online-check-syntax 'info #f "" fully-expanded-stx)
         (do-time "Local Expand Done")
         (init)
         (do-time "Initialized Envs")

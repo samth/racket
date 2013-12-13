@@ -136,6 +136,12 @@
                          style #t bib-date<? bib-date=?)
          (send style get-cite-close))))
 
+(define (add-author-cite group bib-entry style bib-date<? bib-date=?)  
+  (hash-set! (bib-group-ht group) (auto-bib-key bib-entry) bib-entry)  
+  (make-element
+   #f
+   (list (add-cite group bib-entry 'autobib-author #f #f style))))
+
 ;; This allows citing multiple sources in one @cite. Groups of citations are separated by semicolons.
 (define (add-cites group bib-entries sort? style bib-date<? bib-date=?)
   (define-values (groups keys)
@@ -363,14 +369,15 @@
 (define-syntax (define-cite stx)
   (syntax-parse stx
     [(_ (~var ~cite) citet generate-bibliography
-        (~or (~optional (~seq #:style style) #:defaults ([style #'author+date-style]))
+        (~or (~optional (~seq #:citeauthor citeauthor:id) #:defaults ([citeauthor #f]))
+             (~optional (~seq #:style style) #:defaults ([style #'author+date-style]))
              (~optional (~seq #:disambiguate fn) #:defaults ([fn #'#f]))
              (~optional (~seq #:render-date-in-bib render-date-bib) #:defaults ([render-date-bib #'#f]))
              (~optional (~seq #:spaces spaces) #:defaults ([spaces #'1]))
              (~optional (~seq #:render-date-in-cite render-date-cite) #:defaults ([render-date-cite #'#f]))
              (~optional (~seq #:date<? date<?) #:defaults ([date<? #'#f]))
              (~optional (~seq #:date=? date=?) #:defaults ([date=? #'#f]))) ...)
-     (syntax/loc stx
+     (quasisyntax/loc stx
        (begin
          (define group (make-bib-group (make-hasheq)))
          (define the-style style)
@@ -378,6 +385,10 @@
            (add-cites group (cons bib-entry bib-entries) sort? the-style date<? date=?))
          (define (citet bib-entry . bib-entries)
            (add-inline-cite group (cons bib-entry bib-entries) the-style date<? date=?))
+         #,(if (attribute citeauthor)
+               #'(define (citeauthor bib-entry)
+                   (add-author-cite group bib-entry the-style date<? date=?))
+               #'(begin))
          (define (generate-bibliography #:tag [tag "doc-bibliography"] #:sec-title [sec-title "Bibliography"])
            (gen-bib tag group sec-title the-style fn render-date-bib render-date-cite date<? date=? spaces))))]))
 

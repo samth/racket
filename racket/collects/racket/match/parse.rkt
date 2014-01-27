@@ -25,7 +25,7 @@
   (define disarmed-stx (syntax-disarm stx orig-insp))
   (syntax-case* disarmed-stx (not var struct box cons list vector ? and or quote app
                                   regexp pregexp list-rest list-no-order hash-table
-                                  quasiquote mcons list* mlist)
+                                  quasiquote mcons list* mlist recur)
                 (lambda (x y) (eq? (syntax-e x) (syntax-e y)))
     [(expander args ...)
      (and (identifier? #'expander)
@@ -49,6 +49,9 @@
      ;; nots are conjunctions of negations
      (let ([ps (map (compose Not rearm+parse) (syntax->list #'(p ...)))])
        (And ps))]
+    [(recur p ...)
+     (free-identifier=? #'recur (car (syntax-e disarmed-stx)))
+     (App #'recur (map rearm+parse (syntax->list #'(p ...))))]
     [(regexp r)
      (trans-match #'matchable?
                   (rearm #'(lambda (e) (regexp-match r e)))

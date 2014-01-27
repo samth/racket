@@ -2,7 +2,7 @@
 
 (require "patterns.rkt" "compiler.rkt"
          syntax/stx syntax/parse racket/syntax
-         (for-template racket/base (only-in "runtime.rkt" match:error fail)))
+         (for-template racket/base "runtime.rkt" racket/stxparam))
 
 (provide go go/one)
 
@@ -35,8 +35,10 @@
      (define/with-syntax (xs ...) (generate-temporaries es))
      (define/with-syntax (exprs ...) es)
      (define/with-syntax outer-fail (generate-temporary #'fail))
+     (define/with-syntax rec (generate-temporary #'recur))
      (define/with-syntax orig-expr (if (= 1 len) (stx-car #'(xs ...)) #'(list xs ...)))
-     (define/with-syntax raise-error (quasisyntax/loc stx (match:error orig-expr (list (srcloc #,@srcloc-list)))))
+     (define/with-syntax raise-error 
+       (quasisyntax/loc stx (match:error orig-expr (list (srcloc #,@srcloc-list)))))
      (define parsed-clauses
        (for/list ([clause (syntax->list clauses)]
                   [pats (syntax->list #'(pats ...))]
@@ -66,7 +68,14 @@
            [_ (mk #f rhs)])))
      (define/with-syntax body 
        (compile* (syntax->list #'(xs ...)) parsed-clauses #'outer-fail))
+     (define/with-syntax recur-rhs
+       (if (= 1 (length (syntax->list #'(xs ...))))
+           #'(make-rename-transformer #'rec)
+           #'(λ (stx)
+               (raise-syntax-error
+                #f "`recur' can only be used with single-clause `match'" stx))))
     (quasisyntax/loc stx
-      (let ([xs exprs] ...)
+      (let rec ([xs exprs] ...)
         (define (outer-fail) raise-error)
-        body))]))
+        (syntax-parameterize ([recur recur-rhs])
+          body)))]))

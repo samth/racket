@@ -8,7 +8,8 @@
          match:error
          fail
          matchable?
-         match-prompt-tag)
+         match-prompt-tag
+         recur)
 
 (define match-prompt-tag (make-continuation-prompt-tag 'match))
 
@@ -25,6 +26,11 @@
                               srclocs)))
 
 (define-syntax-parameter fail
+  (lambda (stx)
+    (raise-syntax-error
+     #f "used out of context: not in match pattern" stx)))
+
+(define-syntax-parameter recur
   (lambda (stx)
     (raise-syntax-error
      #f "used out of context: not in match pattern" stx)))

@@ -90,7 +90,7 @@
           :n->th
           :natural-number/c
           :printable/c
-          :promise/c
+          ;:promise/c
           :or/c
           :prompt-tag/c
           :>=/c

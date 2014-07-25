@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require (for-syntax racket/base)
-         racket/promise
+         ;racket/promise
          (only-in "../../private/promise.rkt" prop:force promise-forcer)
          "prop.rkt"
          "blame.rkt"
@@ -21,7 +21,7 @@
          false/c
          printable/c
          listof non-empty-listof cons/c list/c
-         promise/c
+         ;promise/c
          syntax/c
          
          check-between/c
@@ -863,7 +863,7 @@
        (λ (val)
          (and (syntax? val)
               (pred (syntax-e val))))))))
-
+#;
 (define/subexpression-pos-prop promise/c
   (λ (ctc-in)
     (let* ([ctc (coerce-contract 'promise/c ctc-in)]

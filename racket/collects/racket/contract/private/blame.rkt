@@ -1,5 +1,5 @@
 #lang racket/base
-(require syntax/srcloc racket/pretty setup/path-to-relative racket/list)
+(require syntax/srcloc #;racket/pretty #;setup/path-to-relative racket/list)
 
 (provide blame?
          (rename-out [-make-blame make-blame])
@@ -341,29 +341,29 @@
 
 (define ((show f) v #:alone? [alone? #f])
   (let* ([line
-          (parameterize ([pretty-print-columns 'infinity])
+          (parameterize (#;[pretty-print-columns 'infinity])
             (f v))])
     (if (< (string-length line) 30)
         (cond
           [alone? (string-append spacer line)]
           [else line])
-        (parameterize ([pretty-print-print-line (show-line-break alone?)]
-                       [pretty-print-columns 50])
+        (parameterize (#;[pretty-print-print-line (show-line-break alone?)]
+                       #;[pretty-print-columns 50])
           (f v)))))
 
-(define (pretty-format/display v [columns (pretty-print-columns)])
+(define (pretty-format/display v [columns 50 #;(pretty-print-columns)])
   (let ([port (open-output-string)])
-    (pretty-display v port)
+    (display v port)
     (get-output-string port)))
 
-(define (pretty-format/write v [columns (pretty-print-columns)])
+(define (pretty-format/write v [columns 50 #;(pretty-print-columns)])
   (let ([port (open-output-string)])
-    (pretty-write v port)
+    (write v port)
     (get-output-string port)))
 
 (define (convert-blame-singleton x)
   (cond
-    [(path? x) (path->relative-string/library x)]
+    [(path? x) (path->string x)]
     [else x]))
 
 

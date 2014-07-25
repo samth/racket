@@ -36,7 +36,7 @@
  source-location->prefix
 
  )
-
+#;
 (require
   setup/path-to-relative)
 
@@ -167,7 +167,7 @@
 (define ((good-string default) x src line col pos span)
   (format "~a~a"
           (cond
-            [(path-string? src) (path->relative-string/library src)]
+            [(path-string? src) (if (string? src) src (path->string src)) #;(path->relative-string/library src)]
             [else (or src default)])
           (if line
             (if col

@@ -5,7 +5,7 @@
          "prop.rkt"
          "rand.rkt"
          "generate-base.rkt"
-         racket/pretty
+         ;racket/pretty
          racket/list
          (for-syntax racket/base
                      "helpers.rkt"))

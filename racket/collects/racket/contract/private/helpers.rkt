@@ -10,7 +10,7 @@
          known-good-contracts
          update-loc)
 
-(require setup/main-collects
+(require ;setup/main-collects
          racket/struct-info
          (for-template racket/base))
 
@@ -95,7 +95,7 @@
                    [(path? src)   (path->bytes src)]
                    [(string? src) (string->bytes/locale src)]
                    [else #f])]
-         [r (and bs (path->main-collects-relative bs))])
+         [r (and bs #;(path->main-collects-relative bs))])
     (and bs
          (bytes->string/locale (if (and (pair? r) (eq? 'collects (car r)))
                                    (apply bytes-append 

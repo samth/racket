@@ -1,6 +1,6 @@
 #lang racket/base
 (require syntax/srcloc
-         (for-syntax racket/base syntax/srcloc setup/path-to-relative))
+         (for-syntax racket/base syntax/srcloc #;setup/path-to-relative))
 (provide (protect-out module-name-fixup)
          quote-srcloc
          quote-srcloc-string
@@ -18,6 +18,7 @@
   (define (source-location-relative-source loc)
     (define src (source-location-source loc))
     (and (path-string? src)
+         src #;
          (path->relative-string/library src #f)))
 
   (define (syntax-quote-source stx)

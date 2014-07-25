@@ -3,7 +3,7 @@
 (require "prop.rkt"
          "blame.rkt"
          "guts.rkt"
-         "generate.rkt"
+         ;"generate.rkt"
          "misc.rkt"
          (for-syntax racket/base syntax/name))
 
@@ -34,7 +34,7 @@
    #:first-order (λ (ctc) (λ (x) #t)) ;; ???
    #:projection ∀∃-proj
    #:stronger (λ (this that) (equal? this that))
-   #:generate (λ (ctc)
+   #;#;#:generate (λ (ctc)
                 (cond
                   [(∀∃/c-neg? ctc)
                    (λ (fuel)

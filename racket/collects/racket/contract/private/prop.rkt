@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require "blame.rkt"
-         "generate-base.rkt"
+         ;"generate-base.rkt"
          racket/private/performance-hint)
 
 (provide prop:contract

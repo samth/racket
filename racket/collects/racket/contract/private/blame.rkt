@@ -137,7 +137,7 @@
 (define (blame-swapped? b)
   (not (blame-original? b)))
 
-(define-struct (exn:fail:contract:blame exn:fail:contract) [object]
+(define-struct exn:fail:contract:blame #;(exn:fail:contract:blame exn:fail:contract) [object]
   #:transparent)
 
 (define (raise-blame-error raw-blame x #:missing-party [missing-party #f] fmt . args)

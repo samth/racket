@@ -3,8 +3,8 @@
 (require "helpers.rkt"
          "blame.rkt"
          "prop.rkt"
-         "rand.rkt"
-         "generate-base.rkt"
+         ;"rand.rkt"
+         ;"generate-base.rkt"
          ;racket/pretty
          racket/list
          (for-syntax racket/base
@@ -449,6 +449,7 @@
                                          name 
                                          v))))])
          predicate-contract-proj)))
+   #;#;
    #:generate (λ (ctc)
                  (let ([generate (predicate-contract-generate ctc)])
                    (cond

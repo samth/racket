@@ -7,7 +7,7 @@
          "blame.rkt"
          "guts.rkt"
          "rand.rkt"
-         "generate.rkt"
+         #;#;"generate.rkt"
          "generate-base.rkt")
 
 (provide flat-murec-contract
@@ -59,7 +59,7 @@
          blame-add-cdr-context
          raise-not-cons-blame-error
          
-         random-any/c)
+         #;random-any/c)
 
 (define-syntax (flat-murec-contract stx)
   (syntax-case stx  ()
@@ -184,6 +184,7 @@
 (define (and/c-check-nonneg ctc pred)
   (define sub-contracts (base-and/c-ctcs ctc))
   (cond
+    #;
     [(are-stronger-contracts? (list pred (not/c negative?))
                               sub-contracts)
      (define go (hash-ref predicate-generator-table pred))
@@ -411,7 +412,7 @@
     (flat-named-contract
      (build-compound-type-name 'not/c ctc)
      (λ (x) (not (pred x))))))
-
+#;
 (define (listof-generate elem-ctc)
   (λ (fuel)
     (define eg (generate/choose elem-ctc fuel))
@@ -422,7 +423,7 @@
              [1/5 so-far]
              [else (loop (cons (eg) so-far))])))
         (λ () '()))))
-
+#;
 (define (non-empty-listof-generate elem-ctc)
   (λ (fuel)
     (define eg (generate/choose elem-ctc fuel))
@@ -433,7 +434,7 @@
              [1/5 so-far]
              [else (loop (cons (eg) so-far))])))
         #f)))
-
+#;
 (define (non-empty-listof-exercise elem-ctc)
   (λ (fuel)
     (define env (generate-env))
@@ -465,8 +466,8 @@
         #:first-order fo-check
         #:projection (listof-*-ho-check (λ (p v) (for-each p v) v))
         #:val-first-projection (listof-*-val-first-flat-proj predicate? ctc)
-        #:generate (generate ctc)
-        #:exercise (exercise ctc)
+        ;#:generate (generate ctc)
+        ;#:exercise (exercise ctc)
         #:list-contract? #t)]
       [(chaperone-contract? ctc)
        (make-chaperone-contract
@@ -474,8 +475,8 @@
         #:first-order fo-check
         #:projection (listof-*-ho-check (λ (p v) (map p v)))
         #:val-first-projection (listof-*-val-first-ho-proj predicate? ctc)
-        #:generate (generate ctc)
-        #:exercise (exercise ctc)
+        ;#:generate (generate ctc)
+        ;#:exercise (exercise ctc)
         #:list-contract? #t)]
       [else
        (make-contract
@@ -483,7 +484,7 @@
         #:first-order fo-check
         #:val-first-projection (listof-*-val-first-ho-proj predicate? ctc)
         #:projection (listof-*-ho-check (λ (p v) (map p v)))
-        #:exercise (exercise ctc)
+        ;#:exercise (exercise ctc)
         #:list-contract? #t)])))
 
 (define (listof-*-val-first-flat-proj predicate? ctc)
@@ -524,13 +525,17 @@
 (define (non-empty-list? x) (and (pair? x) (list? x)))
 
 (define (no-exercise ctc) (λ (size) (values void '())))
-(define listof-func (*-listof list? 'listof listof-generate no-exercise))
+
+(define listof-func (*-listof list? 'listof #f #f #;listof-generate  #;no-exercise))
+
 (define/subexpression-pos-prop (listof x) (listof-func x))
 
 (define non-empty-listof-func (*-listof non-empty-list? 
-                                        'non-empty-listof
+                                        'non-empty-listof #f #f
+                                        #;#;
                                         non-empty-listof-generate
                                         non-empty-listof-exercise))
+
 (define/subexpression-pos-prop (non-empty-listof a) (non-empty-listof-func a))
 
 (define (blame-add-car-context blame) (blame-add-context blame "the car of"))
@@ -585,7 +590,7 @@
                            (the-cons/c-hd-ctc that))
        (contract-stronger? (the-cons/c-tl-ctc this)
                            (the-cons/c-tl-ctc that))))
-
+#;
 (define (cons/c-generate ctc)
   (define ctc-car (the-cons/c-hd-ctc ctc))
   (define ctc-cdr (the-cons/c-tl-ctc ctc))
@@ -609,7 +614,7 @@
    #:name cons/c-name
    #:first-order cons/c-first-order
    #:stronger cons/c-stronger?
-   #:generate cons/c-generate
+   ;#:generate cons/c-generate
    #:list-contract? cons/c-list-contract?))
 (define-struct (chaperone-cons/c the-cons/c) ()
   #:property prop:custom-write custom-write-property-proc
@@ -621,7 +626,7 @@
      #:name cons/c-name
      #:first-order cons/c-first-order
      #:stronger cons/c-stronger?
-     #:generate cons/c-generate
+     ;#:generate cons/c-generate
      #:list-contract? cons/c-list-contract?)))
 (define-struct (impersonator-cons/c the-cons/c) ()
   #:property prop:custom-write custom-write-property-proc
@@ -632,7 +637,7 @@
    #:name cons/c-name
    #:first-order cons/c-first-order
    #:stronger cons/c-stronger?
-   #:generate cons/c-generate
+   ;#:generate cons/c-generate
    #:list-contract? cons/c-list-contract?))
 
 (define/subexpression-pos-prop (cons/c a b)
@@ -672,7 +677,7 @@
        (for/and ([arg/c (in-list (generic-list/c-args c))]
                  [v (in-list x)])
          ((contract-first-order arg/c) v))))
-
+#;
 (define (list/c-generate ctc)
   (define elem-ctcs (generic-list/c-args ctc))
   (λ (fuel)
@@ -685,7 +690,7 @@
            (gen)))]
       [else
        #f])))
-
+#;
 (define (list/c-exercise ctc)
   (multi-exercise (generic-list/c-args ctc)))
 
@@ -697,8 +702,8 @@
   (build-flat-contract-property
    #:name list/c-name-proc
    #:first-order list/c-first-order
-   #:generate list/c-generate
-   #:exercise list/c-exercise
+   ;#:generate list/c-generate
+   ;#:exercise list/c-exercise
    #:val-first-projection
    (λ (c) 
      (λ (blame) 
@@ -837,8 +842,8 @@
     (build-chaperone-contract-property
      #:name list/c-name-proc
      #:first-order list/c-first-order
-     #:generate list/c-generate
-     #:exercise list/c-exercise
+     ;#:generate list/c-generate
+     ;#:exercise list/c-exercise
      #:projection list/c-chaperone/other-projection
      #:val-first-projection list/c-chaperone/other-val-first-projection
      #:list-contract? (λ (c) #t))))
@@ -849,8 +854,8 @@
   (build-contract-property
    #:name list/c-name-proc
    #:first-order list/c-first-order
-   #:generate list/c-generate
-   #:exercise list/c-exercise
+   ;#:generate list/c-generate
+   ;#:exercise list/c-exercise
    #:projection list/c-chaperone/other-projection
    #:val-first-projection list/c-chaperone/other-val-first-projection
    #:list-contract? (λ (c) #t)))
@@ -1000,7 +1005,7 @@
 (define (get-any? c) any?)
 (define (any? x) #t)
 (define any/c-neg-party-fn (λ (val) (λ (neg-party) val)))
-
+#;
 (define (random-any/c env fuel)
   (cond
     [(zero? (hash-count env))
@@ -1017,10 +1022,12 @@
 
 (define (any/c-simple-value)
   (oneof '(0 #f "" () #() -1 1 #t elephant)))
+#;
 (define (any/c-from-predicate-generator env fuel)
   ((hash-ref predicate-generator-table
              (oneof (hash-keys predicate-generator-table)))
    fuel))
+#;
 (define (any/c-procedure env fuel)
   (procedure-rename
    (procedure-reduce-arity
@@ -1041,6 +1048,7 @@
    #:val-first-projection (λ (ctc) (λ (blame) any/c-neg-party-fn))
    #:stronger (λ (this that) (any/c? that))
    #:name (λ (ctc) 'any/c)
+   #;#;
    #:generate (λ (ctc) 
                 (λ (fuel) 
                   (define env (generate-env))
@@ -1563,6 +1571,7 @@
           (integer? x)
           (exact? x)
           (x . >= . 0)))
+   #;
    (λ (fuel) (λ () (exact-nonnegative-integer-gen fuel)))))
 
 (define (n->th n)

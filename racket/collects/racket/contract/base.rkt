@@ -49,7 +49,7 @@
  (except-out (all-from-out "private/misc.rkt")
              check-between/c
              check-unary-between/c
-             random-any/c)
+             #;random-any/c)
  symbols or/c one-of/c
  flat-rec-contract
  provide/contract

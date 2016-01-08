@@ -289,19 +289,26 @@
                 [(partially-applied-id extra-neg-party-argument-fn contract-id) 
                  (generate-temporaries (list 'idX 'idY 'idZ))]
                 [ctrct ctrct])
-    (syntax-local-lift-module-end-declaration
-     #`(begin 
-         (define partially-applied-id
-           (do-partial-app contract-id
-                           id
-                           '#,name-for-blame
-                           #,pos-module-source
-                           #,srcloc-expr))
-         #,@(if arrow?
-                (list #`(define extra-neg-party-argument-fn 
-                          (wrapped-extra-arg-arrow-extra-neg-party-argument
-                           partially-applied-id)))
-                (list))))
+    (define maybe-to-lift?
+      #`(begin 
+          (define partially-applied-id
+            (do-partial-app contract-id
+                            id
+                            '#,name-for-blame
+                            #,pos-module-source
+                            #,srcloc-expr))
+          #,@(if arrow?
+                 (list #`(define extra-neg-party-argument-fn 
+                           (wrapped-extra-arg-arrow-extra-neg-party-argument
+                            partially-applied-id)))
+                 (list))))
+    (define lifted
+      (if (and (eq? contract-error-name 'define-module-boundary-contract)
+               #;
+               (eq? (syntax-local-context) 'module))
+          maybe-to-lift?
+          (begin (syntax-local-lift-module-end-declaration maybe-to-lift?)
+                 #'(begin))))
 
     #`(begin
         (define contract-id
@@ -309,6 +316,7 @@
           (let ([#,ex-id (coerce-contract '#,contract-error-name ctrct)
                          #;(opt/c ctrct #:error-name #,contract-error-name)])
             #,ex-id))
+        #,lifted
         
         (define-syntax #,id-rename
           #,(if arrow?

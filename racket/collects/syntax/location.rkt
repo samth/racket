@@ -1,5 +1,5 @@
 #lang racket/base
-(require syntax/srcloc
+(require syntax/srcloc racket/private/performance-hint
          (for-syntax racket/base syntax/srcloc setup/path-to-relative))
 (provide (protect-out module-name-fixup)
          quote-srcloc
@@ -91,13 +91,14 @@
 (define-syntax quote-srcloc-prefix
   (source-transformer syntax-quote-prefix))
 
+(begin-encourage-inline
 (define (variable-reference->module-source/submod vr)
   (define src (variable-reference->module-source vr))
   (define rname (variable-reference->resolved-module-path vr))
   (define name (and rname (resolved-module-path-name rname)))
   (if (pair? name)
       (cons src (cdr name))
-      src))
+      src)))
 
 (define-syntax-rule (module-source)
  (variable-reference->module-source/submod
@@ -117,6 +118,7 @@
 (define-syntax (quote-module-name stx)
   (do-quote-module stx #'module-name-fixup))
 
+(begin-encourage-inline
 (define (module-name-fixup src path)
   (do-fixup src path #f))
 
@@ -125,27 +127,28 @@
     
 (define (module-path-fixup src path)
   (do-fixup src path #t))
-
-(define (do-fixup src path as-modpath?)
-  (define (last-pass src)
+(define (last-pass src as-modpath?)
     (cond
      [(path? src) src]
      [(symbol? src) (if as-modpath?
                         `(quote ,src)
                         src)]
      [(list? src) 
-      (define base (last-pass (car src)))
+      (define base (last-pass (car src) as-modpath?))
       (define sm (cdr src))
       (if as-modpath?
           `(submod ,base ,@sm)
           (cons base sm))]
      [else 'top-level]))
+(define (do-fixup src path as-modpath?)
+  
   (last-pass
     (cond 
       [(null? path) src]
       [(pair? src) (append src path)]
-      [else (cons src path)])))
-
+      [else (cons src path)])
+    as-modpath?))
+)
 ;; ------------------------------------------------------------------------
 
 (define (syntax-source-directory stx)

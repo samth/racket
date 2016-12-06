@@ -32,7 +32,8 @@
          "exists.rkt"
          "blame.rkt"
          syntax/location
-         syntax/srcloc)
+         syntax/srcloc
+         racket/private/performance-hint)
 
 (define-for-syntax (self-ctor-transformer orig stx)
   (with-syntax ([orig orig])
@@ -380,6 +381,7 @@
                                                pos-blame-party-expr))])]))
 
 ;; ... -> (values (or/c #f (-> neg-party val)) blame)
+(begin-encourage-inline
 (define (do-partial-app ctc val name pos-module-source source)
   (define p (parameterize ([warn-about-val-first? #f])
               ;; when we're building the val-first projection
@@ -404,7 +406,7 @@
    ;; check and then toss the results.
    (neg-accepter 'incomplete-blame-from-provide.rkt)
 
-   (values neg-accepter blme)))
+   (values neg-accepter blme))))
 
 (define-for-syntax (true-provide/contract provide-stx just-check-errors? who)
   (syntax-case provide-stx ()

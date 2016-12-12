@@ -756,6 +756,8 @@
                free=id
                extra-inspector
                extra-nominal-bindings))]
+    [(#:very-simple-module-binding)
+     (decode* (deserialize-very-simple-module-binding module sym))]
     [(#:simple-module-binding)
      (decode* (deserialize-simple-module-binding module sym phase nominal-module))]
     [(#:local-binding)

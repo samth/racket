@@ -19,12 +19,12 @@
          module-binding-extra-nominal-bindings
          
          deserialize-full-module-binding
-         deserialize-simple-module-binding)
+         deserialize-simple-module-binding
+         deserialize-very-simple-module-binding)
 
 ;; ----------------------------------------
 
 (define (make-module-binding module phase sym
-                             #:wrt [wrt-sym sym]
                              #:nominal-module [nominal-module module]
                              #:nominal-phase [nominal-phase phase]
                              #:nominal-sym [nominal-sym sym]
@@ -48,6 +48,8 @@
                          nominal-require-phase
                          extra-inspector
                          extra-nominal-bindings)]
+   [(and (eq? module nominal-module) (eqv? phase 0))
+    (very-simple-module-binding module sym)]
    [else
     (simple-module-binding module phase sym nominal-module)]))
 
@@ -75,7 +77,8 @@
 
 (define (module-binding? b)
   ;; must not overlap with `local-binding?`
-  (or (simple-module-binding? b)
+  (or (very-simple-module-binding? b)
+      (simple-module-binding? b)
       (full-module-binding? b)))
 
 ;; See `identifier-binding` docs for information about these fields:
@@ -97,16 +100,16 @@
             (ser-push! 'tag '#:module-binding)
             (ser-push! (full-module-binding-module b))
             (ser-push! (full-module-binding-sym b))
-              (ser-push! (full-module-binding-phase b))
-              (ser-push! (full-module-binding-nominal-module b))
-              (ser-push! (full-module-binding-nominal-phase b))
-              (ser-push! (full-module-binding-nominal-sym b))
-              (ser-push! (full-module-binding-nominal-require-phase b))
-              (ser-push! (full-binding-free=id b))
-              (if (full-module-binding-extra-inspector b)
-                  (ser-push! 'tag '#:inspector)
-                  (ser-push! #f))
-              (ser-push! (full-module-binding-extra-nominal-bindings b))]
+            (ser-push! (full-module-binding-phase b))
+            (ser-push! (full-module-binding-nominal-module b))
+            (ser-push! (full-module-binding-nominal-phase b))
+            (ser-push! (full-module-binding-nominal-sym b))
+            (ser-push! (full-module-binding-nominal-require-phase b))
+            (ser-push! (full-binding-free=id b))
+            (if (full-module-binding-extra-inspector b)
+                (ser-push! 'tag '#:inspector)
+                (ser-push! #f))
+            (ser-push! (full-module-binding-extra-nominal-bindings b))]
            [else
             (ser-push! simplified-b)])))
 
@@ -119,6 +122,14 @@
           (ser-push! (simple-module-binding-sym b))
           (ser-push! (simple-module-binding-phase b))
           (ser-push! (simple-module-binding-nominal-module b))))
+
+(struct very-simple-module-binding (module sym)
+        #:transparent
+        #:property prop:serialize
+        (lambda (b ser-push! state)
+          (ser-push! 'tag '#:very-simple-module-binding)
+          (ser-push! (very-simple-module-binding-module b))
+          (ser-push! (very-simple-module-binding-sym b))))
 
 (define (deserialize-full-module-binding module sym phase
                                          nominal-module
@@ -140,49 +151,64 @@
 (define (deserialize-simple-module-binding module sym phase nominal-module)
   (simple-module-binding module phase sym nominal-module))
 
+(define (deserialize-very-simple-module-binding module sym)
+  (very-simple-module-binding module sym))
+
 ;; ----------------------------------------
 
 (define (module-binding-module b)
-  (if (simple-module-binding? b)
-      (simple-module-binding-module b)
-      (full-module-binding-module b)))
+  (if (very-simple-module-binding? b)
+      (very-simple-module-binding-module b)
+      (if (simple-module-binding? b)
+          (simple-module-binding-module b)
+          (full-module-binding-module b))))
 
 (define (module-binding-phase b)
-  (if (simple-module-binding? b)
-      (simple-module-binding-phase b)
-      (full-module-binding-phase b)))
+  (if (very-simple-module-binding? b)
+      0
+      (if (simple-module-binding? b)
+          (simple-module-binding-phase b)
+          (full-module-binding-phase b))))
 
 (define (module-binding-sym b)
-  (if (simple-module-binding? b)
-      (simple-module-binding-sym b)
-      (full-module-binding-sym b)))
+  (if (very-simple-module-binding? b)
+      (very-simple-module-binding-sym b)
+      (if (simple-module-binding? b)
+          (simple-module-binding-sym b)
+          (full-module-binding-sym b))))
 
 (define (module-binding-nominal-module b)
-  (if (simple-module-binding? b)
-      (simple-module-binding-nominal-module b)
-      (full-module-binding-nominal-module b)))
+  (if (very-simple-module-binding? b)
+      (very-simple-module-binding-module b)
+      (if (simple-module-binding? b)
+          (simple-module-binding-nominal-module b)
+          (full-module-binding-nominal-module b))))
        
 (define (module-binding-nominal-phase b)
-  (if (simple-module-binding? b)
-      (simple-module-binding-phase b)
-      (full-module-binding-nominal-phase b)))
+  (if (very-simple-module-binding? b)
+      0
+      (if (simple-module-binding? b)
+          (simple-module-binding-phase b)
+          (full-module-binding-nominal-phase b))))
 
 (define (module-binding-nominal-sym b)
-  (if (simple-module-binding? b)
-      (simple-module-binding-sym b)
-      (full-module-binding-nominal-sym b)))
+  (if (very-simple-module-binding? b)
+      (very-simple-module-binding-sym b)
+      (if (simple-module-binding? b)
+          (simple-module-binding-sym b)
+          (full-module-binding-nominal-sym b))))
 
 (define (module-binding-nominal-require-phase b)
-  (if (simple-module-binding? b)
+  (if (or (very-simple-module-binding? b) (simple-module-binding? b))
       0
       (full-module-binding-nominal-require-phase b)))
 
 (define (module-binding-extra-inspector b)
-  (if (simple-module-binding? b)
+  (if (or (very-simple-module-binding? b) (simple-module-binding? b))
       #f
       (full-module-binding-extra-inspector b)))
 
 (define (module-binding-extra-nominal-bindings b)
-  (if (simple-module-binding? b)
+  (if (or (very-simple-module-binding? b) (simple-module-binding? b))
       null
       (full-module-binding-extra-nominal-bindings b)))

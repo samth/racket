@@ -1,5 +1,5 @@
 
-(module name '#%kernel
+(module name racket/kernel
   (#%require "define.rkt" "small-scheme.rkt")
   (#%provide syntax-local-infer-name)
 

@@ -1,5 +1,5 @@
 (module generic-methods '#%kernel
-
+  (#%require "cons.rkt")
   (#%require (for-syntax '#%kernel "small-scheme.rkt" "define.rkt"
                          "stx.rkt" "stxcase-scheme.rkt")
              "define.rkt" "../stxparam.rkt")

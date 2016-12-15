@@ -1,9 +1,9 @@
 ;;----------------------------------------------------------------------
 ;; with-syntax, generate-temporaries
 
-(module with-stx '#%kernel
+(module with-stx racket/kernel
   (#%require "stx.rkt" "small-scheme.rkt" "stxcase.rkt"
-             (for-syntax '#%kernel "stx.rkt" "stxcase.rkt" "stxloc.rkt" 
+             (for-syntax racket/kernel "stx.rkt" "stxcase.rkt" "stxloc.rkt" 
                          "sc.rkt" "qq-and-or.rkt" "cond.rkt"))
 
   (-define (with-syntax-fail stx)

@@ -1,7 +1,7 @@
 ;; A sane "core" for finishing up the "racket/base" library
 
-(module pre-base '#%kernel
-  (#%require (for-syntax '#%kernel
+(module pre-base racket/kernel
+  (#%require (for-syntax racket/kernel
                          "stx.rkt"
                          "qq-and-or.rkt"))
   (#%require "more-scheme.rkt"
@@ -224,7 +224,7 @@
              (rename new:impersonate-procedure* impersonate-procedure*)             
              (rename new:collection-path collection-path)
              (rename new:collection-file-path collection-file-path)
-             (all-from-except '#%kernel lambda λ #%app #%module-begin apply prop:procedure 
+             (all-from-except racket/kernel lambda λ #%app #%module-begin apply prop:procedure 
                               procedure-arity procedure-reduce-arity raise-arity-error
                               procedure->method procedure-rename
                               chaperone-procedure impersonate-procedure

@@ -1,5 +1,5 @@
 
-(module udp '#%kernel
+(module udp racket/kernel
   (#%require '#%network)
 
   (#%provide udp-open-socket 

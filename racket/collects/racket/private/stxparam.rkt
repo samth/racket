@@ -1,7 +1,7 @@
 
-(module stxparam '#%kernel
+(module stxparam racket/kernel
   (#%require "define.rkt"
-             (for-syntax '#%kernel 
+             (for-syntax racket/kernel 
                          "stx.rkt" "stxcase-scheme.rkt" 
                          "small-scheme.rkt" 
                          "stxloc.rkt" "stxparamkey.rkt"))

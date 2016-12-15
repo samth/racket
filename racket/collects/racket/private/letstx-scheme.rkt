@@ -2,9 +2,9 @@
 ;;----------------------------------------------------------------------
 ;; #%stxcase-scheme: adds let-syntax, letrec-syntax, etc.
 
-(module letstx-scheme '#%kernel
+(module letstx-scheme racket/kernel
   (#%require "small-scheme.rkt"
-             (for-syntax '#%kernel "stxcase.rkt" 
+             (for-syntax racket/kernel "stxcase.rkt" 
                          "with-stx.rkt" "stxloc.rkt"))
   
   (-define-syntax letrec-syntaxes

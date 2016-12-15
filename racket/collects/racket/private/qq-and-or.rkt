@@ -2,8 +2,8 @@
 ;;----------------------------------------------------------------------
 ;; quasiquote, and, or
 
-(module qq-and-or '#%kernel
-  (#%require (for-syntax "stx.rkt" '#%kernel))
+(module qq-and-or racket/kernel
+  (#%require (for-syntax "stx.rkt" racket/kernel))
   
   (define-syntaxes (let*-values let let* letrec)
     (let-values ([(lambda-stx) (quote-syntax lambda-stx)]

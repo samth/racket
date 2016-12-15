@@ -1,4 +1,4 @@
-(module sort '#%kernel
+(module sort racket/kernel
 
 (#%require "small-scheme.rkt" "define.rkt" (for-syntax "stxcase-scheme.rkt"))
 

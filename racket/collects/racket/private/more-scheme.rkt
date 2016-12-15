@@ -4,9 +4,9 @@
 
 (module more-scheme '#%kernel
   (#%require "small-scheme.rkt" "define.rkt" '#%paramz "case.rkt" "logger.rkt"
-             "member.rkt"
+             "member.rkt" "cons.rkt"
              (for-syntax '#%kernel "stx.rkt" "small-scheme.rkt" "stxcase-scheme.rkt" "qqstx.rkt"))
-
+  (#%provide cons)
   ;; For `old-case`:
   (define-syntax case-test
     (lambda (x)

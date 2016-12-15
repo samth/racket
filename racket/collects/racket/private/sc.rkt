@@ -2,9 +2,9 @@
 ;; pattern-matching utilities
 ;; based on Shriram's pattern matcher for Zodiac
 
-(module sc '#%kernel
+(module sc racket/kernel
   (#%require "stx.rkt" "small-scheme.rkt"
-             (for-template (only '#%kernel set!)
+             (for-template (only racket/kernel set!)
                            "ellipses.rkt"))
 
   ;; Checks whether s is "..."

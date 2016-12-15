@@ -1,4 +1,4 @@
-(module for '#%kernel
+(module for racket/kernel
 
   (#%require "more-scheme.rkt"
              "misc.rkt"
@@ -9,7 +9,7 @@
              "sort.rkt"
              '#%unsafe
              '#%flfxnum
-             (for-syntax '#%kernel
+             (for-syntax racket/kernel
                          "stx.rkt"
                          "qqstx.rkt"
                          "define.rkt"

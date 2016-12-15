@@ -1,4 +1,4 @@
-(module reverse '#%kernel
+(module reverse racket/kernel
   (#%provide alt-reverse)
 
   (define-values (alt-reverse)

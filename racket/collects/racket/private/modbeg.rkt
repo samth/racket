@@ -1,9 +1,9 @@
 ;; A #%module-begin that wraps each module-level expression with 
 ;;  `print-value'.
 
-(module modbeg '#%kernel
+(module modbeg racket/kernel
   (#%require syntax/wrap-modbeg
-             (for-syntax '#%kernel))
+             (for-syntax racket/kernel))
 
   (#%provide module-begin)
 

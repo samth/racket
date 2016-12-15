@@ -1,9 +1,9 @@
 
-(module stxparam '#%kernel
+(module stxparam racket/kernel
   (#%require "private/letstx-scheme.rkt"
              "private/define.rkt"
              "private/stxparam.rkt"
-             (for-syntax '#%kernel 
+             (for-syntax racket/kernel 
                          "stxparam-exptime.rkt"
                          "private/stxcase-scheme.rkt" 
                          "private/small-scheme.rkt" 

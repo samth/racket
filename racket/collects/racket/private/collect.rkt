@@ -1,4 +1,4 @@
-(module collect '#%kernel
+(module collect racket/kernel
   (#%require '#%paramz ; for `exception-handler-key`
              "qq-and-or.rkt"
              "define-et-al.rkt"

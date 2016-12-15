@@ -1,7 +1,7 @@
 ;;----------------------------------------------------------------------
 ;; basic syntax utilities
 
-(module stx '#%kernel
+(module stx racket/kernel
 
   ;; These utilities facilitate operations on syntax objects.
   ;; A syntax object that represents a parenthesized sequence

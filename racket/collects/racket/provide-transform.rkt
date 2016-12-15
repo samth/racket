@@ -1,4 +1,4 @@
-(module provide-transform '#%kernel
+(module provide-transform racket/kernel
   (#%require "private/stxcase-scheme.rkt"
              "private/stx.rkt"
              "private/define-struct.rkt"

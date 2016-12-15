@@ -1,6 +1,6 @@
 (module reqprov '#%kernel
   (#%require "define.rkt"
-             (for-syntax '#%kernel
+             (for-syntax (all-except '#%kernel cons)
                          "stx.rkt" "stxcase-scheme.rkt" "small-scheme.rkt" 
                          "stxloc.rkt" "qqstx.rkt" "more-scheme.rkt"
                          "member.rkt"

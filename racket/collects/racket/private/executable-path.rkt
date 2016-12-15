@@ -1,4 +1,4 @@
-(module path-list '#%kernel
+(module path-list racket/kernel
   (#%require "qq-and-or.rkt"
              "cond.rkt"
              "define-et-al.rkt"

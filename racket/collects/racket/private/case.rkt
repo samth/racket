@@ -2,9 +2,9 @@
 ;; case: based on Clinger, "Rapid Case Dispatch in Scheme"
 ;;       [http://scheme2006.cs.uchicago.edu/07-clinger.pdf]
 
-(module case '#%kernel
+(module case racket/kernel
   (#%require '#%paramz '#%unsafe "small-scheme.rkt" "define.rkt"
-             (for-syntax '#%kernel "small-scheme.rkt" "stxcase-scheme.rkt"
+             (for-syntax racket/kernel "small-scheme.rkt" "stxcase-scheme.rkt"
                          "qqstx.rkt" "define.rkt" "sort.rkt"))
   (#%provide case)
   

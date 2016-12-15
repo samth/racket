@@ -1,5 +1,5 @@
-(module pre-base '#%kernel
-  (#%require (for-syntax '#%kernel))
+(module pre-base racket/kernel
+  (#%require (for-syntax racket/kernel))
 
   (#%provide #%top-interaction)
 

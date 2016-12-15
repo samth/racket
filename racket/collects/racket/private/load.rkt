@@ -1,5 +1,6 @@
 (module load '#%kernel
   (#%require "qq-and-or.rkt"
+             "cons.rkt"
              "more-scheme.rkt"
              "define-et-al.rkt"
              "executable-path.rkt")

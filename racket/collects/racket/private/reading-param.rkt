@@ -1,4 +1,4 @@
-(module reading-params '#%kernel
+(module reading-params racket/kernel
   (#%require "more-scheme.rkt" "qq-and-or.rkt")
   (#%provide call-with-default-reading-parameterization)
   

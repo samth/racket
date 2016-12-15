@@ -2,7 +2,7 @@
 ;;----------------------------------------------------------------------
 ;; record for static info produced by `define-struct'
 
-(module struct-info '#%kernel
+(module struct-info racket/kernel
   (#%require "small-scheme.rkt")
 
   (#%provide make-struct-info

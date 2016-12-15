@@ -1,4 +1,4 @@
-(module norm-arity '#%kernel
+(module norm-arity racket/kernel
   (#%require "define.rkt" "small-scheme.rkt" "sort.rkt")
   (#%provide norm:procedure-arity
              norm:raise-arity-error

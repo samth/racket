@@ -1,9 +1,9 @@
-(module promise '#%kernel
+(module promise racket/kernel
 (#%require "small-scheme.rkt"
            "more-scheme.rkt"
            "define.rkt"
            (rename "define-struct.rkt" define-struct define-struct*)
-           (for-syntax '#%kernel "stxcase-scheme.rkt" "name.rkt")
+           (for-syntax racket/kernel "stxcase-scheme.rkt" "name.rkt")
            '#%unsafe)
 (#%provide force promise? promise-forced? promise-running?
            ;; provided to create extensions

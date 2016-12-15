@@ -1,5 +1,5 @@
 (module namespace "pre-base.rkt"
-  (require (for-syntax '#%kernel "define.rkt"
+  (require (for-syntax racket/kernel "define.rkt"
                        "member.rkt"
                        "stx.rkt" "stxcase-scheme.rkt" "small-scheme.rkt" 
                        "stxloc.rkt"))

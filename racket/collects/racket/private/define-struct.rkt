@@ -1,10 +1,10 @@
 ;; Based on
 ;;  (planet "struct.ss" ("ryanc" "macros.plt" 1 0)))
 
-(module define-struct '#%kernel
+(module define-struct racket/kernel
   (#%require "small-scheme.rkt" "define.rkt" "../stxparam.rkt"
              "generic-methods.rkt"
-             (for-syntax '#%kernel "define.rkt"
+             (for-syntax racket/kernel "define.rkt"
                          "procedure-alias.rkt"
                          "member.rkt"
                          "stx.rkt" "stxcase-scheme.rkt" "small-scheme.rkt" 

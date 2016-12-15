@@ -2,8 +2,8 @@
 ;;----------------------------------------------------------------------
 ;; -define, when, unless, let/ec, define-struct
 
-(module define-et-al '#%kernel
-  (#%require (for-syntax '#%kernel "stx.rkt" "qq-and-or.rkt" 
+(module define-et-al racket/kernel
+  (#%require (for-syntax racket/kernel "stx.rkt" "qq-and-or.rkt" 
                          "member.rkt" "cond.rkt"))
   
   ;; No error checking here, because these macros merely help

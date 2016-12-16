@@ -1,5 +1,5 @@
 
-(module tcp racket/kernel
+(module tcp '#%kernel
   (#%require (all-except '#%network tcp-addresses)
              (rename '#%network c:tcp-addresses tcp-addresses))
 

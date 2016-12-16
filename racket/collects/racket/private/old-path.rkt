@@ -1,7 +1,7 @@
 ;; Old variants of `path-replace-extension` and
 ;; `path-add-extension` that do the wrong thing with
 ;; file names that start "."
-(module path racket/kernel
+(module path "kernel.rkt"
   (#%require "qq-and-or.rkt" "define-et-al.rkt")
 
   (#%provide path-replace-suffix

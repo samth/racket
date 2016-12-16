@@ -2,9 +2,9 @@
 ;;----------------------------------------------------------------------
 ;; #%define : define and define-syntax
 
-(module define racket/kernel
+(module define "kernel.rkt"
 
-  (#%require (for-syntax racket/kernel
+  (#%require (for-syntax "kernel.rkt"
                          "letstx-scheme.rkt" "stxcase-scheme.rkt" "stx.rkt" "qqstx.rkt"
                          "norm-define.rkt"))
 

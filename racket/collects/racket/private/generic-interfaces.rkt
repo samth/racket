@@ -6,7 +6,7 @@
   ;; `define-generics' to build these generic interfaces. Thus we must
   ;; forge them.
 
-  (#%require (for-syntax racket/kernel) "generic-methods.rkt")
+  (#%require (for-syntax "kernel.rkt") "generic-methods.rkt")
 
   (#%provide gen:equal+hash gen:custom-write)
 

@@ -1,6 +1,6 @@
-(module block racket/kernel
+(module block "private/kernel.rkt"
   (#%require "private/define.rkt"
-             (for-syntax racket/kernel
+             (for-syntax "private/kernel.rkt"
                          "private/stx.rkt"
                          "private/small-scheme.rkt"
                          "private/stxcase-scheme.rkt"

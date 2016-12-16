@@ -1,9 +1,9 @@
-(module procedure-alias racket/kernel
+(module procedure-alias "kernel.rkt"
   (#%require "define.rkt"
              "small-scheme.rkt"
              "more-scheme.rkt"
              "kw-prop-key.rkt"
-             (for-syntax racket/kernel
+             (for-syntax "kernel.rkt"
                          "stx.rkt"
                          "small-scheme.rkt"
                          "stxcase-scheme.rkt"

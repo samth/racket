@@ -2,7 +2,7 @@
 ;;----------------------------------------------------------------------
 ;; assembles all basic forms we have so far
 
-(module small-scheme racket/kernel
+(module small-scheme "kernel.rkt"
   (#%require "qq-and-or.rkt" "cond.rkt" "define-et-al.rkt")
 
   (#%provide (all-from "qq-and-or.rkt")

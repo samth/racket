@@ -2,9 +2,9 @@
 ;;----------------------------------------------------------------------
 ;; syntax/loc
 
-(module stxloc racket/kernel
+(module stxloc "kernel.rkt"
   (#%require "qq-and-or.rkt" "stxcase.rkt" "define-et-al.rkt"
-             (for-syntax racket/kernel "stxcase.rkt" "sc.rkt"))
+             (for-syntax "kernel.rkt" "stxcase.rkt" "sc.rkt"))
 
   (begin-for-syntax
     (define-values (transform-to-syntax-case**)

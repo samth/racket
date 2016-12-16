@@ -1,7 +1,7 @@
 
-(module logger racket/kernel
+(module logger "kernel.rkt"
   (#%require "small-scheme.rkt" "define.rkt"
-             (for-syntax racket/kernel "stx.rkt" "small-scheme.rkt" "stxcase-scheme.rkt"))
+             (for-syntax "kernel.rkt" "stx.rkt" "small-scheme.rkt" "stxcase-scheme.rkt"))
 
   (#%provide log-fatal log-error log-warning log-info log-debug
              define-logger)

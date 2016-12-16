@@ -1,5 +1,5 @@
-(module ellipses racket/kernel
-  (#%require (for-syntax racket/kernel))
+(module ellipses "kernel.rkt"
+  (#%require (for-syntax "kernel.rkt"))
 
   (#%provide ... _)
 

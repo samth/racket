@@ -12,7 +12,6 @@
              "cert.rkt"
              "submodule.rkt"
              "generic-interfaces.rkt"
-             "cons.rkt"
              (for-syntax "stxcase-scheme.rkt"))
 
   (#%provide (all-from-except "pre-base.rkt"
@@ -27,7 +26,6 @@
                               regexp-replace*
                               new-apply-proc)
              struct
-             cons
              (all-from-except "hash.rkt" paired-fold)
              (all-from "list.rkt")
              (all-from-except "string.rkt" 

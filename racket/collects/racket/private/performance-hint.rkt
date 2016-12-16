@@ -1,6 +1,6 @@
 
-(module inline racket/kernel
-  (#%require (for-syntax racket/kernel))
+(module inline "kernel.rkt"
+  (#%require (for-syntax "kernel.rkt"))
   (#%provide begin-encourage-inline)
 
   ;; Attach a property to encourage the bytecode compiler to inline

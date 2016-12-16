@@ -1,11 +1,11 @@
 ;;----------------------------------------------------------------------
 ;; syntax-case and syntax
 
-(module stxcase racket/kernel
+(module stxcase "kernel.rkt"
   (#%require "stx.rkt" "small-scheme.rkt" '#%paramz '#%unsafe
              "ellipses.rkt"
              (for-syntax "stx.rkt" "small-scheme.rkt"
-                         "member.rkt" "sc.rkt" racket/kernel))
+                         "member.rkt" "sc.rkt" "kernel.rkt"))
 
   (-define (datum->syntax/shape orig datum)
      (if (syntax? datum)

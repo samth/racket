@@ -1,5 +1,5 @@
 
-(module stxparamkey racket/kernel
+(module stxparamkey "kernel.rkt"
   (#%require "small-scheme.rkt" "define.rkt" 
              "stxcase.rkt" "stxloc.rkt" "with-stx.rkt")
   

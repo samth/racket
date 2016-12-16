@@ -1,4 +1,4 @@
-(module config racket/kernel
+(module config "kernel.rkt"
   (#%require '#%paramz ; for cache-configuration
              "cond.rkt"
              "qq-and-or.rkt"

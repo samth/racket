@@ -3,9 +3,9 @@
 ;; #%stxcase-scheme: adds let-syntax, syntax-rules, and
 ;;  check-duplicate-identifier, and assembles everything we have so far
 
-(module stxcase-scheme racket/kernel
+(module stxcase-scheme "kernel.rkt"
   (#%require "small-scheme.rkt" "stx.rkt" "stxcase.rkt" "with-stx.rkt" "stxloc.rkt"
-             (for-syntax racket/kernel "small-scheme.rkt" "stx.rkt" "stxcase.rkt"
+             (for-syntax "kernel.rkt" "small-scheme.rkt" "stx.rkt" "stxcase.rkt"
                          "stxloc.rkt"))
 
   (-define (check-duplicate-identifier names)

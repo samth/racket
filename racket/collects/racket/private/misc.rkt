@@ -2,11 +2,11 @@
 ;;----------------------------------------------------------------------
 ;; #%misc : file utilities, etc. - remaining functions
 
-(module misc racket/kernel
+(module misc "kernel.rkt"
   (#%require "small-scheme.rkt" "define.rkt" "path.rkt" "old-path.rkt"
              "path-list.rkt" "executable-path.rkt" "collect.rkt"
              "reading-param.rkt" "load.rkt"
-             (for-syntax racket/kernel "qq-and-or.rkt" "stx.rkt" "stxcase-scheme.rkt" "stxcase.rkt"))
+             (for-syntax "kernel.rkt" "qq-and-or.rkt" "stx.rkt" "stxcase-scheme.rkt" "stxcase.rkt"))
   
   ;; -------------------------------------------------------------------------
 

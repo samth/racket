@@ -42,7 +42,8 @@
     (begin
       (start-performance-region tag0-expr tag-expr ...)
       (begin0
-       (let () body ...)
+          (with-continuation-mark 'performance-region (list tag0-expr tag-expr ...)
+             (let () body ...))
        (end-performance-region))))
   
   (define region-stack #f)

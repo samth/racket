@@ -3,6 +3,7 @@
          "serialize-property.rkt"
          "serialize-state.rkt"
          "../common/set.rkt"
+         "../common/sort.rkt"
          "../syntax/syntax.rkt"
          "../syntax/binding-table.rkt"
          "../syntax/scope.rkt"

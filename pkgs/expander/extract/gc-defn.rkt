@@ -55,7 +55,6 @@
       (define defn (car body))
       (cond
         [(defn-side-effects? defn)
-         (log-status "defn has side-effects: ~s" (cadr defn))
         ;; Right-hand side has an effect, so keep the
         ;; definition and mark everything as used:
         (for ([sym (in-list (defn-syms defn))])

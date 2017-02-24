@@ -193,4 +193,9 @@
   ((error-value->string-handler) v (error-print-width)))
 
 (define (arguments->string args)
-  "")
+  (apply string-append
+         "; arguments were: "
+         (let loop ([ss (map value->string args)])
+           (if (or (null? ss) (null? (cdr ss)))
+               ss
+               (cons (car ss) (cons " " (loop (cdr ss))))))))

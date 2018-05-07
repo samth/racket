@@ -26,13 +26,15 @@
              (or (boolean? v)
                  (number? v)
                  (char? v)
+                 (and (hash? v)
+                      (zero? (hash-count v)))
                  (and (string? v)
                       ((string-length v) . < . 8))
                  (and (bytes? v)
                       ((bytes-length v) . < . 8))))])
       (or (and (immediate-literal? (syntax-e expr))
                (free-identifier=? (quote-syntax #%datum) (datum->syntax expr '#%datum)))
-          (syntax-case expr (quote void null eof)
+          (syntax-case expr (quote void null eof values equal? current-continuation-marks)
             [(quote s-exp) (let ([v (syntax-e #'s-exp)])
                              (or (and (symbol? v)
                                       (or (symbol-interned? v)
@@ -40,6 +42,10 @@
                                  (null? v)
                                  (immediate-literal? v)))]
             [(void) #t]
+            [(current-continuation-marks) #t]
+            [equal? #t]
+            [void #t]
+            [values #t]
             [null #t]
             [eof #t]
             [_ #f])))))

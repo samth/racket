@@ -89,8 +89,11 @@
                            context))
    (unless (or (not stop-ids)
                (and (list? stop-ids)
-                    (andmap identifier? stop-ids)))
-     (raise-argument-error who "(or/c (listof identifier?) #f)" stop-ids))
+                    (andmap identifier? (if (and (pair? stop-ids)
+                                                 (eq? (car stop-ids) 'only))
+                                            (cdr stop-ids)
+                                            stop-ids))))
+     (raise-argument-error who "(or/c (listof identifier?) (cons/c 'only (listof identifier?) #f)" stop-ids))
    (unless (intdefs-or-false? intdefs)
      (raise-argument-error who intdefs-or-false?-string intdefs))
 

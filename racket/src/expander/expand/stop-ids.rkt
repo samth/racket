@@ -12,6 +12,7 @@
 (define (stop-ids->all-stop-ids stop-ids phase)
   (cond
    [(null? stop-ids) stop-ids]
+   [(eq? (car stop-ids) 'only) (cdr stop-ids)]
    [else
     (define p-core-stx (syntax-shift-phase-level core-stx phase))
     (cond

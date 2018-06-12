@@ -2671,5 +2671,35 @@ case of module-leve bindings; it doesn't cover local bindings.
   (ct-eval (+ 1 2)))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; `local-expand` with 'only stop list expands through core forms
+
+(err/rt-test
+ (eval
+  '(module local-expand-with-only-stop-list racket/base
+     (require (for-syntax racket/base))
+     (define-syntax (stop stx)
+       (syntax-case stx ()
+         [(_ form) #'form]))
+     (define-syntax (m stx)
+       (syntax-case stx ()
+         [(_ form)
+          (local-expand #'form 'expression (list 'only #'stop))]))
+     (m (let-syntax ([plus (make-rename-transformer #'+)])
+          (stop (plus 1 2))))))
+ exn:fail?)
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Make sure #%module-begin respects the stop list
+
+(module module-begin-stop-list racket/base
+  (require (for-syntax racket/base))
+  (define-syntax (stop stx)
+    (raise-syntax-error #f "don't expand me!" stx))
+  (begin-for-syntax
+    (local-expand #'(#%plain-module-begin (#%expression (stop)))
+                  'module-begin
+                  (list 'only #'module* #'stop))))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)

@@ -291,7 +291,7 @@ scheme-src:
 
 racket/src/build/ChezScheme:
 	mkdir -p racket/src/build
-	cd racket/src/build && git clone $(CHEZ_SCHEME_REPO)
+	cd racket/src/build && git clone --depth=1 $(CHEZ_SCHEME_REPO)
 
 update-ChezScheme:
 	cd racket/src/build/ChezScheme && git pull && git submodule update

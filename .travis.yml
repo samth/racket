@@ -1,10 +1,20 @@
 sudo: false
 language: c
+
+env:
+  global:
+    - RACKET_DIR=~/racket
+  matrix:
+    - RACKET_VERSION=HEAD
 before_script:
 - git config --global user.email "travis-test@racket-lang.org"
 - git config --global user.name "Travis Tester"
+before_install:
+  - git clone --depth=1 https://github.com/greghendershott/travis-racket.git
+  - cat travis-racket/install-racket.sh | bash # pipe to bash not sh!
+  - export PATH="${RACKET_DIR}/bin:${PATH}" #install-racket.sh can't set for us
 script:
-- make cs-base 
+- make cs-base RACKET="~/racket"
 notifications:
   slack:
     secure: A19kphrabQHO8TU6qZcBaLQxdSNpm1ypEtbQsh8Ucg6HYPP7y1q7O7JZEndoMRHE9CNKZ9oXQzqR8H1IFVTlnjFFIJfkZzZ1YSNk4abSomhpWCq9daKMfwlcuTtY6PeI1nDVpka4/hiJGn9qzmaKYXle9Sl4CX2VEYp8o8PgMEs=

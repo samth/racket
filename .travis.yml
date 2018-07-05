@@ -14,7 +14,7 @@ before_install:
   - git clone --depth=1 https://github.com/greghendershott/travis-racket.git
   - cat travis-racket/install-racket.sh | bash # pipe to bash not sh!
 script:
- - make cs RACKET="${RACKET_DIR}/bin/racket" CPUS="2" PKGS="racket-test-core" -j 2
+ - make cs RACKET="${RACKET_DIR}/bin/racket" CPUS="2" PKGS="racket-test-core compiler-lib" -j 2
  - ./racket/bin/raco test -l tests/racket/test
  - ./racket/bin/racocs test -l tests/racket/test
  - racocs test -l tests/racket/test

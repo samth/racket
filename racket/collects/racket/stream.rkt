@@ -217,11 +217,16 @@
 (define (stream-add-between s e)
   (unless (stream? s)
     (raise-argument-error 'stream-add-between "stream?" s))
-  (let loop ([s s])
-    (cond
-     [(stream-empty? s) empty-stream]
-     [else (stream-cons (stream-first s)
-                        (stream-cons e (loop (stream-rest s))))])))               
+  (cond
+    [(stream-empty? s) empty-stream]
+    [else
+     (stream-cons
+      (stream-first s)
+      (let loop ([s (stream-rest s)])
+        (cond
+          [(stream-empty? s) empty-stream]
+          [else
+           (stream* e (stream-first s) (loop (stream-rest s)))])))]))
 
 ;; Impersonators and Chaperones ----------------------------------------------------------------------
 ;; (these are private because they would fail on lists, which satisfy `stream?`)

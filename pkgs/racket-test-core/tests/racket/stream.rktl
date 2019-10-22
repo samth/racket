@@ -61,6 +61,8 @@
 (test 6 stream-fold + 0 '(1 2 3))
 (test 1 stream-count even? '(1 2 3))
 (test '(1 3) stream->list (stream-filter odd? '(1 2 3)))
+(test '() stream->list (stream-add-between '() 'a))
+(test '(1) stream->list (stream-add-between '(1) 'a))
 (test '(1 a 2 a 3) stream->list (stream-add-between '(1 2 3) 'a))
 
 (test 4 'for/stream (stream-ref (for/stream ([x '(1 2 3)]) (* x x)) 1))

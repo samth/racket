@@ -24,8 +24,8 @@
  ;#:dir (~a (build-dir-name) "/plt")
  #:plt-web-style? #t
  #:site-title (format "Snapshot: ~a" (current-stamp))
- (machine #:name "Racket_BC"
-          ;#:racket "/usr/bin/racket"
+ (machine #:name "Racket BC (Ubuntu 18.04, x86_64)"
+          #:racket "/usr/bin/racket"
           #:versionless? #true)
  #;(machine #:name "Racket_CS"
           ;#:racket "/usr/bin/racket"

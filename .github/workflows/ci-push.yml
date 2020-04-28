@@ -655,7 +655,7 @@ jobs:
         make site RACKET=/usr/bin/racket CONFIG="${{ runner.temp }}/site.rkt" -j $((cpus+1))
     - name: Create latest
       run: |
-        X=`/bin/ls {{ runner.temp }}/site-dest/ci-snapshots/`
+        X=`/bin/ls ${{ runner.temp }}/site-dest/ci-snapshots/`
         ln -s ${{ runner.temp }}/site-dest/ci-snapshots/$X ${{ runner.temp }}/site-dest/ci-snapshots/latest
 
     - name: S3 Sync

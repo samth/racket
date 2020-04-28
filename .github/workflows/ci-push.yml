@@ -622,9 +622,6 @@ jobs:
         
   create-installer3m:        
     runs-on: ubuntu-18.04
-
-    env:
-      DISTRO_BUILD_SITE_DEST: "${{ runner.temp }}/site-dest/"
     
     steps:
     - uses: actions/checkout@v1
@@ -651,6 +648,8 @@ jobs:
         mv .github/workflows/site-small.rkt ${{ runner.temp }}/site.rkt
         cat ${{ runner.temp }}/site.rkt
     - name: Building
+      env:
+        DISTRO_BUILD_SITE_DEST: "${{ runner.temp }}/site-dest/"
       run: |
         export cpus=$(grep -c ^processor /proc/cpuinfo)
         make site RACKET=/usr/bin/racket CONFIG="${{ runner.temp }}/site.rkt" -j $((cpus+1))

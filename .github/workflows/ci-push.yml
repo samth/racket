@@ -640,7 +640,7 @@ jobs:
 
     - name: Install s3-sync
       run: |
-        sudo raco pkg install -i --auto s3-sync
+        sudo raco pkg install -i --auto git://github.com/samth/s3-sync.git
         
     - shell: bash
       name: Check site.rkt

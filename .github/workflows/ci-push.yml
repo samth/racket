@@ -626,7 +626,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
       with:
-        fetch-depth: 10
+        fetch-depth: 100
     - name: Install pkg dependencies
       run: |
         sudo apt update
@@ -652,7 +652,7 @@ jobs:
         DISTRO_BUILD_SITE_DEST: "${{ runner.temp }}/site-dest/"
       run: |
         export cpus=$(grep -c ^processor /proc/cpuinfo)
-        make site PLAIN_RACKET=/usr/bin/racket RACKET=/usr/bin/racket CONFIG="${{ runner.temp }}/site.rkt" -j $((cpus+1))
+        make site PLAIN_RACKET=/usr/bin/racket CONFIG="${{ runner.temp }}/site.rkt" -j $((cpus+1))
     - name: Create latest
       run: |
         X=`/bin/ls ${{ runner.temp }}/site-dest/ci-snapshots/`
@@ -663,5 +663,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWSAccessKeyID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWSSecretKey }}
       run: |
+        ls -l ${{ runner.temp }}/site-dest/ci-snapshots/
+        ls -l ${{ runner.temp }}/site-dest/ci-snapshots/latest
         raco s3-sync --acl public-read --web --redirect-links ${{ runner.temp }}/site-dest/ci-snapshots/ s3://snapshot.racket-lang.org/ci-snapshots/
         

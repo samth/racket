@@ -626,7 +626,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
       with:
-        fetch-depth: 100
+        fetch-depth: 0 # all of the history, needed for cloning
     - name: Install pkg dependencies
       run: |
         sudo apt update
@@ -640,7 +640,7 @@ jobs:
 
     - name: Install s3-sync
       run: |
-        sudo raco pkg install -i --auto git://github.com/samth/s3-sync.git
+        sudo raco pkg install -i --auto s3-sync
         
     - shell: bash
       name: Check site.rkt

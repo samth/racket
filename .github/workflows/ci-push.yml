@@ -622,7 +622,10 @@ jobs:
         
   create-installer3m:        
     runs-on: ubuntu-18.04
-      
+
+    env:
+      DISTRO_BUILD_SITE_DEST: "${{ runner.temp }}/site-dest/"
+    
     steps:
     - uses: actions/checkout@v1
       with:
@@ -637,32 +640,29 @@ jobs:
           distribution: 'full'
           variant: 'regular'
           version: 'current'
-          
-    - name: Create site.rkt
+
+    - name: Install s3-sync
       run: |
-        which racket
-        echo "#lang distro-build/config" > ${{ runner.temp }}/site.rkt
-        echo "(machine #:racket \"/usr/bin/racket\" #:versionless? #true #:pkgs (list))" >> ${{ runner.temp }}/site.rkt
+        sudo raco pkg install -i --auto s3-sync
+        
+    - shell: bash
+      name: Check site.rkt
+      run: |
+        mv .github/workflows/site-small.rkt ${{ runner.temp }}/site.rkt
         cat ${{ runner.temp }}/site.rkt
     - name: Building
       run: |
         export cpus=$(grep -c ^processor /proc/cpuinfo)
-        make installers RACKET=/usr/bin/racket CONFIG="${{ runner.temp }}/site.rkt" -j $((cpus+1))
-        mv bundle/ ${{ github.sha }}/
-    - uses: actions/upload-artifact@v1
-      if: always()
-      with:
-        name: racket3m-installer-${{ github.sha }}
-        path: ${{ github.sha }}/racket-x86_64-linux.sh
-
+        make site RACKET=/usr/bin/racket CONFIG="${{ runner.temp }}/site.rkt" -j $((cpus+1))
+    - name: Create latest
+      run: |
+        X=`/bin/ls {{ runner.temp }}/site-dest/ci-snapshots/`
+        ln -s ${{ runner.temp }}/site-dest/ci-snapshots/$X ${{ runner.temp }}/site-dest/ci-snapshots/latest
 
     - name: S3 Sync
-      uses: jakejarvis/s3-sync-action@v0.5.1
-      with:
-        args: --acl public-read --exclude '*' --include '${{ github.sha }}/racket-x86_64-linux.sh'
       env:
-        AWS_S3_BUCKET: snapshot.racket-lang.org
         AWS_ACCESS_KEY_ID: ${{ secrets.AWSAccessKeyID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWSSecretKey }}
-        DEST_DIR: 'ci-snapshots/'
+      run: |
+        raco s3-sync --web --redirect-links ${{ runner.temp }}/site-dest/ci-snapshots/ s3://snapshot.racket-lang.org/ci-snapshots/
         

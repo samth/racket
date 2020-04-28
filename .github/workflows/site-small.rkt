@@ -27,8 +27,9 @@
  (machine #:name "Racket BC (Ubuntu 18.04, x86_64)"
           #:racket "/usr/bin/racket"
           #:versionless? #true)
- #;(machine #:name "Racket_CS"
-          ;#:racket "/usr/bin/racket"
+ (machine #:name "Racket_CS"
+          #:racket "/usr/bin/racket"
           #:versionless? #true
+          #:dir "cs_build"
           #:variant 'cs
           #:dist-suffix "cs"))

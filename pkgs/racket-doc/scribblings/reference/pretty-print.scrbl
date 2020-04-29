@@ -66,6 +66,9 @@ Same as @racket[pretty-print], but @racket[v] is printed like
 @history[#:changed "6.6.0.3" @elem{Added @racket[newline?] argument.}]
 }
 
+@examples[#:eval ev
+          (pretty-write '(a b c))]
+
 @defproc[(pretty-display [v any/c] [port output-port? (current-output-port)]
                          [#:newline? newline? boolean? #t])
          void?]{

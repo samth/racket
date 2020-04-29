@@ -5,6 +5,10 @@
 
 @note-lib[racket/pretty]
 
+@(define ev (make-base-eval))
+@examples[#:hidden #:eval ev (require racket/pretty)]
+
+
 @defproc[(pretty-print [v any/c] [port output-port? (current-output-port)]
                        [quote-depth (or/c 0 1) 0]
                        [#:newline? newline? boolean? #t])
@@ -418,3 +422,5 @@ Cancels the content of @racket[tentative-out], which was produced by
 canceling is that graph-reference definitions are undone, so that a
 future print of a graph-referenced object includes the defining
 @litchar{#}@nonterm{n}@litchar{=}.}
+
+@close-eval[ev]

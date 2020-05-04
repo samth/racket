@@ -12,12 +12,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # - uses: Bogdanp/setup-racket@v0.8
-    #   with:
-    #       architecture: 'x64'
-    #       distribution: 'full'
-    #       variant: 'regular'
-    #       version: 'current'
+    - uses: Bogdanp/setup-racket@v0.8
+      with:
+          architecture: 'x64'
+          distribution: 'full'
+          variant: 'regular'
+          version: 'current'
           
 
     - name: Building
@@ -25,7 +25,7 @@ jobs:
         DISTRO_BUILD_SITE_DEST: "${{ runner.temp }}/site-dest/"
       run: |
         export cpus=$(grep -c ^processor /proc/cpuinfo)
-        make snapshot-site  CONFIG=".github/workflows/site-small.rkt" -j $((cpus+1))
+        make snapshot-site PLAIN_RACKET=/usr/bin/racket CONFIG=".github/workflows/site-small.rkt" -j $((cpus+1))
 
     # - name: S3 Sync
     #   env:

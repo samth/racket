@@ -27,7 +27,7 @@
  #:plt-web-style? #t
  #:site-title (format "Snapshot: ~a" (current-stamp))
  #:fail-on-client-failures #true
- #;(machine #:name "Racket BC (Ubuntu 18.04, x86_64)"
+ (machine #:name "Racket BC (Ubuntu 18.04, x86_64)"
           #:racket (prebuilt-racket)
           #:versionless? #true
           #:j 6)

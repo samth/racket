@@ -20,6 +20,12 @@ jobs:
           version: 'current'
           packages: 's3-sync'
 
+    - name: Install pkg dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libffi-dev unzip libxml2-dev libfindbin-libs-perl make gcc git uuid-dev
+
+
     - name: Building
       env:
         DISTRO_BUILD_SITE_DEST: "${{ runner.temp }}/site-dest/"

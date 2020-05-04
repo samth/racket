@@ -7,7 +7,7 @@ on:
 
 jobs:
   create-installer:
-    runs-on: racket/racket-ci:testdeps
+    runs-on: ubuntu-18.04
 
     steps:
     - uses: actions/checkout@v2
@@ -19,7 +19,6 @@ jobs:
           variant: 'regular'
           version: 'current'
           packages: 's3-sync'
-          
 
     - name: Building
       env:

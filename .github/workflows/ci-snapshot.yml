@@ -22,7 +22,7 @@ jobs:
     - uses: Bogdanp/setup-racket@v0.8
       with:
           architecture: 'x64'
-          distribution: 'minimal'
+          distribution: 'full' # s3-sync has docs, pulls in lots of deps
           variant: 'regular'
           version: 'current'
           packages: 's3-sync'

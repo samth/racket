@@ -36,5 +36,6 @@
           #:versionless? #true
           #:dir "cs_build"
           #:j 6
+          #:pull #f
           #:variant 'cs
           #:dist-suffix "cs"))

@@ -26,11 +26,12 @@ jobs:
           variant: 'regular'
           version: 'current'
           packages: 's3-sync'
+          catalogs: 'https://pkg-build.racket-lang.org/server/built/catalog/'
 
     - name: Install pkg dependencies
       run: |
         sudo apt update
-        sudo apt install -y libffi-dev unzip libfindbin-libs-perl uuid-dev
+        sudo apt install -y libffi-dev unzip uuid-dev
 
 
     - name: Building

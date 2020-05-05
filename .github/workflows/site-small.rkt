@@ -36,6 +36,7 @@
           #:versionless? #true
           #:dir "cs_build"
           #:j 6
+          #:repo (or (getenv "HERE") ".")
           #:pull? #f
           #:variant 'cs
           #:dist-suffix "cs"))

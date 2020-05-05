@@ -26,7 +26,7 @@
  #:site-dest (build-path (getenv "DISTRO_BUILD_SITE_DEST") (dest-dir-name))
  #:plt-web-style? #t
  #:site-title (format "Snapshot: ~a" (current-stamp))
- #:fail-on-client-failures #true
+ #:fail-on-client-failures #f
  (machine #:name "Racket BC (Ubuntu 18.04, x86_64)"
           #:racket (prebuilt-racket)
           #:versionless? #true

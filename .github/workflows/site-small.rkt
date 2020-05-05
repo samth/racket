@@ -23,7 +23,7 @@
 (sequential
  #:pkgs distro-content
  #:dist-base-url server-base-url
- #:site-dest (build-path (getenv "DISTRO_BUILD_SITE_DEST") (dest-dir-name))
+ #:site-dest (build-path (or (getenv "DISTRO_BUILD_SITE_DEST") "/tmp/racket-snapshots/") (dest-dir-name))
  #:plt-web-style? #t
  #:site-title (format "Snapshot: ~a" (current-stamp))
  #:fail-on-client-failures #f

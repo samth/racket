@@ -14,10 +14,15 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Cleanup
+      run: |
+        echo $USER
+        rm -rf ~/.racket/
+        
     - uses: Bogdanp/setup-racket@v0.8
       with:
           architecture: 'x64'
-          distribution: 'full'
+          distribution: 'minimal'
           variant: 'regular'
           version: 'current'
           packages: 's3-sync'

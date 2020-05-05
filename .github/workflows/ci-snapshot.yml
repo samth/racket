@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        depth: 0
+        fetch-depth: 0
 
     - uses: Bogdanp/setup-racket@v0.8
       with:

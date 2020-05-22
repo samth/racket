@@ -656,19 +656,20 @@
                                     (if (fx>= proper 99)
                                         ""
                                         (string-append "[" (number->string (fx- 100 proper)) "%]")))])
-                 (let ([msg (chez:format "GC: 0:~a~a @ ~a(~a); free ~a(~a) ~ams~a @ ~a"
-                                         (if minor? "min" "MAJ") gen
-                                         (K "" pre-allocated) (K "+" (- pre-allocated+overhead pre-allocated))
-                                         (K "" delta) (K "+" (- (- pre-allocated+overhead post-allocated+overhead)
-                                                                delta))
-                                         (- post-cpu-time pre-cpu-time)
-                                         account-str
-                                         pre-cpu-time)]
-                       [data (make-gc-info (if minor? 'minor 'major) pre-allocated pre-allocated+overhead 0
-                                           post-allocated post-allocated+overhead
-                                           pre-cpu-time post-cpu-time
-                                           pre-time post-time)]
-                       [in-interrupt? #t])
+                 (let* ([msg (chez:format "GC: 0:~a~a @ ~a(~a); free ~a(~a) ~ams~a @ ~a"
+					  (if minor? "min" "MAJ") gen
+					  (K "" pre-allocated) (K "+" (- pre-allocated+overhead pre-allocated))
+					  (K "" delta) (K "+" (- (- pre-allocated+overhead post-allocated+overhead)
+								 delta))
+					  (- post-cpu-time pre-cpu-time)
+					  account-str
+					  pre-cpu-time)]
+			[gen-name (if minor? (string->symbol (chez:format "minor~a" gen)) 'major)]
+			[data (make-gc-info gen-name pre-allocated pre-allocated+overhead 0
+					    post-allocated post-allocated+overhead
+					    pre-cpu-time post-cpu-time
+					    pre-time post-time)]
+			[in-interrupt? #t])
                    (when debug-GC?
                      (log-message* root-logger 'debug 'GC msg data #f in-interrupt?))
                    (when debug-GC:major?

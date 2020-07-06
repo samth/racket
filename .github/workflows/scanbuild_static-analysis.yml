@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         apt-get update
-        apt-get install -y libffi-dev unzip python libxml2-dev libfindbin-libs-perl make gcc g++ git tree jq
+        apt-get install -y libffi-dev unzip python libxml2-dev libfindbin-libs-perl make gcc g++ git tree jq moreutils
     - uses: actions/checkout@v2
       with:
         fetch-depth: 100

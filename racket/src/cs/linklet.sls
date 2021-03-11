@@ -614,6 +614,7 @@
        (when known-on?
          (show "known" (hash-map exports-info (lambda (k v) (list k v)))))
        (when (and cp0-on? (eq? format 'compile))
+       	 (($primitive $np-tracer) 'np-push-mrvs)
          (show "cp0" (expand/optimize* (correlated->annotation impl-lam/jitified) unsafe?)))
        (performance-region
         'compile-linklet

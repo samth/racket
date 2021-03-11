@@ -16,15 +16,14 @@
 
 (define match-equality-test (make-parameter equal? #f 'match-equality-test))
 
-(define-struct (exn:misc:match exn:fail) (value srclocs)
+(struct exn:misc:match exn:fail:contract (value srclocs)
   #:property prop:exn:srclocs (lambda (ex) (exn:misc:match-srclocs ex))
   #:transparent)
 
 
 (define (match:error val srclocs form-name)
-  (raise (make-exn:misc:match
-          (format "~a: no matching clause for ~e"
-                  form-name val)
+  (raise (exn:misc:match
+          (format "~a: no matching clause for ~e" form-name val)
           (current-continuation-marks)
           val
           srclocs)))

@@ -2389,6 +2389,39 @@
                               [else ($negate who y)])]
                             [else (integer* x y)])
                            (let ()
+			     ; adapted from https://github.com/casevh/DecInt/blob/master/DecInt.py#L451
+			     ; under the BSD license
+			     (define (toom3 x y)
+                               (define xl (if (bignum? x) ($bignum-length x) 0))
+                               (define yl (if (bignum? y) ($bignum-length y) 0))
+                               (cond
+                                 [(and (fx< xl 32) (fx< yl 32))
+                                  (integer* x y)]
+                                 [(and (fx< xl 100) (fx< yl 100))
+                                  (karatsuba x y)]
+                                 [else
+                                  (let* ([k (fx* (fxquotient (fxmax xl yl) 3) (constant bigit-bits))]
+					 [x-hi (ash x (fx* -2 k))]
+					 [y-hi (ash y (fx* -2 k))]
+					 [x-mid (bitwise-bit-field x k (fx* 2 k))]
+					 [y-mid (bitwise-bit-field y k (fx* 2 k))]
+					 [x-lo (bitwise-bit-field x 0 k)]
+					 [y-lo (bitwise-bit-field y 0 k)]
+                                         [z0 (toom3 x-hi y-hi)]
+                                         [z4 (toom3 x-lo y-lo)]
+                                         [t1 (toom3 (+ x-hi x-mid x-lo) (+ y-hi y-mid y-lo))]
+                                         [t2 (toom3 (+ (- x-hi x-mid) x-lo) (+ (- y-hi y-mid) y-lo))]
+                                         [t3 (* (+ x-hi (ash x-mid 1) (ash x-lo 2)) (+ y-hi (ash y-mid 1) (ash y-lo 2)))]
+                                         [z2 (- (ash (+ t1 t2) -1) z0 z4)]
+                                         [t4 (- t3 z0 (ash z2 2) (ash z4 4))]
+                                         [z3 (quotient (+ (- t4  t1) t2) 6)]
+                                         [z1 (- (ash (- t1 t2) -1) z3)])
+                                    (+ (ash z0 (* k 4))
+                                       (ash z1 (* k 3))
+                                       (ash z2 (* k 2))
+                                       (ash z3 (* k 1))
+                                       (ash z4 (* k 0))))]))
+
                               ;; _Modern Computer Arithmetic_, Brent and Zimmermann
                               (define (karatsuba x y)
                                 (define xl (if (bignum? x) ($bignum-length x) 0))
@@ -2400,8 +2433,8 @@
                                   (let* ([k (fx* (fxquotient (fxmax xl yl) 2) (constant bigit-bits))]
                                          [x-hi (ash x (fx- k))]
                                          [y-hi (ash y (fx- k))]
-                                         [x-lo (- x (ash x-hi k))]
-                                         [y-lo (- y (ash y-hi k))]
+					 [x-lo (bitwise-bit-field x 0 k)]
+					 [y-lo (bitwise-bit-field y 0 k)]
                                          [c0 (karatsuba x-lo y-lo)]
                                          [c1 (karatsuba x-hi y-hi)]
                                          [c1-c2 (cond
@@ -2424,9 +2457,9 @@
                                     [yz (if (bignum? y) ($bignum-trailing-zero-bits y) 0)])
                                 (let ([z (fx+ xz yz)])
                                   (if (fx= z 0)
-                                      (karatsuba x y)
+                                      (toom3 x y)
                                       (bitwise-arithmetic-shift-left
-                                       (karatsuba (bitwise-arithmetic-shift-right x xz)
+                                       (toom3 (bitwise-arithmetic-shift-right x xz)
                                                   (bitwise-arithmetic-shift-right y yz))
                                        z))))))]
              [(ratnum?) (/ (* x ($ratio-numerator y)) ($ratio-denominator y))]

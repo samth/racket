@@ -15,11 +15,6 @@ jobs:
         variant: ['CS', 'BC']
         
     steps:
-      # this step is not needed in practice but is useful for running in `act`
-      - name: pkgs
-        run: |
-          apt update
-          apt install -y libgtk2.0-dev libgtk2.0-0 xvfb
       - uses: actions/checkout@v2
       - uses: Bogdanp/setup-racket@v1.6
         with:

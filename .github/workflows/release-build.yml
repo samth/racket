@@ -22,6 +22,7 @@ jobs:
           distribution: 'full' # or: 'minimal'
           variant: ${{ matrix.variant }}
           version: 'pre-release'       # or: 'stable' for the latest version, 'current' for the latest snapshot, 'pre-release' for the latest pre-release build
+          dest: '$GITHUB_WORKSPACE/racket'
           sudo: never
           
       - name: Install tests

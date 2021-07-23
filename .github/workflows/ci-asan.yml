@@ -22,10 +22,13 @@ jobs:
         export cpus=$(grep -c ^processor /proc/cpuinfo)
         make CPUS="${cpus}" PKGS="racket-test db-test unstable-flonum-lib net-test" CONFIGURE_ARGS_qq='--enable-asan' cs-in-place 2>&1 | tee logs/build.log
     - name: Add new racket to PATH
+      continue-on-error: true
       run: |
         echo "${GITHUB_WORKSPACE}/racket/bin" >> $GITHUB_PATH
+        tree ./racket-asan/
         find /__w/racket/racket/racket/bin -type f
     - name: Racket version
+      continue-on-error: true
       run: |
         which racket
         racket --version

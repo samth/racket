@@ -1,0 +1,41 @@
+name: Test Installers
+
+on: [push]
+
+#  schedule:
+#    - cron: '30 6 * * *'
+
+jobs:
+  linux-installers:
+    runs-on: ubuntu-latest
+
+
+    strategy:
+      matrix:
+        variant: ['CS', 'BC']
+        
+    steps:
+      # this step is not needed in practice but is useful for running in `act`
+      - name: pkgs
+        run: |
+          apt update
+          apt install -y libgtk2.0-dev libgtk2.0-0 xvfb
+      - uses: actions/checkout@v2
+      - uses: Bogdanp/setup-racket@v1.6
+        with:
+          architecture: 'x64'  # or: 'x64', 'x86', 'arm32', 'arm64' (or 'aarch64')
+          distribution: 'full' # or: 'minimal'
+          variant: ${{ matrix.variant }}
+          version: 'pre-release'       # or: 'stable' for the latest version, 'current' for the latest snapshot, 'pre-release' for the latest pre-release build
+          sudo: never
+          
+      - name: Install tests
+        run: raco pkg install --auto --skip-installed racket-test
+      - name: Run tests
+        run: racket -l tests/racket/test basic.rktl
+      - name: Install drracket-test
+        run: raco pkg install --auto --skip-installed drracket-test
+      - name: Start DrRacket
+        run: xvfb-run racket -t .github/workflows/start-drr.rkt
+        
+          

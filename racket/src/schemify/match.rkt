@@ -99,13 +99,13 @@
 
 (define-for-syntax (extract-guard body)
   (syntax-case body ()
-    [(#:guard guard-expr . body)
+    [(#:when guard-expr . body)
      #'guard-expr]
     [_ #f]))
 
 (define-for-syntax (remove-guard body)
   (syntax-case body ()
-    [(#:guard guard-expr . body)
+    [(#:when guard-expr . body)
      #'body]
     [_ body]))
 

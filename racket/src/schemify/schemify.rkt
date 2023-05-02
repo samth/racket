@@ -419,7 +419,7 @@
              [else
               (finish-wrapped-definition ids rhs)])]
           [`(quote ,_) ; useful to drop #<void>s for the interpreter
-           #:guard (or (pair? (cdr l)) (pair? accum-ids))
+           #:when (or (pair? (cdr l)) (pair? accum-ids))
            (loop (cdr l) mut-l accum-exprs accum-ids knowns)]
           [`,_
            (match form
@@ -514,7 +514,7 @@
                          ,make2
                          ,?2
                          ,make-acc/muts ...)))
-            #:guard (not (or (aim? target 'interp) (aim? target 'cify)))
+            #:when (not (or (aim? target 'interp) (aim? target 'cify)))
             (define new-seq
               (struct-convert v prim-knowns knowns imports exports mutated
                               (lambda (v knowns) (schemify/knowns knowns inline-fuel 'fresh v))

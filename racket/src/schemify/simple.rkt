@@ -123,7 +123,7 @@
                (simple? rhs 1))
              (simple? body result-arity)))]
       [`(begin ,es ...)
-       #:guard (not pure?)
+       #:when (not pure?)
        (simple-begin? es)]
       [`(begin-unsafe ,es ...)
        (simple-begin? es)]
@@ -133,7 +133,7 @@
              (for/and ([e (in-list es)])
                (simple? e #f))))]
       [`(set! ,_ ,e)
-       #:guard (not pure?)
+       #:when (not pure?)
        (simple? e 1)
        (returns 1)]
       [`(if ,tst ,thn ,els)

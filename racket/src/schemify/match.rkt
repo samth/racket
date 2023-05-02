@@ -1,5 +1,6 @@
 #lang racket/base
 (require (for-syntax racket/base)
+         (prefix-in r: racket/match/pre)
          "wrap.rkt")
 
 ;; One more time, still yet another pattern matching library again...
@@ -109,6 +110,27 @@
      #'body]
     [_ body]))
 
+(define-for-syntax (compile-pattern p)
+  (syntax-case p (unquote)
+    [(unquote p*) #'p*]
+    [(pat ellipses)
+     (and (identifier? #'ellipses)
+          (free-identifier=? #'ellipses (quote-syntax ...)))
+     #`(app unwrap-list (list #,(compile-pattern #'pat) #,(quote-syntax ...)))]
+    [(p1 . p2) #`(cons #,(compile-pattern #'p1) #,(compile-pattern #'p2))]
+    [_ #`(app unwrap (quote #,p))]))
+
+
+(define-syntax (match stx)
+  (syntax-case stx (quasiquote)
+    [(_ expr [`pattern body0 body ...] ...)
+     #`(r:match expr
+                #,@(for/list ([pat (syntax->list #'(pattern ...))]
+                              [bodys (syntax->list #'((body0 body ...) ...))])
+                     #`[#,(compile-pattern pat) #,@bodys])
+                [v (error 'match "failed ~e" v)])]))
+
+#;
 (define-syntax (match stx)
   (syntax-case stx (quasiquote)
     [(_ expr [`pattern body0 body ...] ...)

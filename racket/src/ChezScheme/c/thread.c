@@ -81,6 +81,8 @@ ptr S_create_thread_object(const char *who, ptr p_tc) {
 
     if (tc == (ptr)0)
       S_error(who, "unable to malloc thread data structure");
+    if (tgc == 0)
+      S_error(who, "unable to malloc thread data structure");
     memcpy(TO_VOIDP(tc), TO_VOIDP(p_tc), size_tc);
 
     GCDATA(tc) = TO_PTR(tgc);

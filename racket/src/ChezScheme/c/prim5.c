@@ -898,7 +898,7 @@ static ptr s_process(char *s, IBOOL stderrp) {
       /* child does this: */
         CLOSE(0); if (dup(tofds[0]) != 0) _exit(1);
         CLOSE(1); if (dup(fromfds[1]) != 1) _exit(1);
-        CLOSE(2); if (dup(stderrp ? errfds[1] : 1) != 2) _exit(1);
+        CLOSE(2); if (dup(stderrp ? errfds[1] : 2) != 2) _exit(1);
 #ifndef __GNU__ /* Hurd */
         {INT i; for (i = 3; i < NOFILE; i++) (void)CLOSE(i);}
 #else /* __GNU__ Hurd: no NOFILE */

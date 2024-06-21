@@ -144,6 +144,7 @@
                #f]
               ['DONE
                (say-idle id)
+	       (log-message pb-logger 'info (format "~a done with ~a at ~a" id (build-path (cc-path cc) file) (* 1000 (current-inexact-monotonic-milliseconds))))
                (cond
                  [#f
                   ;; treat output as an error:
@@ -230,6 +231,7 @@
           [(not cc-before) #f]
           [else (equal? (cc-name cc-before) (cc-name cc))]))
 
+      (log-message pb-logger 'info (format "~a starting with ~a at ~a" workerid (build-path (cc-path cc) file) (* 1000 (current-inexact-monotonic-milliseconds))))
       (say-making workerid #:only-if-terminal? (or stolen-work? same-cc-as-last-time?))
 
       (values
@@ -241,6 +243,8 @@
     (define/public (say-making id #:only-if-terminal? [only-if-terminal? #f])
       (match (hash-ref assigned-ccs id #f)
         [(cons (list cc files subs) _)
+	 
+
          (printer (current-output-port)
                   #:n id
                   #:only-if-terminal? only-if-terminal?

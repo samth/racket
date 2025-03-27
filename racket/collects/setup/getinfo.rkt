@@ -361,25 +361,27 @@
 (define info? (->* [symbol?] [(-> any/c)] any/c))
 (define path-or-string? (lambda (x) (or (path? x) (string? x))))
 
-(provide/contract
- (reset-relevant-directories-state! (-> any))
- (get-info (((listof path-or-string?))
-            (#:namespace (or/c namespace? #f) #:bootstrap? any/c)
-            . ->* . (or/c info? boolean?)))
- (get-info/full ((path-string?)
-                 (#:namespace (or/c namespace? #f) #:bootstrap? any/c)
-                 . ->* . (or/c info? boolean?)))
- (find-relevant-directories
-  (->* [(listof symbol?)]
-       [(or/c 'preferred 'all-available 'no-planet 'no-user)]
-       (listof path?)))
- (struct directory-record
-         ([maj integer?]
-          [min integer?]
-          [spec any/c]
-          [path path?]
-          [syms (listof symbol?)]))
- (find-relevant-directory-records
-  (->* [(listof symbol?)]
-       [(or/c 'preferred 'all-available 'no-planet 'no-user)]
-       (listof directory-record?))))
+(provide
+ (contract-out
+  #:unprotected-submodule no-contract
+  (reset-relevant-directories-state! (-> any))
+  (get-info (((listof path-or-string?))
+	     (#:namespace (or/c namespace? #f) #:bootstrap? any/c)
+	     . ->* . (or/c info? boolean?)))
+  (get-info/full ((path-string?)
+		  (#:namespace (or/c namespace? #f) #:bootstrap? any/c)
+		  . ->* . (or/c info? boolean?)))
+  (find-relevant-directories
+   (->* [(listof symbol?)]
+	[(or/c 'preferred 'all-available 'no-planet 'no-user)]
+	(listof path?)))
+  (struct directory-record
+    ([maj integer?]
+     [min integer?]
+     [spec any/c]
+     [path path?]
+     [syms (listof symbol?)]))
+  (find-relevant-directory-records
+   (->* [(listof symbol?)]
+	[(or/c 'preferred 'all-available 'no-planet 'no-user)]
+	(listof directory-record?)))))

@@ -1,11 +1,12 @@
 #lang racket/base
 (require racket/list
          racket/string
-         setup/getinfo
+         (submod setup/getinfo no-contract)
          racket/contract/base)
 
 (provide
  (contract-out
+  #:unprotected-submodule no-contract
   [get-module-suffixes (()
                         (#:mode (or/c 'preferred 'all-available 'no-planet 'no-user)
                          #:group (or/c 'all 'libs 'docs)

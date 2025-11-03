@@ -6,6 +6,26 @@
          "dry-run.zuo"
          "private/build-db.zuo")
 
+;; ANSI color codes
+(define ansi-cyan "\033[36m")
+(define ansi-green "\033[32m")
+(define ansi-reset "\033[0m")
+
+;; Global quiet mode variable (initially unset, set once during build)
+(define build-quiet-mode (variable 'build-quiet-mode))
+
+;; Emit a trace event in Trace Event JSON format
+;; Writes comma-separated events (caller handles first vs subsequent)
+(define (emit-trace-event port name start-ts-us dur-us first?)
+  (when port
+    ;; Add comma separator if not the first event
+    (unless first?
+      (fd-write port ",\n"))
+    ;; Write the event as a JSON object
+    (fd-write port (~a "{\"name\":\"" name "\",\"cat\":\"build\",\"ph\":\"X\",\"ts\":"
+                       start-ts-us ",\"dur\":" dur-us ",\"pid\":1,\"tid\":1}"))))
+
+
 (provide (rename-out [make-target target]
                      [make-rule rule]
                      [make-phony-rule phony-rule])
@@ -40,7 +60,9 @@
          command-target?
          command-target->target
 
-         make-targets)
+         make-targets
+
+         build-quiet-mode)
 
 ;; ------------------------------------------------------------
 ;; Targets and rules
@@ -51,7 +73,8 @@
                ch          ; a channel to access the build state
                seen        ; to detect dependency cycles
                resourcer   ; build state's resource manager
-               uni?))      ; build state's `uni?` flag
+               uni?        ; build state's `uni?` flag
+               quiet?))    ; suppress shell command printing?
 
 (struct target (key       ; shortcut: `string->symbol` of the path
                 name      ; a symbol or path relative to the current directory
@@ -219,7 +242,12 @@
                      resourcer      ; build stat's resource manager
                      log?           ; logging enabled?
                      uni?           ; just one job?
-                     dry-run-mode)) ; #f, 'dry-run, 'question, or 'would
+                     dry-run-mode   ; #f, 'dry-run, 'question, or 'would
+                     start-time     ; time when build started
+                     quiet-shell?   ; suppress shell command output?
+                     use-color?     ; use ANSI colors for output?
+                     trace-port     ; output port for trace events, or #f
+                     trace-count))  ; number of trace events written
 
 ;; Main entry point to build a target `t`
 (define (build t-in [token #f] [options (hash)])
@@ -244,6 +272,16 @@
                                    ;; assume jobserver allows more than 1:
                                    2)
                               (default-jobs)))
+         (define quiet? (or (hash-ref options 'quiet? #f)
+                            (and (assoc "ZUO_BUILD_QUIET" (hash-ref (runtime-env) 'env)) #t)))
+         ;; Set the global quiet mode variable once
+         (variable-set! build-quiet-mode quiet?)
+         ;; Check for trace output
+         (define trace-file (assoc "ZUO_BUILD_TRACE" (hash-ref (runtime-env) 'env)))
+         (define trace-port (and trace-file
+                                 (let ([p (fd-open-output (cdr trace-file) :truncate)])
+                                   (fd-write p "{\"traceEvents\":[")
+                                   p)))
          (define state (build-state (channel)
                                     (hash)
                                     (hash)
@@ -258,12 +296,21 @@
                                     (or (hash-ref options 'log? #f)
                                         (assoc "ZUO_BUILD_LOG" (hash-ref (runtime-env) 'env)))
                                     (= num-jobs 1)
-                                    (hash-ref options 'dry-run-mode (maybe-dry-run-mode))))
+                                    (hash-ref options 'dry-run-mode (maybe-dry-run-mode))
+                                    (current-time)
+                                    quiet?
+                                    (fd-terminal? (fd-open-output 'stdout) #t)
+                                    trace-port
+                                    0))  ; trace event count
          (when resourcer
            (release-resource state "nested"))
          (define end-state (do-build t state seen #t))
          (when resourcer
            (acquire-resource state "continue from nested"))
+         ;; Close trace output
+         (when trace-port
+           (fd-write trace-port "\n]}\n")
+           (fd-close trace-port))
          (when (eq? 'would (build-state-dry-run-mode end-state))
            (exit 1)))))))
 
@@ -382,7 +429,8 @@
                      (build-state-ch state)
                      new-seen
                      (build-state-resourcer state)
-                     (build-state-uni? state)))
+                     (build-state-uni? state)
+                     (build-state-quiet-shell? state)))
   (put-state (token-ch tok) queued-state "rule")
 
   ;; first phase of the target: get a rule
@@ -501,6 +549,7 @@
      (unless to-build
        (error "build: out-of-date target has no build procedure" (target-name t)))
      (define (build-one finish)
+       (define build-start-time (current-time))
        (let* ([maybe-sha256 (to-build)] ; build!
               [sha256 (if build-to-sha256?
                           maybe-sha256
@@ -516,12 +565,55 @@
          (when path-handle (cleanable-cancel path-handle))
          (finish
           (lambda (state)
+            ;; Emit trace event if tracing is enabled
+            (define state-with-trace
+              (let ([trace-port (build-state-trace-port state)])
+                (if trace-port
+                    (let ()
+                      (define build-end-time (current-time))
+                      (define start-sec (car build-start-time))
+                      (define start-nsec (cdr build-start-time))
+                      (define end-sec (car build-end-time))
+                      (define end-nsec (cdr build-end-time))
+                      ;; Convert to microseconds for trace format
+                      (define start-us (+ (* start-sec 1000000)
+                                          (quotient start-nsec 1000)))
+                      (define dur-nsec (+ (* (- end-sec start-sec) 1000000000)
+                                          (- end-nsec start-nsec)))
+                      (define dur-us (quotient dur-nsec 1000))
+                      (define count (build-state-trace-count state))
+                      (emit-trace-event trace-port (~a (target-name t)) start-us dur-us (= count 0))
+                      (build-state-set-trace-count state (+ count 1)))
+                    state)))
+            ;; Print timing message showing elapsed time since build start
+            (define build-end-time (current-time))
+            (define start-time (build-state-start-time state-with-trace))
+            (define start-sec (car start-time))
+            (define start-nsec (cdr start-time))
+            (define end-sec (car build-end-time))
+            (define end-nsec (cdr build-end-time))
+            (define elapsed-nsec (+ (* (- end-sec start-sec) 1000000000)
+                                    (- end-nsec start-nsec)))
+            (define total-ms (quotient elapsed-nsec 1000000))
+            (define secs (quotient total-ms 1000))
+            (define ms (remainder total-ms 1000))
+            (define time-str (~a secs "." (cond
+                                            [(< ms 10) (~a "00" ms)]
+                                            [(< ms 100) (~a "0" ms)]
+                                            [else ms])))
+            (define use-color? (build-state-use-color? state-with-trace))
+            (define message (if use-color?
+                                (~a ansi-cyan "building " ansi-reset
+                                    (target-name t)
+                                    " " ansi-green "[" time-str "s]" ansi-reset)
+                                (~a "building " (target-name t) " [" time-str "s]")))
+            (alert message)
             ;; record result:
             (let* ([ts (if (eq? sha256 phony-sha256)
                            (cons no-sha256 (hash))
                            (cons sha256 dep-sha256s))]
-                   [ts (merge-target-accumulated state t ts)]
-                   [state (update-target-state/record-sha256s state t ts co-outputs)])
+                   [ts (merge-target-accumulated state-with-trace t ts)]
+                   [state (update-target-state/record-sha256s state-with-trace t ts co-outputs)])
               (channel-put result-ch 'done)
               state)))))
      (let ([state-ch (build-state-ch newer-state)])
@@ -575,6 +667,8 @@
            (if (and v (> v 0))
                (hash-set opts 'jobs v)
                (error "not a positive integer" n)))]
+   [opts ("--quiet") "Suppress printing shell commands"
+         (hash-set opts 'quiet? #t)]
    :once-any
    [opts ("-n" "--just-print" "--dry-run") "Print needed builds without running"
          (hash-set opts 'dry-run-mode 'dry-run)]

@@ -279,8 +279,12 @@
                             (and (assoc "ZUO_BUILD_QUIET" (hash-ref (runtime-env) 'env)) #t)))
          ;; Check for trace output
          (define trace-file (assoc "ZUO_BUILD_TRACE" (hash-ref (runtime-env) 'env)))
-         (define trace-port (and trace-file
-                                 (let ([p (fd-open-output (cdr trace-file) :truncate)])
+         (define trace-path (and trace-file (cdr trace-file)))
+         (define trace-to-stderr? (and trace-path (string=? trace-path "-")))
+         (define trace-port (and trace-path
+                                 (let ([p (if trace-to-stderr?
+                                              (fd-open-output 'stderr)
+                                              (fd-open-output trace-path :truncate))])
                                    (fd-write p "{\"traceEvents\":[")
                                    p)))
          (define state (build-state (channel)
@@ -311,7 +315,9 @@
          ;; Close trace output
          (when trace-port
            (fd-write trace-port "\n]}\n")
-           (fd-close trace-port))
+           ;; Only close if it's a file, not stderr
+           (unless trace-to-stderr?
+             (fd-close trace-port)))
          (when (eq? 'would (build-state-dry-run-mode end-state))
            (exit 1)))))))
 

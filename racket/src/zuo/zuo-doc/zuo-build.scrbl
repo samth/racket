@@ -454,6 +454,12 @@ following keys are recognized:
       @envvar{ZUO_BUILD_QUIET} environment variable or using the @DFlag{quiet}
       command-line flag with @racket[build/command-line]}
 
+@item{Setting the @envvar{ZUO_BUILD_TRACE} environment variable to a file path
+      causes build events to be written to that file in Trace Event JSON format,
+      suitable for viewing with Perfetto or Chrome's trace viewer. Each build step
+      is recorded with its start time and duration in microseconds. If the value
+      is @racket["-"], trace output is written to stderr instead of a file.}
+
 @item{@racket['dry-run-mode] mapped to @racket[#f], @racket['question], or
       @racket['dry-run]: enables ``dry run'' mode when
       non-@racket[#f]; when the value is @racket['dry-run],

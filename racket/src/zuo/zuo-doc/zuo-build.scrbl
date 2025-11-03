@@ -449,6 +449,11 @@ following keys are recognized:
       logging also can be enabled by setting the
       @envvar{ZUO_BUILD_LOG} environment variable}
 
+@item{@racket['quiet?] mapped to any value: suppresses printing of shell commands
+      when the value is not @racket[#f]; quiet mode can also be enabled by setting the
+      @envvar{ZUO_BUILD_QUIET} environment variable or using the @DFlag{quiet}
+      command-line flag with @racket[build/command-line]}
+
 @item{@racket['dry-run-mode] mapped to @racket[#f], @racket['question], or
       @racket['dry-run]: enables ``dry run'' mode when
       non-@racket[#f]; when the value is @racket['dry-run],
@@ -508,7 +513,7 @@ Parses command-line arguments to build one or more targets in
 @racket[targets], where the first one is built by default. The
 @racket[options] argument is passed along to @racket[build], but may
 be adjusted via command-line flags such as @DFlag{jobs}, @Flag{n},
-or @Flag{q}.
+@Flag{q}, or @DFlag{quiet}.
 
 If @racket[options] has a mapping for @racket['args], the value is
 used as the command-line arguments to parse instead of

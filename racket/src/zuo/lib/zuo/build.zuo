@@ -11,8 +11,11 @@
 (define ansi-green "\033[32m")
 (define ansi-reset "\033[0m")
 
-;; Global quiet mode variable (initially unset, set once during build)
-(define build-quiet-mode (variable 'build-quiet-mode))
+;; Helper function to check if quiet mode is enabled
+;; Checks the 'quiet? key in runtime-env, falling back to ZUO_BUILD_QUIET env var
+(define (build-quiet-mode)
+  (or (hash-ref (runtime-env) 'quiet? #f)
+      (and (assoc "ZUO_BUILD_QUIET" (hash-ref (runtime-env) 'env)) #t)))
 
 ;; Emit a trace event in Trace Event JSON format
 ;; Writes comma-separated events (caller handles first vs subsequent)
@@ -274,8 +277,6 @@
                               (default-jobs)))
          (define quiet? (or (hash-ref options 'quiet? #f)
                             (and (assoc "ZUO_BUILD_QUIET" (hash-ref (runtime-env) 'env)) #t)))
-         ;; Set the global quiet mode variable once
-         (variable-set! build-quiet-mode quiet?)
          ;; Check for trace output
          (define trace-file (assoc "ZUO_BUILD_TRACE" (hash-ref (runtime-env) 'env)))
          (define trace-port (and trace-file

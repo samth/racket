@@ -1,0 +1,27 @@
+#lang zuo
+(require "harness.zuo")
+
+;; This script is run by the "build.zuo" test to verify trace output
+
+(define (tmp fn)
+  (build-path tmp-dir fn))
+
+(define test-file (tmp "trace-test.txt"))
+(define trace-file (tmp "trace-test.json"))
+
+;; Remove files to force a rebuild
+(rm* test-file)
+(rm* trace-file)
+
+(define t (target test-file
+                  (lambda (path token)
+                    (rule '()
+                          (lambda ()
+                            (display-to-file "test\n" path :truncate))))))
+
+;; Build with trace output via env variable
+;; Note: env is set by the test runner
+(build t)
+
+;; Output the trace file contents so the test can verify it
+(displayln (file->string trace-file))

@@ -70,3 +70,47 @@
   ;; Should contain "building" but NOT "echo"
   (check (glob-match? "*building*" out) #t)
   (check (glob-match? "*echo*" out) #f))
+
+;; Test trace output to file
+(let ()
+  (define trace-file (build-path tmp-dir "trace-test.json"))
+  (define env (hash-ref (runtime-env) 'env))
+  (define p (process (hash-ref (runtime-env) 'exe #f)
+                     (at-source "build-trace-test.zuo")
+                     (hash 'stdin 'pipe
+                           'stdout 'pipe
+                           'stderr 'pipe
+                           'env (cons (cons "ZUO_BUILD_TRACE" trace-file) env))))
+  (fd-close (hash-ref p 'stdin))
+  (define out (fd-read (hash-ref p 'stdout) eof))
+  (define err (fd-read (hash-ref p 'stderr) eof))
+  (fd-close (hash-ref p 'stdout))
+  (fd-close (hash-ref p 'stderr))
+  (process-wait (hash-ref p 'process))
+
+  ;; Trace output should contain JSON
+  (check (glob-match? "*traceEvents*" out) #t)
+  (check (glob-match? "*\"ph\":\"X\"*" out) #t)
+  (check (glob-match? "*\"ts\":*" out) #t)
+  (check (glob-match? "*\"dur\":*" out) #t))
+
+;; Test trace output to stderr with "-"
+(let ()
+  (define env (hash-ref (runtime-env) 'env))
+  (define p (process (hash-ref (runtime-env) 'exe #f)
+                     (at-source "build-timing-test.zuo")
+                     (hash 'stdin 'pipe
+                           'stdout 'pipe
+                           'stderr 'pipe
+                           'env (cons (cons "ZUO_BUILD_TRACE" "-") env))))
+  (fd-close (hash-ref p 'stdin))
+  (define out (fd-read (hash-ref p 'stdout) eof))
+  (define err (fd-read (hash-ref p 'stderr) eof))
+  (fd-close (hash-ref p 'stdout))
+  (fd-close (hash-ref p 'stderr))
+  (process-wait (hash-ref p 'process))
+
+  ;; Trace output should be on stderr, not stdout
+  (check (glob-match? "*traceEvents*" err) #t)
+  (check (glob-match? "*\"ph\":\"X\"*" err) #t)
+  (check (glob-match? "*traceEvents*" out) #f))

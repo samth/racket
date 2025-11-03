@@ -1,0 +1,22 @@
+#lang zuo
+(require "harness.zuo")
+
+;; This script is run by the "build.zuo" test to verify quiet mode
+
+(define (tmp fn)
+  (build-path tmp-dir fn))
+
+(define test-file (tmp "quiet-test.txt"))
+
+;; Remove the file to force a rebuild
+(rm* test-file)
+
+(define t (target test-file
+                  (lambda (path token)
+                    (rule '()
+                          (lambda ()
+                            (shell (~a "echo 'building " path "'"))
+                            (display-to-file "test\n" path :truncate))))))
+
+;; Build with quiet mode - should suppress shell commands
+(build t #f (hash 'quiet? #t))

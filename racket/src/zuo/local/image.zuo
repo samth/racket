@@ -1,4 +1,5 @@
 #lang zuo
+(require zuo/build) ; for build-quiet-mode
 
 ;; This module works in three modes:
 ;;   * as a library to provide `embed-image`
@@ -82,10 +83,11 @@
   (when (and image-file (pair? given-libs))
     (error "Don't provide both libraries and an image file"))
 
-  (when c-file
-    (if image-file
-        (displayln (~a "generating " c-file " embedding " (~s image-file)))
-        (displayln (~a "generating " c-file " embedding these libraries: " (string-join (map ~s libs))))))
+  (unless (build-quiet-mode)
+    (when c-file
+      (if image-file
+          (displayln (~a "generating " c-file " embedding " (~s image-file)))
+          (displayln (~a "generating " c-file " embedding these libraries: " (string-join (map ~s libs)))))))
   (when deps-file
     (display-to-file "" deps-file :truncate))
   

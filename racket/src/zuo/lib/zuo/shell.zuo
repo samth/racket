@@ -1,5 +1,6 @@
 #lang zuo/base
-(require "thread.zuo")
+(require "thread.zuo"
+         "build.zuo") ; for build-quiet-mode
 
 (provide shell
          shell/wait
@@ -23,18 +24,28 @@
    'shell/wait
    (cons arg args)
    (lambda (command options)
-     (unless (hash-ref options 'quiet? #f)
+     ;; Get quiet mode from options or environment variable
+     (define quiet? (or (hash-ref options 'quiet? #f)
+                        (build-quiet-mode)))
+     (unless quiet?
        (displayln (let ([dir (hash-ref options 'dir #f)])
                     (if dir
                         (~a "cd " (string->shell dir) " && " command)
                         command))))
+     ;; In quiet mode, redirect stdout/stderr to /dev/null to suppress command output
+     (define devnull (and quiet? (fd-open-output "/dev/null" :append)))
+     (define options-for-shell
+       (if devnull
+           (hash-set (hash-set options 'stdout devnull) 'stderr devnull)
+           options))
      (define p (shell command (hash-remove (hash-remove
-                                            (hash-remove options 'quiet?)
+                                            (hash-remove options-for-shell 'quiet?)
                                             'no-thread?)
                                            'desc)))
      (if (hash-ref options 'no-thread? #f)
          (process-wait (hash-ref p 'process))
          (thread-process-wait (hash-ref p 'process)))
+     (when devnull (fd-close devnull))
      (unless (= 0 (process-status (hash-ref p 'process)))
        (error (~a (hash-ref options 'desc "shell command") " failed"))))))
 

@@ -284,17 +284,23 @@
   (define the-targets
     (make-targets
      `(;; Builds the kernel (C code) and boot files (Scheme code):
-       [:target build (workarea kernel)
-                ,(lambda (token)
+       [:target ,(at-dir ".build-stamp") (,(at-dir ".workarea-stamp") ,(at-dir ".kernel-stamp"))
+                ,(lambda (path token)
                    (unless (build-kernel-only?)
                      (build (find-target "bootstrap" (s-targets-at (make-at-dir (at-dir "s")) vars))
-                            token)))]
+                            token))
+                   (display-to-file "" path :truncate))]
+       [:target build (,(at-dir ".build-stamp"))
+                ,void]
 
        ;; Builds just the kernel (C code):
-       [:target kernel (workarea)
-                ,(lambda (token)
+       [:target ,(at-dir ".kernel-stamp") (,(at-dir ".workarea-stamp"))
+                ,(lambda (path token)
                    (build (find-target "build" (c-targets-at (make-at-dir (at-dir "c")) vars))
-                          token))]
+                          token)
+                   (display-to-file "" path :truncate))]
+       [:target kernel (,(at-dir ".kernel-stamp"))
+                ,void]
 
        [:target install ()
                 ,(lambda (token)
@@ -353,13 +359,16 @@
                    (cross-build-boot/safe+examples token args))
                 :command]
 
-       [:target bootfiles (build)
-                ,(lambda (token)
+       [:target ,(at-dir ".bootfiles-stamp") (,(at-dir ".build-stamp"))
+                ,(lambda (path token)
                    (check-not-kernel-only)
                    (for-each (lambda (mach)
                                (cross-build-boot/safe+examples token (list mach)))
                              (unique (append (ls (at-source "boot"))
-                                             (ls (at-dir "../boot"))))))]
+                                             (ls (at-dir "../boot")))))
+                   (display-to-file "" path :truncate))]
+       [:target bootfiles (,(at-dir ".bootfiles-stamp"))
+                ,void]
 
        [:target reboot ()
                 ,(lambda (token . args)
@@ -394,11 +403,34 @@
 
        ;; The `reset` target discards the results in "boot" and puts back links to (or copies of)
        ;; to the versions that are used to seed the build
-       [:target reset ()
-                ,(lambda (token)
-                   (for-each (lambda (f) (when (file-exists? f) (rm f))) boot-files)
-                   (build (map (lambda (f) (find-target f the-targets)) boot-files)
-                          token))]
+       ;; Only rebuild files that don't match their source
+       [:target ,(at-dir ".reset-stamp") (,@(map (lambda (name) (build-path boot-src-dir name)) boot-file-names))
+                ,(lambda (path token)
+                   ;; Check if any files need to be reset
+                   (define files-to-rebuild
+                     (filter (lambda (f-with-name)
+                               (define name (car f-with-name))
+                               (define f (cdr f-with-name))
+                               (define src (build-path boot-src-dir name))
+                               (define orig-sha1-file (~a f ".orig-hash"))
+                               (or (not (file-exists? f))
+                                   (not (file-exists? orig-sha1-file))
+                                   (not (equal? (file-sha256 src token)
+                                                (file->string orig-sha1-file)))))
+                             (map cons boot-file-names boot-files)))
+                   ;; Only delete and rebuild files that actually need it
+                   (unless (null? files-to-rebuild)
+                     (for-each (lambda (f-with-name)
+                                 (define f (cdr f-with-name))
+                                 (when (file-exists? f) (rm f)))
+                               files-to-rebuild)
+                     (build (map (lambda (f-with-name)
+                                   (find-target (cdr f-with-name) the-targets))
+                                 files-to-rebuild)
+                            token))
+                   (display-to-file "" path :truncate))]
+       [:target reset (,(at-dir ".reset-stamp"))
+                ,void]
 
        ,@(apply append (map targets-for-doc
                             doc-project-names
@@ -461,10 +493,13 @@
        ;; Internal targets ----------------------------------------
 
        ;; Builds out an initial workarea, with links to book files
-       [:target workarea (,@bounce-files ,@boot-files ,clean-links-stamp)
-                ,(lambda (token)
-                   (check-boot-file-version))
+       [:target ,(at-dir ".workarea-stamp") (,@bounce-files ,@boot-files ,clean-links-stamp)
+                ,(lambda (path token)
+                   (check-boot-file-version)
+                   (display-to-file "" path :truncate))
                 :quiet]
+       [:target workarea (,(at-dir ".workarea-stamp"))
+                ,void]
 
        ,@(map (lambda (dir file script)
                 `[:target ,file (,(input-data-target 'script script))
@@ -477,13 +512,16 @@
 
        ,@(map (lambda (name dest)
                 (define src (build-path boot-src-dir name))
+                (define orig-sha1-file (~a dest ".orig-hash"))
                 ;; If `dest` doesn't exist, use `src`. If `dest` exists and `src` is newer
                 ;; than when `dest` was first created, then use `src` in that case, too.
                 ;; Otherwise, leave `dest` alone on the assumption that it's a newer
                 ;; version bootstrapped from `src`.
-                `[:target ,dest (,src)
+                ;; Include .orig-hash as a dependency so Zuo can track if it changes
+                `[:target ,dest (,src ,@(if (file-exists? orig-sha1-file)
+                                             (list (input-file-target orig-sha1-file))
+                                             '()))
                           ,(lambda (dest token)
-                             (define orig-sha1-file (~a dest ".orig-hash"))
                              (define src-hash (file-sha256 src token))
                              (unless (and (file-exists? dest)
                                           (file-exists? orig-sha1-file)

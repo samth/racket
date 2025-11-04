@@ -230,7 +230,7 @@
           make)))
 
   (make-targets
-   `([:target build (,exe ,petite-exe revision)
+   `([:target build (,exe ,petite-exe ,(at-mach "revision"))
               ,void
               :recur]
 
@@ -464,8 +464,8 @@
                                    'exec? (eq? 'unix (system-type)))))))
               :command]
 
-     [:target revision ()
-              ,(lambda (token)
+     [:target ,(at-mach "revision") ()
+              ,(lambda (path token)
 	         (let loop ([r (path->complete-path (at-source "."))])
                    (cond
                     [(stat (build-path r ".git") #t #t)
@@ -475,14 +475,14 @@
                      (define rev (~a (fd-read (hash-ref p 'stdout) eof) "git\n"))
                      (process-wait (hash-ref p 'process))
                      (fd-close (hash-ref p 'stdout))
-                     (display-to-file rev (at-mach "revision") :truncate)]
+                     (display-to-file rev path :truncate)]
                     [else
                      (define l (split-path r))
                      (if (car l)
                          (loop (car l))
                          ;; The $Format$ string is expanded by `git archive` because of the
                          ;; entry in ;; .gitattributes for build.zuo.
-                         (display-to-file "$Format:%H$\ngit\n" (at-mach "revision") :truncate))])))]
+                         (display-to-file "$Format:%H$\ngit\n" path :truncate))])))]
 
      ;; keep "_zuo.db" and "_zuo_tc.db" here instead of in "boot" and "bin" directories
      [:db-dir ,(at-dir ".")]

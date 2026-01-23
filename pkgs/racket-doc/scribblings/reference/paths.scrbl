@@ -517,7 +517,8 @@ directory or file name.  Three values are returned:
    @item{a path,} 
    @item{@indexed-racket['relative] if @racket[path] is an immediate
     relative directory or filename, or}
-   @item{@racket[#f] if @racket[path] is a root directory.}
+   @item{@racket[#f] if @racket[path] is a root directory (i.e.,
+    the Unix root @filepath{/} or a Windows root such as @filepath{C:\}).}
  ]}
 
  @item{@racket[name] is either 

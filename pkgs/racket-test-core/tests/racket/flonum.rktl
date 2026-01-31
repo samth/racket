@@ -445,10 +445,31 @@
 
 ;; ----------------------------------------
 ;; Make sure `flvector` is not incorrectly constant-folded
+;; (mutation should be visible)
 
 (let ([v (flvector 1.0 2.0 3.0)])
   (unsafe-flvector-set! v 0 10.0)
   (test 10.0 'ref (unsafe-flvector-ref v 0)))
+
+;; flvector-ref should see mutations (not incorrectly folded)
+(let ([fv (make-flvector 1 1.0)])
+  (test 1.0 'flvector-ref-before-mutation (flvector-ref fv 0))
+  (flvector-set! fv 0 2.0)
+  (test 2.0 'flvector-ref-after-mutation (flvector-ref fv 0)))
+
+;; Multiple mutations to same index
+(let ([fv (make-flvector 1 0.0)])
+  (flvector-set! fv 0 1.0)
+  (flvector-set! fv 0 2.0)
+  (flvector-set! fv 0 3.0)
+  (test 3.0 'flvector-set!-last-wins (flvector-ref fv 0)))
+
+;; ----------------------------------------
+;; flbit-field return type tests
+
+(test #t 'flbit-field-returns-exact (exact-integer? (flbit-field 1.0 0 1)))
+(test #t 'flbit-field-returns-fixnum (fixnum? (flbit-field 1.0 0 10)))
+(test #t 'flbit-field-usable-in-fx+ (fixnum? (fx+ (flbit-field 1.0 0 10) 1)))
 
 ;; ----------------------------------------
 ;; Regression test for a compiler bug that happened to be exposed

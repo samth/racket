@@ -1389,5 +1389,17 @@
   (test #t values polled?))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; char-ready? should not be incorrectly folded (depends on I/O state)
+
+(let ([in (open-input-string "hello")])
+  (test #t char-ready? in)
+  (read-char in) ; consume 'h'
+  (test #t char-ready? in))
+
+(let ([in (open-input-string "")])
+  ;; For string ports, char-ready? returns #t even at EOF (no blocking)
+  (test #t char-ready? in))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)

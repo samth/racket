@@ -496,5 +496,39 @@
       (random 1))
 
 ;; ----------------------------------------
+;; fxvector mutation visibility tests
+;; Make sure fxvector operations aren't incorrectly folded
+
+(let ([xv (make-fxvector 3 0)])
+  (fxvector-set! xv 0 10)
+  (fxvector-set! xv 1 20)
+  (fxvector-set! xv 2 30)
+  (test '(10 20 30) 'fxvector-set!-side-effects
+        (list (fxvector-ref xv 0) (fxvector-ref xv 1) (fxvector-ref xv 2))))
+
+;; fxvector-ref should see mutations
+(let ([xv (make-fxvector 1 100)])
+  (test 100 'fxvector-ref-before-mutation (fxvector-ref xv 0))
+  (fxvector-set! xv 0 200)
+  (test 200 'fxvector-ref-after-mutation (fxvector-ref xv 0)))
+
+;; Multiple mutations to same index
+(let ([xv (make-fxvector 1 0)])
+  (fxvector-set! xv 0 1)
+  (fxvector-set! xv 0 2)
+  (fxvector-set! xv 0 3)
+  (test 3 'fxvector-set!-last-wins (fxvector-ref xv 0)))
+
+;; Multiple reads interleaved with writes
+(let ([xv (make-fxvector 1 0)])
+  (define (read-modify-read delta)
+    (let ([before (fxvector-ref xv 0)])
+      (fxvector-set! xv 0 (fx+ before delta))
+      (fxvector-ref xv 0)))
+  (test 1 'read-modify-read-1 (read-modify-read 1))
+  (test 2 'read-modify-read-2 (read-modify-read 1))
+  (test 3 'read-modify-read-3 (read-modify-read 1)))
+
+;; ----------------------------------------
 
 (report-errs)

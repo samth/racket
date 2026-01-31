@@ -165,7 +165,7 @@
   [char-lower-case? (known-procedure/folding 2)]
   [char-numeric? (known-procedure/folding 2)]
   [char-punctuation? (known-procedure/folding 2)]
-  [char-ready? (known-procedure/folding 3)]
+  [char-ready? (known-procedure 3)] ; not folding: depends on I/O state
   [char-symbolic? (known-procedure/folding 2)]
   [char-title-case? (known-procedure/folding 2)]
   [char-titlecase (known-procedure/folding 2)]

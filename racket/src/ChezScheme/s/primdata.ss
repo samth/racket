@@ -885,9 +885,9 @@
   (time>? [sig [(time time) -> (boolean)]] [flags mifoldable discard])
   (time-difference (sig [(time time) -> (time)]) [flags alloc])
   (time-difference! (sig [(time time) -> (time)]) [flags alloc])
-  (time-nanosecond [sig [(time) -> (uint)]] [flags mifoldable discard true])
-  (time-second [sig [(time) -> (exact-integer)]] [flags mifoldable discard true])
-  (time-type [sig [(time) -> (symbol)]] [flags mifoldable discard true])
+  (time-nanosecond [sig [(time) -> (uint)]] [flags discard true]) ; not mifoldable: time objects are mutable via set-time-nanosecond!
+  (time-second [sig [(time) -> (exact-integer)]] [flags discard true]) ; not mifoldable: time objects are mutable via set-time-second!
+  (time-type [sig [(time) -> (symbol)]] [flags discard true]) ; not mifoldable: time objects are mutable via set-time-type!
   (time-utc->date [sig [(time-utc) (time-utc sub-fixnum) -> (date)]] [flags alloc])
 )
 
@@ -1282,9 +1282,9 @@
   (copy-time [sig [(time) -> (time)]] [flags alloc])
   (cosh [sig [(number) -> (number)]] [flags arith-op mifoldable discard])
   (cost-center? [sig [(ptr) -> (boolean)]] [flags pure unrestricted mifoldable discard])
-  (cost-center-allocation-count [sig [(cost-center) -> (number)]] [flags mifoldable discard true])
-  (cost-center-instruction-count [sig [(cost-center) -> (number)]] [flags mifoldable discard true])
-  (cost-center-time [sig [(cost-center) -> (time)]] [flags mifoldable discard true])
+  (cost-center-allocation-count [sig [(cost-center) -> (number)]] [flags discard true]) ; not mifoldable: cost centers are mutable via reset-cost-center!
+  (cost-center-instruction-count [sig [(cost-center) -> (number)]] [flags discard true]) ; not mifoldable: cost centers are mutable via reset-cost-center!
+  (cost-center-time [sig [(cost-center) -> (time)]] [flags discard true]) ; not mifoldable: cost centers are mutable via reset-cost-center!
   (cpu-time [sig [() -> (uint)]] [flags unrestricted alloc])
   (create-exception-state [sig [() (procedure) -> (void)]] [flags alloc])
   (current-continuation-marks [sig [() -> (continuation-marks)]] [flags alloc])
@@ -1441,7 +1441,7 @@
   (fxvector? [sig [(ptr) -> (boolean)]]  [pred fxvector] [flags pure unrestricted mifoldable discard])
   (gensym [sig [() (string) (string string) -> (gensym)]] [flags alloc safeongoodargs])
   (gensym? [sig [(ptr) -> (boolean)]] [pred gensym] [flags pure unrestricted mifoldable discard])
-  (gensym->unique-string [sig [(gensym) -> (string)]] [flags true mifoldable]) ; can't discard ... if we have our hands on it, it must be in the oblist after this
+  (gensym->unique-string [sig [(gensym) -> (string)]] [flags true]) ; not mifoldable: has side effect of interning the gensym in the oblist
   (get-bytevector-some! [sig [(binary-input-port bytevector length length) -> (eof/length)]] [flags true])
   (get-datum/annotations [sig [(textual-input-port sfd uint) -> (ptr uint)]] [flags])
   (get-hash-table [sig [(old-hash-table ptr ptr) -> (ptr)]] [flags discard])
@@ -1616,7 +1616,7 @@
   (port-input-index [sig [(port) -> (ufixnum)]] [flags discard true])
   (port-input-size [sig [(port) -> (ufixnum)]] [flags discard true])
   (port-length [sig [(port) -> (uint)]] [flags])
-  (port-name [sig [(port) -> (ptr)]] [flags mifoldable discard])
+  (port-name [sig [(port) -> (ptr)]] [flags discard]) ; not mifoldable: port name is mutable via set-port-name!
   (port-nonblocking? [sig [(port) -> (boolean)]] [flags discard])
   (port-output-buffer [sig [(port) -> (string/bytevector)]] [flags discard true])
   (port-output-count [sig [(port) -> (ufixnum)]] [flags discard true])
@@ -1748,15 +1748,15 @@
   (source-table-ref [sig [(source-table source-object ptr) -> (ptr)]] [flags discard])
   (source-table-set! [sig [(source-table source-object ptr) -> (void)]] [flags true])
   (source-table-size [sig [(source-table) -> (length)]] [flags discard true])
-  (sstats-bytes [sig [(sstats) -> (exact-integer)]] [flags mifoldable discard])
-  (sstats-cpu [sig [(sstats) -> (time)]] [flags mifoldable discard])
-  (sstats-difference [sig [(sstats sstats) -> (sstats)]] [flags mifoldable discard true])
-  (sstats-gc-bytes [sig [(sstats) -> (exact-integer)]] [flags mifoldable discard])
-  (sstats-gc-count [sig [(sstats) -> (exact-integer)]] [flags mifoldable discard])
-  (sstats-gc-cpu [sig [(sstats) -> (time)]] [flags mifoldable discard])
-  (sstats-gc-real [sig [(sstats) -> (time)]] [flags mifoldable discard])
+  (sstats-bytes [sig [(sstats) -> (exact-integer)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-bytes!
+  (sstats-cpu [sig [(sstats) -> (time)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-cpu!
+  (sstats-difference [sig [(sstats sstats) -> (sstats)]] [flags mifoldable discard true]) ; creates new sstats, inputs read-only
+  (sstats-gc-bytes [sig [(sstats) -> (exact-integer)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-gc-bytes!
+  (sstats-gc-count [sig [(sstats) -> (exact-integer)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-gc-count!
+  (sstats-gc-cpu [sig [(sstats) -> (time)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-gc-cpu!
+  (sstats-gc-real [sig [(sstats) -> (time)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-gc-real!
   (sstats-print [sig [(sstats) (sstats textual-output-port) -> (void)]] [flags true])
-  (sstats-real [sig [(sstats) -> (time)]] [flags mifoldable discard])
+  (sstats-real [sig [(sstats) -> (time)]] [flags discard]) ; not mifoldable: sstats are mutable via set-sstats-real!
   (sstats? [sig [(ptr) -> (boolean)]] [flags pure unrestricted mifoldable discard])
   (standard-input-port [sig [() (sub-symbol) (sub-symbol maybe-transcoder) -> (input-port)]] [flags true])
   (standard-output-port [sig [() (sub-symbol) (sub-symbol maybe-transcoder) -> (output-port)]] [flags true])
@@ -1837,7 +1837,7 @@
   (transcript-on [sig [(pathname) -> (void)]] [flags true ieee r5rs])
   (truncate-file [sig [(output-port) (output-port sub-ptr) -> (void)]] [flags])
   (truncate-port [sig [(output-port) (output-port sub-ptr) -> (void)]] [flags])
-  (unbox [sig [(box) -> (ptr)]] [flags mifoldable discard cp02 safeongoodargs])
+  (unbox [sig [(box) -> (ptr)]] [flags discard cp02 safeongoodargs]) ; not mifoldable: boxes are mutable via set-box!
   (unget-u8 [sig [(binary-input-port eof/u8) -> (void)]] [flags true])
   (unget-char [sig [(textual-input-port eof/char) -> (void)]] [flags true])
   (uninterned-symbol? [sig [(ptr) -> (boolean)]] [pred uninterned-symbol] [flags pure unrestricted mifoldable discard])

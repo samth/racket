@@ -1174,5 +1174,20 @@
              #rx"unsafe procedure compilation disallowed")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; unsafe-place-local mutation tests
+
+(let ([pl (unsafe-make-place-local 'initial)])
+  (test 'initial 'unsafe-place-local-ref-initial (unsafe-place-local-ref pl))
+  (unsafe-place-local-set! pl 'modified)
+  (test 'modified 'unsafe-place-local-ref-after-set (unsafe-place-local-ref pl)))
+
+;; Multiple mutations to place-local
+(let ([pl (unsafe-make-place-local 0)])
+  (unsafe-place-local-set! pl 1)
+  (unsafe-place-local-set! pl 2)
+  (unsafe-place-local-set! pl 3)
+  (test 3 'unsafe-place-local-set!-last-wins (unsafe-place-local-ref pl)))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)

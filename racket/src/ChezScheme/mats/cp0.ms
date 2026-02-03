@@ -3568,3 +3568,155 @@
          '(lambda (z) (#3%values z z z))
          '(lambda (z) (#2%values z z z))))
   )
+
+;;; =============================================================
+;;; Tests for incorrect primitive flag annotations
+;;; These tests verify that primitives aren't incorrectly optimized
+;;; based on flags that don't match their actual behavior.
+;;; =============================================================
+
+(define-syntax primflags-mat
+  (syntax-rules ()
+    [(_ name form ...)
+     (parameterize ([enable-cp0 #t] [#%$suppress-primitive-inlining #f] [optimize-level 3])
+       (mat name form ...))]))
+
+;;; Test: unbox should see mutations (boxes are mutable)
+(primflags-mat unbox-sees-mutation
+  (let ([b (box 1)])
+    (let ([v1 (unbox b)])
+      (set-box! b 2)
+      (let ([v2 (unbox b)])
+        (and (eqv? v1 1) (eqv? v2 2)))))
+
+  (let ([b (box 0)])
+    (let loop ([i 0] [sum 0])
+      (if (fx= i 10)
+          (eqv? sum 45) ; 0+1+2+...+9 = 45
+          (let ([v (unbox b)])
+            (set-box! b (fx+ v 1))
+            (loop (fx+ i 1) (fx+ sum v))))))
+
+  (let ([b (box 'first)])
+    (define (read-twice)
+      (let ([a (unbox b)])
+        (set-box! b 'second)
+        (let ([c (unbox b)])
+          (cons a c))))
+    (equal? (read-twice) '(first . second)))
+)
+
+;;; Test: time accessors should see mutations (time objects are mutable)
+(primflags-mat time-accessors-see-mutation
+  (let ([t (make-time 'time-utc 0 100)])
+    (let ([s1 (time-second t)])
+      (set-time-second! t 200)
+      (let ([s2 (time-second t)])
+        (and (eqv? s1 100) (eqv? s2 200)))))
+
+  (let ([t (make-time 'time-utc 500 0)])
+    (let ([n1 (time-nanosecond t)])
+      (set-time-nanosecond! t 999)
+      (let ([n2 (time-nanosecond t)])
+        (and (eqv? n1 500) (eqv? n2 999)))))
+
+  (let ([t (make-time 'time-utc 0 0)])
+    (let ([ty1 (time-type t)])
+      (set-time-type! t 'time-monotonic)
+      (let ([ty2 (time-type t)])
+        (and (eq? ty1 'time-utc) (eq? ty2 'time-monotonic)))))
+)
+
+;;; Test: port-name should see mutations
+(primflags-mat port-name-sees-mutation
+  (let ([p (open-output-string)])
+    (let ([n1 (port-name p)])
+      (set-port-name! p "new-name")
+      (let ([n2 (port-name p)])
+        (and (string? n1) (equal? n2 "new-name")))))
+)
+
+;;; Test: sstats accessors should see mutations
+(primflags-mat sstats-accessors-see-mutation
+  (let ([s (make-sstats
+             (make-time 'time-duration 0 1)
+             (make-time 'time-duration 0 2)
+             100 200
+             (make-time 'time-duration 0 3)
+             (make-time 'time-duration 0 4)
+             300)])
+    (let ([b1 (sstats-bytes s)])
+      (set-sstats-bytes! s 999)
+      (let ([b2 (sstats-bytes s)])
+        (and (eqv? b1 100) (eqv? b2 999)))))
+)
+
+;;; Test: make-wrapper-procedure creates distinct objects
+(primflags-mat make-wrapper-procedure-identity
+  (let* ([base-proc (lambda (x) x)]
+         [w1 (make-wrapper-procedure base-proc 2 'wrapper-data)]
+         [w2 (make-wrapper-procedure base-proc 2 'wrapper-data)])
+    (not (eq? w1 w2)))
+)
+
+;;; Test: make-source-object creates distinct objects
+(primflags-mat make-source-object-identity
+  (let* ([sfd (make-source-file-descriptor "test" (open-bytevector-input-port #vu8()))]
+         [so1 (make-source-object sfd 0 10)]
+         [so2 (make-source-object sfd 0 10)])
+    (not (eq? so1 so2)))
+)
+
+;;; Test: Division by zero raises exception
+(primflags-mat division-exceptions
+  (error? (fxdiv 10 0))
+  (error? (fxmod 10 0))
+  (error? (fxquotient 10 0))
+  (error? (fxremainder 10 0))
+  (error? (/ 1 0))
+  (error? (quotient 10 0))
+  (error? (remainder 10 0))
+  (error? (modulo 10 0))
+)
+
+;;; Test: flbit-field returns exact integer, not flonum
+(primflags-mat flbit-field-returns-integer
+  (exact? (flbit-field 1.0 0 1))
+  (fixnum? (flbit-field 1.0 0 10))
+  (integer? (flbit-field 1.5 0 64))
+  (eqv? (+ (flbit-field 1.0 0 10) 1) (+ (flbit-field 1.0 0 10) 1))
+)
+
+;;; =============================================================
+;;; Optimizer-level tests for primitive folding behavior
+;;; These verify that mutable accessors are NOT folded at compile time
+;;; =============================================================
+
+(cp0-mat mutable-accessor-no-fold
+  ;; Immutable accessors SHOULD be folded (baseline sanity check)
+  (test-cp0-expansion
+    '(car '(1 2 3))
+    1)
+  (test-cp0-expansion
+    '(cdr '(1 2 3))
+    ''(2 3))
+  (test-cp0-expansion
+    '(vector-ref '#(a b c) 1)
+    ''b)
+
+  ;; unbox should NOT be folded to a constant (boxes are mutable)
+  ;; If this test fails, unbox is incorrectly marked as mifoldable
+  (test-cp0-expansion
+    (lambda (actual expected)
+      ;; The result should still contain an unbox call, not be folded to 1
+      (not (equal? actual 1)))
+    '(unbox (box 1))
+    'should-not-be-1)
+
+  ;; time-second should NOT be folded (time objects are mutable)
+  (test-cp0-expansion
+    (lambda (actual expected)
+      (not (equal? actual 100)))
+    '(time-second (make-time 'time-utc 0 100))
+    'should-not-be-100)
+)

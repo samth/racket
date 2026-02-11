@@ -5,6 +5,47 @@
 (provide maybe-jobserver-jobs
          maybe-jobserver-client)
 
+(define (jobserver-trace msg)
+  (define env (hash-ref (runtime-env) 'env '()))
+  (define a (assoc "ZUO_JOBSERVER_TRACE" env))
+  (when a
+    (display-to-file (~a msg "\n") (cdr a) :append))
+  (void))
+
+(define (string-prefix? prefix s)
+  (and (<= (string-length prefix) (string-length s))
+       (string=? prefix (substring s 0 (string-length prefix)))))
+
+(define (jobserver-client-from-arg create-jobserver-client arg)
+  (let* ((fds-str (cadr (string-split arg "=")))
+         (auth? (or (string-prefix? "fifo:" fds-str)
+                    (string-prefix? "pipe:" fds-str))))
+    (if auth?
+        (begin
+          (jobserver-trace (~a "jobserver: auth=" fds-str))
+          (let ((client (create-jobserver-client #f #f fds-str #f)))
+            (jobserver-trace (~a "jobserver: create-client=" (if client "ok" "#f")))
+            client))
+        (let ((fds (map string->integer
+                        (string-split fds-str ","))))
+          (jobserver-trace (~a "jobserver: candidate=" arg
+                               " parsed=" fds))
+          (and (= (length fds) 2)
+               (andmap integer? fds)
+               ;; read in all available job tokens, then give them back up,
+               ;; just so we can infer the number of tokens that would be available
+               (let* ((in-no (car fds))
+                      (out-no (cadr fds))
+                      (in (fd-open-input in-no))
+                      (out (fd-open-output out-no)))
+                 (jobserver-trace (~a "jobserver: fds=" in-no "," out-no
+                                      " valid=" (fd-valid? in) "/" (fd-valid? out)))
+                 (and (fd-valid? in)
+                      (fd-valid? out)
+                      (let ((client (create-jobserver-client in out in-no out-no)))
+                        (jobserver-trace (~a "jobserver: create-client=" (if client "ok" "#f")))
+                        client))))))))
+
 (define (maybe-jobserver-jobs)
   (try-jobserver-client poll-jobserver-client))
 
@@ -12,30 +53,25 @@
   (try-jobserver-client create-jobserver-client))
 
 (define (try-jobserver-client create-jobserver-client)
+  (define env (hash-ref (runtime-env) 'env '()))
   (define a (and (eq? 'unix (system-type))
-                 (assoc "MAKEFLAGS" (hash-ref (runtime-env) 'env))))
+                 (assoc "MAKEFLAGS" env)))
+  (jobserver-trace (~a "jobserver: system-type=" (system-type)
+                       " makeflags=" (and a (cdr a))))
   (and a
-       (let ([args (shell->strings (cdr a))])
-         (and (ormap (glob->matcher "-j*") args)
-              (ormap (let ([match? (let ([fds? (glob->matcher "--jobserver-fds=*")]
-                                         [auth? (glob->matcher "--jobserver-auth=*")])
-                                     (lambda (s) (or (fds? s) (auth? s))))])
-                       (lambda (arg)
-                         (and (match? arg)
-                              (let ([fds (map string->integer
-                                              (string-split (cadr (string-split arg "=")) ","))])
-                                (and (= (length fds) 2)
-                                     (andmap integer? fds)
-                                     ;; read in all available job tokens, then give them back up,
-                                     ;; just so we can infer the number of tokens that would be available
-                                     (let ([in-no (car fds)]
-                                           [out-no (cadr fds)])
-                                       (let ([in (fd-open-input in-no)]
-                                             [out (fd-open-output out-no)])
-                                         (and (fd-valid? in)
-                                              (fd-valid? out)
-                                              (create-jobserver-client in out in-no out-no)))))))))
-                     args)))))
+       (let ((args (shell->strings (cdr a))))
+         (let ((has-j? (ormap (glob->matcher "-j*") args)))
+           (let ((match?
+                  (let ((fds? (glob->matcher "--jobserver-fds=*"))
+                        (auth? (glob->matcher "--jobserver-auth=*")))
+                    (lambda (s) (or (fds? s) (auth? s))))))
+             (jobserver-trace (~a "jobserver: args=" args))
+             (jobserver-trace (~a "jobserver: has -j=" has-j?))
+             (and has-j?
+                  (ormap (lambda (arg)
+                           (and (match? arg)
+                                (jobserver-client-from-arg create-jobserver-client arg)))
+                         args)))))))
 
 (define (poll-jobserver-client in out in-no/ignored out-no/ignored)
   (let ([s (fd-read in 'avail)])
@@ -100,14 +136,22 @@
   ;; The job of the manager process is just to survive at a point where
   ;; the enclosing process is trying to exit, possibly due to an error.
   ;; It will notice that the stdin pipe is closed and clean up.
-  (define p (process (hash-ref (runtime-env) 'exe)
-                     "-c"
-                     (~a (car jobserver-manager) "\n"
-                         (string-join (map ~s (cdr jobserver-manager))))
-                     (~a in-no)
-                     (~a out-no)
-                     (hash 'stdin 'pipe
-                           'stdout 'pipe)))
+  (define p (if out-no
+                (process (hash-ref (runtime-env) 'exe)
+                         "-c"
+                         (~a (car jobserver-manager) "\n"
+                             (string-join (map ~s (cdr jobserver-manager))))
+                         (~a in-no)
+                         (~a out-no)
+                         (hash 'stdin 'pipe
+                               'stdout 'pipe))
+                (process (hash-ref (runtime-env) 'exe)
+                         "-c"
+                         (~a (car jobserver-manager) "\n"
+                             (string-join (map ~s (cdr jobserver-manager))))
+                         (~a in-no)
+                         (hash 'stdin 'pipe
+                               'stdout 'pipe))))
   (cons (hash-ref p 'stdout)
         (hash-ref p 'stdin)))
 

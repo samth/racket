@@ -10,8 +10,26 @@
 (define stdin (fd-open-input 'stdin))
 (define stdout (fd-open-output 'stdout))
 
-(define in (fd-open-input (string->integer (list-ref args 0))))
-(define out (fd-open-output (string->integer (list-ref args 1))))
+(define (string-prefix? prefix s)
+  (and (<= (string-length prefix) (string-length s))
+       (string=? prefix (substring s 0 (string-length prefix)))))
+
+(define in+out
+  (cond
+    [(and (= (length args) 1)
+          (let ([auth (list-ref args 0)])
+            (or (string-prefix? "fifo:" auth)
+                (string-prefix? "pipe:" auth))))
+     (define auth (list-ref args 0))
+     (define path (substring auth (string-length (if (string-prefix? "fifo:" auth) "fifo:" "pipe:"))))
+     (cons (fd-open-input path)
+           (fd-open-output path (hash 'exists 'update)))]
+    [else
+     (cons (fd-open-input (string->integer (list-ref args 0)))
+           (fd-open-output (string->integer (list-ref args 1))))]))
+
+(define in (car in+out))
+(define out (cdr in+out))
 
 ;; jobserver-manager's job is to reliably clean up on exit,
 ;; so disable signals

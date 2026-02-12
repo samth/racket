@@ -219,7 +219,11 @@
                      resourcer      ; build stat's resource manager
                      log?           ; logging enabled?
                      uni?           ; just one job?
-                     dry-run-mode)) ; #f, 'dry-run, 'question, or 'would
+                     dry-run-mode   ; #f, 'dry-run, 'question, or 'would
+                     graph          ; #f or hash mapping node -> hash of deps
+                     graph-append?  ; #t to append graphs to a file
+                     graph-format   ; 'dot or 'edges
+                     graph-path))   ; #f, "-", or path
 
 ;; Main entry point to build a target `t`
 (define (build t-in [token #f] [options (hash)])
@@ -232,7 +236,33 @@
                                ;; we only need whether it's 1 job or more:
                                (if (token-uni? token) 1 2)
                                (hash-ref options 'jobs #f))]
-           [seen (hash)])
+           [seen (hash)]
+           [env (hash-ref (runtime-env) 'env '())]
+           [graph-path (or (hash-ref options 'graph #f)
+                           (let ([a (assoc "ZUO_BUILD_GRAPH" env)])
+                             (and a (cdr a))))]
+           [graph-format (let* ([fmt (or (hash-ref options 'graph-format #f)
+                                          (let ([a (assoc "ZUO_BUILD_GRAPH_FORMAT" env)])
+                                            (and a (cdr a)))
+                                          "dot")]
+                                [fmt (if (symbol? fmt) (symbol->string fmt) fmt)])
+                           (cond
+                             [(string=? fmt "dot") 'dot]
+                             [(string=? fmt "edges") 'edges]
+                             [else (error "unknown graph format" fmt)]))]
+           [graph-append? (let ([v (or (hash-ref options 'graph-append #f)
+                                      (let ([a (assoc "ZUO_BUILD_GRAPH_APPEND" env)])
+                                        (and a (cdr a))))])
+                            (cond
+                              [(not v) #f]
+                              [(eq? v #t) #t]
+                              [(symbol? v)
+                               (let ([s (symbol->string v)])
+                                 (and (not (equal? s "")) (not (equal? s "0"))))]
+                              [(string? v) (and (not (equal? v "")) (not (equal? v "0")))]
+                              [else #t]))]
+           [graph-enabled? (and graph-path (not (equal? graph-path "")))]
+           [graph (and graph-enabled? (hash))])
       ;; Start a threading context, so we can have parallel build tasks
       ((if token (lambda (th) (th)) call-in-main-thread)
        (lambda ()
@@ -258,12 +288,19 @@
                                     (or (hash-ref options 'log? #f)
                                         (assoc "ZUO_BUILD_LOG" (hash-ref (runtime-env) 'env)))
                                     (= num-jobs 1)
-                                    (hash-ref options 'dry-run-mode (maybe-dry-run-mode))))
+                                    (hash-ref options 'dry-run-mode (maybe-dry-run-mode))
+                                    graph
+                                    graph-append?
+                                    graph-format
+                                    graph-path))
          (when resourcer
            (release-resource state "nested"))
-         (define end-state (do-build t state seen #t))
-         (when resourcer
-           (acquire-resource state "continue from nested"))
+        (define end-state (do-build t state seen #t))
+        (when resourcer
+          (acquire-resource state "continue from nested"))
+        (when (and (build-state-graph end-state)
+                   (or (not token) (build-state-graph-append? end-state)))
+          (write-build-graph end-state))
          (when (eq? 'would (build-state-dry-run-mode end-state))
            (exit 1)))))))
 
@@ -408,7 +445,7 @@
                                   prev-dep-sha256s/raw-symbols
                                   (hash-keys prev-dep-sha256s/raw-symbols)))
 
-  (define rule-state (get-state (token-ch tok) "rule"))
+  (define rule-state (graph-record-rule (get-state (token-ch tok) "rule") t deps))
 
   ;; trigger builds of dependencies, but don't want for them to complete
   (define fetch-state
@@ -457,8 +494,9 @@
                '()
                (hash-keys prev-dep-sha256s))
         '()))
+  (define more-rule-state (graph-record-rule new-state t more-deps))
   (define fetch-again-state
-    (foldl (make-fetch-dep new-state new-seen dep-top?) new-state more-deps))
+    (foldl (make-fetch-dep more-rule-state new-seen dep-top?) more-rule-state more-deps))
   (define newer-state
     (foldl (lambda (dep state) (do-build dep state new-seen dep-top?))
            fetch-again-state
@@ -575,6 +613,12 @@
            (if (and v (> v 0))
                (hash-set opts 'jobs v)
                (error "not a positive integer" n)))]
+   [opts ("--graph") path "Write dependency graph to <path> (or - for stdout)"
+         (hash-set opts 'graph path)]
+   [opts ("--graph-format") fmt "Graph format: dot | edges"
+         (hash-set opts 'graph-format fmt)]
+   [opts ("--graph-append") "Append graph output (edges format only)"
+         (hash-set opts 'graph-append #t)]
    :once-any
    [opts ("-n" "--just-print" "--dry-run") "Print needed builds without running"
          (hash-set opts 'dry-run-mode 'dry-run)]
@@ -729,6 +773,47 @@
 ;; ------------------------------------------------------------
 ;; Helpers for reading and updating build state
 
+(define (graph-enabled? state)
+  (and (build-state-graph state)
+       (build-state-graph-path state)
+       (not (equal? (build-state-graph-path state) ""))))
+
+(define (graph-node-id t)
+  (target-key t))
+
+(define (graph-node->string id)
+  (cond
+    [(symbol? id) (symbol->string id)]
+    [else (~a id)]))
+
+(define (graph-add-node state t)
+  (if (graph-enabled? state)
+      (let* ([g (build-state-graph state)]
+             [id (graph-node-id t)])
+        (if (hash-ref g id #f)
+            state
+            (build-state-set-graph state (hash-set g id (hash)))))
+      state))
+
+(define (graph-add-edge state from to)
+  (if (graph-enabled? state)
+      (let* ([state (graph-add-node (graph-add-node state to) from)]
+             [g (build-state-graph state)]
+             [from-id (graph-node-id from)]
+             [to-id (graph-node-id to)]
+             [deps (hash-ref g from-id (hash))]
+             [deps (hash-set deps to-id #t)]
+             [g (hash-set g from-id deps)])
+        (build-state-set-graph state g))
+      state))
+
+(define (graph-record-rule state t deps)
+  (let ([state (graph-add-node state t)])
+    (foldl (lambda (dep state)
+             (graph-add-edge state t dep))
+           state
+           deps)))
+
 (define (target-state state t)
   (hash-ref (build-state-target-state state) (target-key t) #f))
 
@@ -738,7 +823,8 @@
   (hash-set dep-sha256s (target-key dep) (if (eq? sha256 phony-sha256) no-sha256 sha256)))
 
 (define (record-target-accumulated state for-t t)
-  (let* ([accum-key (target-key for-t)]
+  (let* ([state (graph-add-edge state for-t t)]
+         [accum-key (target-key for-t)]
          [dep-sha256s (hash-ref (build-state-target-accum state) accum-key (hash))]
          [dep-sha256s (add-dependent-target-state t dep-sha256s state)])
     (build-state-set-target-accum state (hash-set (build-state-target-accum state) accum-key dep-sha256s))))
@@ -922,6 +1008,75 @@
                      who)])
         (alert (~a who " changed")))))
   same?)
+
+(define (graph-escape s)
+  (let loop ([i 0] [accum '()])
+    (if (= i (string-length s))
+        (apply string (reverse accum))
+        (let ([c (string-ref s i)])
+          (cond
+            [(= c (char "\\"))
+             (loop (+ i 1) (list* (char "\\") (char "\\") accum))]
+            [(= c (char "\""))
+             (loop (+ i 1) (list* (char "\"") (char "\\") accum))]
+            [(= c (char "\n"))
+             (loop (+ i 1) (list* (char "n") (char "\\") accum))]
+            [else
+             (loop (+ i 1) (cons c accum))])))))
+
+(define (graph-quote s)
+  (~a "\"" (graph-escape s) "\""))
+
+(define (graph->dot g)
+  (define lines
+    (foldl (lambda (from lines)
+             (define deps (hash-ref g from (hash)))
+             (define from-str (graph-quote (graph-node->string from)))
+             (if (= (hash-count deps) 0)
+                 (cons (~a "  " from-str ";") lines)
+                 (foldl (lambda (to lines)
+                          (cons (~a "  " from-str " -> " (graph-quote (graph-node->string to)) ";") lines))
+                        lines
+                        (hash-keys deps))))
+           '()
+           (hash-keys g)))
+  (string-join (reverse (cons "}" (cons "digraph zuo_build {" lines))) "\n"))
+
+(define (graph->edges g)
+  (define lines
+    (foldl (lambda (from lines)
+             (define deps (hash-ref g from (hash)))
+             (define from-str (graph-escape (graph-node->string from)))
+             (if (= (hash-count deps) 0)
+                 (cons from-str lines)
+                 (foldl (lambda (to lines)
+                          (cons (~a from-str "\t" (graph-escape (graph-node->string to))) lines))
+                        lines
+                        (hash-keys deps))))
+           '()
+           (hash-keys g)))
+  (string-join (reverse lines) "\n"))
+
+(define (write-build-graph state)
+  (define g (build-state-graph state))
+  (define fmt (build-state-graph-format state))
+  (define path (build-state-graph-path state))
+  (define append? (build-state-graph-append? state))
+  (when (and append? (not (eq? fmt 'edges)))
+    (error "graph append requires edges format"))
+  (define content
+    (cond
+      [(eq? fmt 'dot) (graph->dot g)]
+      [(eq? fmt 'edges) (graph->edges g)]
+      [else (error "unknown graph format" fmt)]))
+  (cond
+    [(equal? path "-")
+     (display content)
+     (display "\n")]
+    [append?
+     (display-to-file (~a content "\n") path :append)]
+    [else
+     (display-to-file content path :truncate)]))
 
 (define (default-jobs)
   (let ([a (assoc "ZUO_JOBS" (hash-ref (runtime-env) 'env '()))])

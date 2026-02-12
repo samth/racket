@@ -441,6 +441,40 @@
         l
         (append l (list (at-dir "xpatch")))))
 
+  (define bootall-mode
+    (let* ([env (hash-ref (runtime-env) 'env '())]
+           [m (or (lookup 'BOOTALL)
+                  (let ([a (assoc "BOOTALL" env)])
+                    (and a (cdr a))))])
+      (if (and m (not (equal? m "")))
+          m
+          "parallel")))
+
+  (define (bootall-rebuild token)
+    (cond
+      [(string=? bootall-mode "at-once")
+       (build (map (lambda (file) (find-target file the-targets))
+                   (append (add-patchfile macro-objs) (list nanopass.so)))
+              token)
+       (mkdir-p (at-boot "."))
+       (run-scheme "all at once"
+                   (make-compile-at-once-script base-srcs base-objs petite.boot
+                                                compiler-srcs compiler-objs scheme.boot)
+                   (add-patchfile macro-objs))]
+      [else
+       ;; Force a full rebuild of compiler outputs to ensure fixpoint checks
+       ;; reflect the current compiler, then build boot files in parallel.
+       (pretty-clean)
+       (mkdir-p (at-boot "."))
+       (define obj-targets
+         (map (lambda (file) (find-target file the-targets))
+              (append base-objs compiler-objs)))
+       (define boot-targets
+         (map (lambda (file) (find-target file the-targets))
+              (list petite.boot scheme.boot)))
+       (build obj-targets token)
+       (build boot-targets token)]))
+
   (define the-targets
     (make-targets
      `(;; The default target builds object files individually:
@@ -452,18 +486,14 @@
                 ,void]
        [:target bootall (,@all-srcs ,@(add-patchfile macro-objs) ,nanopass.so)
                 ,(lambda (token)
-                   (mkdir-p (at-boot "."))
-                   (run-scheme "all at once"
-                               (make-compile-at-once-script base-srcs base-objs petite.boot
-                                                            compiler-srcs compiler-objs scheme.boot)
-                               (add-patchfile macro-objs)))
+                   (bootall-rebuild token))
                 :quiet]
 
        ;; The `bootstrap` target uses a "bootstrap" stamp file to trigger a separate `build` run,
        ;; and it iterates up to three times to find a fixpoint
        [:target ,(at-dir "bootstrap") (,options-t ,machine.def ,@all-srcs)
                 ,(lambda (path token)
-                   (look-for-fixpoint 3 (lambda () (build (find-target "bootall" the-targets) token)))
+                   (look-for-fixpoint 3 (lambda () (bootall-rebuild token)))
                    (build (map (lambda (file) (find-target file the-targets))
                                (list scheme.h equates.h gc-ocd.inc gc-oce.inc gc-par.inc heapcheck.inc))
                           token)

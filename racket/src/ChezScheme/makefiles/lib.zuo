@@ -118,6 +118,13 @@
                          [extra-source-dirs '()]
                          [extra-library-dirs '()]
                          [init-env (hash-ref (runtime-env) 'env)])
+  (define trace-path
+    (let ([a (assoc "SCHEME_BUILD_TRACE" init-env)])
+      (and a (cdr a))))
+  (define (trace-event phase what)
+    (when (and trace-path (not (equal? trace-path "")))
+      (define t (current-time))
+      (display-to-file (~a (car t) " " (cdr t) " " phase " " what "\n") trace-path :append)))
   (define (call-with-scheme k)
     (define-values (scheme.exe scheme-args)
       (if host-scheme
@@ -139,6 +146,7 @@
     (call-with-scheme
      (lambda (scheme.exe scheme-args env)
        (displayln (~a "running " scheme.exe " to build " what))
+       (trace-event "start" what)
        (define p (process scheme.exe scheme-args "-q" inputs
                           (hash 'stdin 'pipe
                                 'stdout (or (hash-ref options 'stdout #f)
@@ -156,6 +164,7 @@
        (fd-write to (string-join (map ~s script)))
        (fd-close to)
        (thread-process-wait (hash-ref p 'process))
+       (trace-event "end" what)
        (process-status (hash-ref p 'process)))))
 
   (define (run-scheme what script inputs [options (hash)])

@@ -17,6 +17,7 @@
 (require "syntax-hygienic.zuo")
 (require "file-handle.zuo")
 (require "process.zuo")
+(require "jobserver.zuo")
 (require "filesystem.zuo")
 (require "cleanable.zuo")
 (require "image.zuo")

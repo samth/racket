@@ -1,13 +1,14 @@
 #lang zuo
 
-(require "harness.zuo")
+(require "harness.zuo"
+         zuo/shell)
 
 (alert "jobserver")
 
 (define unix? (eq? (hash-ref (runtime-env) 'system-type) 'unix))
 
 (define (gnu-make?)
-  (define p (process "make" "--version" (hash 'stdout 'pipe 'stderr 'pipe)))
+  (define p (shell "make --version" (hash 'stdout 'pipe 'stderr 'pipe)))
   (define out (fd-read (hash-ref p 'stdout) eof))
   (define err (fd-read (hash-ref p 'stderr) eof))
   (fd-close (hash-ref p 'stdout))
@@ -22,30 +23,33 @@
   (rm* tdir)
   (mkdir-p tdir)
 
-  (define jobserver.zuo
-    (build-path (car (split-path (quote-module-path))) ".." "lib" "zuo" "jobserver.zuo"))
-  (define check.zuo (build-path tdir "check.zuo"))
+  (define jobserver-rel (build-path ".." ".." ".." "lib" "zuo" "jobserver.zuo"))
+  (define check-path (build-path tdir "check.zuo"))
+  (define check-arg "check.zuo")
   (define mk (build-path tdir "Makefile"))
   (define zuo.exe (hash-ref (runtime-env) 'exe))
 
-  (display-to-file
-   (~a "#lang zuo/base\n"
-       "(require " (~s jobserver.zuo) ")\n"
-       "(define v (maybe-jobserver-jobs))\n"
-       "(if (integer? v)\n"
-       "    (display \"ok\\n\")\n"
-       "    (begin (display \"no\\n\") (exit 1)))\n")
-   check.zuo
-   :truncate)
+  (define check-expr
+    `(begin
+       (require ,jobserver-rel)
+       (define v (maybe-jobserver-jobs))
+       (if (integer? v)
+           (display "ok\n")
+           (begin (display "no\n") (exit 1)))))
+
+  (let ([out (fd-open-output check-path :truncate)])
+    (fd-write out "#lang zuo/base\n")
+    (fd-write out (~s check-expr))
+    (fd-close out))
 
   (display-to-file
    (~a "ZUO=" zuo.exe "\n"
        "all:\n"
-       "\t@$(ZUO) " check.zuo "\n")
+       "\t@$(ZUO) " check-arg "\n")
    mk
    :truncate)
 
-  (define p (process "make" "-j2" (hash 'dir tdir 'stdout 'pipe 'stderr 'pipe)))
+  (define p (shell "make -j2" (hash 'dir tdir 'stdout 'pipe 'stderr 'pipe)))
   (define out (fd-read (hash-ref p 'stdout) eof))
   (define err (fd-read (hash-ref p 'stderr) eof))
   (fd-close (hash-ref p 'stdout))

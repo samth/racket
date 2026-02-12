@@ -1,0 +1,57 @@
+#lang zuo
+
+(require "harness.zuo")
+
+(alert "jobserver")
+
+(define unix? (eq? (hash-ref (runtime-env) 'system-type) 'unix))
+
+(define (gnu-make?)
+  (define p (process "make" "--version" (hash 'stdout 'pipe 'stderr 'pipe)))
+  (define out (fd-read (hash-ref p 'stdout) eof))
+  (define err (fd-read (hash-ref p 'stderr) eof))
+  (fd-close (hash-ref p 'stdout))
+  (fd-close (hash-ref p 'stderr))
+  (process-wait (hash-ref p 'process))
+  (and (= 0 (process-status (hash-ref p 'process)))
+       (contains? out "GNU Make")
+       (equal? err "")))
+
+(when (and unix? (gnu-make?))
+  (define tdir (build-path tmp-dir "jobserver"))
+  (rm* tdir)
+  (mkdir-p tdir)
+
+  (define jobserver.zuo
+    (build-path (car (split-path (quote-module-path))) ".." "lib" "zuo" "jobserver.zuo"))
+  (define check.zuo (build-path tdir "check.zuo"))
+  (define mk (build-path tdir "Makefile"))
+  (define zuo.exe (hash-ref (runtime-env) 'exe))
+
+  (display-to-file
+   (~a "#lang zuo/base\n"
+       "(require " (~s jobserver.zuo) ")\n"
+       "(define v (maybe-jobserver-jobs))\n"
+       "(if (integer? v)\n"
+       "    (display \"ok\\n\")\n"
+       "    (begin (display \"no\\n\") (exit 1)))\n")
+   check.zuo
+   :truncate)
+
+  (display-to-file
+   (~a "ZUO=" zuo.exe "\n"
+       "all:\n"
+       "\t@$(ZUO) " check.zuo "\n")
+   mk
+   :truncate)
+
+  (define p (process "make" "-j2" (hash 'dir tdir 'stdout 'pipe 'stderr 'pipe)))
+  (define out (fd-read (hash-ref p 'stdout) eof))
+  (define err (fd-read (hash-ref p 'stderr) eof))
+  (fd-close (hash-ref p 'stdout))
+  (fd-close (hash-ref p 'stderr))
+  (process-wait (hash-ref p 'process))
+
+  (check (process-status (hash-ref p 'process)) 0)
+  (check (contains? out "ok") #t)
+  (check err ""))

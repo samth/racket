@@ -303,7 +303,7 @@
                           (begin
                             (queue/work-done work-queue node wrkr
                                              (string-append (if (eof-object? msg)
-                                                                "EOF"
+                                                                "worker process died unexpectedly"
                                                                 msg)
                                                             (wrkr/read-all wrkr)))
                             (kill/remove-dead-worker node-worker wrkr))))))]

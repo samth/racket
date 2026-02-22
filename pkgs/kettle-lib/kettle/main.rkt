@@ -7,7 +7,7 @@
 ;; Copyright (C) 2025  Anthony Green <green@moxielogic.com>
 ;; Racket port
 ;;
-;; Tuition: A Racket library for building TUIs
+;; Kettle: A Racket library for building TUIs
 ;; Port of the Common Lisp cl-tuition library.
 ;;
 ;; This module re-exports the full public API.
@@ -24,12 +24,12 @@
 
 (provide
  ;; === Errors ===
- (struct-out exn:fail:tuition)
- (struct-out exn:fail:tuition:terminal)
- (struct-out exn:fail:tuition:terminal:operation)
- (struct-out exn:fail:tuition:input)
+ (struct-out exn:fail:kettle)
+ (struct-out exn:fail:kettle:terminal)
+ (struct-out exn:fail:kettle:terminal:operation)
+ (struct-out exn:fail:kettle:input)
  current-error-handler
- handle-tuition-error
+ handle-kettle-error
 
  ;; === Core TEA Protocol ===
  gen:tea-model

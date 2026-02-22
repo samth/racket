@@ -76,7 +76,7 @@
   "Put the terminal in raw mode for TUI applications."
   (with-handlers ([exn:fail?
                    (lambda (e)
-                     (raise (exn:fail:tuition:terminal:operation
+                     (raise (exn:fail:kettle:terminal:operation
                              (format "enter-raw-mode failed: ~a" (exn-message e))
                              (current-continuation-marks)
                              e
@@ -100,7 +100,7 @@
   "Restore the terminal to its original state."
   (with-handlers ([exn:fail?
                    (lambda (e)
-                     (raise (exn:fail:tuition:terminal:operation
+                     (raise (exn:fail:kettle:terminal:operation
                              (format "exit-raw-mode failed: ~a" (exn-message e))
                              (current-continuation-marks)
                              e

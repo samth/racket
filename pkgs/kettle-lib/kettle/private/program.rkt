@@ -142,7 +142,7 @@
     (when (program-running? p)
       (with-handlers ([exn:fail?
                        (lambda (e)
-                         (handle-tuition-error 'event-loop e))])
+                         (handle-kettle-error 'event-loop e))])
         ;; Block with timeout
         (define first-msg
           (sync/timeout 0.1 (program-msg-channel p)))
@@ -231,7 +231,7 @@
       (lambda ()
         (with-handlers ([exn:fail?
                          (lambda (e)
-                           (handle-tuition-error 'command e))])
+                           (handle-kettle-error 'command e))])
           (define m (cmd))
           (when m
             (program-send p m)))))]
@@ -258,7 +258,7 @@
     (lambda ()
       (with-handlers ([exn:fail?
                        (lambda (e)
-                         (handle-tuition-error 'exec-command e))])
+                         (handle-kettle-error 'exec-command e))])
         (define cmd-line (if (null? exec-args)
                              exec-prog
                              (string-append exec-prog " "
@@ -300,12 +300,12 @@
   (parameterize ([current-input-stream tty-in])
     (with-handlers ([exn:fail?
                      (lambda (e)
-                       (handle-tuition-error 'input-loop e))])
+                       (handle-kettle-error 'input-loop e))])
       (let loop ()
         (when (program-running? p)
           (with-handlers ([exn:fail?
                            (lambda (e)
-                             (handle-tuition-error 'input-loop e))])
+                             (handle-kettle-error 'input-loop e))])
             (if (program-input-paused? p)
                 (sleep 0.05)
                 (let ([events (read-all-available-events)])

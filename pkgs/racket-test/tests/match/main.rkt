@@ -295,47 +295,6 @@
                      [_ 'no])
                    'no))
 
-   (test-case "Variable bound under ..., used after ..."
-     ;; (list (list x _) ... x): x collects under ..., then x after
-     ;; x collects to (1 1 1), tail x matches 99 — should fail
-     (check-equal? (match '((1 a) (1 b) (1 c) 99)
-                     [(list (list x _) ... x) (list 'match x)]
-                     [_ 'no])
-                   'no)
-     ;; x collects to (1 1), tail x matches (1 1) — should succeed
-     (check-equal? (match '((1 a) (1 b) (1 1))
-                     [(list (list x _) ... x) x]
-                     [_ 'no])
-                   '(1 1)))
-
-   (test-case "list x ... x"
-     ;; x collects to (1 1 1), tail x matches (1 1 1) — should succeed
-     (check-equal? (match '(1 1 1 (1 1 1))
-                     [(list x ... x) x]
-                     [_ 'no])
-                   '(1 1 1))
-     ;; tail x is 99, doesn't match collected (1 1)
-     (check-equal? (match '(1 1 99)
-                     [(list x ... x) x]
-                     [_ 'no])
-                   'no))
-
-   (test-case "Non-linear across ... with vectors"
-     ;; (list (vector x y) ... x): x under ..., then x after
-     (check-equal? (match '(#(1 a) #(1 b) (1 1))
-                     [(list (vector x y) ... x) (list x y)]
-                     [_ 'no])
-                   '((1 1) (a b)))
-     (check-equal? (match '(#(1 a) #(2 b) (1 2))
-                     [(list (vector x y) ... x) (list x y)]
-                     [_ 'no])
-                   '((1 2) (a b)))
-     ;; Should fail: collected x = (1 2), tail = 99
-     (check-equal? (match '(#(1 a) #(2 b) 99)
-                     [(list (vector x y) ... x) (list x y)]
-                     [_ 'no])
-                   'no))
-
    (test-case "Non-linear under ... still works"
      ;; Both occurrences of a are under the same ...
      (check-equal? (match '((1 1) (2 2) (3 3))
@@ -348,17 +307,105 @@
                    'no))
 
    (test-case "Empty ... with non-linear"
-     ;; Empty list: x collects to (), tail x matches ()
-     (check-equal? (match '(())
-                     [(list x ... x) x]
-                     [_ 'no])
-                   '())
      ;; (cons t (list t ...)) with single element — 0 iterations,
      ;; each element (vacuously) equals t=1, body sees t=1
      (check-equal? (match '(1)
                      [(cons t (list t ...)) t]
                      [_ 'no])
-                   1))))
+                   1))
+
+   (test-case "Non-linear with list-no-order across ..."
+     ;; (cons a (list-no-order a rst ...)) — a at depth 0, then under ...
+     (check-equal? (match '(2 1 2 3)
+                     [(cons a (list-no-order a rst ...)) (list a rst)]
+                     [_ 'no])
+                   '(2 (1 3))))
+
+   (test-case "Non-linear x x ... valid direction"
+     ;; (list x x ...) — first x at depth 0, second under ...
+     (check-equal? (match '(1 1 1)
+                     [(list x x ...) x]
+                     [_ 'no])
+                   1)
+     (check-equal? (match '(1 2 3)
+                     [(list x x ...) x]
+                     [_ 'no])
+                   'no))
+
+   ;; Patterns where the first use of an identifier is under ...
+   ;; and a later use is not under the same ... should be syntax errors.
+   ;; We use ___ (alias for ...) to avoid template ellipsis issues in #'(...).
+   (test-case "Syntax error: list a ... a"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '(1 2 3 4) [(list a ___ a) a])))))
+
+   (test-case "Syntax error: list (list a ...) a"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '((1 2) 3) [(list (list a ___) a) a])))))
+
+   (test-case "Syntax error: list (list a ... _) a"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '((1 2 3) 4) [(list (list a ___ _) a) a])))))
+
+   (test-case "Syntax error: list (list x ...) (list x ...)"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '((1 2) (1 2)) [(list (list x ___) (list x ___)) x])))))
+
+   (test-case "Syntax error: list (list x _) ... x"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '((1 a) (1 b) 99) [(list (list x _) ___ x) x])))))
+
+   ;; ..k variants
+   (test-case "Syntax error: list a ..2 a"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '(1 2 3) [(list a ..2 a) a])))))
+
+   (test-case "Syntax error: list (list a ..3) a"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '((1 2 3) 4) [(list (list a ..3) a) a])))))
+
+   ;; list-rest
+   (test-case "Syntax error: list-rest with mismatched depth"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '((1 2) 3) [(list-rest (list a ___) a) a])))))
+
+   ;; quasipatterns
+   (test-case "Syntax error: quasipattern ,a ... ,a"
+     (check-exn exn:fail:syntax?
+                (lambda ()
+                  (expand #'(match '(1 2 3 4) [`(,a ___ ,a) a])))))
+
+   ;; Valid: list-rest with correct direction
+   ;; (list-rest a (list a ___)) matches (cons a (list a ___))
+   ;; i.e., first element is a, rest is a list of a's
+   (test-case "Non-linear list-rest valid direction"
+     (check-equal? (match '(1 1 1)
+                     [(list-rest a (list a ___)) a]
+                     [_ 'no])
+                   1)
+     (check-equal? (match '(1 2 3)
+                     [(list-rest a (list a ___)) a]
+                     [_ 'no])
+                   'no))
+
+   ;; Valid: quasipattern with correct direction
+   (test-case "Non-linear quasipattern valid direction"
+     (check-equal? (match '(1 1 1)
+                     [`(,a ,a ___) a]
+                     [_ 'no])
+                   1)
+     (check-equal? (match '(1 2 3)
+                     [`(,a ,a ___) a]
+                     [_ 'no])
+                   'no))))
 
 
 (define doc-tests

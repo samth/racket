@@ -254,7 +254,111 @@
                     [_ #f]))
      (check-equal? (match '((1 1 2 3) (2 1 2 3) (3 1 2 3))
                      [(list (cons a (list pre ... a post ...)) ...) (list a pre post)])
-                   '((1 2 3) (() (1) (1 2)) ((2 3) (3) ()))))))
+                   '((1 2 3) (() (1) (1 2)) ((2 3) (3) ()))))
+
+   ;; Regression tests for issues #5442, #2152, #1386
+   ;; Non-linear patterns across ... boundaries (variable bound under
+   ;; ... and used after ... in the same pattern)
+
+   (test-case "Non-linear across ... (issue #5442)"
+     ;; Original report: (cons (cons x _) (list (cons x _) ...))
+     ;; Previously raised "unbound identifier" error
+     (check-equal? (match '((1 . 2) (1 . 3) (1 . 4))
+                     [(cons (cons x _) (list (cons x _) ...)) x]
+                     [_ 'no])
+                   1)
+     ;; Should fail when values don't match
+     (check-equal? (match '((1 . 2) (3 . 4) (1 . 5))
+                     [(cons (cons x _) (list (cons x _) ...)) x]
+                     [_ 'no])
+                   'no))
+
+   (test-case "Non-linear across ... (issue #2152)"
+     ;; Minimal example from issue: `(,t ,t ...)
+     (check-equal? (match '(1 1 1)
+                     [`(,t ,t ...) t]
+                     [_ 'no])
+                   1)
+     (check-equal? (match '(1 2 3)
+                     [`(,t ,t ...) t]
+                     [_ 'no])
+                   'no))
+
+   (test-case "Non-linear across ... with cons"
+     ;; (cons x (list x ...)) — x first, then x under ...
+     (check-equal? (match '(1 1 1)
+                     [(cons t (list t ...)) t]
+                     [_ 'no])
+                   1)
+     (check-equal? (match '(1 2 3)
+                     [(cons t (list t ...)) t]
+                     [_ 'no])
+                   'no))
+
+   (test-case "Variable bound under ..., used after ..."
+     ;; (list (list x _) ... x): x collects under ..., then x after
+     ;; x collects to (1 1 1), tail x matches 99 — should fail
+     (check-equal? (match '((1 a) (1 b) (1 c) 99)
+                     [(list (list x _) ... x) (list 'match x)]
+                     [_ 'no])
+                   'no)
+     ;; x collects to (1 1), tail x matches (1 1) — should succeed
+     (check-equal? (match '((1 a) (1 b) (1 1))
+                     [(list (list x _) ... x) x]
+                     [_ 'no])
+                   '(1 1)))
+
+   (test-case "list x ... x"
+     ;; x collects to (1 1 1), tail x matches (1 1 1) — should succeed
+     (check-equal? (match '(1 1 1 (1 1 1))
+                     [(list x ... x) x]
+                     [_ 'no])
+                   '(1 1 1))
+     ;; tail x is 99, doesn't match collected (1 1)
+     (check-equal? (match '(1 1 99)
+                     [(list x ... x) x]
+                     [_ 'no])
+                   'no))
+
+   (test-case "Non-linear across ... with vectors"
+     ;; (list (vector x y) ... x): x under ..., then x after
+     (check-equal? (match '(#(1 a) #(1 b) (1 1))
+                     [(list (vector x y) ... x) (list x y)]
+                     [_ 'no])
+                   '((1 1) (a b)))
+     (check-equal? (match '(#(1 a) #(2 b) (1 2))
+                     [(list (vector x y) ... x) (list x y)]
+                     [_ 'no])
+                   '((1 2) (a b)))
+     ;; Should fail: collected x = (1 2), tail = 99
+     (check-equal? (match '(#(1 a) #(2 b) 99)
+                     [(list (vector x y) ... x) (list x y)]
+                     [_ 'no])
+                   'no))
+
+   (test-case "Non-linear under ... still works"
+     ;; Both occurrences of a are under the same ...
+     (check-equal? (match '((1 1) (2 2) (3 3))
+                     [(list (list a a) ...) a]
+                     [_ 'no])
+                   '(1 2 3))
+     (check-equal? (match '((1 2) (2 2) (3 3))
+                     [(list (list a a) ...) a]
+                     [_ 'no])
+                   'no))
+
+   (test-case "Empty ... with non-linear"
+     ;; Empty list: x collects to (), tail x matches ()
+     (check-equal? (match '(())
+                     [(list x ... x) x]
+                     [_ 'no])
+                   '())
+     ;; (cons t (list t ...)) with single element — 0 iterations,
+     ;; each element (vacuously) equals t=1, body sees t=1
+     (check-equal? (match '(1)
+                     [(cons t (list t ...)) t]
+                     [_ 'no])
+                   1))))
 
 
 (define doc-tests

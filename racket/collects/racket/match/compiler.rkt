@@ -217,21 +217,24 @@
                  =>
                  (lambda (id)
                    (if (identifier? id)
-                       (make-Row ps
-                                 #`(if ((match-equality-test) #,x #,id)
-                                       #,(Row-rhs row)
-                                       (fail))
-                                 (Row-unmatch row)
-                                 seen)
-                       (begin
-                         (log-error "non-linear pattern used in `match` with ... at ~a and ~a"
-                                    (car id) (cadr id)) 
-                         (let ([v* (free-identifier-mapping-get
-                                    (current-renaming) v (lambda () v))])
-                           (make-Row ps
-                                     #`(let ([#,v* #,x]) #,(Row-rhs row))
-                                     (Row-unmatch row)
-                                     (cons (cons v x) (Row-vars-seen row)))))))]
+                       (let ([v* (free-identifier-mapping-get
+                                  (current-renaming) v (lambda () v))])
+                         (make-Row ps
+                                   #`(if ((match-equality-test) #,x #,id)
+                                         (let ([#,v* #,x]) #,(Row-rhs row))
+                                         (fail))
+                                   (Row-unmatch row)
+                                   seen))
+                       ;; id is #f: variable was bound under ... (in heads-seen)
+                      ;; and we're still inside the GSeq loop. Bind the variable
+                      ;; without an equality check; the check will happen after
+                      ;; the loop via heads-seen-final in tail-rhs.
+                      (let ([v* (free-identifier-mapping-get
+                                 (current-renaming) v (lambda () v))])
+                        (make-Row ps
+                                  #`(let ([#,v* #,x]) #,(Row-rhs row))
+                                  (Row-unmatch row)
+                                  (cons (cons v x) (Row-vars-seen row))))))]
                 ;; otherwise, bind the matched variable to x, and add it to the
                 ;; list of vars we've seen
                 [else (let ([v* (free-identifier-mapping-get
@@ -378,6 +381,44 @@
     [(GSeq? first)
      (unless (null? (cdr block))
        (error 'compile-one "GSeq block with multiple rows: ~a" block))
+     ;; Optimization: (list x ...) where x is a fresh variable can be
+     ;; compiled as (and (? list?) x) instead of a full GSeq loop,
+     ;; since binding x to the whole list is equivalent to collecting
+     ;; each element. But this is only valid when x is NOT a repeated
+     ;; (non-linear) variable, because non-linear matching needs to
+     ;; compare each element individually.
+     (define (simple-var-gseq?)
+       (and (= (length (GSeq-headss first)) 1)
+            (= (length (car (GSeq-headss first))) 1)
+            (Var? (caar (GSeq-headss first)))
+            (not (Dummy? (caar (GSeq-headss first))))
+            (Null? (GSeq-tail first))
+            (not (car (GSeq-mins first)))
+            (not (car (GSeq-maxs first)))
+            (not (car (GSeq-onces? first)))
+            (not (GSeq-mutable? first))
+            (let ([v (Var-v (caar (GSeq-headss first)))])
+              (not (for/or ([e (in-list (Row-vars-seen (car block)))])
+                     (bound-identifier=? v (car e)))))))
+     (cond
+      [(simple-var-gseq?)
+       ;; Compile as (and (? list?) x) — just check list? and bind
+       (define-values (_p rest-pats) (Row-split-pats (car block)))
+       (define row (car block))
+       (define v (Var-v (caar (GSeq-headss first))))
+       (define v* (free-identifier-mapping-get
+                   (current-renaming) v (lambda () v)))
+       (with-syntax ([body (compile**
+                            xs
+                            (list (make-Row rest-pats
+                                            (Row-rhs row)
+                                            (Row-unmatch row)
+                                            (cons (cons v x) (Row-vars-seen row))))
+                            esc)])
+         #`(if (list? #,x)
+               (let ([#,v* #,x]) body)
+               (#,esc)))]
+      [else
      (let* ([headss (GSeq-headss first)]
             [mins (GSeq-mins first)]
             [maxs (GSeq-maxs first)]
@@ -403,11 +444,38 @@
             [heads-seen
              (map (lambda (x) (cons x #f))
                   (apply append (map bound-vars heads)))]
+            ;; heads-seen-final maps head variables to their bound
+            ;; identifiers for use after the loop (in tail-rhs), where
+            ;; variables have been collected into their final values.
+            ;; Unlike heads-seen (which uses #f to suppress equality
+            ;; checks inside the loop), this enables proper non-linear
+            ;; matching for variables bound under ... and used after.
+            [heads-seen-final
+             (map (lambda (x) (cons x x))
+                  (apply append head-idss))]
+            [tail-ids (bound-vars tail)]
             [tail-seen
              (map (lambda (x) (cons x x))
-                  (bound-vars tail))]
+                  tail-ids)]
             [hid-argss (map generate-temporaries head-idss)]
             [head-idss* (map generate-temporaries head-idss)]
+            ;; Variables that appear in both head and tail patterns.
+            ;; For each such variable, we need an equality check in
+            ;; tail-rhs between the tail-matched value (held in the
+            ;; renamed head-id*) and the head-collected value (bound
+            ;; to the original head-id by the let in tail-rhs).
+            ;; shared-head-tail is a list of (head-id . head-id*) pairs.
+            [shared-head-tail
+             (let ([all-head-ids (apply append head-idss)]
+                   [all-head-ids* (apply append head-idss*)])
+               (for/list ([tid (in-list tail-ids)]
+                          #:when (for/or ([hid (in-list all-head-ids)])
+                                   (bound-identifier=? tid hid)))
+                 ;; find the corresponding head-id and head-id*
+                 (for/or ([hid (in-list all-head-ids)]
+                          [hid* (in-list all-head-ids*)])
+                   (and (bound-identifier=? tid hid)
+                        (cons hid hid*)))))]
             [hid-args (apply append hid-argss)]
             [reps (generate-temporaries (for/list ([head heads]) 'rep))])
        (with-syntax ([x xvar]
@@ -443,16 +511,30 @@
                                 [else
                                  (let ([hid hid-rhs] ... ...
                                        [fail-tail fail])
-                                   #,(compile**
-                                      (cdr vars)
-                                      (list (make-Row rest-pats k
-                                                      (Row-unmatch (car block))
-                                                      (append
-                                                       heads-seen
-                                                       tail-seen
-                                                       (Row-vars-seen
-                                                        (car block)))))
-                                      #'fail-tail))])])
+                                   #,(let ([rest-body
+                                            (compile**
+                                             (cdr vars)
+                                             (list (make-Row rest-pats k
+                                                             (Row-unmatch (car block))
+                                                             (append
+                                                              heads-seen-final
+                                                              tail-seen
+                                                              (Row-vars-seen
+                                                               (car block)))))
+                                             #'fail-tail)])
+                                       ;; Wrap rest-body with equality checks for
+                                       ;; variables shared between head and tail.
+                                       ;; After the let above, hid = collected value.
+                                       ;; hid* (renamed) = tail-matched value.
+                                       (let ([body
+                                              (for/fold ([body rest-body])
+                                                        ([pair (in-list shared-head-tail)])
+                                                (let ([orig-id (car pair)]
+                                                      [renamed-id (cdr pair)])
+                                                  #`(if ((match-equality-test) #,renamed-id #,orig-id)
+                                                         #,body
+                                                         (fail-tail))))])
+                                         body)))])])
            (parameterize ([current-renaming
                            (for/fold ([ht (copy-mapping (current-renaming))])
                                ([id (apply append head-idss)]
@@ -486,7 +568,7 @@
                                       heads-seen
                                       (Row-vars-seen
                                        (car block))))))
-                    #'failkv))))))]
+                    #'failkv))))))])]
     [else (error 'compile "unsupported pattern: ~a\n" first)]))
 
 (define (generate-block esc rhs unmatch)

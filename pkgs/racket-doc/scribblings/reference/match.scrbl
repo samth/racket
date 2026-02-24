@@ -126,6 +126,16 @@ In more detail, patterns match as follows:
        @racketidfont{not} sub-patterns are independent. The binding for @racket[_id] is
        not available in other parts of the same pattern.
 
+       When an @racket[_id] is used both under a @racketidfont{...} splicing
+       operator and in a position not under the same @racketidfont{...}
+       within the same pattern, each individual element matched under
+       @racketidfont{...} is checked for equality against the other occurrence.
+       In the body, the @racket[_id] that is under @racketidfont{...}
+       is bound to a list of matches, and the @racket[_id] not under
+       @racketidfont{...} is bound to the single matching value; which binding
+       is visible in the body depends on the order of evaluation.
+       See @secref["match-nonlinear-ellipsis"] for details and examples.
+
        @examples[
        #:eval match-eval
        (match '(1 2 3)
@@ -942,6 +952,96 @@ sub-expression to be used as the source for all syntax errors within the form.
 For example, @racket[match-lambda] expands to @racket[match/derived] so that
 errors in the body of the form are reported in terms of @racket[match-lambda]
 instead of @racket[match].}
+
+@; ----------------------------------------------------------------------
+
+@section[#:tag "match-nonlinear-ellipsis"]{Non-linear Patterns and Ellipses}
+
+When the same identifier is used multiple times within a pattern
+(a @deftech{non-linear pattern}), each occurrence must match the same
+value according to @racket[(match-equality-test)].
+
+Non-linear patterns can interact with @racketidfont{...} (ellipsis)
+splicing operators in several ways:
+
+@subsection{Both occurrences under the same @racketidfont{...}}
+
+When both occurrences of an identifier are under the same
+@racketidfont{...}, each repetition of the pattern checks equality
+between the occurrences within that repetition. The identifier
+binds to a list of the matched values.
+
+@examples[
+#:eval match-eval
+(code:comment "each pair must have equal elements")
+(match '((1 1) (2 2) (3 3))
+  [(list (list a a) ...) a]
+  [_ 'no])
+(code:comment "second pair doesn't match: 2 != 3")
+(match '((1 1) (2 3) (3 3))
+  [(list (list a a) ...) a]
+  [_ 'no])
+]
+
+@subsection{First occurrence before @racketidfont{...}, second under @racketidfont{...}}
+
+When an identifier first appears in a position not under
+@racketidfont{...}, and then appears under @racketidfont{...}, each
+element matched under @racketidfont{...} is checked for equality against
+the first occurrence.
+
+@examples[
+#:eval match-eval
+(code:comment "t matches 1, then each element under ... must equal 1")
+(match '(1 1 1 1)
+  [(cons t (list t ...)) t]
+  [_ 'no])
+(code:comment "3 does not equal 1")
+(match '(1 2 3)
+  [(cons t (list t ...)) t]
+  [_ 'no])
+(code:comment "the inner x must equal the outer x for each pair")
+(match '((1 . 2) (1 . 3) (1 . 4))
+  [(cons (cons x _) (list (cons x _) ...)) x]
+  [_ 'no])
+(code:comment "second pair has 5, not 1")
+(match '((1 . 2) (5 . 3) (1 . 4))
+  [(cons (cons x _) (list (cons x _) ...)) x]
+  [_ 'no])
+]
+
+@subsection{First occurrence under @racketidfont{...}, second after @racketidfont{...}}
+
+When an identifier first appears under @racketidfont{...} and then
+appears after the @racketidfont{...} in the same @racketidfont{list}
+pattern, the identifier under @racketidfont{...} collects values into a
+list. After the @racketidfont{...}, the second occurrence must match a
+value equal to the collected list.
+
+@examples[
+#:eval match-eval
+(code:comment "x collects to (1 1 1), tail x must match (1 1 1)")
+(match '(1 1 1 (1 1 1))
+  [(list x ... x) x]
+  [_ 'no])
+(code:comment "x collects to (1 1), tail x is 99 != (1 1)")
+(match '(1 1 99)
+  [(list x ... x) x]
+  [_ 'no])
+(code:comment "x collects to (1 1) from heads, tail x matches (1 1)")
+(match '((1 a) (1 b) (1 1))
+  [(list (list x _) ... x) x]
+  [_ 'no])
+(code:comment "x collects to (1 1), tail x is 99 != (1 1)")
+(match '((1 a) (1 b) 99)
+  [(list (list x _) ... x) x]
+  [_ 'no])
+]
+
+@history[#:changed "8.15.0.4" @elem{Added support for non-linear
+patterns where an identifier appears both under @racketidfont{...} and after
+it in the same @racketidfont{list} pattern, and fixed a crash when an
+identifier appeared both before and under @racketidfont{...}.}]
 
 @; ----------------------------------------------------------------------
 

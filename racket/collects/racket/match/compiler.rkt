@@ -14,6 +14,12 @@
 ;; should we reorder stuff?
 (define can-reorder? (make-parameter #t #f 'can-reorder?))
 
+;; When PLT_MATCH_STRICT_ELLIPSIS is set, reject ALL non-linear
+;; patterns with differing ellipsis depth, including the case where
+;; the first binding is at a lower depth than a later use under ...
+;; (e.g., (cons x (list x ...)) would be rejected).
+(define strict-ellipsis? (and (getenv "PLT_MATCH_STRICT_ELLIPSIS") #t))
+
 ;; for non-linear patterns
 (define vars-seen (make-parameter null #f 'vars-seen))
 
@@ -225,16 +231,13 @@
                                          (fail))
                                    (Row-unmatch row)
                                    seen))
-                       ;; id is #f: variable was bound under ... (in heads-seen)
-                      ;; and we're still inside the GSeq loop. Bind the variable
-                      ;; without an equality check; the check will happen after
-                      ;; the loop via heads-seen-final in tail-rhs.
-                      (let ([v* (free-identifier-mapping-get
-                                 (current-renaming) v (lambda () v))])
-                        (make-Row ps
-                                  #`(let ([#,v* #,x]) #,(Row-rhs row))
-                                  (Row-unmatch row)
-                                  (cons (cons v x) (Row-vars-seen row))))))]
+                       ;; id is #f: variable was first bound under ... at a
+                      ;; higher depth. This is a non-linear pattern with
+                      ;; mismatched ellipsis depths, which is not supported.
+                      (raise-syntax-error
+                       'match
+                       "non-linear pattern used in `match` with ..."
+                       v)))]
                 ;; otherwise, bind the matched variable to x, and add it to the
                 ;; list of vars we've seen
                 [else (let ([v* (free-identifier-mapping-get
@@ -408,12 +411,15 @@
        (define v (Var-v (caar (GSeq-headss first))))
        (define v* (free-identifier-mapping-get
                    (current-renaming) v (lambda () v)))
+       ;; Mark v with #f in vars-seen (like heads-seen does in the
+       ;; full GSeq path) so that if v appears again in rest-pats,
+       ;; it triggers a syntax error for mismatched ellipsis depth.
        (with-syntax ([body (compile**
                             xs
                             (list (make-Row rest-pats
                                             (Row-rhs row)
                                             (Row-unmatch row)
-                                            (cons (cons v x) (Row-vars-seen row))))
+                                            (cons (cons v #f) (Row-vars-seen row))))
                             esc)])
          #`(if (list? #,x)
                (let ([#,v* #,x]) body)
@@ -444,38 +450,20 @@
             [heads-seen
              (map (lambda (x) (cons x #f))
                   (apply append (map bound-vars heads)))]
-            ;; heads-seen-final maps head variables to their bound
-            ;; identifiers for use after the loop (in tail-rhs), where
-            ;; variables have been collected into their final values.
-            ;; Unlike heads-seen (which uses #f to suppress equality
-            ;; checks inside the loop), this enables proper non-linear
-            ;; matching for variables bound under ... and used after.
-            [heads-seen-final
-             (map (lambda (x) (cons x x))
-                  (apply append head-idss))]
-            [tail-ids (bound-vars tail)]
+            [_ (when strict-ellipsis?
+                 (for* ([hids (in-list head-idss)]
+                        [hv (in-list hids)])
+                   (when (for/or ([e (in-list (Row-vars-seen (car block)))])
+                           (bound-identifier=? hv (car e)))
+                     (raise-syntax-error
+                      'match
+                      "non-linear pattern used in `match` with ..."
+                      hv))))]
             [tail-seen
              (map (lambda (x) (cons x x))
-                  tail-ids)]
+                  (bound-vars tail))]
             [hid-argss (map generate-temporaries head-idss)]
             [head-idss* (map generate-temporaries head-idss)]
-            ;; Variables that appear in both head and tail patterns.
-            ;; For each such variable, we need an equality check in
-            ;; tail-rhs between the tail-matched value (held in the
-            ;; renamed head-id*) and the head-collected value (bound
-            ;; to the original head-id by the let in tail-rhs).
-            ;; shared-head-tail is a list of (head-id . head-id*) pairs.
-            [shared-head-tail
-             (let ([all-head-ids (apply append head-idss)]
-                   [all-head-ids* (apply append head-idss*)])
-               (for/list ([tid (in-list tail-ids)]
-                          #:when (for/or ([hid (in-list all-head-ids)])
-                                   (bound-identifier=? tid hid)))
-                 ;; find the corresponding head-id and head-id*
-                 (for/or ([hid (in-list all-head-ids)]
-                          [hid* (in-list all-head-ids*)])
-                   (and (bound-identifier=? tid hid)
-                        (cons hid hid*)))))]
             [hid-args (apply append hid-argss)]
             [reps (generate-temporaries (for/list ([head heads]) 'rep))])
        (with-syntax ([x xvar]
@@ -511,30 +499,16 @@
                                 [else
                                  (let ([hid hid-rhs] ... ...
                                        [fail-tail fail])
-                                   #,(let ([rest-body
-                                            (compile**
-                                             (cdr vars)
-                                             (list (make-Row rest-pats k
-                                                             (Row-unmatch (car block))
-                                                             (append
-                                                              heads-seen-final
-                                                              tail-seen
-                                                              (Row-vars-seen
-                                                               (car block)))))
-                                             #'fail-tail)])
-                                       ;; Wrap rest-body with equality checks for
-                                       ;; variables shared between head and tail.
-                                       ;; After the let above, hid = collected value.
-                                       ;; hid* (renamed) = tail-matched value.
-                                       (let ([body
-                                              (for/fold ([body rest-body])
-                                                        ([pair (in-list shared-head-tail)])
-                                                (let ([orig-id (car pair)]
-                                                      [renamed-id (cdr pair)])
-                                                  #`(if ((match-equality-test) #,renamed-id #,orig-id)
-                                                         #,body
-                                                         (fail-tail))))])
-                                         body)))])])
+                                   #,(compile**
+                                      (cdr vars)
+                                      (list (make-Row rest-pats k
+                                                      (Row-unmatch (car block))
+                                                      (append
+                                                       heads-seen
+                                                       tail-seen
+                                                       (Row-vars-seen
+                                                        (car block)))))
+                                      #'fail-tail))])])
            (parameterize ([current-renaming
                            (for/fold ([ht (copy-mapping (current-renaming))])
                                ([id (apply append head-idss)]

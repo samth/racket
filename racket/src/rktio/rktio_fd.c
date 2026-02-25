@@ -33,7 +33,7 @@ struct rktio_fd_t {
   struct open_in_thread_t *pending;
 # endif
 #endif
-
+  
 #ifdef RKTIO_SYSTEM_WINDOWS
   union {
     HANDLE fd;
@@ -51,43 +51,12 @@ struct rktio_fd_t {
   int w_buf_count; /* number of console wide chars in `buffer` pending to encode */
 #endif
 
-  /* Cached file position for regular files, avoiding repeated lseek
-     syscalls when querying the current position. The cache is kept
-     in sync by updating it after reads, writes, and explicit seeks. */
-  int cached_pos_valid;
-  rktio_filesize_t cached_pos;
-
   rktio_result_t res;
 };
 
 struct rktio_fd_transfer_t {
   rktio_fd_t fd;
 };
-
-/*========================================================================*/
-/* cached file position accessors                                         */
-/*========================================================================*/
-
-int rktio_fd_cached_pos_valid(rktio_fd_t *rfd)
-{
-  return rfd->cached_pos_valid;
-}
-
-rktio_filesize_t rktio_fd_get_cached_pos(rktio_fd_t *rfd)
-{
-  return rfd->cached_pos;
-}
-
-void rktio_fd_set_cached_pos(rktio_fd_t *rfd, rktio_filesize_t pos)
-{
-  rfd->cached_pos = pos;
-  rfd->cached_pos_valid = 1;
-}
-
-void rktio_fd_invalidate_cached_pos(rktio_fd_t *rfd)
-{
-  rfd->cached_pos_valid = 0;
-}
 
 /*========================================================================*/
 /* Windows I/O helper structs                                             */
@@ -1030,11 +999,8 @@ static intptr_t do_read_converted(rktio_t *rktio, rktio_fd_t *rfd, char *buffer,
       return RKTIO_READ_ERROR;
     } else if (bc == 0)
       return RKTIO_READ_EOF;
-    else {
-      if (rfd->cached_pos_valid)
-        rfd->cached_pos += bc;
+    else
       return bc;
-    }
   } else {
     int old_flags;
 
@@ -1119,11 +1085,9 @@ static intptr_t do_read_converted(rktio_t *rktio, rktio_fd_t *rfd, char *buffer,
       }
     }
 
-    if (ready < 0) {
+    if (ready < 0)
       ready = ReadFile((HANDLE)rfd->fd, buffer + offset, len - offset, &rgot, NULL);
-      if (ready && rfd->cached_pos_valid)
-        rfd->cached_pos += rgot;
-    } else {
+    else {
       DWORD amt = len - offset;
       if (rfd->leftover_len) {
         if (amt > rfd->leftover_len)
@@ -1631,15 +1595,8 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
       return 0;
     else
       return RKTIO_WRITE_ERROR;
-  } else {
-    if (rfd->cached_pos_valid) {
-      if (rfd->modes & RKTIO_OPEN_APPEND)
-        rfd->cached_pos_valid = 0; /* can't predict position after append */
-      else
-        rfd->cached_pos += len;
-    }
+  } else
     return len;
-  }
 #endif
 #ifdef RKTIO_SYSTEM_WINDOWS
   DWORD winwrote;
@@ -1741,13 +1698,6 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
       /* Convert converted count back to original count: */
       winwrote = recount_output_text(orig_buffer, buffer, winwrote);
       free((char *)buffer);
-    }
-
-    if (rfd->cached_pos_valid && rktio_fd_is_regular_file(rktio, rfd)) {
-      if ((rfd->modes & RKTIO_OPEN_TEXT) || (rfd->modes & RKTIO_OPEN_APPEND))
-        rfd->cached_pos_valid = 0; /* can't predict position */
-      else
-        rfd->cached_pos += winwrote;
     }
 
     return winwrote;

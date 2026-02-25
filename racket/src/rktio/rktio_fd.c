@@ -1,6 +1,7 @@
 #include "rktio.h"
 #include "rktio_private.h"
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #ifdef RKTIO_SYSTEM_UNIX
 # include <sys/stat.h>
@@ -25,6 +26,7 @@ struct rktio_fd_t {
 
 #ifdef RKTIO_SYSTEM_UNIX
   intptr_t fd;
+  FILE *fp; /* non-NULL for regular files; enables ftell-based position queries */
 # ifdef SOME_FDS_ARE_NOT_SELECTABLE
   int bufcount;
   char buffer[1];
@@ -57,6 +59,13 @@ struct rktio_fd_t {
 struct rktio_fd_transfer_t {
   rktio_fd_t fd;
 };
+
+#ifdef RKTIO_SYSTEM_UNIX
+FILE *rktio_fd_get_fp(rktio_fd_t *rfd)
+{
+  return rfd->fp;
+}
+#endif
 
 /*========================================================================*/
 /* Windows I/O helper structs                                             */
@@ -202,6 +211,7 @@ rktio_fd_t *rktio_system_fd(rktio_t *rktio, intptr_t system_fd, int modes)
 
 #ifdef RKTIO_SYSTEM_UNIX
   rfd->fd = system_fd;
+  rfd->fp = NULL;
   if (!(modes & (RKTIO_OPEN_REGFILE | RKTIO_OPEN_NOT_REGFILE | RKTIO_OPEN_SOCKET))) {
     struct stat buf;
     int cr;
@@ -213,6 +223,20 @@ rktio_fd_t *rktio_system_fd(rktio_t *rktio, intptr_t system_fd, int modes)
    if (!(modes & (RKTIO_OPEN_DIR | RKTIO_OPEN_NOT_DIR)))
      if (S_ISDIR(buf.st_mode))
        rfd->modes |= RKTIO_OPEN_DIR;
+  }
+  /* For regular files, wrap the fd in a FILE* so that ftell can avoid
+     lseek syscalls by using stdio's internal offset cache. */
+  if ((rfd->modes & RKTIO_OPEN_REGFILE) && !(modes & RKTIO_OPEN_SOCKET)) {
+    const char *fmode;
+    if ((modes & RKTIO_OPEN_READ) && (modes & RKTIO_OPEN_WRITE))
+      fmode = "r+b";
+    else if (modes & RKTIO_OPEN_WRITE)
+      fmode = (modes & RKTIO_OPEN_APPEND) ? "ab" : "r+b";
+    else
+      fmode = "rb";
+    rfd->fp = fdopen(rfd->fd, fmode);
+    /* If fdopen fails, we proceed without it; reads/writes fall back
+       to the raw fd and position queries fall back to lseek. */
   }
 #endif
 
@@ -505,6 +529,11 @@ static rktio_ok_t do_close(rktio_t *rktio /* maybe NULL */, rktio_fd_t *rfd, int
     cr = rktio_pending_open_release(rktio, rfd->pending);
   else
 # endif
+  if (rfd->fp) {
+    /* fclose also closes the underlying fd */
+    cr = fclose(rfd->fp);
+    rfd->fp = NULL;
+  } else
     cr = rktio_reliably_close_err(rfd->fd);
 
 # ifdef RKTIO_USE_FCNTL_AND_FORK_FOR_FILE_LOCKS
@@ -513,7 +542,7 @@ static rktio_ok_t do_close(rktio_t *rktio /* maybe NULL */, rktio_fd_t *rfd, int
 # endif
 
   if (cr && set_error) {
-    get_posix_error();   
+    get_posix_error();
     ok = 0;
   } else
     ok = 1;
@@ -990,6 +1019,18 @@ static intptr_t do_read_converted(rktio_t *rktio, rktio_fd_t *rfd, char *buffer,
 
   if (rktio_fd_is_regular_file(rktio, rfd)) {
     /* Reading regular file never blocks */
+    if (rfd->fp) {
+      /* Use fread so that stdio tracks the offset internally,
+         allowing ftell to avoid an lseek syscall. */
+      bc = fread(buffer, 1, len, rfd->fp);
+      if (bc == 0) {
+        if (feof(rfd->fp))
+          return RKTIO_READ_EOF;
+        rktio_get_posix_error(err);
+        return RKTIO_READ_ERROR;
+      }
+      return bc;
+    }
     do {
       bc = read(rfd->fd, buffer, len);
     } while ((bc == -1) && (errno == EINTR));
@@ -1564,6 +1605,25 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
   }
 # endif
 
+  if (rfd->fp && rktio_fd_is_regular_file(rktio, rfd)) {
+    /* Use fwrite so that stdio's offset cache stays in sync
+       with the actual file position, keeping ftell accurate. */
+    size_t wrote;
+    amt = LIMIT_REQUEST_SIZE(len);
+    wrote = fwrite(buffer, 1, amt, rfd->fp);
+    if (wrote == 0) {
+      if (ferror(rfd->fp)) {
+        rktio_get_posix_error(err);
+        return RKTIO_WRITE_ERROR;
+      }
+      return 0;
+    }
+    /* Flush so the data reaches the kernel and the raw fd's
+       offset stays consistent for any non-stdio consumers. */
+    fflush(rfd->fp);
+    return wrote;
+  }
+
   flags = fcntl(rfd->fd, F_GETFL, 0);
   if (!(flags & RKTIO_NONBLOCKING))
     fcntl(rfd->fd, F_SETFL, flags | RKTIO_NONBLOCKING);
@@ -1574,7 +1634,7 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
     do {
       len = write(rfd->fd, buffer, amt);
     } while ((len == -1) && (errno == EINTR));
-    
+
     /* If there was no room to write `amt` bytes, then it's
        possible that writing fewer bytes will succeed. That seems
        to be the case with FIFOs on Mac OS X, for example. */

@@ -49,6 +49,13 @@ struct background_sleep_t;
 intptr_t rktio_internal_fd_system_fd(rktio_fd_t *rfd);
 rktio_ok_t rktio_internal_close(rktio_t *rktio /* may be NULL */, rktio_fd_t *rfd, int set_error);
 
+#ifdef RKTIO_SYSTEM_UNIX
+# include <stdio.h>
+/* Returns the FILE* wrapper for the fd, or NULL if not a regular file.
+   Used by rktio_file.c for fseek/ftell-based position operations. */
+FILE *rktio_fd_get_fp(rktio_fd_t *rfd);
+#endif
+
 /*========================================================================*/
 /* Errors as `rktio_err_t`                                                */
 /*========================================================================*/

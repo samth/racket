@@ -49,12 +49,6 @@ struct background_sleep_t;
 intptr_t rktio_internal_fd_system_fd(rktio_fd_t *rfd);
 rktio_ok_t rktio_internal_close(rktio_t *rktio /* may be NULL */, rktio_fd_t *rfd, int set_error);
 
-/* Cached file position accessors (implementation in rktio_fd.c) */
-int rktio_fd_cached_pos_valid(rktio_fd_t *rfd);
-rktio_filesize_t rktio_fd_get_cached_pos(rktio_fd_t *rfd);
-void rktio_fd_set_cached_pos(rktio_fd_t *rfd, rktio_filesize_t pos);
-void rktio_fd_invalidate_cached_pos(rktio_fd_t *rfd);
-
 /*========================================================================*/
 /* Errors as `rktio_err_t`                                                */
 /*========================================================================*/

@@ -340,24 +340,17 @@ static int win_seekable(intptr_t fd)
 rktio_ok_t rktio_set_file_position(rktio_t *rktio, rktio_fd_t *rfd, rktio_filesize_t pos, int whence)
 {
   intptr_t fd = rktio_fd_system_fd(rktio, rfd);
-
+  
 #ifdef RKTIO_SYSTEM_UNIX
-  {
-    int os_whence;
-    rktio_filesize_t result;
-    if (whence == RKTIO_POSITION_FROM_START)
-      os_whence = SEEK_SET;
-    else
-      os_whence = SEEK_END;
-    result = BIG_OFF_T_IZE(lseek)(fd, pos, os_whence);
-    if (result < 0) {
-      get_posix_error();
-      rktio_fd_invalidate_cached_pos(rfd);
-      return 0;
-    }
-    rktio_fd_set_cached_pos(rfd, result);
-    return 1;
+  if (whence == RKTIO_POSITION_FROM_START)
+    whence = SEEK_SET;
+  else
+    whence = SEEK_END;
+  if (BIG_OFF_T_IZE(lseek)(fd, pos, whence) < 0) {
+    get_posix_error();
+    return 0;
   }
+  return 1;
 #endif
 #ifdef RKTIO_SYSTEM_WINDOWS
   if (win_seekable(fd)) {
@@ -370,12 +363,9 @@ rktio_ok_t rktio_set_file_position(rktio_t *rktio, rktio_fd_t *rfd, rktio_filesi
     if ((r == INVALID_SET_FILE_POINTER)
         && GetLastError() != NO_ERROR) {
       get_windows_error();
-      rktio_fd_invalidate_cached_pos(rfd);
       return 0;
-    } else {
-      rktio_fd_set_cached_pos(rfd, ((rktio_int64_t)hi_w << 32) | r);
+    } else
       return 1;
-    }
   } else {
     set_racket_error(RKTIO_ERROR_CANNOT_FILE_POSITION);
     return 0;
@@ -385,46 +375,33 @@ rktio_ok_t rktio_set_file_position(rktio_t *rktio, rktio_fd_t *rfd, rktio_filesi
 
 rktio_filesize_t *rktio_get_file_position(rktio_t *rktio, rktio_fd_t *rfd)
 {
+  intptr_t fd = rktio_fd_system_fd(rktio, rfd);
   rktio_filesize_t pll, *r;
 
-  /* Return the cached position if available, avoiding a syscall */
-  if (rktio_fd_cached_pos_valid(rfd)) {
-    r = malloc(sizeof(rktio_filesize_t));
-    *r = rktio_fd_get_cached_pos(rfd);
-    return r;
-  }
-
-  {
-    intptr_t fd = rktio_fd_system_fd(rktio, rfd);
-
 #ifdef RKTIO_SYSTEM_UNIX
-    pll = BIG_OFF_T_IZE(lseek)(fd, 0, 1);
-    if (pll < 0) {
-      get_posix_error();
-      return NULL;
-    }
+  pll = BIG_OFF_T_IZE(lseek)(fd, 0, 1);
+  if (pll < 0) {
+    get_posix_error();
+    return NULL;
+  }
 #endif
 #ifdef RKTIO_SYSTEM_WINDOWS
-    if (win_seekable(fd)) {
-      DWORD lo_w;
-      LONG hi_w;
-      hi_w = 0;
-      lo_w = SetFilePointer((HANDLE)fd, 0, &hi_w, FILE_CURRENT);
-      if ((lo_w == INVALID_SET_FILE_POINTER)
-          && GetLastError() != NO_ERROR) {
-        get_windows_error();
-        return NULL;
-      } else
-        pll = ((rktio_int64_t)hi_w << 32) | lo_w;
-    } else {
-      set_racket_error(RKTIO_ERROR_CANNOT_FILE_POSITION);
+  if (win_seekable(fd)) {
+    DWORD lo_w;
+    LONG hi_w;
+    hi_w = 0;
+    lo_w = SetFilePointer((HANDLE)fd, 0, &hi_w, FILE_CURRENT);
+    if ((lo_w == INVALID_SET_FILE_POINTER)
+        && GetLastError() != NO_ERROR) {
+      get_windows_error();
       return NULL;
-    }
-#endif
+    } else
+      pll = ((rktio_int64_t)hi_w << 32) | lo_w;
+  } else {
+    set_racket_error(RKTIO_ERROR_CANNOT_FILE_POSITION);
+    return NULL;
   }
-
-  /* Cache the result for future queries */
-  rktio_fd_set_cached_pos(rfd, pll);
+#endif
 
   r = malloc(sizeof(rktio_filesize_t));
   *r = pll;

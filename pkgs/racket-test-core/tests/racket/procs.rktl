@@ -498,6 +498,30 @@
 	 (test 1 meth 1 2)))))
  '(#t #f))
 
+;; Check that procedure-rename preserves method-arity-error
+(map
+ (lambda (jit?)
+   (parameterize ([eval-jit-enabled jit?])
+     (let* ([mk-f (lambda ()
+                     (eval (syntax-property #'(lambda (a b) a) 'method-arity-error #t)))]
+            [check-arity-error
+             (lambda (f cl?)
+               (test (if cl? '("given: 0")  '("expected: 1\n"))
+                     regexp-match #rx"expected: 1\n|given: 0$"
+                     (exn-message (with-handlers ([values values])
+                                    (apply f '(1))))))])
+       (let ([f (procedure-rename (mk-f) 'renamed)])
+         (test 2 procedure-arity f)
+         (check-arity-error f #f)
+         (test 1 f 1 2))
+       (let ([f (procedure-rename
+                 (eval (syntax-property #'(case-lambda [(a b) a] [(c d e) c]) 'method-arity-error #t))
+                 'renamed)])
+         (test '(2 3) procedure-arity f)
+         (check-arity-error f #t)
+         (test 1 f 1 2)))))
+ '(#t #f))
+
 ;; ----------------------------------------
 ;; Check error for non-procedures
 (err/rt-test (1 2 3) (lambda (x) (regexp-match? "not a procedure" (exn-message x))))

@@ -39,6 +39,8 @@
                  (garbage-collect-toplevels-enabled #t)]
                 [("--garbage-collect") "Compatibility alias for --prune-definitions"
                  (garbage-collect-toplevels-enabled #t)]
+                [("--vfasl") "Convert to vfasl format"
+                 (vfasl-enabled #t)]
                 [("--dump") dest-filename "Dump S-expression form to <dest-filename>"
                  (current-merged-output-file dest-filename)]
                 [("--dump-mi") dest-filename "Save machine-independent form to <dest-filename>"

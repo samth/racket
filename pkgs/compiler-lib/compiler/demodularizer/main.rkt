@@ -18,6 +18,7 @@
          "linklet.rkt"
          "one-mod.rkt"
          "path-submod.rkt"
+         "vfasl.rkt"
          "log.rkt")
 
 (provide demodularize
@@ -29,7 +30,8 @@
          syntax-object-preservation-enabled
          submodule-preservation-enabled
          current-merged-output-file
-         current-merged-machine-independent-output-file)
+         current-merged-machine-independent-output-file
+         vfasl-enabled)
 
 (define current-excluded-modules (make-parameter (set)))
 (define garbage-collect-toplevels-enabled (make-parameter #f))
@@ -39,6 +41,7 @@
 (define submodule-preservation-enabled (make-parameter #f))
 (define current-merged-output-file (make-parameter #f))
 (define current-merged-machine-independent-output-file (make-parameter #f))
+(define vfasl-enabled (make-parameter #f))
 
 (define (demodularize given-input-file [given-output-file #f]
                       #:includes [given-includes #f]
@@ -56,7 +59,8 @@
                       #:dump-output-file [dump-output-file (current-merged-output-file)]
                       #:dump-mi-output-file [dump-linklet-file (current-merged-machine-independent-output-file)]
                       #:keep-submodules? [keep-submodules? (submodule-preservation-enabled)]
-                      #:external-singetons? [external-singletons? keep-syntax?])
+                      #:external-singetons? [external-singletons? keep-syntax?]
+                      #:vfasl? [vfasl? (vfasl-enabled)])
   (define input-path (simple-form-path given-input-file))
 
   (define work-directory (or given-work-directory
@@ -253,6 +257,9 @@
                                    output-file))
      (write-module intermediate-file bundle)
 
+     (when (and vfasl? (not recompile?))
+       (error 'demodularize "vfasl conversion requires recompilation; incompatible with -M/--compile-any"))
+
      (cond
        [recompile?
         (log-demodularizer-info "Recompiling and rewriting bytecode")
@@ -263,4 +270,7 @@
                                 #:exists 'replace
                                 (lambda (out) (write zo out)))]
        [dump-linklet-file
-        (copy-file intermediate-file dump-linklet-file)])]))
+        (copy-file intermediate-file dump-linklet-file)])
+
+     (when vfasl?
+       (convert-zo-fasl-to-vfasl! output-file))]))

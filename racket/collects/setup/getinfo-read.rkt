@@ -157,36 +157,29 @@
 ;; interpret-quasiquote : sexp hash path -> value
 ;; Interprets a quasiquote template.
 (define (interpret-quasiquote tmpl env file)
-  (cond
-    [(and (pair? tmpl) (eq? (car tmpl) 'unquote)
-          (pair? (cdr tmpl)) (null? (cddr tmpl)))
-     (interpret-expr (cadr tmpl) env file)]
-    [(and (pair? tmpl) (eq? (car tmpl) 'unquote-splicing))
+  (match tmpl
+    [(list 'unquote e) (interpret-expr e env file)]
+    [(cons 'unquote-splicing _)
      (error 'get-info/read "unquote-splicing not allowed outside list context in ~a" file)]
-    [(pair? tmpl)
-     (let ([va (interpret-qq-element (car tmpl) env file)]
-           [vb (interpret-quasiquote (cdr tmpl) env file)])
+    [(cons a b)
+     (let ([va (interpret-qq-element a env file)]
+           [vb (interpret-quasiquote b env file)])
        (if (and (pair? va) (eq? (car va) 'spliced))
            (append (cdr va) vb)
            (cons va vb)))]
-    [(vector? tmpl)
-     (list->vector
-      (interpret-quasiquote (vector->list tmpl) env file))]
-    [else tmpl]))
+    [(? vector?)
+     (list->vector (interpret-quasiquote (vector->list tmpl) env file))]
+    [_ tmpl]))
 
 ;; Returns either a value or (cons 'spliced list) for splicing
 (define (interpret-qq-element tmpl env file)
-  (cond
-    [(and (pair? tmpl) (eq? (car tmpl) 'unquote)
-          (pair? (cdr tmpl)) (null? (cddr tmpl)))
-     (interpret-expr (cadr tmpl) env file)]
-    [(and (pair? tmpl) (eq? (car tmpl) 'unquote-splicing)
-          (pair? (cdr tmpl)) (null? (cddr tmpl)))
-     (cons 'spliced (interpret-expr (cadr tmpl) env file))]
-    [(pair? tmpl)
-     (let ([va (interpret-qq-element (car tmpl) env file)]
-           [vb (interpret-quasiquote (cdr tmpl) env file)])
+  (match tmpl
+    [(list 'unquote e) (interpret-expr e env file)]
+    [(list 'unquote-splicing e) (cons 'spliced (interpret-expr e env file))]
+    [(cons a b)
+     (let ([va (interpret-qq-element a env file)]
+           [vb (interpret-quasiquote b env file)])
        (if (and (pair? va) (eq? (car va) 'spliced))
            (append (cdr va) vb)
            (cons va vb)))]
-    [else tmpl]))
+    [_ tmpl]))

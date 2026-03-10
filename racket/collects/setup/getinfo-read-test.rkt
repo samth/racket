@@ -46,7 +46,8 @@
     compile-omit-paths compile-omit-files
     binary-keep-files binary-lib-files update-implies
     test-command-line-arguments test-timeouts
-    test-responsibles test-randoms))
+    test-responsibles test-randoms
+    language-family purpose))
 
 (for ([dir (in-list all-dirs)])
   (define info-old
@@ -84,7 +85,7 @@
 ;; --- Performance benchmark ---
 
 (printf "=== Performance Benchmark ===\n")
-(define iterations 10)
+(define iterations 20)
 
 ;; Warm up filesystem cache
 (for ([dir (in-list all-dirs)])
@@ -117,11 +118,12 @@
 (define t1-old (current-inexact-milliseconds))
 (define time-old (- t1-old t0-old))
 
+(define n (* iterations (length all-dirs)))
 (printf "Read-based parser: ~a ms total (~a ms per file)\n"
         (real->decimal-string time-new 1)
-        (real->decimal-string (/ time-new (* iterations (length all-dirs))) 3))
+        (real->decimal-string (/ time-new n) 3))
 (printf "Eval-based parser: ~a ms total (~a ms per file)\n"
         (real->decimal-string time-old 1)
-        (real->decimal-string (/ time-old (* iterations (length all-dirs))) 3))
+        (real->decimal-string (/ time-old n) 3))
 (printf "Speedup: ~ax\n"
         (real->decimal-string (/ time-old time-new) 2))

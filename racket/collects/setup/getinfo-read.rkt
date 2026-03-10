@@ -4,14 +4,21 @@
 ;; Instead of evaluating info.rkt as a Racket module, this reads
 ;; the S-expression and directly interprets the restricted language.
 ;;
-;; Performance: avoids the cost of with-module-reading-parameterization
-;; by reading the #lang line directly and parsing body forms with plain read.
-;; Uses cond/eq? dispatch instead of match for the interpreter hot path.
+;; Performance gains come from avoiding namespace creation, module
+;; evaluation, and dynamic-require. The reader security features
+;; (with-module-reading-parameterization and reader guard) are
+;; preserved — they add negligible cost.
+
+(require syntax/modread)
 
 (provide get-info/full/read)
 
-;; Allowed #lang values for info.rkt files
-(define allowed-langs '("info" "setup/infotab"))
+;; These `require's ensure that the `#lang info' readers are loaded,
+;; so that no reader guard will be invoked for the reader itself.
+(require (only-in setup/infotab)
+         (only-in info)
+         (only-in setup/infotab/lang/reader)
+         (only-in (submod info reader)))
 
 ;; get-info/full/read : path -> info/#f
 ;; Returns an info procedure or #f if no info file exists.
@@ -26,43 +33,54 @@
            (append args (list file))))
   (and (file-exists? file)
        (let ()
-         ;; Read the file directly: skip #lang line, read body forms
-         (define-values (lang body-forms)
-           (read-info-file file err))
-         ;; Validate the language
-         (unless (member lang allowed-langs)
-           (err "has illegal #lang ~a" lang))
-         ;; Parse and interpret the body
-         (parse-info-body body-forms file err))))
+         (define content
+           (with-input-from-file file
+             (lambda ()
+               (parameterize ([current-reader-guard
+                               (lambda (x)
+                                 (if (or (eq? x 'setup/infotab/lang/reader)
+                                         (eq? x 'info/lang/reader)
+                                         (equal? x '(submod setup/infotab reader))
+                                         (equal? x '(submod info reader)))
+                                   x
+                                   (err "has illegal #lang or #reader")))])
+                 (begin0
+                   (with-module-reading-parameterization read)
+                   (unless (eof-object? (read))
+                     (err "has multiple expressions")))))))
+         (parse-module-form content file err))))
 
-;; read-info-file : path (fmt args ... -> error) -> (values string (listof sexp))
-;; Reads an info file, returning the #lang name and the list of body forms.
-(define (read-info-file file err)
-  (define p (open-input-file file))
-  (dynamic-wind
-    void
-    (lambda ()
-      ;; Read and validate the #lang line
-      (define first-line (read-line p))
-      (define lang
-        (cond
-          [(and (string? first-line)
-                (> (string-length first-line) 6)
-                (equal? (substring first-line 0 6) "#lang "))
-           (substring first-line 6)]
-          [else (err "does not start with #lang")]))
-      ;; Read all body forms
-      (define forms
-        (let loop ([acc '()])
-          (define v (read p))
-          (if (eof-object? v)
-              (reverse acc)
-              (loop (cons v acc)))))
-      (values lang forms))
-    (lambda () (close-input-port p))))
+;; parse-module-form : sexp path (string ... -> error) -> info-proc
+;; Validates the module structure and parses the body.
+(define (parse-module-form content file err)
+  (unless (and (pair? content)
+               (eq? (car content) 'module)
+               (pair? (cdr content))
+               (eq? (cadr content) 'info)
+               (pair? (cddr content))
+               (pair? (cdddr content)))
+    (err "does not contain a module of the right shape"))
+  (define lang (caddr content))
+  (unless (or (equal? lang '(lib "infotab.rkt" "setup"))
+              (equal? lang '(lib "infotab.ss" "setup"))
+              (equal? lang '(lib "setup/infotab.rkt"))
+              (equal? lang '(lib "setup/infotab.ss"))
+              (equal? lang '(lib "main.rkt" "info"))
+              (eq? lang 'setup/infotab)
+              (eq? lang 'info))
+    (err "does not contain a module of the right shape"))
+  (define body (cdddr content))
+  ;; Extract body from #%module-begin
+  (unless (and (pair? body)
+               (= 1 (length body))
+               (pair? (car body))
+               (eq? '#%module-begin (caar body)))
+    (err "unexpected module body shape"))
+  (define defns (cdar body))
+  (parse-info-body defns file err))
 
 ;; parse-info-body : (listof sexp) path (string ... -> error) -> info-proc
-;; Parses the body forms and returns an info lookup procedure.
+;; Parses the define forms and returns an info lookup procedure.
 (define (parse-info-body exprs file err)
   ;; Build a hash table from definitions
   (define ht
@@ -82,7 +100,7 @@
                   (loop (cdr exprs)
                         (hash-set ht id (interpret-expr rhs ht file))))
                 (err "expected define, got ~e" expr))))))
-  ;; Return the info procedure directly (avoid allocating a closure per call)
+  ;; Return the info procedure
   (lambda (key [default (lambda () (error 'info.rkt "no info for ~a" key))])
     (unless (and (procedure? default)
                  (procedure-arity-includes? default 0))
@@ -102,7 +120,7 @@
     [(pair? expr)
      (let ([head (car expr)])
        (cond
-         ;; quote - very common (quoted lists/symbols)
+         ;; quote — very common (quoted lists/symbols)
          [(eq? head 'quote) (cadr expr)]
          ;; list constructor
          [(eq? head 'list)

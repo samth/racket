@@ -31,24 +31,25 @@
   (define (err fmt . args)
     (apply error 'get-info/read (string-append "info file " fmt " in ~a")
            (append args (list file))))
-  (and (file-exists? file)
-       (let ()
-         (define content
-           (with-input-from-file file
-             (lambda ()
-               (parameterize ([current-reader-guard
-                               (lambda (x)
-                                 (if (or (eq? x 'setup/infotab/lang/reader)
-                                         (eq? x 'info/lang/reader)
-                                         (equal? x '(submod setup/infotab reader))
-                                         (equal? x '(submod info reader)))
-                                   x
-                                   (err "has illegal #lang or #reader")))])
-                 (begin0
-                   (with-module-reading-parameterization read)
-                   (unless (eof-object? (read))
-                     (err "has multiple expressions")))))))
-         (parse-module-form content file err))))
+  (define content
+    (with-handlers ([exn:fail:filesystem:errno?
+                     (lambda (e) #f)])
+      (with-input-from-file file
+        (lambda ()
+          (parameterize ([current-reader-guard
+                          (lambda (x)
+                            (if (or (eq? x 'setup/infotab/lang/reader)
+                                    (eq? x 'info/lang/reader)
+                                    (equal? x '(submod setup/infotab reader))
+                                    (equal? x '(submod info reader)))
+                              x
+                              (err "has illegal #lang or #reader")))])
+            (begin0
+              (with-module-reading-parameterization read)
+              (unless (eof-object? (read))
+                (err "has multiple expressions"))))))))
+  (and content
+       (parse-module-form content file err)))
 
 ;; parse-module-form : sexp path (string ... -> error) -> info-proc
 ;; Validates the module structure and parses the body.

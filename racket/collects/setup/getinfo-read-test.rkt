@@ -21,14 +21,17 @@
       (with-input-from-file file
         (lambda ()
           (with-module-reading-parameterization read))))
-    (match content
-      [`(module info ,_lang (#%module-begin ,body ...))
-       (for/list ([form (in-list body)]
-                  #:when (match form
-                           [`(define ,id ,_) (symbol? id)]
-                           [_ #f]))
-         (match form [`(define ,id ,_) id]))]
-      [_ #f])))
+    (define body
+      (match content
+        [`(module info ,_lang (#%module-begin ,body ...)) body]
+        [`(module info ,_lang ,body ...) body]
+        [_ #f]))
+    (and body
+         (for/list ([form (in-list body)]
+                    #:when (match form
+                             [`(define ,id ,_) (symbol? id)]
+                             [_ #f]))
+           (match form [`(define ,id ,_) id])))))
 
 ;; --- Gather all info.rkt directories ---
 

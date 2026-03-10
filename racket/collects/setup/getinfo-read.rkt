@@ -55,16 +55,21 @@
 ;; parse-module-form : sexp path (string ... -> error) -> info-proc
 ;; Validates the module structure and parses the body.
 (define (parse-module-form content file err)
+  (define info-lang?
+    (match-lambda
+      [(or '(lib "infotab.rkt" "setup")
+           '(lib "infotab.ss" "setup")
+           '(lib "setup/infotab.rkt")
+           '(lib "setup/infotab.ss")
+           '(lib "main.rkt" "info")
+           'setup/infotab
+           'info)
+       #t]
+      [_ #f]))
   (match content
-    [(list 'module 'info
-           (or '(lib "infotab.rkt" "setup")
-               '(lib "infotab.ss" "setup")
-               '(lib "setup/infotab.rkt")
-               '(lib "setup/infotab.ss")
-               '(lib "main.rkt" "info")
-               'setup/infotab
-               'info)
-           (list '#%module-begin defns ...))
+    [(list 'module 'info (? info-lang?) (list '#%module-begin defns ...))
+     (parse-info-body defns file err)]
+    [(list 'module 'info (? info-lang?) defns ...)
      (parse-info-body defns file err)]
     [_ (err "does not contain a module of the right shape")]))
 

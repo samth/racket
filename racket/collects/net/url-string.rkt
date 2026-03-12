@@ -174,8 +174,10 @@
 
 ;; Approximation to IPv6 literal addresses, to be recognized
 ;; in "[...]" when decoding and put back in "[...]" when encoding;
-;; having at least one ":" distinguishes from other address forms:
-(define ipv6-hex "[0-9a-fA-F:]*:[0-9a-fA-F:]*")
+;; having at least one ":" distinguishes from other address forms.
+;; Uses [^]]* to allow IPv4-mapped addresses (e.g., [::ffff:127.0.0.1]),
+;; zone IDs (e.g., [fe80::1%25eth0]), and other valid bracket-enclosed forms:
+(define ipv6-hex "[^]]*:[^]]*")
 (define rx:ipv6-hex (regexp (string-append "^" ipv6-hex "$")))
 
 ;; URL parsing regexp

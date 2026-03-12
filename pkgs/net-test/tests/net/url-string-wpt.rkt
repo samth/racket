@@ -279,6 +279,74 @@
    (url->string (string->url "http://[::ffff:127.0.0.1]:8080/path")) => "http://[::ffff:127.0.0.1]:8080/path"
    (url->string (string->url "http://[fe80::1%25eth0]/")) => "http://[fe80::1%25eth0]/"
   )
+
+  ;; === WHATWG URL Standard mode tests ===
+  ;; These test cases require WHATWG-specific behavior and are run with
+  ;; (current-url-standard 'whatwg). They correspond to WPT test cases that
+  ;; differ from RFC 3986 behavior.
+  (parameterize ([current-url-standard 'whatwg])
+
+    ;; Userinfo normalization: trailing colon stripped, empty credentials → #f
+    (test-wpt-parse "https://test:@test" "https" "test" "" "" "test" "")
+    (test-wpt-parse "https://:@test" "https" "test" "" "" "" "")
+    (test-wpt-parse "non-special://test:@test/x" "non-special" "test" "" "" "test" "")
+    (test-wpt-parse "non-special://:@test/x" "non-special" "test" "" "" "" "")
+    (test-wpt-parse "http://@www.example.com" "http" "www.example.com" "" "" "" "")
+    (test-wpt-parse "http://@pple.com" "http" "pple.com" "" "" "" "")
+    (test-wpt-parse "http://a:@www.example.com" "http" "www.example.com" "" "" "a" "")
+    (test-wpt-parse "http://:@www.example.com" "http" "www.example.com" "" "" "" "")
+
+    ;; Userinfo percent-encoding preserved (not decoded)
+    (test-wpt-parse "http://%25DOMAIN:foobar@foodomain.com/" "http" "foodomain.com" "" "" "%25DOMAIN" "foobar")
+
+    ;; Default port stripping for special schemes
+    (test-wpt-parse "http://foo:80/" "http" "foo" "" "" "" "")
+    (test-wpt-parse "https://foo:443/" "https" "foo" "" "" "" "")
+    (test-wpt-parse "ftp://foo:21/" "ftp" "foo" "" "" "" "")
+    (test-wpt-parse "ws://foo:80/" "ws" "foo" "" "" "" "")
+    (test-wpt-parse "wss://foo:443/" "wss" "foo" "" "" "" "")
+
+    ;; Special scheme authority inference (single-slash and no-slash)
+    (test-wpt-parse "http:/example.com/" "http" "example.com" "" "" "" "")
+    (test-wpt-parse "ftp:/example.com/" "ftp" "example.com" "" "" "" "")
+    (test-wpt-parse "https:/example.com/" "https" "example.com" "" "" "" "")
+    (test-wpt-parse "ws:/example.com/" "ws" "example.com" "" "" "" "")
+    (test-wpt-parse "wss:/example.com/" "wss" "example.com" "" "" "" "")
+    (test-wpt-parse "http:example.com/" "http" "example.com" "" "" "" "")
+    (test-wpt-parse "ftp:example.com/" "ftp" "example.com" "" "" "" "")
+    (test-wpt-parse "https:example.com/" "https" "example.com" "" "" "" "")
+    (test-wpt-parse "ws:example.com/" "ws" "example.com" "" "" "" "")
+    (test-wpt-parse "wss:example.com/" "wss" "example.com" "" "" "" "")
+
+    ;; Special scheme authority inference with credentials
+    (test-wpt-parse "http:@www.example.com" "http" "www.example.com" "" "" "" "")
+    (test-wpt-parse "http:/@www.example.com" "http" "www.example.com" "" "" "" "")
+    (test-wpt-parse "http:a:b@www.example.com" "http" "www.example.com" "" "" "a" "b")
+    (test-wpt-parse "http:/a:b@www.example.com" "http" "www.example.com" "" "" "a" "b")
+    (test-wpt-parse "http::b@www.example.com" "http" "www.example.com" "" "" "" "b")
+    (test-wpt-parse "http:/:b@www.example.com" "http" "www.example.com" "" "" "" "b")
+    (test-wpt-parse "http:a:@www.example.com" "http" "www.example.com" "" "" "a" "")
+    (test-wpt-parse "http:/a:@www.example.com" "http" "www.example.com" "" "" "a" "")
+
+    ;; Fragment percent-encoding (WHATWG encodes space, <, >, `, non-ASCII)
+    (test-wpt-parse "lolscheme:x x#x x" "lolscheme" "" "" "#x%20x" "" "")
+    (test-wpt-parse "http://foo.bar/baz?qux#foo<bar" "http" "foo.bar" "" "#foo%3Cbar" "" "")
+    (test-wpt-parse "http://foo.bar/baz?qux#foo>bar" "http" "foo.bar" "" "#foo%3Ebar" "" "")
+    (test-wpt-parse "http://foo.bar/baz?qux#foo`bar" "http" "foo.bar" "" "#foo%60bar" "" "")
+    (test-wpt-parse "http://example.org/test?a#%EF" "http" "example.org" "" "#%EF" "" "")
+    (test-wpt-parse "data:text/plain,test#<foo> <bar>" "data" "" "" "#%3Cfoo%3E%20%3Cbar%3E" "" "")
+    (test-wpt-parse "about:blank#<foo> <bar>" "about" "" "" "#%3Cfoo%3E%20%3Cbar%3E" "" "")
+
+    ;; Non-special scheme host: case preserved, non-ASCII percent-encoded
+    (test-wpt-parse "sc://ñ.test/" "sc" "%C3%B1.test" "" "" "" "")
+    (test-wpt-parse "sc://ñ" "sc" "%C3%B1" "" "" "" "")
+    (test-wpt-parse "sc://ñ?x" "sc" "%C3%B1" "" "" "" "")
+    (test-wpt-parse "sc://ñ#x" "sc" "%C3%B1" "" "#x" "" "")
+    (test-wpt-parse "non-special://%E2%80%A0/" "non-special" "%E2%80%A0" "" "" "" "")
+    (test-wpt-parse "non-special://H%4fSt/path" "non-special" "H%4fSt" "" "" "" "")
+    (test-wpt-parse "asdf://%43%7C/" "asdf" "%43%7C" "" "" "" "")
+    (test-wpt-parse "sc://faß.ExAmPlE/" "sc" "fa%C3%9F.ExAmPlE" "" "" "" "")
+  )
 )
 
 (module+ test (require (submod ".." main))) ; for raco test & drdr

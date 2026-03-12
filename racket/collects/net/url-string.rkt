@@ -37,6 +37,7 @@
         [path   (url-path url)]
         [query  (url-query url)]
         [fragment (url-fragment url)]
+        [whatwg? (eq? (current-url-standard) 'whatwg)]
         [sa list]
         [sa* (lambda (l)
                (apply string-append
@@ -64,7 +65,9 @@
       (if scheme (sa scheme ":") null)
       (if (or user host port)
         (sa "//"
-            (if user (sa (uri-userinfo-encode user) "@") null)
+            (if user
+                (sa (if whatwg? user (uri-userinfo-encode user)) "@")
+                null)
             (if host
                 (if (regexp-match? rx:ipv6-hex host)
                     (sa "[" host "]")
@@ -77,7 +80,9 @@
       (combine-path-strings (url-path-absolute? url) path)
       ;; (if query (sa "?" (uri-encode query)) "")
       (if (null? query) null (sa "?" (alist->form-urlencoded query)))
-      (if fragment (sa "#" (uri-encode* fragment)) null)))))
+      (if fragment
+          (sa "#" (if whatwg? fragment (uri-encode* fragment)))
+          null)))))
 
 ;; transliteration of code in rfc 3986, section 5.2.2
 (define (combine-url/relative Base string)
@@ -180,6 +185,78 @@
 (define ipv6-hex "[^]]*:[^]]*")
 (define rx:ipv6-hex (regexp (string-append "^" ipv6-hex "$")))
 
+;; WHATWG URL Standard support
+(define whatwg-special-schemes '("http" "https" "ftp" "ws" "wss"))
+(define whatwg-default-ports
+  '(("http" . 80) ("https" . 443) ("ftp" . 21) ("ws" . 80) ("wss" . 443)))
+
+(define (whatwg-special? scheme)
+  (and scheme (and (member scheme whatwg-special-schemes) #t)))
+
+(define (byte->percent-hex b)
+  (define s (number->string b 16))
+  (string-append "%" (string-upcase (if (< b 16) (string-append "0" s) s))))
+
+(define (char-hex? c)
+  (or (char<=? #\0 c #\9) (char<=? #\a c #\f) (char<=? #\A c #\F)))
+
+;; In WHATWG mode, normalize the userinfo field:
+;; - Strip trailing colon (empty password)
+;; - Map empty userinfo to #f
+;; - Do NOT percent-decode
+(define (whatwg-normalize-user user)
+  (and user
+       (let ([m (regexp-match #rx"^([^:]*):(.*)$" user)])
+         (if m
+             (let ([username (cadr m)]
+                   [password (caddr m)])
+               (cond
+                 [(and (equal? username "") (equal? password "")) #f]
+                 [(equal? password "") (if (equal? username "") #f username)]
+                 [else user]))
+             (if (equal? user "") #f user)))))
+
+;; In WHATWG mode, encode fragment per the WHATWG fragment percent-encode set:
+;; C0 controls, space, ", <, >, `, DEL, and non-ASCII.
+;; Preserve existing valid %XX sequences.
+(define (whatwg-encode-fragment raw)
+  (define out (open-output-string))
+  (define len (string-length raw))
+  (let loop ([i 0])
+    (when (< i len)
+      (define c (string-ref raw i))
+      (cond
+        ;; Preserve existing valid percent-encoding
+        [(and (char=? c #\%)
+              (< (+ i 2) len)
+              (char-hex? (string-ref raw (+ i 1)))
+              (char-hex? (string-ref raw (+ i 2))))
+         (write-string (substring raw i (+ i 3)) out)
+         (loop (+ i 3))]
+        ;; Encode characters in the fragment percent-encode set
+        [(let ([n (char->integer c)])
+           (or (< n #x20) (= n #x20) (= n #x22)
+               (= n #x3C) (= n #x3E) (= n #x60)
+               (> n #x7E)))
+         (for ([b (in-bytes (string->bytes/utf-8 (string c)))])
+           (write-string (byte->percent-hex b) out))
+         (loop (+ i 1))]
+        [else
+         (write-char c out)
+         (loop (+ i 1))])))
+  (get-output-string out))
+
+;; In WHATWG mode for non-special schemes, percent-encode non-ASCII
+;; characters in the host without lowercasing.
+(define (whatwg-encode-opaque-host host)
+  (define out (open-output-string))
+  (for ([c (in-string host)])
+    (if (> (char->integer c) #x7E)
+        (for ([b (in-bytes (string->bytes/utf-8 (string c)))])
+          (write-string (byte->percent-hex b) out))
+        (write-char c out)))
+  (get-output-string out))
+
 ;; URL parsing regexp
 ;; this is roughly following the regexp in Appendix B of rfc 3986, except for using
 ;; `*' instead of `+' for the scheme part (it is checked later anyway, and
@@ -217,6 +294,18 @@
 ;; string->url : str -> url
 ;; Original version by Neil Van Dyke
 (define (string->url str)
+  (define whatwg? (eq? (current-url-standard) 'whatwg))
+  ;; WHATWG: for special schemes without //, insert // after scheme:
+  (define parse-str
+    (if whatwg?
+        (let ([m (regexp-match #rx"^([a-zA-Z][a-zA-Z0-9+.-]*):(.*)" str)])
+          (if (and m
+                   (whatwg-special? (string-downcase (cadr m)))
+                   (not (regexp-match? #rx"^//" (caddr m))))
+              (string-append (cadr m) "://"
+                             (regexp-replace #rx"^/+" (caddr m) ""))
+              str))
+        str))
   (apply
    (lambda (scheme user ipv6host host port path query fragment)
      (when (and scheme (not (regexp-match? #rx"^[a-zA-Z][a-zA-Z0-9+.-]*$"
@@ -240,9 +329,18 @@
        (let* ([scheme   (and scheme (string-downcase scheme))]
               [host     (cond  [win-file-url (url-host win-file-url)]
                                [ipv6host (and ipv6host (string-downcase ipv6host))]
-                               [else (and host (string-downcase host))])]
-              [user     (uri-decode/maybe user)]
+                               [else (and host
+                                          (if (and whatwg? (not (whatwg-special? scheme)))
+                                              (whatwg-encode-opaque-host host)
+                                              (string-downcase host)))])]
+              [user     (if whatwg?
+                            (whatwg-normalize-user user)
+                            (uri-decode/maybe user))]
               [port     (and port (string->number port))]
+              [port     (if (and whatwg? port scheme)
+                            (let ([default (assoc scheme whatwg-default-ports)])
+                              (if (and default (= port (cdr default))) #f port))
+                            port)]
               [abs?     (or (equal? "file" scheme)
                             (regexp-match? #rx"^/" path))]
               [use-abs? (or abs?
@@ -253,14 +351,16 @@
                             (url-path win-file-url)
                             (separate-path-strings path))]
               [query    (if query (form-urlencoded->alist query) '())]
-              [fragment (uri-decode/maybe fragment)])
+              [fragment (if whatwg?
+                            (and fragment (whatwg-encode-fragment fragment))
+                            (uri-decode/maybe fragment))])
          (when (and (not abs?) (pair? path) host)
            (url-error (string-append "invalid URL string;\n"
                                      " host provided with non-absolute path (i.e., missing a slash)\n"
                                      "  in: ~e")
                       str))
          (make-url scheme user host port use-abs? path query fragment))))
-   (cdr (regexp-match url-regexp str))))
+   (cdr (regexp-match url-regexp parse-str))))
 
 (define (uri-decode/maybe f) (friendly-decode/maybe f uri-decode))
 
@@ -419,6 +519,8 @@
 
 (define current-url-encode-mode (make-parameter 'recommended))
 
+(define current-url-standard (make-parameter 'rfc3986))
+
 (define (uri-encode* str)
   (case (current-url-encode-mode)
     [(unreserved) (uri-unreserved-encode str)]
@@ -446,4 +548,5 @@
  (rename -url-exception? url-exception? (any/c . -> . boolean?))
  (file-url-path-convention-type
   (parameter/c (one-of/c 'unix 'windows)))
- (current-url-encode-mode (parameter/c (one-of/c 'recommended 'unreserved))))
+ (current-url-encode-mode (parameter/c (one-of/c 'recommended 'unreserved)))
+ (current-url-standard (parameter/c (one-of/c 'rfc3986 'whatwg))))

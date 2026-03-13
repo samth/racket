@@ -282,9 +282,9 @@
 
   ;; === WHATWG URL Standard mode tests ===
   ;; These test cases require WHATWG-specific behavior and are run with
-  ;; (current-url-standard 'whatwg). They correspond to WPT test cases that
+  ;; (current-url-parsing-mode 'whatwg). They correspond to WPT test cases that
   ;; differ from RFC 3986 behavior.
-  (parameterize ([current-url-standard 'whatwg])
+  (parameterize ([current-url-parsing-mode 'whatwg])
 
     ;; Userinfo normalization: trailing colon stripped, empty credentials → #f
     (test-wpt-parse "https://test:@test" "https" "test" "" "" "test" "")

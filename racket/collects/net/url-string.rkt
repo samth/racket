@@ -37,7 +37,7 @@
         [path   (url-path url)]
         [query  (url-query url)]
         [fragment (url-fragment url)]
-        [whatwg? (eq? (current-url-standard) 'whatwg)]
+        [whatwg? (eq? (current-url-parsing-mode) 'whatwg)]
         [sa list]
         [sa* (lambda (l)
                (apply string-append
@@ -294,7 +294,7 @@
 ;; string->url : str -> url
 ;; Original version by Neil Van Dyke
 (define (string->url str)
-  (define whatwg? (eq? (current-url-standard) 'whatwg))
+  (define whatwg? (eq? (current-url-parsing-mode) 'whatwg))
   ;; WHATWG: for special schemes without //, insert // after scheme:
   (define parse-str
     (if whatwg?
@@ -519,7 +519,7 @@
 
 (define current-url-encode-mode (make-parameter 'recommended))
 
-(define current-url-standard (make-parameter 'rfc3986))
+(define current-url-parsing-mode (make-parameter 'rfc3986))
 
 (define (uri-encode* str)
   (case (current-url-encode-mode)
@@ -549,4 +549,4 @@
  (file-url-path-convention-type
   (parameter/c (one-of/c 'unix 'windows)))
  (current-url-encode-mode (parameter/c (one-of/c 'recommended 'unreserved)))
- (current-url-standard (parameter/c (one-of/c 'rfc3986 'whatwg))))
+ (current-url-parsing-mode (parameter/c (one-of/c 'rfc3986 'whatwg))))

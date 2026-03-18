@@ -400,18 +400,20 @@
   (unless (list? l) (raise-argument-error 'remove-duplicates "list?" l))
   (let* ([len (length l)]
          [h (cond [(<= len 1) #t]
-                  [(<= len 40) #f]
-                  [(eq? =? eq?) (make-hasheq)]
-                  [(eq? =? equal?) (make-hash)]
-                  [(eq? =? equal-always?) (make-hashalw)]
+                  ;; The thresholds below were determined by benchmarking
+                  ;; with lists of length n holding (random n) numbers.
+                  ;; The crossover point differs by equality type because
+                  ;; eq?/memq is much faster than equal?/member for the
+                  ;; linear scan, while hash table overhead is similar.
+                  [(eq? =? eq?) (if (<= len 120) #f (make-hasheq))]
+                  [(eq? =? equal?) (if (<= len 20) #f (make-hash))]
+                  [(eq? =? equal-always?) (if (<= len 20) #f (make-hashalw))]
                   [else #f])])
     (case h
       [(#t) l]
       [(#f)
        ;; plain n^2 list traversal (optimized for common cases) for short lists
-       ;; and for equalities other than `eq?' or `equal?'  The length threshold
-       ;; above (40) was determined by trying it out with lists of length n
-       ;; holding (random n) numbers.
+       ;; and for equalities other than `eq?' or `equal?'
        (let ([key (or key (λ (x) x))])
          (let-syntax ([loop (syntax-rules ()
                               [(_ search)

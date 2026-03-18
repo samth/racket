@@ -145,11 +145,13 @@ Now ill-typed calls will be caught:
 (cairo_create (cairo_create bt-surface))
 ```
 
-Since our old `bt-surface` value came from `racket/draw` and doesn't have
-the `cairo_surface_t*` tag, we need to cast it:
+Since our `bt-surface` value came from `racket/draw`, it is an old-style
+`cpointer` rather than an `ffi2` pointer. We first convert it with
+`cpointer->ffi2-ptr`, then cast it to add the right tag:
 
 ```racket
-(define ctx (cairo_create (ffi2-cast bt-surface #:to cairo_surface_t*)))
+(define ctx (cairo_create (ffi2-cast (cpointer->ffi2-ptr bt-surface)
+                                     #:to cairo_surface_t*)))
 ```
 
 ### Reducing boilerplate with define-ffi2-definer
@@ -191,6 +193,7 @@ base type:
 (define line-cap-symbols '(butt round square))
 
 (define-ffi2-type cairo_line_cap_t int_t
+  #:predicate (lambda (v) (and (symbol? v) (member v line-cap-symbols) #t))
   #:racket->c (lambda (sym) (index-of line-cap-symbols sym))
   #:c->racket (lambda (i) (list-ref line-cap-symbols i)))
 
@@ -254,6 +257,7 @@ your definitions area:
 ;; enum type
 (define line-cap-symbols '(butt round square))
 (define-ffi2-type cairo_line_cap_t int_t
+  #:predicate (lambda (v) (and (symbol? v) (member v line-cap-symbols) #t))
   #:racket->c (lambda (sym) (index-of line-cap-symbols sym))
   #:c->racket (lambda (i) (list-ref line-cap-symbols i)))
 
@@ -269,7 +273,7 @@ your definitions area:
 (define-cairo cairo_stroke    (cairo_t* . -> . void_t))
 (define-cairo cairo_set_line_cap   (cairo_t* cairo_line_cap_t . -> . void_t))
 
-(define ctx (cairo_create (ffi2-cast bt-surface #:to cairo_surface_t*)))
+(define ctx (cairo_create (ffi2-cast (cpointer->ffi2-ptr bt-surface) #:to cairo_surface_t*)))
 
 ;; helper
 (define (show bt)
@@ -469,7 +473,7 @@ to fit the bitmap width:
 
 (define txt-bt (make-bitmap 256 256))
 (define txt-surface (send txt-bt get-handle))
-(define txt-ctx (cairo_create (ffi2-cast txt-surface #:to cairo_surface_t*)))
+(define txt-ctx (cairo_create (ffi2-cast (cpointer->ffi2-ptr txt-surface) #:to cairo_surface_t*)))
 
 ;; String -> Void
 ;; Draws a string scaled horizontally to fit the bitmap
@@ -508,6 +512,7 @@ Let's set up a cleaner version of our bindings with a helper function:
 
 (define line-cap-symbols '(butt round square))
 (define-ffi2-type cairo_line_cap_t int_t
+  #:predicate (lambda (v) (and (symbol? v) (member v line-cap-symbols) #t))
   #:racket->c (lambda (sym) (index-of line-cap-symbols sym))
   #:c->racket (lambda (i) (list-ref line-cap-symbols i)))
 
@@ -527,7 +532,7 @@ Let's set up a cleaner version of our bindings with a helper function:
 (define (do-cairo f)
   (define bt (make-bitmap 256 256))
   (define bt-surface (send bt get-handle))
-  (f (cairo_create (ffi2-cast bt-surface #:to cairo_surface_t*)))
+  (f (cairo_create (ffi2-cast (cpointer->ffi2-ptr bt-surface) #:to cairo_surface_t*)))
   (linewidth 2 (frame (bitmap bt))))
 ```
 
@@ -568,6 +573,7 @@ for the sub-cases:
 ;; The path data type enum
 (define path-data-type-symbols '(move-to line-to curve-to close-path))
 (define-ffi2-type cairo_path_data_type_t int_t
+  #:predicate (lambda (v) (and (symbol? v) (member v path-data-type-symbols) #t))
   #:racket->c (lambda (sym) (index-of path-data-type-symbols sym))
   #:c->racket (lambda (i) (list-ref path-data-type-symbols i)))
 
@@ -601,12 +607,12 @@ For the path struct itself, we need a pointer to the data array and a length.
 Let's start with a simple approach using raw pointer access:
 
 ```racket
-(define _cairo_status_t int_t)
+(define-ffi2-type cairo_status_t int_t)
 
 ;; We define a simplified path type with a raw pointer for the data array
 (define-ffi2-type simple_cairo_path_t
   (struct
-    [status _cairo_status_t]
+    [status cairo_status_t]
     [data   void_t*]
     [num_data int_t]))
 ```
@@ -631,15 +637,8 @@ Now we can get a path from Cairo:
 ### Low-level pointer operations
 
 With `ffi2`, you dereference pointers using `ffi2-ref` (analogous to the old
-`ptr-ref`). Let's read the path struct from our pointer:
-
-```racket
-(define path-status  (ffi2-ref a-path _cairo_status_t))
-(define path-data    (ffi2-ref a-path void_t* 1))     ; offset by 1 element
-(define path-num     (ffi2-ref a-path int_t 2))        ; offset by 2 elements
-```
-
-Or more conveniently, we can cast the pointer and use struct accessors:
+`ptr-ref`). But for reading struct fields, the cleanest approach is to cast the
+pointer to the struct type and use the generated accessors:
 
 ```racket
 (define simple-path (ffi2-cast a-path #:to simple_cairo_path_t*))
@@ -695,6 +694,7 @@ Now define the custom C type:
 
 ```racket
 (define-ffi2-type cairo_path_t* void_t*
+  #:predicate cairo-path?
   #:racket->c (lambda (rkt) (cairo-path-ptr rkt))
   #:c->racket (lambda (cobj) (cairo-path cobj)))
 ```

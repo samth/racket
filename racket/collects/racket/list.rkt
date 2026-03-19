@@ -406,6 +406,7 @@
                   ;; eq?/memq is much faster than equal?/member for the
                   ;; linear scan, while hash table overhead is similar.
                   [(eq? =? eq?) (if (<= len 120) #f (make-hasheq))]
+                  [(eq? =? eqv?) (if (<= len 80) #f (make-hasheqv))]
                   [(eq? =? equal?) (if (<= len 20) #f (make-hash))]
                   [(eq? =? equal-always?) (if (<= len 20) #f (make-hashalw))]
                   [else #f])])

@@ -108,10 +108,11 @@ Here's a simple first binding:
   #:lib cairo-lib)
 ```
 
-Then we can use it as an ordinary Racket function:
+Since `bt-surface` is an old-style `cpointer` from `racket/draw`, we first
+convert it to an `ffi2` pointer with `cpointer->ffi2-ptr`:
 
 ```racket
-(define ctx (cairo_create bt-surface))
+(define ctx (cairo_create (cpointer->ffi2-ptr bt-surface)))
 ctx
 ```
 
@@ -142,12 +143,10 @@ Now ill-typed calls will be caught:
 
 ```racket
 ;; This will error—a cairo_t* is not a cairo_surface_t*
-(cairo_create (cairo_create bt-surface))
+(cairo_create (cairo_create (cpointer->ffi2-ptr bt-surface)))
 ```
 
-Since our `bt-surface` value came from `racket/draw`, it is an old-style
-`cpointer` rather than an `ffi2` pointer. We first convert it with
-`cpointer->ffi2-ptr`, then cast it to add the right tag:
+Now we need to cast `bt-surface` to add the `cairo_surface_t*` tag:
 
 ```racket
 (define ctx (cairo_create (ffi2-cast (cpointer->ffi2-ptr bt-surface)
@@ -504,6 +503,7 @@ Let's set up a cleaner version of our bindings with a helper function:
 
 (require racket/draw
          ffi2
+         (only-in racket/base [struct rkt:struct])  ; ffi2 shadows `struct`
          pict)
 
 ;; tagged pointer types
@@ -679,10 +679,13 @@ representation.
 With the old FFI, you'd use `make-ctype` with two conversion functions. With `ffi2`,
 you use `define-ffi2-type` with `#:racket->c` and `#:c->racket`:
 
-First, let's define a Racket struct for our path representation:
+First, let's define a Racket struct for our path representation. Note that
+`ffi2` exports its own `struct` form (for defining C struct types), which
+shadows Racket's built-in `struct`. To use both, rename one on import—for
+example, `(only-in racket/base [struct rkt:struct])`:
 
 ```racket
-(struct cairo-path (ptr)
+(rkt:struct cairo-path (ptr)
   #:property prop:sequence
   (lambda (p) (in-cairo-path p)))
 ```
@@ -847,6 +850,22 @@ Here's a quick reference table summarizing the changes:
 
 7. **Pointer arithmetic**: `ffi2-add` and `ffi2-cast` with `#:offset` make pointer
    manipulation more explicit and readable.
+
+### Gotchas to watch for
+
+1. **`struct` shadowing**: `ffi2` exports a `struct` form for defining C struct
+   types, which shadows Racket's built-in `struct`. If you need both (e.g., to
+   define a Racket struct with properties), rename one on import:
+   `(only-in racket/base [struct rkt:struct])`.
+
+2. **Old-style cpointers**: Values obtained from `racket/draw` or other existing
+   Racket libraries are old-style `cpointer` objects, not `ffi2` pointers. You
+   must convert them with `cpointer->ffi2-ptr` before passing them to any `ffi2`
+   function—even one typed as `void_t*`.
+
+3. **No built-in `_enum`**: Unlike `ffi/unsafe`, `ffi2` has no dedicated enum
+   form. Instead, use `define-ffi2-type` over `int_t` with `#:predicate`,
+   `#:racket->c`, and `#:c->racket` conversion functions.
 
 ---
 

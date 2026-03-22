@@ -1,5 +1,5 @@
 (module struct-util '#%kernel
-  (#%require "define.rkt"
+  (#%require "define.rkt" "define-et-al.rkt"
              "cond.rkt")
 
   (#%provide predicate->struct-name)
@@ -7,7 +7,7 @@
   ;; predicate->struct-name : any/c syntax? (or/c identifier? #f) -> string?
   ;; Infers struct name from a predicate identifier. This is used as a fallback
   ;; method to extract field names when struct-field-info is not available.
-  (define (predicate->struct-name who orig-stx stx)
+  (-define (predicate->struct-name who orig-stx stx)
     (if stx
         (cond
           [(regexp-match #rx"^(.*)[?]$" (symbol->string (syntax-e stx))) => cadr]

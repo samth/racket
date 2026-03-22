@@ -17,7 +17,7 @@
   ;;   - at most one arity-at-least, always at the end
   ;;   - if there is only one possibility, it is returned by itself (ie,
   ;;     not in a list)
-  (define (normalize-arity arity)
+  (-define (normalize-arity arity)
     (unless (procedure-arity? arity)
             (raise-argument-error 'normalize-arity "procedure-arity?" arity))
     (if (pair? arity)
@@ -27,17 +27,17 @@
           simplified)
         arity))
 
-  (define (normalize-singleton-arity arity)
+  (-define (normalize-singleton-arity arity)
     (if (and (pair? arity) (null? (cdr arity)))
         (car arity)
         arity))
 
-  (define (normalize-reversed-arity arity tail)
+  (-define (normalize-reversed-arity arity tail)
     (if (pair? arity)
         (normalize-reversed-arity (cdr arity) (arity-insert (car arity) tail))
         tail))
 
-  (define (arity-insert elem arity)
+  (-define (arity-insert elem arity)
     (if (pair? arity)
         (let ([next (car arity)])
           (if (arity-at-least? next)
@@ -60,10 +60,10 @@
                   arity)))
         (cons elem arity)))
 
-  (define (reverse-sort-arity arity)
+  (-define (reverse-sort-arity arity)
     (sort arity arity>?))
 
-  (define (arity>? a b)
+  (-define (arity>? a b)
     (if (arity-at-least? a)
         (if (arity-at-least? b)
             (> (arity-at-least-value a) (arity-at-least-value b))

@@ -69,7 +69,7 @@
                                                   proc)))))
   
   (define-for-syntax (self-ctor-transformer orig stx)
-    (define (transfer-srcloc orig stx)
+    (-define (transfer-srcloc orig stx)
       (datum->syntax orig (syntax-e orig) stx orig))
     (syntax-case stx ()
       [(self arg ...) (datum->syntax stx
@@ -125,24 +125,24 @@
               (datum->syntax #'here pos stx)]
              [else (loop (add1 pos) (cdr fields))]))])))
 
-  (define (check-struct-type name what)
+  (-define (check-struct-type name what)
     (when what
       (unless (struct-type? what)
         (raise-argument-error name "(or/c struct-type? #f)" what)))
     what)
 
-  (define (check-inspector name what)
+  (-define (check-inspector name what)
     (when what
       (unless (inspector? what)
         (raise-argument-error name "(or/c inspector? #f)" what)))
     what)
 
-  (define (check-reflection-name name what)
+  (-define (check-reflection-name name what)
     (unless (symbol? what)
       (raise-argument-error name "symbol?" what))
     what)
 
-  (define (check-property-alist name what)
+  (-define (check-property-alist name what)
     (unless (and (list? what)
                  (andmap (lambda (elem)
                            (and (pair? elem)
@@ -160,13 +160,13 @@
          #'(define-struct/derived stx . rest))]))
 
   (define-syntax (define-struct/derived full-stx)
-    (define make-field list)
-    (define field-id car)
-    (define field-default-value cadr)
-    (define field-auto? caddr)
-    (define field-mutable? cadddr)
+    (-define make-field list)
+    (-define field-id car)
+    (-define field-default-value cadr)
+    (-define field-auto? caddr)
+    (-define field-mutable? cadddr)
 
-    (define (build-name id . parts)
+    (-define (build-name id . parts)
       (datum->syntax
        id
        (string->symbol
@@ -178,7 +178,7 @@
                     parts)))
        id))
 
-    (define (bad why kw where . alt)
+    (-define (bad why kw where . alt)
       (raise-syntax-error
        #f
        (format "~a ~a specification~a"
@@ -190,7 +190,7 @@
        stx
        (if (null? alt) kw (car alt))))
 
-    (define (check-exprs orig-n ps what)
+    (-define (check-exprs orig-n ps what)
       (let loop ([nps (cdr ps)][n orig-n])
         (unless (zero? n)
           (unless (and (pair? nps)
@@ -209,7 +209,7 @@
           (loop (cdr nps) (sub1 n)))))
     
     ;; Parse one field with a sequence of keyword-based specs:
-    (define (parse-field f)
+    (-define (parse-field f)
       (syntax-case f ()
         [id
          (identifier? #'id)
@@ -251,20 +251,20 @@
           stx
           f)]))
 
-    (define (lookup config s)
+    (-define (lookup config s)
       (cdr (assq s config)))
 
-    (define (extend-config config s val)
+    (-define (extend-config config s val)
       (cond
        [(null? config) (error 'struct "internal error: can't find config element: ~s" s)]
        [(eq? (caar config) s) (cons (cons s val) (cdr config))]
        [else (cons (car config) (extend-config (cdr config) s val))]))
 
-    (define insp-keys
+    (-define insp-keys
       "#:inspector, #:transparent, or #:prefab")
 
     ;; Parse sequence of keyword-based struct specs
-    (define (parse-props fm p super-id)
+    (-define (parse-props fm p super-id)
       (let loop ([p p]
                  [config '((#:super . #f)
                            (#:inspector . #f)
@@ -335,12 +335,12 @@
                                      (lookup config '#:proplists)))
                 nongen?)]
          [(eq? '#:methods (syntax-e (car p)))
-          ;; #:methods gen:foo [(define (meth1 x ...) e ...) ...]
+          ;; #:methods gen:foo [(-define (meth1 x ...) e ...) ...]
           (check-exprs 2 p "argument")
-          (define gen-id (cadr p))
-          (define gen-defs (caddr p))
-          (define args (cdddr p))
-          (define gen-val
+          (-define gen-id (cadr p))
+          (-define gen-defs (caddr p))
+          (-define args (cdddr p))
+          (-define gen-val
             (and (identifier? gen-id)
                  (syntax-local-value gen-id (lambda () #f))))
           (unless (generic-info? gen-val)
@@ -453,7 +453,7 @@
            stx
            (car p))])))
 
-    (define stx (syntax-case full-stx ()
+    (-define stx (syntax-case full-stx ()
                   [(_ stx . _) #'stx]))
     
     (syntax-case full-stx ()
@@ -604,9 +604,9 @@
                                                  (quasisyntax (check-reflection-name 'fm #,reflect-name-expr))])
                                               (quasisyntax '#,id))])
                    
-                   (define struct-name-size (string-length (symbol->string (syntax-e id))))
-                   (define struct-name/locally-introduced (syntax-local-introduce id))
-                   (define struct-name-to-predicate-directive
+                   (-define struct-name-size (string-length (symbol->string (syntax-e id))))
+                   (-define struct-name/locally-introduced (syntax-local-introduce id))
+                   (-define struct-name-to-predicate-directive
                      (vector (syntax-local-introduce ?)
                              0
                              struct-name-size
@@ -614,7 +614,7 @@
                              0
                              struct-name-size))
                    
-                   (define struct-name-to-old-style-maker-directive
+                   (-define struct-name-to-old-style-maker-directive
                      (if ctor-name
                          #f
                          (vector (syntax-local-introduce make-)
@@ -624,15 +624,15 @@
                                  0
                                  struct-name-size)))
                    
-                   (define (struct-name-to-selector/mutator-directive id-stx selector?)
+                   (-define (struct-name-to-selector/mutator-directive id-stx selector?)
                      (vector (syntax-local-introduce id-stx)
                              (if selector? 0 4)
                              struct-name-size
                              struct-name/locally-introduced
                              0
                              struct-name-size))
-                   (define (field-to-selector/mutator-directive field id-stx selector?)
-                     (define fld-size (string-length (symbol->string (syntax-e (field-id field)))))
+                   (-define (field-to-selector/mutator-directive field id-stx selector?)
+                     (-define fld-size (string-length (symbol->string (syntax-e (field-id field)))))
                      (vector (syntax-local-introduce id-stx)
                              (+ (if selector? 1 5) struct-name-size)
                              fld-size
@@ -649,10 +649,10 @@
                          [else
                           (define-values (other-sets other-directives count)
                             (loop (cdr fields)))
-                          (define count* (if (field-auto? (car fields))
+                          (-define count* (if (field-auto? (car fields))
                                              (+ count 1)
                                              count))
-                          (define this-set
+                          (-define this-set
                             (build-name id ; (field-id (car fields))
                                         "set-"
                                         id
@@ -666,7 +666,7 @@
                                         other-directives)
                                   count*)])))
                    
-                   (define all-directives
+                   (-define all-directives
                      (append 
                       (list struct-name-to-predicate-directive)
                       (if struct-name-to-old-style-maker-directive
@@ -898,7 +898,7 @@
         stx)]))
         
   (define-syntax (struct/derived stx)
-    (define (config-has-name? config)
+    (-define (config-has-name? config)
       (cond
         [(syntax? config) (config-has-name? (syntax-e config))]
         [(pair? config) (or (eq? (syntax-e (car config)) '#:constructor-name)
@@ -948,7 +948,7 @@
   (define-for-syntax (findf f xs)
     (cond
       [(null? xs) #f]
-      [else (define e (car xs))
+      [else (-define e (car xs))
             (if (f e) e (findf f (cdr xs)))]))
 
   ;; take :: (listof a) -> number? -> (listof a)
@@ -959,27 +959,27 @@
       [else (cons (car xs) (take (cdr xs) (sub1 n)))]))
 
   (define-for-syntax (find-accessor/no-field-info the-struct-info fld stx)
-    (define accessors (list-ref the-struct-info 3))
-    (define parent (list-ref the-struct-info 5))
-    (define num-fields (length accessors))
-    (define num-super-fields
+    (-define accessors (list-ref the-struct-info 3))
+    (-define parent (list-ref the-struct-info 5))
+    (-define num-fields (length accessors))
+    (-define num-super-fields
       (if (identifier? parent)
           (let-values ([(parent-struct-info _) (id->struct-info parent stx)])
             (length (cadddr parent-struct-info)))
           0))
-    (define num-own-fields (- num-fields num-super-fields))
-    (define own-accessors (take accessors num-own-fields))
-    (define struct-name (predicate->struct-name #f stx (list-ref the-struct-info 2)))
-    (define accessor-name (string->symbol (format "~a-~a" struct-name (syntax-e fld))))
+    (-define num-own-fields (- num-fields num-super-fields))
+    (-define own-accessors (take accessors num-own-fields))
+    (-define struct-name (predicate->struct-name #f stx (list-ref the-struct-info 2)))
+    (-define accessor-name (string->symbol (format "~a-~a" struct-name (syntax-e fld))))
     (or (findf (λ (a) (eq? accessor-name (syntax-e a))) own-accessors)
         (raise-syntax-error
          #f "field name not associated with the given structure type"
          stx fld)))
 
   (define-for-syntax (find-accessor/field-info the-struct-info the-field-info fld stx)
-    (define accessors (list-ref the-struct-info 3))
-    (define num-own-fields (length the-field-info))
-    (define own-accessors (take accessors num-own-fields))
+    (-define accessors (list-ref the-struct-info 3))
+    (-define num-own-fields (length the-field-info))
+    (-define own-accessors (take accessors num-own-fields))
     (car
      (or (findf (λ (a) (eq? (syntax-e fld) (cdr a))) (map cons own-accessors the-field-info))
          (raise-syntax-error
@@ -992,7 +992,7 @@
         (find-accessor/no-field-info the-struct-info fld stx)))
 
   (define-for-syntax (id->struct-info id stx)
-    (define compile-time-info (syntax-local-value id (lambda () #f)))
+    (-define compile-time-info (syntax-local-value id (lambda () #f)))
     (unless (struct-info? compile-time-info)
       (raise-syntax-error #f "identifier is not bound to a structure type" stx id))
     (values (extract-struct-info compile-time-info)
@@ -1004,7 +1004,7 @@
       [(_ _ _ . _) (void)]
       [_ (raise-syntax-error #f "bad syntax" stx)])
     (with-syntax ([(form-name info struct-expr field+val ...) stx])
-      (define ans (syntax->list #'(field+val ...)))
+      (-define ans (syntax->list #'(field+val ...)))
       ;; Check syntax:
       (unless (identifier? #'info)
         (raise-syntax-error #f "not an identifier for structure type" stx #'info))
@@ -1039,12 +1039,12 @@
                 ans)
 
       (define-values (the-struct-info maybe-field-info) (id->struct-info #'info stx))
-      (define construct (cadr the-struct-info))
-      (define pred (caddr the-struct-info))
-      (define accessors (cadddr the-struct-info))
-      (define parent (list-ref the-struct-info 5))
+      (-define construct (cadr the-struct-info))
+      (-define pred (caddr the-struct-info))
+      (-define accessors (cadddr the-struct-info))
+      (-define parent (list-ref the-struct-info 5))
 
-      (define (ensure-really-parent id)
+      (-define (ensure-really-parent id)
         (let loop ([parent parent])
           (cond
             [(eq? parent #t)
@@ -1060,7 +1060,7 @@
                (let ([v (extract-struct-info v)])
                  (loop (list-ref v 5))))])))
 
-      (define new-fields
+      (-define new-fields
         (map (lambda (an)
                (syntax-case an ()
                  [(field expr)
@@ -1079,7 +1079,7 @@
              ans))
 
       ;; new-binding-for : syntax[field-name] -> (union syntax[expression] #f)
-      (define (new-binding-for f)
+      (-define (new-binding-for f)
         (ormap (lambda (new-field)
                  (and (free-identifier=? (car new-field) f)
                       (syntax-property (caddr new-field)
@@ -1094,7 +1094,7 @@
                                          (vector field-subrange-start
                                                  (string-length (symbol->string (syntax-e (list-ref new-field 3))))))))))
                new-fields))
-      (define field-subrange-start (+ (string-length (symbol->string (syntax-e #'info))) 1))
+      (-define field-subrange-start (+ (string-length (symbol->string (syntax-e #'info))) 1))
 
       (unless construct
         (raise-syntax-error #f
@@ -1107,7 +1107,7 @@
                             stx
                             #'info))
 
-      (define dests (map car new-fields))
+      (-define dests (map car new-fields))
 
       ;; Check for duplicates using dests, not as, because mod=? as might not be id=?
       (let ([dupe (check-duplicate-identifier dests)])

@@ -1,6 +1,6 @@
 (module sort '#%kernel
 
-(#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" "define.rkt" (for-syntax "stxcase-scheme.rkt"))
+(#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" "define.rkt" (for-syntax "define-et-al.rkt" "stxcase-scheme.rkt"))
 
 ;; note, these are the raw interfaces --- user-facing definitions
 ;; are exported from private/list.rkt and vector.rkt
@@ -62,8 +62,8 @@ code.
   ;;(define-syntax-rule (i<< x y) (arithmetic-shift x y))
   ;;(define-syntax-rule (vref v i) (vector-ref v i))
   ;;(define-syntax-rule (vset! v i x) (vector-set! v i x))
-  ;;(define ucar car)
-  ;;(define ucdr cdr)
+  ;;(-define ucar car)
+  ;;(-define ucdr cdr)
 
   (define-syntax-rule (i/2 x) (i>> x 1))
   (define-syntax-rule (i*2 x) (i<< x 1))
@@ -126,7 +126,7 @@ code.
         ;; - - - - - - - - - - - - - - - - - - -
         ;; Mergesort
         ;; - - - - - - - - - - - - - - - - - - -
-        (define (copying-mergesort Alo Blo n)
+        (-define (copying-mergesort Alo Blo n)
           (cond
             ;; n is never 0, smaller values are more frequent
             [(i= n 1) (set! Blo (ref Alo))]
@@ -150,10 +150,10 @@ code.
           (unless (zero? n/2-) (copying-mergesort Alo Amid2 n/2-))
           (merge #f B1lo (i+ B1lo n/2+) Amid2 Ahi Alo)))))
   
-  (define (generic-sort A less-than? n)
+  (-define (generic-sort A less-than? n)
     (sort-internal-body A less-than? n #f))
   
-  (define (generic-sort/key A less-than? n key)
+  (-define (generic-sort/key A less-than? n key)
     (sort-internal-body A less-than? n key))
   
   (define-syntax (sort-internal stx)
@@ -261,8 +261,8 @@ code.
              (let ([tmp (vref A  i)])
                (vset! A i (vref A  j))
                (vset! A j tmp)))
-           (define dst-vec (if constructive? (make-vector n) src-vec))
-           (define dst-start (if constructive? 0 start))
+           (-define dst-vec (if constructive? (make-vector n) src-vec))
+           (-define dst-start (if constructive? 0 start))
            (cond
              ;; trivial case (where we know we don't even need to cache a key)
              [(i= n 0) (void)]
@@ -273,7 +273,7 @@ code.
               ;; decorate while converting to a vector for sorting,
               ;; and undecorate when going back, always do this for
               ;; consistency
-              (define work-vec (make-vector (+ n (ceiling (/ n 2))) #t))
+              (-define work-vec (make-vector (+ n (ceiling (/ n 2))) #t))
               ;; vector -> decorated-vector
               (let loop ([i 0])
                 (when (i< i n)

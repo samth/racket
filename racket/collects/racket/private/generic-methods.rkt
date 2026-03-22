@@ -2,7 +2,7 @@
 
   (#%require (for-syntax '#%kernel "qq-and-or.rkt" "define-et-al.rkt" "cond.rkt" "define.rkt"
                          "stx.rkt" "stxcase-scheme.rkt")
-             "define.rkt" "../stxparam.rkt")
+             "define.rkt" "define-et-al.rkt" "../stxparam.rkt")
 
   (#%provide define/generic
              generic-property
@@ -43,19 +43,19 @@
               (make-struct-field-accessor generic-info-get 5 'methods)
               (make-struct-field-accessor generic-info-get 6 'required-methods)))
 
-    (define (check-identifier! name ctx stx)
+    (-define (check-identifier! name ctx stx)
       (unless (identifier? stx)
         (raise-syntax-error name "expected an identifier" ctx stx)))
 
-    (define (get-info name ctx stx)
+    (-define (get-info name ctx stx)
       (check-identifier! name ctx stx)
-      (define info (syntax-local-value stx (lambda () #f)))
+      (-define info (syntax-local-value stx (lambda () #f)))
       (unless (generic-info? info)
         (raise-syntax-error name "bad generic interface name" ctx stx))
       info)
 
-    (define (unimplemented-transformer un stx)
-      (define name (unimplemented-method un))
+    (-define (unimplemented-transformer un stx)
+      (-define name (unimplemented-method un))
       (raise-syntax-error name "method not implemented" stx))
 
     (define-values (struct:unimplemented
@@ -71,16 +71,16 @@
                         (list (cons prop:set!-transformer
                                     unimplemented-transformer))))
 
-    (define unimplemented-method
+    (-define unimplemented-method
       (make-struct-field-accessor unimplemented-get 0 'method))
 
-    (define unimplemented-required?
+    (-define unimplemented-required?
       (make-struct-field-accessor unimplemented-get 1 'required?))
 
-    (define unimplemented-orig-src
+    (-define unimplemented-orig-src
       (make-struct-field-accessor unimplemented-get 2 'orig-src))
 
-    (define (find-generic-method who ctx gen-id delta gen-info method-id proc)
+    (-define (find-generic-method who ctx gen-id delta gen-info method-id proc)
 
       (unless (syntax? ctx)
         (raise-argument-error who "syntax?" ctx))
@@ -111,7 +111,7 @@
              (values (reverse rev-originals)
                      (reverse rev-indices))]
             [else
-             (define context-id (delta (car impl-ids)))
+             (-define context-id (delta (car impl-ids)))
              (cond
                [(free-identifier=? context-id method-id)
                 (loop (cdr original-ids)
@@ -145,17 +145,17 @@
          method-id))
       (proc (car indices) (car originals)))
 
-    (define (find-generic-method-index ctx gen-id delta gen-info method-id)
+    (-define (find-generic-method-index ctx gen-id delta gen-info method-id)
       (find-generic-method 'find-generic-method-index
                            ctx gen-id delta gen-info method-id
                            (lambda (index original) index)))
 
-    (define (find-generic-method-original ctx gen-id delta gen-info method-id)
+    (-define (find-generic-method-original ctx gen-id delta gen-info method-id)
       (find-generic-method 'find-generic-method-index
                            ctx gen-id delta gen-info method-id
                            (lambda (index original) original)))
 
-    (define (make-method-delta ref-id orig-id)
+    (-define (make-method-delta ref-id orig-id)
       (lambda (id)
         ((make-syntax-delta-introducer id orig-id)
          (datum->syntax ref-id
@@ -198,12 +198,12 @@
             "check? must be a boolean literal"
             #'check?))
 
-         (define info (get-info 'generic-methods stx #'gen))
-         (define orig-id (generic-info-name info))
-         (define methods (map (make-method-delta #'scope orig-id)
+         (-define info (get-info 'generic-methods stx #'gen))
+         (-define orig-id (generic-info-name info))
+         (-define methods (map (make-method-delta #'scope orig-id)
                               (generic-info-method-names info)))
-         (define checking? (syntax-e #'check?))
-         (define req-methods (map (λ (m)
+         (-define checking? (syntax-e #'check?))
+         (-define req-methods (map (λ (m)
                                     (if (and m checking?)
                                         #'#t
                                         #'#f))
@@ -236,13 +236,13 @@
        #'(generic-method-table gen #:scope gen def ...)]))
 
   (define-syntax (define/generic stx)
-    (define gen-id (syntax-parameter-value #'generic-method-outer-context))
-    (define gen-val
+    (-define gen-id (syntax-parameter-value #'generic-method-outer-context))
+    (-define gen-val
       (and (identifier? gen-id)
            (syntax-local-value gen-id (lambda () #f))))
     (unless (generic-info? gen-val)
       (raise-syntax-error 'define/generic "only allowed inside methods" stx))
-    (define gen-inner-id (syntax-parameter-value #'generic-method-inner-context))
+    (-define gen-inner-id (syntax-parameter-value #'generic-method-inner-context))
     (syntax-case stx ()
       [(_ bind ref)
        (let ()
@@ -250,9 +250,9 @@
            (raise-syntax-error 'define/generic "expected an identifier" #'bind))
          (unless (identifier? #'ref)
            (raise-syntax-error 'define/generic "expected an identifier" #'ref))
-         (define delta
+         (-define delta
            (make-method-delta gen-inner-id (generic-info-name gen-val)))
-         (define method-id
+         (-define method-id
            (find-generic-method-original stx gen-id delta gen-val #'ref))
          (with-syntax ([method method-id])
-           #'(define bind method)))])))
+           #'(-define bind method)))])))

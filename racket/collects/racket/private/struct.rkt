@@ -1,15 +1,15 @@
 
 (module struct '#%kernel
-  (#%require "define.rkt"
+  (#%require "define.rkt" "define-et-al.rkt"
              "define-struct.rkt"
-             (for-syntax '#%kernel "define.rkt"
+             (for-syntax '#%kernel "define.rkt" "define-et-al.rkt"
                          "stx.rkt" "stxcase-scheme.rkt" "qq-and-or.rkt" "cond.rkt"
                          "stxloc.rkt"))
 
   (#%provide struct)
 
   (define-syntax (struct stx)
-    (define (config-has-name? config)
+    (-define (config-has-name? config)
       (cond
        [(syntax? config) (config-has-name? (syntax-e config))]
        [(pair? config) (or (eq? (syntax-e (car config)) '#:constructor-name)

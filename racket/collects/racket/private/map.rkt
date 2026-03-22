@@ -30,7 +30,7 @@
 
   (begin-encourage-inline
 
-   (define map2
+   (-define map2
       (let ([map
              (case-lambda
               [(f l)
@@ -63,7 +63,7 @@
               [(f l . args) (gen-map f (cons l args))])])
         map))
   
-   (define for-each2
+   (-define for-each2
       (let ([for-each
              (case-lambda
               [(f l)
@@ -97,7 +97,7 @@
               [(f l . args) (gen-for-each f (cons l args))])])
         for-each))
 
-   (define andmap2
+   (-define andmap2
       (let ([andmap
              (case-lambda
               [(f l)
@@ -136,7 +136,7 @@
               [(f l . args) (gen-andmap f (cons l args))])])
         andmap))
 
-   (define ormap2
+   (-define ormap2
       (let ([ormap
              (case-lambda
               [(f l)
@@ -177,7 +177,7 @@
 
   ;; -------------------------------------------------------------------------
 
-  (define (check-args who f ls)
+  (-define (check-args who f ls)
     (unless (procedure? f)
       (raise-argument-error who "procedure?" f))
     (let loop ([prev-len #f] [ls ls] [i 1])
@@ -254,7 +254,7 @@
                                                   (loop (cdr ls)))])))))
                     null))))))
   
-  (define (gen-map f ls)
+  (-define (gen-map f ls)
     (or-unsafe (check-args 'map f ls))
     (let loop ([ls ls])
       (cond
@@ -264,7 +264,7 @@
            (cons (apply f (map2 car ls))
                  (loop next-ls)))])))
 
-  (define (gen-for-each f ls)
+  (-define (gen-for-each f ls)
     (or-unsafe (check-args 'for-each f ls))
     (let loop ([ls ls])
       (unless (null? (car ls))
@@ -272,7 +272,7 @@
           (apply f (map2 car ls))
           (loop next-ls)))))
 
-  (define (gen-andmap f ls)
+  (-define (gen-andmap f ls)
     (or-unsafe (check-args 'andmap f ls))
     (let loop ([ls ls])
       (cond
@@ -282,7 +282,7 @@
                 (and (apply f (map2 car ls))
                      (loop next-ls)))])))
 
-  (define (gen-ormap f ls)
+  (-define (gen-ormap f ls)
     (or-unsafe (check-args 'ormap f ls))
     (let loop ([ls ls])
       (cond

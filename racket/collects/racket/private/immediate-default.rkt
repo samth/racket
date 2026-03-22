@@ -20,7 +20,7 @@
   ;; if the literal's syntax transferred to '#%datum is bound to
   ;; `#%datum` from `racket/base`.
 
-  (define (immediate-default? expr)
+  (-define (immediate-default? expr)
     (let ([immediate-literal?
            (lambda (v)
              (or (boolean? v)

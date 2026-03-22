@@ -1,10 +1,10 @@
 
 (module name '#%kernel
-  (#%require "define.rkt" "qq-and-or.rkt" "cond.rkt")
+  (#%require "define.rkt" "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt")
   (#%provide syntax-local-infer-name
              simplify-inferred-name)
 
-  (define syntax-local-infer-name
+  (-define syntax-local-infer-name
     (case-lambda
      [(stx use-local?)
       (let-values ([(prop) (simplify-inferred-name (syntax-property stx 'inferred-name))])
@@ -36,7 +36,7 @@
                                  (string->symbol (format "~a::~a" s p)))))))))))]
      [(stx) (syntax-local-infer-name stx #t)]))
   
-  (define (simplify-inferred-name name)
+  (-define (simplify-inferred-name name)
     (if (pair? name)
         (let ([name-car (simplify-inferred-name (car name))]
               [name-cdr (simplify-inferred-name (cdr name))])

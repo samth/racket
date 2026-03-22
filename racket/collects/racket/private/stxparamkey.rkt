@@ -7,7 +7,7 @@
   
   ;; Consulted before the expander's table, for use by compile-time
   ;; code wrapped by a run-time-phased `syntax-parameterize`:
-  (define (current-parameter-environment)
+  (-define (current-parameter-environment)
     ;; Implemented with continuation marks, not parameters, so that the
     ;; "state" is not inherited by new threads
     (continuation-mark-set-first #f current-parameter-environment #hasheq()
@@ -18,16 +18,16 @@
   ;; at the value
   (define-values (struct:parameter-value make-parameter-value parameter-value? parameter-value-ref parameter-value-set!)
     (make-struct-type 'parameter-value #f 1 0 #f null (current-inspector) #f '(0)))
-  (define parameter-value-content (make-struct-field-accessor parameter-value-ref 0))
+  (-define parameter-value-content (make-struct-field-accessor parameter-value-ref 0))
 
-  (define (wrap-parameter-value who/must-be-transformer v)
+  (-define (wrap-parameter-value who/must-be-transformer v)
     (unless (or (not who/must-be-transformer) (rename-transformer? v))
       (raise-argument-error who/must-be-transformer
                             "rename-transformer?"
                             v))
     (make-parameter-value v))
 
-  (define (extend-parameter-environment env binds)
+  (-define (extend-parameter-environment env binds)
     (with-syntax ([((key sp-id) ...) binds])
       (let loop ([ht (current-parameter-environment)]
                  [keys (syntax->datum #'(key ...))]
@@ -40,7 +40,7 @@
 
   ;; Used to propagate to a submodule, where the parameter
   ;; will get a frash key as the submodule compilation starts
-  (define (update-parameter-keys ids binds)
+  (-define (update-parameter-keys ids binds)
     (let loop ([ids (syntax->list ids)]
                [binds (syntax->list binds)])
       (cond
@@ -51,7 +51,7 @@
            (cons #'[new-key rhs]
                  (loop (cdr ids) (cdr binds))))])))
   
-  (define (apply-syntax-parameter sp stx)
+  (-define (apply-syntax-parameter sp stx)
     (let ([v (syntax-parameter-key-value (syntax-parameter-key sp)
                                          (syntax-parameter-default-id sp))])
       (apply-transformer v stx #'set!)))
@@ -59,19 +59,19 @@
   (define-values (struct:syntax-parameter make-syntax-parameter syntax-parameter? syntax-parameter-ref syntax-parameter-set!)
     (make-struct-type 'syntax-parameter #f 2 0 #f (list (cons prop:set!-transformer apply-syntax-parameter)) (current-inspector) 0 '(0 1)))
                    
-  (define (syntax-parameter-default-id sp)
+  (-define (syntax-parameter-default-id sp)
     (syntax-parameter-ref sp 0))
   
-  (define (syntax-parameter-key sp)
+  (-define (syntax-parameter-key sp)
     (syntax-parameter-ref sp 1))
 
-  (define (rename-transformer-parameter-target rtp)
-    (define key (syntax-parameter-key rtp))
-    (define default-id (syntax-parameter-default-id rtp))
+  (-define (rename-transformer-parameter-target rtp)
+    (-define key (syntax-parameter-key rtp))
+    (-define default-id (syntax-parameter-default-id rtp))
     ;; (syntax-transforming?) is not always true when the
     ;; prop:rename-transformer procedure is evaluated, because it is
     ;; used to test the rename-transformer
-    (define lt
+    (-define lt
       (if (syntax-transforming?)
           (rename-transformer-target (syntax-parameter-key-value key default-id))
           default-id))
@@ -80,8 +80,8 @@
   (define-values (struct:rename-transformer-parameter make-rename-transformer-parameter rename-transformer-parameter? rename-transformer-parameter-ref rename-transformer-parameter-set!)
     (make-struct-type 'rename-transformer-parameter struct:syntax-parameter 0 0 #f (list (cons prop:rename-transformer rename-transformer-parameter-target)) (current-inspector) #f))
 
-  (define (syntax-parameter-key-value key default-id)
-    (define id (hash-ref
+  (-define (syntax-parameter-key-value key default-id)
+    (-define id (hash-ref
                 (current-parameter-environment)
                 key
                 (lambda () #f)))
@@ -95,7 +95,7 @@
         (loop next-id)]
        [else val])))
   
-  (define (syntax-parameter-local-value id)
+  (-define (syntax-parameter-local-value id)
     (let loop ([id id])
       (define-values (sp next-id) (syntax-local-value/immediate id (lambda () (values #f #f))))
       (cond
@@ -105,7 +105,7 @@
         (loop next-id)]
        [else #f])))
 
-  (define (apply-transformer v stx set!-stx)
+  (-define (apply-transformer v stx set!-stx)
     (cond
      [(rename-transformer? v) 
       (with-syntax ([target  (rename-transformer-target v)])

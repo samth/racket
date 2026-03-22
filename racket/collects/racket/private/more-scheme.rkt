@@ -107,10 +107,10 @@
          (parameterize* ([lhs rhs] ...)
                         body1 body ...))]))
 
-  (define (current-parameterization)
+  (-define (current-parameterization)
     (continuation-mark-set-first #f parameterization-key))
   
-  (define (call-with-parameterization paramz thunk)
+  (-define (call-with-parameterization paramz thunk)
     (unless (parameterization? paramz)
       (raise-argument-error 'call-with-parameterization "parameterization?" 0 paramz thunk))
     (unless (and (procedure? thunk)
@@ -139,10 +139,10 @@
   (define-values (struct:break-paramz make-break-paramz break-paramz? break-paramz-ref break-paramz-set!)
     (make-struct-type 'break-parameterization #f 1 0 #f))
   
-  (define (current-break-parameterization)
+  (-define (current-break-parameterization)
     (make-break-paramz (continuation-mark-set-first #f break-enabled-key)))
   
-  (define (call-with-break-parameterization paramz thunk)
+  (-define (call-with-break-parameterization paramz thunk)
     (unless (break-paramz? paramz)
       (raise-argument-error 'call-with-break-parameterization "break-parameterization?" 0 paramz thunk))
     (unless (and (procedure? thunk)
@@ -157,7 +157,7 @@
 	 (thunk)))
      (check-for-break)))
 
-  (define (select-handler/no-breaks e bpz l)
+  (-define (select-handler/no-breaks e bpz l)
     (with-continuation-mark 
         break-enabled-key
         ;; make a fresh thread cell so that the shared one isn't mutated
@@ -176,7 +176,7 @@
          [else
           (loop (cdr l))]))))
 
-  (define (select-handler/breaks-as-is e bpz l)
+  (-define (select-handler/breaks-as-is e bpz l)
     (cond
      [(null? l)
       (raise e)]
@@ -190,17 +190,17 @@
      [else
       (select-handler/breaks-as-is e bpz (cdr l))]))
 
-  (define false-thread-cell (make-thread-cell #f))
+  (-define false-thread-cell (make-thread-cell #f))
 
 
-  (define (check-with-handlers-in-context handler-prompt-key)
+  (-define (check-with-handlers-in-context handler-prompt-key)
     (unless (continuation-prompt-available? handler-prompt-key) 
       (error 'with-handlers
              "exception handler used out of context")))
 
-  (define handler-prompt-key (make-continuation-prompt-tag 'handler-prompt-tag))
+  (-define handler-prompt-key (make-continuation-prompt-tag 'handler-prompt-tag))
 
-  (define (call-handled-body bpz handle-proc body-thunk)
+  (-define (call-handled-body bpz handle-proc body-thunk)
     ;; Disable breaks here, so that when the exception handler jumps
     ;;  to run a handler, breaks are disabled for the handler
     (with-continuation-mark
@@ -260,7 +260,7 @@
                                   expr1 expr ...))))))))])))])
       (values (wh #t) (wh #f))))
 
-  (define (call-with-exception-handler exnh thunk)
+  (-define (call-with-exception-handler exnh thunk)
     ;; The `begin0' ensures that we don't overwrite an enclosing
     ;;  exception handler.
     (begin0
@@ -335,9 +335,9 @@
 	    (printf "cpu time: ~s real time: ~s gc time: ~s\n" cpu user gc)
 	    (apply values v)))])))
 
-  (define not-there (gensym))
+  (-define not-there (gensym))
 
-  (define (do-hash-update who mut? set ht key xform default)
+  (-define (do-hash-update who mut? set ht key xform default)
     (unless (variable-reference-from-unsafe? (#%variable-reference))
       (unless (and (hash? ht)
                    (if mut?
@@ -352,26 +352,26 @@
           (raise-mismatch-error who "no value found for key: " key)
           (set ht key (xform v)))))
 
-  (define hash-update
+  (-define hash-update
     (case-lambda
       [(ht key xform default)
        (do-hash-update 'hash-update #f hash-set ht key xform default)]
       [(ht key xform)
        (hash-update ht key xform not-there)]))
 
-  (define hash-update!
+  (-define hash-update!
     (case-lambda
       [(ht key xform default)
        (do-hash-update 'hash-update! #t hash-set! ht key xform default)]
       [(ht key xform)
        (hash-update! ht key xform not-there)]))
 
-  (define (hash-has-key? ht key)
+  (-define (hash-has-key? ht key)
     (unless (hash? ht)
       (raise-argument-error 'hash-has-key? "hash?" 0 ht key))
     (not (eq? not-there (hash-ref ht key not-there))))
 
-  (define (hash-ref! ht key new)
+  (-define (hash-ref! ht key new)
     (unless (and (hash? ht)
                  (not (immutable? ht)))
       (raise-argument-error 'hash-ref! "(and/c hash? (not/c immutable?))" 0 ht key new))

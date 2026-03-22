@@ -148,7 +148,7 @@
   ;;         [(x y z . r) (unpack null null x y z r)]
   ;;         [(x y) (unpack null null x y '3 null)]))))
   ;;
-  ;; If the example is the right-hand side of `(define f ...)`, then
+  ;; If the example is the right-hand side of `(-define f ...)`, then
   ;; `core` is flattened into the definition context as described
   ;; further below, and some calls expand as follows:
   ;;
@@ -185,7 +185,7 @@
   ;;         [(kws args) (unpack kw args)])
   ;;       ...)))
   ;;
-  ;; Finally, `(define (f ...) <body>)` or `(define f (lambda (...)
+  ;; Finally, `(-define (f ...) <body>)` or `(-define f (lambda (...)
   ;; <body>))` with keyword arguments expands to bind `f` as a macro,
   ;; and some `_f` is bound to the expansion illustrated above, except
   ;; that the `core` and `unpack` bindings are flattened into the
@@ -200,7 +200,7 @@
 
   (define-values (prop:keyword-impersonator keyword-impersonator? keyword-impersonator-ref)
     (make-struct-type-property 'keyword-impersonator))
-  (define (keyword-procedure-impersonator-of v)
+  (-define (keyword-procedure-impersonator-of v)
     (cond
      [(keyword-impersonator? v) ((keyword-impersonator-ref v) v)]
      [else #f]))
@@ -213,10 +213,10 @@
                       (current-inspector)
                       #f
                       '(0 1 2 3)))
-  (define keyword-procedure-checker (make-struct-field-accessor keyword-procedure-ref 0))
-  (define keyword-procedure-proc (make-struct-field-accessor keyword-procedure-ref 1))
-  (define keyword-procedure-required (make-struct-field-accessor keyword-procedure-ref 2))
-  (define keyword-procedure-allowed (make-struct-field-accessor keyword-procedure-ref 3))
+  (-define keyword-procedure-checker (make-struct-field-accessor keyword-procedure-ref 0))
+  (-define keyword-procedure-proc (make-struct-field-accessor keyword-procedure-ref 1))
+  (-define keyword-procedure-required (make-struct-field-accessor keyword-procedure-ref 2))
+  (-define keyword-procedure-allowed (make-struct-field-accessor keyword-procedure-ref 3))
 
   (define-values (struct:keyword-method make-km keyword-method? km-ref km-set!)
     (make-struct-type 'procedure
@@ -224,10 +224,10 @@
                       0 0 #f
                       (list (cons prop:method-arity-error #t))))
 
-  (define (fmt v)
+  (-define (fmt v)
     ((error-syntax->string-handler) v #f))
 
-  (define (generate-arity-string proc)
+  (-define (generate-arity-string proc)
     (let-values ([(req allowed) (procedure-keywords proc)]
                  [(a) (procedure-arity proc)]
                  [(keywords-desc)
@@ -302,8 +302,8 @@
   (define-values (prop:named-keyword-procedure named-keyword-procedure? keyword-procedure-name+fail)
     (make-struct-type-property 'named-keyword-procedure))
 
-  (define (keyword-procedure-name+fail* p)
-    (define v (keyword-procedure-name+fail p))
+  (-define (keyword-procedure-name+fail* p)
+    (-define v (keyword-procedure-name+fail p))
     (if (vector? v) v (v p)))
 
   ;; Allows support for new-prop:procedure to extract a field (i.e., this property
@@ -459,7 +459,7 @@
 
   ;; ----------------------------------------
 
-  (define make-keyword-procedure
+  (-define make-keyword-procedure
     (case-lambda 
      [(proc) (let ([proc-name (object-name proc)]
                    [proc-realm (and (procedure? proc) ; redundant check helps purity analysis
@@ -490,7 +490,7 @@
        #f
        plain-proc)]))
                          
-  (define (keyword-apply proc kws kw-vals normal-args . normal-argss)
+  (-define (keyword-apply proc kws kw-vals normal-args . normal-argss)
     (let ([type-error
            (lambda (what which)
              (apply raise-argument-error
@@ -546,7 +546,7 @@
              kw-vals
              normal-args)))))
 
-  (define (procedure-keywords p)
+  (-define (procedure-keywords p)
     (cond
      [(keyword-procedure? p)
       (values (keyword-procedure-required p)
@@ -569,7 +569,7 @@
   ;; determines whether `p` requires keyword arguments, and if
   ;; so, returns the (potentially nested) `keyword-procedure`
   ;; that has keyword information
-  (define (extract-keyword-root p)
+  (-define (extract-keyword-root p)
     (cond
       [(keyword-procedure? p) p]
       [(procedure? p)
@@ -931,14 +931,14 @@
                  #,wrap)))))
         (quasisyntax/loc stx (#%expression #,stx))))
   
-  (define (missing-kw proc . args)
+  (-define (missing-kw proc . args)
     (apply
      (keyword-procedure-extract/method null 0 proc 0)
      null
      null
      args))
 
-  (define (raise-missing-kw name req-kws args)
+  (-define (raise-missing-kw name req-kws args)
     (raise-wrong-kws name #t #t #f null null (car req-kws) #f args))
 
   (define-for-syntax (generate-proc-id default local-name)
@@ -1170,7 +1170,7 @@
                   (normalize-definition stx #'new-lambda #t #t)])
       (let* ([plain (lambda (rhs)
                       (quasisyntax/loc stx
-                        (define #,id #,rhs)))]
+                        (-define #,id #,rhs)))]
              [can-opt? (lambda (lam-id)
                          (and (identifier? lam-id)
                               (free-identifier=? lam-id #'new-lambda)
@@ -1205,11 +1205,11 @@
                                                                      #,rest?
                                                                      '#,req-kws '#,all-kws '#,all-kw-not-supplied-srclocs)))
                                           #,(quasisyntax/loc stx
-                                              (define #,core-id #,(core-wrap impl)))
+                                              (-define #,core-id #,(core-wrap impl)))
                                           #,(quasisyntax/loc stx
-                                              (define #,unpack-id #,kwimpl))
+                                              (-define #,unpack-id #,kwimpl))
                                           #,(quasisyntax/loc stx
-                                              (define proc #,(syntax-track-origin wrap rhs lam-id)))))))))])
+                                              (-define proc #,(syntax-track-origin wrap rhs lam-id)))))))))])
         (syntax-case rhs (begin quote)
           [(lam-id . _)
            (can-opt? #'lam-id)
@@ -1512,7 +1512,7 @@
   ;; Checks given kws against expected. Result is
   ;; (values missing-kw extra-kw), where both are #f if
   ;; the arguments are ok.
-  (define (check-kw-args p kws)
+  (-define (check-kw-args p kws)
     (let loop ([kws kws]
                [required (keyword-procedure-required p)]
                [allowed (keyword-procedure-allowed p)])
@@ -1533,7 +1533,7 @@
         [else (values #f (car kws))])))
 
   ;; Generates a keyword an arity checker dynamically:
-  (define (make-keyword-checker req-kws allowed-kws arity-mask)
+  (-define (make-keyword-checker req-kws allowed-kws arity-mask)
     (define-syntax (arity-check-lambda stx)
       (syntax-case stx ()
         [(_ (kws) kw-body)
@@ -1575,7 +1575,7 @@
              ;; Required is a subset of allowed
              (subsets? req-kws kws allowed-kws)))])]))
   
-  (define (subset? l1 l2)
+  (-define (subset? l1 l2)
     ;; l1 and l2 are sorted
     (cond
      [(null? l1) #t]
@@ -1583,7 +1583,7 @@
      [(eq? (car l1) (car l2)) (subset? (cdr l1) (cdr l2))]
      [else (subset? l1 (cdr l2))]))
 
-  (define (subsets? l1 l2 l3)
+  (-define (subsets? l1 l2 l3)
     ;; l1, l2, and l3 are sorted, and l1 is a subset of l3
     (cond
      [(null? l1) (subset? l2 l3)]
@@ -1598,7 +1598,7 @@
   ;; Extracts the procedure using the keyword-argument protocol.
   ;; If `p' doesn't accept keywords, make up a procedure that
   ;; reports an error.
-  (define (keyword-procedure-extract/method kws n p method-n)
+  (-define (keyword-procedure-extract/method kws n p method-n)
     (if (and (keyword-procedure? p)
              ((keyword-procedure-checker p) kws n))
         ;; Ok:
@@ -1643,7 +1643,7 @@
                   (raise-wrong-kws name/val (keyword-procedure? p) (procedure? p)
                                    n kws kw-args missing-kw extra-kw args)))))))
 
-    (define (raise-wrong-kws name/val kw-proc? proc? n kws kw-args missing-kw extra-kw args)
+    (-define (raise-wrong-kws name/val kw-proc? proc? n kws kw-args missing-kw extra-kw args)
       (let ([args-str
              (if (and (null? args) (null? kws))
                  ""
@@ -1658,7 +1658,7 @@
                    (map (lambda (kw kw-arg)
                           (format "\n   ~a ~e" (fmt kw) kw-arg))
                         kws kw-args))))])
-        (define (application-message str)
+        (-define (application-message str)
           (error-message->adjusted-string 'application
                                           'racket/primitive
                                           str
@@ -1710,11 +1710,11 @@
                     name/val args-str))))
           (current-continuation-marks)))))
 
-  (define (keyword-procedure-extract p kws n)
+  (-define (keyword-procedure-extract p kws n)
     (keyword-procedure-extract/method kws n p 0))
 
   ;; setting procedure arity
-  (define procedure-reduce-keyword-arity 
+  (-define procedure-reduce-keyword-arity 
     (case-lambda
       [(proc arity req-kw allowed-kw name realm)
        (do-procedure-reduce-keyword-arity 'procedure-reduce-keyword-arity proc arity #f name realm req-kw allowed-kw)]
@@ -1722,7 +1722,7 @@
        (do-procedure-reduce-keyword-arity 'procedure-reduce-keyword-arity proc arity #f name 'racket req-kw allowed-kw)]
       [(proc arity req-kw allowed-kw)
        (do-procedure-reduce-keyword-arity 'procedure-reduce-keyword-arity proc arity #f #f 'racket req-kw allowed-kw)]))
-  (define procedure-reduce-keyword-arity-mask
+  (-define procedure-reduce-keyword-arity-mask
     (case-lambda
       [(proc mask req-kw allowed-kw name realm)
        (do-procedure-reduce-keyword-arity 'procedure-reduce-keyword-arity-mask proc #f mask name realm req-kw allowed-kw)]
@@ -1731,7 +1731,7 @@
       [(proc mask req-kw allowed-kw)
        (do-procedure-reduce-keyword-arity 'procedure-reduce-keyword-arity-mask proc #f mask #f 'racket req-kw allowed-kw)]))
   
-  (define (do-procedure-reduce-keyword-arity who proc arity mask name realm req-kw allowed-kw)
+  (-define (do-procedure-reduce-keyword-arity who proc arity mask name realm req-kw allowed-kw)
     (let* ([plain-proc (and (or (null? allowed-kw)
                                 (null? req-kw))
                             (let ([p (if (okp? proc)
@@ -1740,7 +1740,7 @@
                               (if arity
                                   (procedure-reduce-arity p arity name realm)
                                   (procedure-reduce-arity-mask p mask name realm))))])
-      (define (sorted-kws? kws)
+      (-define (sorted-kws? kws)
         (let loop ([kws kws])
           (cond
             [(null? kws) #t]
@@ -1825,7 +1825,7 @@
                    name
                    realm)))))))
 
-  (define (arity->mask a)
+  (-define (arity->mask a)
     (cond
       [(exact-nonnegative-integer? a)
        (arithmetic-shift 1 a)]
@@ -1844,7 +1844,7 @@
                 [else #f]))]))]
       [else #f]))
 
-  (define new:procedure-reduce-arity
+  (-define new:procedure-reduce-arity
     (let ([procedure-reduce-arity
            (case-lambda
              [(proc arity name realm)
@@ -1867,7 +1867,7 @@
               (new:procedure-reduce-arity proc arity #f 'racket)])])
       procedure-reduce-arity))
 
-  (define new:procedure-reduce-arity-mask
+  (-define new:procedure-reduce-arity-mask
     (let ([procedure-reduce-arity
            (case-lambda
              [(proc mask name realm)
@@ -1890,7 +1890,7 @@
               (new:procedure-reduce-arity-mask proc mask #f 'racket)])])
       procedure-reduce-arity))
     
-  (define new:procedure->method
+  (-define new:procedure->method
     (let ([procedure->method
            (lambda (proc)
              (let ([proc (normalize-proc proc)])
@@ -1928,7 +1928,7 @@
                    (procedure->method proc))))])
       procedure->method))
 
-  (define new:procedure-rename
+  (-define new:procedure-rename
     (let ([procedure-rename 
            (case-lambda
              [(proc name realm)
@@ -1952,13 +1952,13 @@
               (new:procedure-rename proc name 'racket)])])
       procedure-rename))
 
-  (define new:procedure-realm
+  (-define new:procedure-realm
     (let ([procedure-realm
            (lambda (proc)
              (if (keyword-procedure? proc)
                  (cond
                    [(named-keyword-procedure? proc)
-                    (define name+fail (keyword-procedure-name+fail* proc))
+                    (-define name+fail (keyword-procedure-name+fail* proc))
                     (or (vector-ref name+fail 1)
                         (procedure-realm (vector-ref name+fail 2)))]
                    [(okp? proc)
@@ -1969,43 +1969,43 @@
                  (procedure-realm proc)))])
       procedure-realm))
 
-  (define new:chaperone-procedure
+  (-define new:chaperone-procedure
     (let ([chaperone-procedure
            (lambda (proc wrap-proc . props)
              (do-chaperone-procedure #f #f chaperone-procedure 'chaperone-procedure proc wrap-proc props))])
       chaperone-procedure))
 
-  (define new:unsafe-chaperone-procedure
+  (-define new:unsafe-chaperone-procedure
     (let ([unsafe-chaperone-procedure
            (lambda (proc wrap-proc . props)
              (do-unsafe-chaperone-procedure unsafe-chaperone-procedure 'unsafe-chaperone-procedure proc wrap-proc props))])
       unsafe-chaperone-procedure))
 
-  (define new:impersonate-procedure
+  (-define new:impersonate-procedure
     (let ([impersonate-procedure
            (lambda (proc wrap-proc . props)
              (do-chaperone-procedure #t #f impersonate-procedure 'impersonate-procedure proc wrap-proc props))])
       impersonate-procedure))
 
-  (define new:unsafe-impersonate-procedure
+  (-define new:unsafe-impersonate-procedure
     (let ([unsafe-impersonate-procedure
            (lambda (proc wrap-proc . props)
              (do-unsafe-chaperone-procedure unsafe-impersonate-procedure 'unsafe-impersonate-procedure proc wrap-proc props))])
       unsafe-impersonate-procedure))
 
-  (define new:chaperone-procedure*
+  (-define new:chaperone-procedure*
     (let ([chaperone-procedure*
            (lambda (proc wrap-proc . props)
              (do-chaperone-procedure #f #t chaperone-procedure* 'chaperone-procedure proc wrap-proc props))])
       chaperone-procedure*))
 
-  (define new:impersonate-procedure*
+  (-define new:impersonate-procedure*
     (let ([impersonate-procedure*
            (lambda (proc wrap-proc . props)
              (do-chaperone-procedure #t #t impersonate-procedure* 'impersonate-procedure proc wrap-proc props))])
       impersonate-procedure*))
 
-  (define (do-chaperone-procedure is-impersonator? self-arg? chaperone-procedure name proc wrap-proc props)
+  (-define (do-chaperone-procedure is-impersonator? self-arg? chaperone-procedure name proc wrap-proc props)
     (let ([n-proc (normalize-proc proc)]
           [n-wrap-proc (normalize-proc wrap-proc)])
       (if (or (not (keyword-procedure? n-proc))
@@ -2095,13 +2095,13 @@
                              (cond
                               [(and (not (eq? n-proc proc))
                                     (new-procedure? proc))
-                               (define v (new-procedure-ref proc))
+                               (-define v (new-procedure-ref proc))
                                (cond
                                 [(exact-integer? v)
                                  ;; we have to chaperone the access to the field that
                                  ;; contains a procedure; the `new-procedure-accessor`
                                  ;; property gives us that accessor
-                                 (define acc (procedure-accessor-ref proc))
+                                 (-define acc (procedure-accessor-ref proc))
                                  (values
                                   (chaperone-struct
                                    proc
@@ -2138,12 +2138,12 @@
                                                       [(extra-arg ... kws kw-args self . args)
                                                        ;; Chain to `kw-chaperone', pulling out the self
                                                        ;; argument, and then putting it back:
-                                                       (define len (length args))
+                                                       (-define len (length args))
                                                        (call-with-values
                                                         (lambda () (apply kw-chaperone extra-arg ... kws kw-args args))
                                                         (lambda results
-                                                          (define r-len (length results))
-                                                          (define (list-take l n)
+                                                          (-define r-len (length results))
+                                                          (-define (list-take l n)
                                                             (if (zero? n) null (cons (car l) (list-take (cdr l) (sub1 n)))))
                                                           ;; Drop out `kws` result, add in `self`:
                                                           (if (and (null? '(extra-arg ...))
@@ -2226,7 +2226,7 @@
                          chap-accessor #f
                          props)))))))
   
-  (define (do-unsafe-chaperone-procedure unsafe-chaperone-procedure name proc wrap-proc props)
+  (-define (do-unsafe-chaperone-procedure unsafe-chaperone-procedure name proc wrap-proc props)
     (let ([n-proc (normalize-proc proc)]
           [n-wrap-proc (normalize-proc wrap-proc)])
       (if (or (not (keyword-procedure? n-proc))
@@ -2238,7 +2238,7 @@
             (chaperone-arity-match-checking #f name proc wrap-proc props)
             (apply unsafe-chaperone-procedure proc wrap-proc props)))))
 
-  (define (bad-props? props)
+  (-define (bad-props? props)
     (let loop ([props props])
       (cond
         [(null? props) #f]
@@ -2248,13 +2248,13 @@
                (loop (cdr props))))]
         [else #t])))
 
-  (define (chaperone-arity-match-checking self-arg? name proc wrap-proc props)
+  (-define (chaperone-arity-match-checking self-arg? name proc wrap-proc props)
     (let-values ([(a) (procedure-arity proc)]
                  [(b) (procedure-arity wrap-proc)]
                  [(d) (if self-arg? 1 0)]
                  [(a-req a-allow) (procedure-keywords proc)]
                  [(b-req b-allow) (procedure-keywords wrap-proc)])
-      (define (includes? a b)
+      (-define (includes? a b)
         (cond
           [(number? b) (cond
                          [(number? a) (= b (+ a d))]
@@ -2290,7 +2290,7 @@
          "original procedure" proc))
       (void)))
   
-  (define (normalize-proc proc)
+  (-define (normalize-proc proc)
     ;; If `proc' gets keyword support through `new-prop:procedure',
     ;; then wrap it to normalize to to something that matches
     ;; `keyword-procedure?'.

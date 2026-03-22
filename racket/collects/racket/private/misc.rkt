@@ -6,7 +6,7 @@
   (#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" "define.rkt" "path.rkt" "old-path.rkt"
              "path-list.rkt" "executable-path.rkt"
              "reading-param.rkt" "../repl.rkt"
-             (for-syntax '#%kernel "qq-and-or.rkt" "stx.rkt" "stxcase-scheme.rkt" "stxcase.rkt"))
+             (for-syntax '#%kernel "define-et-al.rkt" "qq-and-or.rkt" "stx.rkt" "stxcase-scheme.rkt" "stxcase.rkt"))
   
   ;; -------------------------------------------------------------------------
 
@@ -44,7 +44,7 @@
 
   ;; -------------------------------------------------------------------------
 
-  (define rationalize
+  (-define rationalize
     (letrec ([check (lambda (x) 
                       (unless (real? x) (raise-argument-error 'rationalize "real?" x)))]
 	     [find-between 
@@ -83,7 +83,7 @@
 
 
 
-  (define load/cd
+  (-define load/cd
     (lambda (n)
       (unless (path-string? n)
 	(raise-argument-error 'load/cd "path-string?" n))
@@ -112,47 +112,47 @@
 			(lambda () (load name))
 			(lambda () (current-directory orig))))))))))
 
-  (define (-load load name path)
+  (-define (-load load name path)
     (unless (path-string? path) 
       (raise-argument-error name "path-string?" path))
     (if (complete-path? path)
 	(load path)
 	(let ([dir (current-load-relative-directory)])
 	  (load (if dir (path->complete-path path dir) path)))))
-  (define (load-relative path) (-load load 'load-relative path))
-  (define (load-relative-extension path) (-load load-extension 'load-relative-extension path))
+  (-define (load-relative path) (-load load 'load-relative path))
+  (-define (load-relative-extension path) (-load load-extension 'load-relative-extension path))
   
   ;; -------------------------------------------------------------------------
 
   (define-values (struct:guard make-guard guard? guard-ref guard-set!)
     (make-struct-type 'evt #f 1 0 #f (list (cons prop:evt 0)) (current-inspector) #f '(0)))
 
-  (define (guard-evt proc)
+  (-define (guard-evt proc)
     (unless (and (procedure? proc)
 		 (procedure-arity-includes? proc 0))
       (raise-argument-error 'guard-evt "(any/c . -> . evt?)" proc))
     (make-guard (lambda (self) (proc))))
 
-  (define (channel-get ch)
+  (-define (channel-get ch)
     (unless (channel? ch)
       (raise-argument-error 'channel-get "channel?" ch))
     (sync ch))
 
-  (define (channel-try-get ch)
+  (-define (channel-try-get ch)
     (unless (channel? ch)
       (raise-argument-error 'channel-try-get "channel?" ch))
     (sync/timeout 0 ch))
 
-  (define (channel-put ch val)
+  (-define (channel-put ch val)
     (unless (channel? ch)
       (raise-argument-error 'channel-put "channel?" ch))
     (and (sync (channel-put-evt ch val)) (void)))
 
   ;; -------------------------------------------------------------------------
 
-  (define (port? x) (or (input-port? x) (output-port? x)))
+  (-define (port? x) (or (input-port? x) (output-port? x)))
 
-  (define writeln
+  (-define writeln
     (case-lambda
      [(v) (writeln v (current-output-port))]
      [(v p) 
@@ -161,7 +161,7 @@
       (write v p)
       (newline p)]))
   
-  (define displayln
+  (-define displayln
     (case-lambda
      [(v) (displayln v (current-output-port))]
      [(v p) 
@@ -170,7 +170,7 @@
       (display v p)
       (newline p)]))
   
-  (define println
+  (-define println
     (case-lambda
       [(v) (println v (current-output-port) 0)]
       [(v p) (println v p 0)]
@@ -184,22 +184,22 @@
 
   ;; -------------------------------------------------------------------------
 
-  (define (string-no-nuls? s)
+  (-define (string-no-nuls? s)
     (and (string? s)
          (not (regexp-match? #rx"\0" s))))
 
-  (define (bytes-environment-variable-name? s)
+  (-define (bytes-environment-variable-name? s)
     (and (bytes? s)
          (if (eq? 'windows (system-type))
              (regexp-match? #rx#"^[^\0=]+$" s)
              (regexp-match? #rx#"^[^\0=]*$" s))))
 
-  (define (string-environment-variable-name? s)
+  (-define (string-environment-variable-name? s)
     (and (string? s)
          (bytes-environment-variable-name?
           (string->bytes/locale s (char->integer #\?)))))
 
-  (define (getenv s)
+  (-define (getenv s)
     (unless (string-environment-variable-name? s)
       (raise-argument-error 'getenv "string-environment-variable-name?" s))
     (let ([v (environment-variables-ref (current-environment-variables)
@@ -207,7 +207,7 @@
       (and v
            (bytes->string/locale v #\?))))
 
-  (define (putenv s t)
+  (-define (putenv s t)
     (unless (string-no-nuls? s)
       (raise-argument-error 'putenv "string-environment-variable-name?" 0 s t))
     (unless (string-no-nuls? t)

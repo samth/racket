@@ -3,7 +3,7 @@
 ;;       [http://scheme2006.cs.uchicago.edu/07-clinger.pdf]
 
 (module case '#%kernel
-  (#%require '#%paramz '#%unsafe "qq-and-or.rkt" "cond.rkt" "define.rkt" "fixnum.rkt"
+  (#%require '#%paramz '#%unsafe "qq-and-or.rkt" "cond.rkt" "define.rkt" "define-et-al.rkt" "fixnum.rkt"
              (for-syntax '#%kernel "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt"
                          "stxcase-scheme.rkt"
                          "qqstx.rkt" "define.rkt" "sort.rkt" "fixnum.rkt"
@@ -189,23 +189,23 @@
             #,(index-binary-search #'index #'([xs ...] [es ...] ...))))]))
 
   (begin-for-syntax
-    (define *sequential-threshold* 12)
-    (define *hash-threshold*       10)
+    (-define *sequential-threshold* 12)
+    (-define *hash-threshold*       10)
 
-    (define nothing (gensym))
+    (-define nothing (gensym))
 
-    (define interval-lo    car)
-    (define interval-hi    cadr)
-    (define interval-index caddr)
+    (-define interval-lo    car)
+    (-define interval-hi    cadr)
+    (-define interval-index caddr)
 
     ;; this does not need special equal-always? handling because constants are immutable
-    (define (partition-constants stx)
-      (define h (make-hash))
+    (-define (partition-constants stx)
+      (-define h (make-hash))
 
-      (define (duplicate? x)
+      (-define (duplicate? x)
         (not (eq? (hash-ref h x nothing) nothing)))
 
-      (define (add xs x idx)
+      (-define (add xs x idx)
         (hash-set! h x idx)
         (cons (cons x idx) xs))
 
@@ -226,13 +226,13 @@
                                      [(char? y)      (inner f s (add c y idx) o (cdr ys))]
                                      [else           (inner f s c (add o y idx) (cdr ys))]))]))])))
 
-    (define (consts-fixnum ks) (cdr (assq 'fixnum ks)))
-    (define (consts-symbol ks) (cdr (assq 'symbol ks)))
-    (define (consts-char   ks) (cdr (assq 'char   ks)))
-    (define (consts-other  ks) (cdr (assq 'other  ks)))
+    (-define (consts-fixnum ks) (cdr (assq 'fixnum ks)))
+    (-define (consts-symbol ks) (cdr (assq 'symbol ks)))
+    (-define (consts-char   ks) (cdr (assq 'char   ks)))
+    (-define (consts-other  ks) (cdr (assq 'other  ks)))
 
     ;; Character dispatch is fixnum dispatch.
-    (define (dispatch-char tmp-stx char-alist)
+    (-define (dispatch-char tmp-stx char-alist)
       #`(let ([codepoint (char->integer #,tmp-stx)])
           #,(dispatch-fixnum #'codepoint
                              (map (λ (x)
@@ -243,7 +243,7 @@
     ;; Symbol and "other" dispatch is either sequential or
     ;; hash-table-based, depending on how many constants we
     ;; have. Assume that `alist' does not map anything to `#f'.
-    (define (dispatch-hashable tmp-stx alist make-hashX compare-id else-exp)
+    (-define (dispatch-hashable tmp-stx alist make-hashX compare-id else-exp)
       (if (< (length alist) *hash-threshold*)
           #`(case/sequential #,tmp-stx #,compare-id
                              #,@(map (λ (x)
@@ -256,22 +256,22 @@
                 #`(or (hash-ref #,tbl #,tmp-stx (lambda () #f))
                       #,else-exp)))))
 
-    (define (dispatch-symbol tmp-stx symbol-alist else-exp)
+    (-define (dispatch-symbol tmp-stx symbol-alist else-exp)
       (dispatch-hashable tmp-stx symbol-alist make-immutable-hasheq #'eq? else-exp))
 
-    (define (compare-id->mk-hash id)
+    (-define (compare-id->mk-hash id)
       (cond [(free-identifier=? id #'equal?) make-immutable-hash]
 	    [(free-identifier=? id #'equal-always?) make-immutable-hashalw]
 	    [(free-identifier=? id #'eq?) make-immutable-hasheq]
 	    [(free-identifier=? id #'eqv?) make-immutable-hasheqv]
 	    [else (error 'case "unexpected comparison id: ~a" id)]))
 
-    (define (dispatch-other compare-id tmp-stx other-alist else-exp)
+    (-define (dispatch-other compare-id tmp-stx other-alist else-exp)
       (dispatch-hashable tmp-stx other-alist (compare-id->mk-hash compare-id)
 			 compare-id else-exp))
 
-    (define (test-for-symbol tmp-stx alist)
-      (define (contains? pred)
+    (-define (test-for-symbol tmp-stx alist)
+      (-define (contains? pred)
         (ormap (lambda (p) (pred (car p))) alist))
       (if (contains? symbol?)
           (if (contains? keyword?)
@@ -279,14 +279,14 @@
               #`(symbol? #,tmp-stx))
           #`(keyword? #,tmp-stx)))
 
-    (define (literal-expression? else-exp)
-      (define v (syntax-e else-exp))
+    (-define (literal-expression? else-exp)
+      (-define v (syntax-e else-exp))
       (or (boolean? v) (number? v)))
 
     ;; Fixnum dispatch is either table lookup or binary search.
-    (define (dispatch-fixnum tmp-stx fixnum-alist)
-      (define (go intervals lo hi lo-bound hi-bound)
-        (define len (length intervals))
+    (-define (dispatch-fixnum tmp-stx fixnum-alist)
+      (-define (go intervals lo hi lo-bound hi-bound)
+        (-define len (length intervals))
 
         (cond [(or (>= lo-bound hi)
                    (<= hi-bound lo))
@@ -297,8 +297,8 @@
               [else
                (fixnum-binary-search intervals lo hi lo-bound hi-bound)]))
 
-      (define (fixnum-table-lookup intervals lo hi lo-bound hi-bound)
-        (define index-lists
+      (-define (fixnum-table-lookup intervals lo hi lo-bound hi-bound)
+        (-define index-lists
           (map (λ (int)
                  (vector->list
                   (make-vector (- (interval-hi int)
@@ -310,7 +310,7 @@
             #,(bounded-expr tmp-stx lo hi lo-bound hi-bound
                             #`(unsafe-vector*-ref tbl (unsafe-fx- #,tmp-stx #,lo)))))
 
-      (define (fixnum-binary-search intervals lo hi lo-bound hi-bound)
+      (-define (fixnum-binary-search intervals lo hi lo-bound hi-bound)
         (cond [(null? (cdr intervals))
                #`#,(interval-index (car intervals))]
               [else
@@ -322,17 +322,17 @@
                      #,(go lo-ints lo-lo lo-hi lo-bound hi-lo)
                      #,(go hi-ints hi-lo hi-hi hi-lo hi-bound))]))
 
-      (define (split-intervals intervals)
-        (define n (quotient (length intervals) 2))
+      (-define (split-intervals intervals)
+        (-define n (quotient (length intervals) 2))
         (let loop ([n n] [lo '()] [hi intervals])
           (cond [(zero? n) (values (reverse lo) hi)]
                 [else (loop (sub1 n) (cons (car hi) lo) (cdr hi))])))
 
-      (define (lo+hi intervals)
+      (-define (lo+hi intervals)
         (values (interval-lo (car intervals))
                 (interval-hi (car (reverse intervals)))))
 
-      (define intervals (alist->intervals fixnum-alist))
+      (-define intervals (alist->intervals fixnum-alist))
       (define-values (lo hi) (lo+hi intervals))
 
       #`(if (and (unsafe-fx>= #,tmp-stx #,lo)
@@ -342,10 +342,10 @@
 
     ;; Once we have the index of the consequent we want, perform
     ;; a binary search to find it.
-    (define (index-binary-search index-stx leg-stx)
-      (define legs (list->vector (syntax->list leg-stx)))
+    (-define (index-binary-search index-stx leg-stx)
+      (-define legs (list->vector (syntax->list leg-stx)))
 
-      (define (go min max)
+      (-define (go min max)
         (cond [(= min max)
                #`(let-values () #,@(vector-ref legs min))]
               [(= max (add1 min))
@@ -360,7 +360,7 @@
 
       (go 0 (sub1 (vector-length legs))))
 
-    (define (bounded-expr tmp-stx lo hi lo-bound hi-bound exp-stx)
+    (-define (bounded-expr tmp-stx lo hi lo-bound hi-bound exp-stx)
       (cond [(and (<= hi-bound hi)
                   (>= lo-bound lo))
              exp-stx]
@@ -374,7 +374,7 @@
                    exp-stx
                    0)]))
 
-    (define (alist->intervals alist)
+    (-define (alist->intervals alist)
       (let loop ([xs (sort alist < car)] [start-idx #f] [end-idx #f] [cur-val #f] [res '()])
         (cond [(null? xs)
                (if start-idx

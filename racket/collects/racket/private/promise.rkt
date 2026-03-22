@@ -18,7 +18,7 @@
            (rename "define-struct.rkt" define-struct define-struct*)
            (for-syntax '#%kernel
                        "cond.rkt" "qq-and-or.rkt"
-                       "define.rkt"
+                       "define.rkt" "define-et-al.rkt"
                        "struct.rkt"
                        "stxcase-scheme.rkt"
                        "name.rkt")
@@ -58,7 +58,7 @@
 ;; note: measuring time invested divided by the number of lines, this innocent
 ;; looking piece of code is by far the leader of that competition -- handle
 ;; with extreme care.
-(define (force/composable root)
+(-define (force/composable root)
   (let ([v (pref root)])
     (cond
       [(procedure? v)
@@ -100,7 +100,7 @@
       [else (error 'force "composable promise with invalid contents: ~e" v)])))
 
 ;; convenient utility for any number of stored values or a raised value.
-(define (reify-result v)
+(-define (reify-result v)
   (cond [(pair? v) (if (null? (unsafe-cdr v)) (unsafe-car v) (apply values v))]
         [(null? v) (values)]
         [(reraise? v) (v)]
@@ -114,7 +114,7 @@
 ;; with a new kind of `running' value that can be used again, but the
 ;; first cannot be solved.  I still didn't ever see any use for them, so
 ;; they're still forbidden -- throw a "reentrant promise" error.)
-(define (force/generic promise)
+(-define (force/generic promise)
   (reify-result
    (let ([v (pref promise)])
      (if (procedure? v)
@@ -127,7 +127,7 @@
        v))))
 
 ;; dispatcher for composable promises, generic promises, and other values
-(define (force v)
+(-define (force v)
   (let ([forcer (promise-forcer v #f)])
     (if forcer
         (forcer v) ; dispatch to specific forcer
@@ -137,7 +137,7 @@
 ;; Struct definitions
 
 ;; generic promise printer
-(define (promise-printer promise port write?)
+(-define (promise-printer promise port write?)
   (let loop ([v (pref promise)])
     (cond
       [(reraise? v)
@@ -223,9 +223,9 @@
   (struct delayer (maker keywords)
     #:property prop:procedure
     (lambda (self stx)
-      (define keywords (delayer-keywords self))
+      (-define keywords (delayer-keywords self))
 
-      (define (parse-exprs+kwds stxs)
+      (-define (parse-exprs+kwds stxs)
         (let loop ([stxs stxs]
                    [exprs '()]
                    [kwds '()])
@@ -250,7 +250,7 @@
             [_
              (raise-syntax-error #f "bad syntax" stx stxs)])))
 
-      (define (unwind-promise stx unwind-recur)
+      (-define (unwind-promise stx unwind-recur)
         (syntax-case stx ()
           [(#%plain-lambda () body) (unwind-recur #'body)]))
 
@@ -275,7 +275,7 @@
 
 ;; Creates a composable promise
 ;;   X = (force (lazy X)) = (force (lazy (lazy X))) = (force (lazy^n X))
-(define lazy make-composable-promise)
+(-define lazy make-composable-promise)
 (define-syntax lazy* (delayer #'lazy '()))
 
 ;; Creates a (generic) promise that does not compose
@@ -286,7 +286,7 @@
 ;; sequence of `(lazy^n o delay)^m o lazy^k' requires m+1 `force's (for k>0)
 ;; (This is not needed with a lazy language (see the above URL for details),
 ;; but provided for regular delay/force uses.)
-(define delay make-promise)
+(-define delay make-promise)
 (define-syntax delay* (delayer #'delay '()))
 
 ;; For simplicity and efficiency this code uses thunks in promise values for
@@ -322,13 +322,13 @@
 ;; ----------------------------------------------------------------------------
 ;; Utilities
 
-(define (promise-forced? promise)
+(-define (promise-forced? promise)
   (if (promise? promise)
     (let ([v (pref promise)])
       (or (not (procedure? v)) (reraise? v))) ; #f when running
     (raise-argument-error 'promise-forced? "promise?" promise)))
 
-(define (promise-running? promise)
+(-define (promise-running? promise)
   (if (promise? promise)
     (let ([v (pref promise)])
       (or (running? v)
@@ -340,7 +340,7 @@
 
 #|
 Simple code for timings:
-  (define (c n) (lazy (if (zero? n) (delay 'hey!) (c (sub1 n)))))
+  (-define (c n) (lazy (if (zero? n) (delay 'hey!) (c (sub1 n)))))
   (for ([i (in-range 9)])
     (collect-garbage) (collect-garbage) (collect-garbage)
     (time (for ([i (in-range 10000)]) (force (c 2000)))))

@@ -11,9 +11,20 @@
          racket/format
          racket/port
          racket/string
+         racket/lazy-require
          setup/dirs
-         "shelly.rkt"
-         "git-http-proxy.rkt")
+         "shelly.rkt")
+
+;; Lazy-load heavy server dependencies (~530ms savings on module load)
+;; These are only needed when with-servers* actually starts servers.
+(lazy-require
+ ["git-http-proxy.rkt" (serve-git-http-proxy!)]
+ ["basic-index.rkt" (pkg-index/basic)]
+ [web-server/http (header response/output response/xexpr request-uri request-headers)]
+ [web-server/servlet-env (serve/servlet)]
+ [web-server/http/bindings (extract-bindings)]
+ [net/url-string (url-path path/param-path)]
+ [file/sha1 (sha1)])
 
 (define-runtime-path test-source-directory ".")
 
@@ -188,11 +199,8 @@
         #:code 404
         "None")])))
 
-(require web-server/http
-         web-server/servlet-env
-         web-server/http/bindings
-         net/url-string
-         file/sha1)
+;; web-server/http, web-server/servlet-env, web-server/http/bindings,
+;; net/url-string, and file/sha1 are now lazy-required above
 (define (start-file-server)
   (parameterize ([current-error-port (if (verbose?)
                                          (current-output-port)
@@ -204,7 +212,7 @@
                    #:port 9997
                    #:extra-files-paths (list root-dir))))
 
-(require "basic-index.rkt")
+;; basic-index.rkt is now lazy-required above
 (define *index-ht-1* (make-hash))
 (define *index-ht-2* (make-hash))
 (define (start-pkg-server index-ht port)

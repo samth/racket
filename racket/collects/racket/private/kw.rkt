@@ -380,7 +380,7 @@
                       (list (cons prop:arity-string generate-arity-string)
                             (cons prop:incomplete-arity #t))))
 
-  (define-syntax (define-named-variant stx)
+  (-define-syntax (define-named-variant stx)
     (syntax-case stx ()
       [(_ make-required-keyword-procedure/arity-error
           struct:keyword-procedure/arity-error)
@@ -417,7 +417,7 @@
   ;; expected to be a small procedure, so that duplication is ok.
   ;; (This macro is used with lift-values-expression, so that the same constructor
   ;;  is used for each evaluation of a keyword lambda.)
-  (define-syntax (make-required* stx)
+  (-define-syntax (make-required* stx)
     (syntax-case stx ()
       [(_ struct:km/ae name realm fail-proc)
        #'(make-struct-type name
@@ -431,7 +431,7 @@
   ;; To avoid ending up with inferred names that point inside this module, we
   ;; need to ensure that both 'inferred-name is (void) and there is no source
   ;; location on the expression
-  (define-syntax (no-inferred-name stx)
+  (-define-syntax (no-inferred-name stx)
     (syntax-case stx ()
       [(_ e)
        (syntax-property (datum->syntax #'e (syntax-e #'e) #f #'e)
@@ -916,7 +916,7 @@
                            'needed-kws
                            'kws))))]))))))]))
   
-  (define-syntax (new-lambda stx)
+  (-define-syntax (new-lambda stx)
     (if (eq? (syntax-local-context) 'expression)
         (parse-lambda
          stx
@@ -961,7 +961,7 @@
   ;; to the actual value (if present); if the keyword isn't
   ;; available, then the corresponding `req' is applied, which
   ;; should signal an error if the keyword is required.
-  (define-syntax (let-kws stx)
+  (-define-syntax (let-kws stx)
     (syntax-case stx ()
       [(_ kws kw-args () . body)
        #'(begin . body)]
@@ -992,7 +992,7 @@
              (let-kws next-kws next-kw-args rest . body)))]))
 
   ;; Used for `req' when the keyword argument is optional:
-  (define-syntax missing-ok
+  (-define-syntax missing-ok
     (syntax-rules ()
       [(_ x y) #f]))
   
@@ -1005,7 +1005,7 @@
   ;; argument is split into two: a boolean argument that
   ;; indicates whether it was supplied, and an argument 
   ;; for the value (if supplied).
-  (define-syntax (opt-cases stx)
+  (-define-syntax (opt-cases stx)
     (syntax-case stx ()
       [(_ (core ...) () (base ...)
           () ()
@@ -1042,7 +1042,7 @@
 
   ;; Helper macro:
   ;; Similar to opt-cases, but just pass all arguments along to `fail'.
-  (define-syntax fail-opt-cases
+  (-define-syntax fail-opt-cases
     (syntax-rules ()
       [(_ (fail ...) () (base ...) () (rest-id . rest) ())
        ;; This case only happens when there are no optional arguments
@@ -1074,7 +1074,7 @@
   ;; (where, e.g., an optional keyword argument might
   ;; precede a required argument, so the required argument
   ;; cannot be used to compute the default).
-  (define-syntax (let-maybe stx)
+  (-define-syntax (let-maybe stx)
     (syntax-case stx (required)
       [(_ () () () () . body)
        (syntax-property
@@ -1114,7 +1114,7 @@
   ;;  Generate arity and keyword-checking procedure statically
   ;;  as much as is reasonable.
 
-  (define-syntax (in-range?/static stx)
+  (-define-syntax (in-range?/static stx)
     (syntax-case stx ()
       [(_ v min #f)
        #'(v . >= . min)]
@@ -1123,7 +1123,7 @@
            #'(= v min)
            #'(and (v . >= . min) (v . <= . max)))]))
   
-  (define-syntax (subset?/static stx)
+  (-define-syntax (subset?/static stx)
     (syntax-case stx (quote)
       [(_ l1-expr '()) #'(null? l1-expr)]
       [(_ '() l2-expr) #'#t]
@@ -1138,7 +1138,7 @@
                (subset?/static l1 'kws))))]
       [(_ l1-expr l2-expr) #'(subset? l1-expr l2-expr)]))
 
-  (define-syntax (subsets?/static stx)
+  (-define-syntax (subsets?/static stx)
     (syntax-case stx (quote)
       [(_ '() l2-expr l3-expr)
        #'(subset?/static l2-expr l3-expr)]
@@ -1151,7 +1151,7 @@
            #'(equal?/static 'l1-elems l2-expr)
            #'(subsets? 'l1-elems l2-expr 'l3-elems))]))
 
-  (define-syntax (equal?/static stx)
+  (-define-syntax (equal?/static stx)
     ;; Unroll loop at expansion time
     (syntax-case stx (quote)
       [(_ '() l2-expr) #'(null? l2-expr)]
@@ -1165,7 +1165,7 @@
   ;; ----------------------------------------
   ;; `define' with keyword arguments
   
-  (define-syntax (new-define stx)
+  (-define-syntax (new-define stx)
     (let-values ([(id rhs)
                   (normalize-definition stx #'new-lambda #t #t)])
       (let* ([plain (lambda (rhs)
@@ -1336,7 +1336,7 @@
                               (cons (copy-properties (car ids) (car l)) arg-accum)
                               kw-pairs)])))))))
 
-  (define-syntax (new-app stx)
+  (-define-syntax (new-app stx)
     (parse-app stx void (lambda (args kw-args lifted? orig) orig)))
 
   (define-values-for-syntax (struct:kw-expander make-kw-expander kw-expander? kw-expander-ref kw-expander-set)

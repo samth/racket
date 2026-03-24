@@ -1,6 +1,6 @@
 (module sort '#%kernel
 
-(#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" "define.rkt" (for-syntax "define-et-al.rkt" "stxcase-scheme.rkt"))
+(#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" (for-syntax "define-et-al.rkt" "stxcase-scheme.rkt"))
 
 ;; note, these are the raw interfaces --- user-facing definitions
 ;; are exported from private/list.rkt and vector.rkt
@@ -47,10 +47,10 @@ code.
                 vector-sort!)
 (let ()
 
-  (define-syntax define-syntax-rule
+  (-define-syntax define-syntax-rule
     (syntax-rules ()
       [(dr (foo . pattern) template)
-       (define-syntax foo (syntax-rules () [(_ . pattern) template]))]))
+       (-define-syntax foo (syntax-rules () [(_ . pattern) template]))]))
   
   ;; Use this to make it safe:
   ;;(define-syntax-rule (i+ x y) (+ x y))
@@ -156,7 +156,7 @@ code.
   (-define (generic-sort/key A less-than? n key)
     (sort-internal-body A less-than? n key))
   
-  (define-syntax (sort-internal stx)
+  (-define-syntax (sort-internal stx)
     (syntax-case stx ()
       [(_ vec less-than? n #:key #f)
        #'(generic-sort vec less-than? n)]
@@ -167,7 +167,7 @@ code.
   ;; List Sorting Definition Body
   ;; - - - - - - - - - - - - - - - - - - - - - - - -
   
-  (define-syntax (list-sort-body stx)
+  (-define-syntax (list-sort-body stx)
     (syntax-case stx ()
       [(_ lst less-than? #:key key #:cache-keys? cache-keys?)
        #'(let ([n (length lst)])
@@ -246,7 +246,7 @@ code.
   ;; Vector Sorting Definition Body
   ;; - - - - - - - - - - - - - - - - - - - - - - - -
   
-  (define-syntax (vector-sort-body stx)
+  (-define-syntax (vector-sort-body stx)
     (syntax-case stx ()
       [(_ src-vec less-than? start end
           #:key key

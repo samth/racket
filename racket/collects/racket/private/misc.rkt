@@ -23,7 +23,7 @@
                                   "something bad happened")))])
       (raise-syntax-error #f msg user-stx)))
 
-  (define-syntax define-syntax-rule
+  (-define-syntax define-syntax-rule
     (lambda (stx)
       (let-values ([(err) (lambda (what . xs)
                             (apply raise-syntax-error

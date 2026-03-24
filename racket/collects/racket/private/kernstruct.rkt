@@ -4,6 +4,7 @@
 (module kernstruct '#%kernel
   (#%require (for-syntax '#%kernel))
   (#%require "define.rkt")
+  (#%require "define-et-al.rkt")
   (#%require (for-syntax "struct-info.rkt"))
   (#%provide (all-defined))
   (define-values-for-syntax
@@ -49,8 +50,8 @@
      make-))
   (begin
     (#%require (rename '#%kernel kernel:exn exn))
-    (define make-exn kernel:exn)
-    (define-syntax exn
+    (-define make-exn kernel:exn)
+    (-define-syntax exn
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -66,8 +67,8 @@
        (λ () (quote-syntax kernel:exn)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail exn:fail))
-    (define make-exn:fail kernel:exn:fail)
-    (define-syntax exn:fail
+    (-define make-exn:fail kernel:exn:fail)
+    (-define-syntax exn:fail
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -83,8 +84,8 @@
        (λ () (quote-syntax kernel:exn:fail)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail:contract exn:fail:contract))
-    (define make-exn:fail:contract kernel:exn:fail:contract)
-    (define-syntax exn:fail:contract
+    (-define make-exn:fail:contract kernel:exn:fail:contract)
+    (-define-syntax exn:fail:contract
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -101,8 +102,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:contract:arity exn:fail:contract:arity))
-    (define make-exn:fail:contract:arity kernel:exn:fail:contract:arity)
-    (define-syntax exn:fail:contract:arity
+    (-define make-exn:fail:contract:arity kernel:exn:fail:contract:arity)
+    (-define-syntax exn:fail:contract:arity
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -121,9 +122,9 @@
      (rename '#%kernel
              kernel:exn:fail:contract:divide-by-zero
              exn:fail:contract:divide-by-zero))
-    (define make-exn:fail:contract:divide-by-zero
+    (-define make-exn:fail:contract:divide-by-zero
       kernel:exn:fail:contract:divide-by-zero)
-    (define-syntax exn:fail:contract:divide-by-zero
+    (-define-syntax exn:fail:contract:divide-by-zero
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -142,9 +143,9 @@
      (rename '#%kernel
              kernel:exn:fail:contract:non-fixnum-result
              exn:fail:contract:non-fixnum-result))
-    (define make-exn:fail:contract:non-fixnum-result
+    (-define make-exn:fail:contract:non-fixnum-result
       kernel:exn:fail:contract:non-fixnum-result)
-    (define-syntax exn:fail:contract:non-fixnum-result
+    (-define-syntax exn:fail:contract:non-fixnum-result
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -163,9 +164,9 @@
      (rename '#%kernel
              kernel:exn:fail:contract:continuation
              exn:fail:contract:continuation))
-    (define make-exn:fail:contract:continuation
+    (-define make-exn:fail:contract:continuation
       kernel:exn:fail:contract:continuation)
-    (define-syntax exn:fail:contract:continuation
+    (-define-syntax exn:fail:contract:continuation
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -184,8 +185,8 @@
      (rename '#%kernel
              kernel:exn:fail:contract:variable
              exn:fail:contract:variable))
-    (define make-exn:fail:contract:variable kernel:exn:fail:contract:variable)
-    (define-syntax exn:fail:contract:variable
+    (-define make-exn:fail:contract:variable kernel:exn:fail:contract:variable)
+    (-define-syntax exn:fail:contract:variable
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -202,8 +203,8 @@
        (λ () (quote-syntax kernel:exn:fail:contract:variable)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail:syntax exn:fail:syntax))
-    (define make-exn:fail:syntax kernel:exn:fail:syntax)
-    (define-syntax exn:fail:syntax
+    (-define make-exn:fail:syntax kernel:exn:fail:syntax)
+    (-define-syntax exn:fail:syntax
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -221,8 +222,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:syntax:unbound exn:fail:syntax:unbound))
-    (define make-exn:fail:syntax:unbound kernel:exn:fail:syntax:unbound)
-    (define-syntax exn:fail:syntax:unbound
+    (-define make-exn:fail:syntax:unbound kernel:exn:fail:syntax:unbound)
+    (-define-syntax exn:fail:syntax:unbound
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -242,9 +243,9 @@
      (rename '#%kernel
              kernel:exn:fail:syntax:missing-module
              exn:fail:syntax:missing-module))
-    (define make-exn:fail:syntax:missing-module
+    (-define make-exn:fail:syntax:missing-module
       kernel:exn:fail:syntax:missing-module)
-    (define-syntax exn:fail:syntax:missing-module
+    (-define-syntax exn:fail:syntax:missing-module
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -262,8 +263,8 @@
        (λ () (quote-syntax kernel:exn:fail:syntax:missing-module)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail:read exn:fail:read))
-    (define make-exn:fail:read kernel:exn:fail:read)
-    (define-syntax exn:fail:read
+    (-define make-exn:fail:read kernel:exn:fail:read)
+    (-define-syntax exn:fail:read
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -280,8 +281,8 @@
        (λ () (quote-syntax kernel:exn:fail:read)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail:read:eof exn:fail:read:eof))
-    (define make-exn:fail:read:eof kernel:exn:fail:read:eof)
-    (define-syntax exn:fail:read:eof
+    (-define make-exn:fail:read:eof kernel:exn:fail:read:eof)
+    (-define-syntax exn:fail:read:eof
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -299,8 +300,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:read:non-char exn:fail:read:non-char))
-    (define make-exn:fail:read:non-char kernel:exn:fail:read:non-char)
-    (define-syntax exn:fail:read:non-char
+    (-define make-exn:fail:read:non-char kernel:exn:fail:read:non-char)
+    (-define-syntax exn:fail:read:non-char
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -318,8 +319,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:filesystem exn:fail:filesystem))
-    (define make-exn:fail:filesystem kernel:exn:fail:filesystem)
-    (define-syntax exn:fail:filesystem
+    (-define make-exn:fail:filesystem kernel:exn:fail:filesystem)
+    (-define-syntax exn:fail:filesystem
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -338,8 +339,8 @@
      (rename '#%kernel
              kernel:exn:fail:filesystem:exists
              exn:fail:filesystem:exists))
-    (define make-exn:fail:filesystem:exists kernel:exn:fail:filesystem:exists)
-    (define-syntax exn:fail:filesystem:exists
+    (-define make-exn:fail:filesystem:exists kernel:exn:fail:filesystem:exists)
+    (-define-syntax exn:fail:filesystem:exists
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -358,9 +359,9 @@
      (rename '#%kernel
              kernel:exn:fail:filesystem:version
              exn:fail:filesystem:version))
-    (define make-exn:fail:filesystem:version
+    (-define make-exn:fail:filesystem:version
       kernel:exn:fail:filesystem:version)
-    (define-syntax exn:fail:filesystem:version
+    (-define-syntax exn:fail:filesystem:version
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -379,8 +380,8 @@
      (rename '#%kernel
              kernel:exn:fail:filesystem:errno
              exn:fail:filesystem:errno))
-    (define make-exn:fail:filesystem:errno kernel:exn:fail:filesystem:errno)
-    (define-syntax exn:fail:filesystem:errno
+    (-define make-exn:fail:filesystem:errno kernel:exn:fail:filesystem:errno)
+    (-define-syntax exn:fail:filesystem:errno
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -400,9 +401,9 @@
      (rename '#%kernel
              kernel:exn:fail:filesystem:missing-module
              exn:fail:filesystem:missing-module))
-    (define make-exn:fail:filesystem:missing-module
+    (-define make-exn:fail:filesystem:missing-module
       kernel:exn:fail:filesystem:missing-module)
-    (define-syntax exn:fail:filesystem:missing-module
+    (-define-syntax exn:fail:filesystem:missing-module
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -419,8 +420,8 @@
        (λ () (quote-syntax kernel:exn:fail:filesystem:missing-module)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail:network exn:fail:network))
-    (define make-exn:fail:network kernel:exn:fail:network)
-    (define-syntax exn:fail:network
+    (-define make-exn:fail:network kernel:exn:fail:network)
+    (-define-syntax exn:fail:network
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -437,8 +438,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:network:errno exn:fail:network:errno))
-    (define make-exn:fail:network:errno kernel:exn:fail:network:errno)
-    (define-syntax exn:fail:network:errno
+    (-define make-exn:fail:network:errno kernel:exn:fail:network:errno)
+    (-define-syntax exn:fail:network:errno
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -456,8 +457,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:out-of-memory exn:fail:out-of-memory))
-    (define make-exn:fail:out-of-memory kernel:exn:fail:out-of-memory)
-    (define-syntax exn:fail:out-of-memory
+    (-define make-exn:fail:out-of-memory kernel:exn:fail:out-of-memory)
+    (-define-syntax exn:fail:out-of-memory
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -474,8 +475,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:fail:unsupported exn:fail:unsupported))
-    (define make-exn:fail:unsupported kernel:exn:fail:unsupported)
-    (define-syntax exn:fail:unsupported
+    (-define make-exn:fail:unsupported kernel:exn:fail:unsupported)
+    (-define-syntax exn:fail:unsupported
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -491,8 +492,8 @@
        (λ () (quote-syntax kernel:exn:fail:unsupported)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:fail:user exn:fail:user))
-    (define make-exn:fail:user kernel:exn:fail:user)
-    (define-syntax exn:fail:user
+    (-define make-exn:fail:user kernel:exn:fail:user)
+    (-define-syntax exn:fail:user
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -508,8 +509,8 @@
        (λ () (quote-syntax kernel:exn:fail:user)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:break exn:break))
-    (define make-exn:break kernel:exn:break)
-    (define-syntax exn:break
+    (-define make-exn:break kernel:exn:break)
+    (-define-syntax exn:break
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -526,8 +527,8 @@
        (λ () (quote-syntax kernel:exn:break)))))
   (begin
     (#%require (rename '#%kernel kernel:exn:break:hang-up exn:break:hang-up))
-    (define make-exn:break:hang-up kernel:exn:break:hang-up)
-    (define-syntax exn:break:hang-up
+    (-define make-exn:break:hang-up kernel:exn:break:hang-up)
+    (-define-syntax exn:break:hang-up
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -545,8 +546,8 @@
   (begin
     (#%require
      (rename '#%kernel kernel:exn:break:terminate exn:break:terminate))
-    (define make-exn:break:terminate kernel:exn:break:terminate)
-    (define-syntax exn:break:terminate
+    (-define make-exn:break:terminate kernel:exn:break:terminate)
+    (-define-syntax exn:break:terminate
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -563,8 +564,8 @@
        (λ () (quote-syntax kernel:exn:break:terminate)))))
   (begin
     (#%require (rename '#%kernel kernel:arity-at-least arity-at-least))
-    (define make-arity-at-least kernel:arity-at-least)
-    (define-syntax arity-at-least
+    (-define make-arity-at-least kernel:arity-at-least)
+    (-define-syntax arity-at-least
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -578,8 +579,8 @@
        (λ () (quote-syntax kernel:arity-at-least)))))
   (begin
     (#%require (rename '#%kernel kernel:date date))
-    (define make-date kernel:date)
-    (define-syntax date
+    (-define make-date kernel:date)
+    (-define-syntax date
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -612,8 +613,8 @@
        (λ () (quote-syntax kernel:date)))))
   (begin
     (#%require (rename '#%kernel kernel:date* date*))
-    (define make-date* kernel:date*)
-    (define-syntax date*
+    (-define make-date* kernel:date*)
+    (-define-syntax date*
       (make-self-ctr-struct-info
        (λ ()
          (list
@@ -639,8 +640,8 @@
        (λ () (quote-syntax kernel:date*)))))
   (begin
     (#%require (rename '#%kernel kernel:srcloc srcloc))
-    (define make-srcloc kernel:srcloc)
-    (define-syntax srcloc
+    (-define make-srcloc kernel:srcloc)
+    (-define-syntax srcloc
       (make-self-ctr-struct-info
        (λ ()
          (list

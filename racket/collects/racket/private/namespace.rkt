@@ -1,5 +1,6 @@
 (module namespace "pre-base.rkt"
-  (require (for-syntax '#%kernel "define.rkt"
+  (require "define-et-al.rkt"
+           (for-syntax '#%kernel "define.rkt"
                        "stx.rkt" "stxcase-scheme.rkt" "define-et-al.rkt" "qq-and-or.rkt"
                        "stxloc.rkt"))
 
@@ -12,9 +13,9 @@
 
   ;; ----------------------------------------
 
-  (define orig-varref (#%variable-reference orig-varref))
+  (-define orig-varref (#%variable-reference orig-varref))
 
-  (define (make-base-empty-namespace)
+  (-define (make-base-empty-namespace)
     (let* ([this-ns (variable-reference->empty-namespace orig-varref)]
            [ns (parameterize ([current-namespace this-ns]) ; ensures correct phase
                  (make-empty-namespace))])
@@ -26,7 +27,7 @@
                                   ns)))
       ns))
 
-  (define (make-base-namespace)
+  (-define (make-base-namespace)
     (let ([ns (make-base-empty-namespace)])
       (parameterize ([current-namespace ns])
         (namespace-require 'racket/base))
@@ -34,7 +35,7 @@
 
   ;; ----------------------------------------
   
-  (define-syntax (define-namespace-anchor stx)
+  (-define-syntax (define-namespace-anchor stx)
     (define ctx (syntax-local-context))
     (if (eq? ctx 'module-begin)
         (datum->syntax stx (list #'begin stx) stx)
@@ -59,14 +60,14 @@
 
   (define-struct namespace-anchor (var))
   
-  (define (namespace-anchor->empty-namespace ra)
+  (-define (namespace-anchor->empty-namespace ra)
     (unless (namespace-anchor? ra)
       (raise-argument-error 'anchor->empty-namespace
                             "namespace-anchor?"
                             ra))
     (variable-reference->empty-namespace (namespace-anchor-var ra)))
 
-  (define (namespace-anchor->namespace ra)
+  (-define (namespace-anchor->namespace ra)
     (unless (namespace-anchor? ra)
       (raise-argument-error 'anchor->namespace
                             "namespace-anchor?"

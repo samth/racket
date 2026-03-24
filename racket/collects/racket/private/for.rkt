@@ -2008,7 +2008,8 @@
                                  orig-stx
                                  stx)])))
 
-      (define ((make for*? right?) stx-in)
+      (define (make for*? right?)
+       (lambda (stx-in)
         ;; Add a fresh scope that acts the "outer edge" scope of `let`, so
         ;; that as we expand clause transformers, we don't end up with
         ;; ambiguities between things that started out in the form and that
@@ -2077,7 +2078,7 @@
                                     #,result-expr))
                                 loop-stx)))))])))]
           [(_ orig-stx . rst)
-           (raise-syntax-error #f "bad syntax" #'orig-stx)]))
+           (raise-syntax-error #f "bad syntax" #'orig-stx)])))
 
       (values (make #f #f) (make #t #f) (make #f #t) (make #t #t))))
 
@@ -2205,11 +2206,12 @@
 
   (define-syntaxes (for/fold for*/fold for/foldr for*/foldr)
     (let ()
-      (define ((make f/f/d-id) stx)
-        (syntax-case stx ()
-          [(_ . rest)
-           (quasisyntax/loc stx
-             (#,f/f/d-id #,stx . rest))]))
+      (define (make f/f/d-id)
+        (lambda (stx)
+          (syntax-case stx ()
+            [(_ . rest)
+             (quasisyntax/loc stx
+               (#,f/f/d-id #,stx . rest))])))
       (values (make #'for/fold/derived)
               (make #'for*/fold/derived)
               (make #'for/foldr/derived)

@@ -5,7 +5,6 @@
              "private/define-et-al.rkt"
              "private/qq-and-or.rkt"
              "private/cond.rkt"
-             "private/define.rkt"
              "private/require-lift.rkt"
              "phase+space.rkt"
              (for-template (only '#%kernel quote))
@@ -64,19 +63,19 @@
   (define-struct* rt (proc)
     #:property prop:require-transformer (lambda (t) (rt-proc t)))
   
-  (define (make-require-transformer proc)
+  (-define (make-require-transformer proc)
     (make-rt proc))
 
   ;; For backward compatibility:
-  (define (syntax-local-require-certifier)
+  (-define (syntax-local-require-certifier)
     (case-lambda 
      [(v) v]
      [(v mark) v]))
 
-  (define orig-insp (variable-reference->module-declaration-inspector
+  (-define orig-insp (variable-reference->module-declaration-inspector
                      (#%variable-reference)))
 
-  (define current-require-module-path 
+  (-define current-require-module-path 
     (make-parameter #f
                     (lambda (v)
                       (unless (or (not v)
@@ -89,9 +88,9 @@
 
   ;; a simplified version of `collapse-module-path-index', where
   ;; we don't have to normalize:
-  (define (collapse-mpi mpi)
+  (-define (collapse-mpi mpi)
     (define-values (a b) (module-path-index-split mpi))
-    (define (recur b)
+    (-define (recur b)
       (cond
        [(not b) (collapse-mpi (module-path-index-join #f #f))]
        [(resolved-module-path? b)
@@ -100,18 +99,18 @@
               (cons 'submod n)
               n))]
        [else (collapse-mpi b)]))
-    (define (extract-root bc)
+    (-define (extract-root bc)
       (if (and (pair? bc) (eq? 'submod (car bc)))
           (cadr bc)
           bc))
-    (define (replace-last s a)
+    (-define (replace-last s a)
       ;; replace last path element, and also eliminate "." and "..":
       (regexp-replace* #rx"(?<=^|/)[.]/"
                        (regexp-replace* #rx"(?<=^|/)[-+_%a-zA-Z0-9]*/[.][.]/"
                                         (regexp-replace #rx"[^/]*$" s a)
                                         "")
                        ""))
-    (define (string->path* s)
+    (-define (string->path* s)
       ;; for now, module-path strings all works as paths
       (string->path s))
     (cond
@@ -122,7 +121,7 @@
      [(path? a) a]
      [(symbol? a) a]
      [(string? a)
-      (define bc (extract-root (recur b)))
+      (-define bc (extract-root (recur b)))
       (let loop ([bc bc])
         (cond
          [(path? bc)
@@ -161,21 +160,21 @@
            [(symbol? (cadr bc))
             (loop `(planet ,(symbol->string (cadr bc))))]
            [(null? (cddr bc))
-            (define s (cadr bc))
+            (-define s (cadr bc))
             (cond
              [(regexp-match? #rx"/.*/" s)
               `(planet ,(replace-last s a))]
              [else
               `(planet ,(string-append s "/" a))])]
            [else
-            (define s (cadr bc))
+            (-define s (cadr bc))
             `(planet ,(if (regexp-match? #rx"/" s)
                           (replace-last s a)
                           a)
                      ,@(cddr bc))])]
          [else (error "collapse-mpi failed on recur shape: " bc)]))]
      [(eq? (car a) 'submod)
-      (define (add bc l)
+      (-define (add bc l)
         (if (and (pair? bc) (eq? 'submod (car bc)))
             (append bc l)
             (list* 'submod bc l)))
@@ -189,15 +188,15 @@
              (cddr a))])]
      [else a]))
   
-  (define (convert-relative-module-path mp/stx)
-    (define rmp (current-require-module-path))
+  (-define (convert-relative-module-path mp/stx)
+    (-define rmp (current-require-module-path))
     (cond
      [(not rmp) mp/stx]
      [else
-      (define mp (if (syntax? mp/stx)
+      (-define mp (if (syntax? mp/stx)
                      (syntax->datum mp/stx)
                      mp/stx))
-      (define (d->s d)
+      (-define (d->s d)
         (if (syntax? mp/stx)
             (datum->syntax mp/stx d mp/stx mp/stx)
             d))
@@ -209,7 +208,7 @@
        [(symbol? mp) mp/stx]
        [(eq? (car mp) 'quote)
         ;; maybe a submodule...
-        (define r (module-path-index-resolve rmp))
+        (-define r (module-path-index-resolve rmp))
         (if (module-declared? (append '(submod)
                                       (if (list? r)
                                           r
@@ -224,9 +223,9 @@
                   (d->s `(submod ,rmp-mod . ,(cddr mp)))))
             mp/stx)]
        [(eq? (car mp) 'file)
-        (define base-path (resolved-module-path-name
+        (-define base-path (resolved-module-path-name
                            (module-path-index-resolve rmp)))
-        (define path (if (pair? base-path)
+        (-define path (if (pair? base-path)
                          (car base-path)
                          base-path))
         (if (path? path) 
@@ -236,16 +235,16 @@
                   (d->s (build-path base (cadr mp)))))
             mp/stx)]
        [(eq? (car mp) 'submod)
-        (define sub/stx (if (syntax? mp/stx)
+        (-define sub/stx (if (syntax? mp/stx)
                             (syntax-case mp/stx ()
                               [(_ sub . _) #'sub])
                             (cadr mp)))
-        (define sub (if (syntax? sub/stx) (syntax->datum sub/stx) sub/stx))
-        (define new-sub/stx
+        (-define sub (if (syntax? sub/stx) (syntax->datum sub/stx) sub/stx))
+        (-define new-sub/stx
           (cond
            [(equal? sub ".") (d->s (collapse-mpi rmp))]
            [(equal? sub "..")
-            (define old (collapse-mpi rmp))
+            (-define old (collapse-mpi rmp))
             (if (and (pair? old)
                      (eq? (car old) 'submod))
                 (d->s (append old (list "..")))
@@ -255,7 +254,7 @@
         (cond
          [(eq? sub/stx new-sub/stx) mp/stx]
          [else
-          (define new-sub (if (syntax? new-sub/stx)
+          (-define new-sub (if (syntax? new-sub/stx)
                               (syntax->datum new-sub/stx)
                               new-sub/stx))
           (if (and (pair? new-sub)
@@ -265,7 +264,7 @@
        [else mp/stx])]))
 
   ;; expand-import : stx bool -> (listof import)
-  (define (expand-import stx)
+  (-define (expand-import stx)
     (let ([disarmed-stx (syntax-disarm stx orig-insp)])
       (syntax-case disarmed-stx ()
         [simple
@@ -348,12 +347,12 @@
           "bad syntax for require sub-form"
           stx)])))
 
-  (define (syntax-local-lift-require-top-level-form exp)
+  (-define (syntax-local-lift-require-top-level-form exp)
     (unless (syntax? exp)
       (raise-argument-error 'syntax-local-lift-require-top-level-form
                             "syntax?"
                             exp))
-    (define b (syntax-local-lift-require-definition-param))
+    (-define b (syntax-local-lift-require-definition-param))
     (unless b
       (error 'syntax-local-lift-require-definition
              "not currently expanding `require`"))

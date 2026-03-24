@@ -5,7 +5,6 @@
              "private/define-et-al.rkt"
              "private/qq-and-or.rkt"
              "private/cond.rkt"
-             "private/define.rkt"
              "phase+space.rkt")
   
   (#%provide expand-export pre-expand-export 
@@ -45,7 +44,7 @@
                                                   out)])])
                 (values i out-id mode (and protect? #t) stx))))
 
-  (define (export-out-sym e)
+  (-define (export-out-sym e)
     (syntax-e (export-out-id e)))
 
   (define-values (prop:provide-pre-transformer provide-pre-transformer? provide-pre-transformer-get-proc)
@@ -60,7 +59,7 @@
     #:property prop:provide-transformer (lambda (t) (p+t-proc t))
     #:property prop:provide-pre-transformer (lambda (t) (p+t-pre-proc t)))
   
-  (define make-provide-transformer
+  (-define make-provide-transformer
     (case-lambda
      [(proc)
       (make-pt proc)]
@@ -70,19 +69,19 @@
   (define-struct* ppt (proc)
     #:property prop:provide-pre-transformer (lambda (t) (ppt-proc t)))
   
-  (define (make-provide-pre-transformer proc)
+  (-define (make-provide-pre-transformer proc)
     (make-ppt proc))
   
   ;; For backward compatibility:
-  (define (syntax-local-provide-certifier)
+  (-define (syntax-local-provide-certifier)
     (case-lambda 
      [(v) v]
      [(v mark) v]))
 
-  (define orig-insp (variable-reference->module-declaration-inspector
+  (-define orig-insp (variable-reference->module-declaration-inspector
                      (#%variable-reference)))
 
-  (define (pre-expand-export stx modes)
+  (-define (pre-expand-export stx modes)
     (if (identifier? stx)
         stx
         (let ([disarmed-stx (syntax-disarm stx orig-insp)])
@@ -105,7 +104,7 @@
             [_ stx]))))
 
   ;; expand-export : stx -> (listof export)
-  (define (expand-export stx modes)
+  (-define (expand-export stx modes)
     (if (identifier? stx)
         (apply
          append

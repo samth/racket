@@ -6,7 +6,7 @@
                          "qq-and-or.rkt"))
   (#%require "more-scheme.rkt"
              "misc.rkt"
-             (all-except "define.rkt" define define-syntax define-for-syntax)
+             (all-except "define.rkt" define-syntax define-for-syntax)
              "letstx-scheme.rkt"
              "kw.rkt"
              "define-struct.rkt"

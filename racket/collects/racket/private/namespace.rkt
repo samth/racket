@@ -1,6 +1,6 @@
 (module namespace "pre-base.rkt"
   (require "define-et-al.rkt"
-           (for-syntax '#%kernel "define.rkt"
+           (for-syntax '#%kernel
                        "stx.rkt" "stxcase-scheme.rkt" "define-et-al.rkt" "qq-and-or.rkt"
                        "stxloc.rkt"))
 
@@ -36,7 +36,7 @@
   ;; ----------------------------------------
   
   (-define-syntax (define-namespace-anchor stx)
-    (define ctx (syntax-local-context))
+    (-define ctx (syntax-local-context))
     (if (eq? ctx 'module-begin)
         (datum->syntax stx (list #'begin stx) stx)
         (let ()

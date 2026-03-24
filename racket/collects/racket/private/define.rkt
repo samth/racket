@@ -7,8 +7,7 @@
                          "letstx-scheme.rkt" "stxcase-scheme.rkt" "stx.rkt" "qqstx.rkt"
                          "norm-define.rkt"))
 
-  (#%provide define 
-             define-syntax 
+  (#%provide define-syntax
              define-values-for-syntax
              define-for-syntax)
 
@@ -24,13 +23,12 @@
            #'(begin-for-syntax
                (define-values (id ...) expr)))])))
 
-  (define-syntaxes (define define-syntax define-for-syntax)
+  (define-syntaxes (define-syntax define-for-syntax)
     (let ([go
 	   (lambda (define-values-stx stx)
              (let-values ([(id rhs)
                            (normalize-definition stx #'lambda #t #f)])
                (quasisyntax/loc stx
                  (#,define-values-stx (#,id) #,rhs))))])
-      (values (lambda (stx) (go #'define-values stx))
-	      (lambda (stx) (go #'define-syntaxes stx))
+      (values (lambda (stx) (go #'define-syntaxes stx))
               (lambda (stx) (go #'define-values-for-syntax stx))))))

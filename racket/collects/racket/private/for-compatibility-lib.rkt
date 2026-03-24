@@ -12,7 +12,7 @@
              "cond.rkt"
              "define.rkt"
              "stx.rkt")
-  (#%provide define define-syntax define-for-syntax
+  (#%provide define-syntax define-for-syntax
              old-cond old-case
              fluid-let
              stx-pair? stx-car stx-cdr))

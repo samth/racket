@@ -416,7 +416,7 @@
            (raise-syntax-error #f
                                "bad sequence binding clause" orig-stx clause)]))))
 
-  (define-syntax (:do-in stx)
+  (-define-syntax (:do-in stx)
     (raise-syntax-error #f
       "illegal outside of a loop or comprehension binding" stx))
 
@@ -445,7 +445,7 @@
                               proc))
       (make-splicing-for-clause-transformer proc)))
 
-  (define-syntax define-splicing-for-clause-syntax
+  (-define-syntax define-splicing-for-clause-syntax
     (syntax-rules ()
       [(_ id transformer-expr)
        (define-syntax id
@@ -547,7 +547,7 @@
               s))
            s)))))
 
-  (define-syntax define-sequence-syntax
+  (-define-syntax define-sequence-syntax
     (syntax-rules ()
       [(_ id expr-transformer-expr clause-transformer-expr)
        (define-syntax id
@@ -874,7 +874,7 @@
   ;;   where VAL = key, value, pair, key+value (key+value not used in seq name)
   ;;   and HASHTYPE specifies the the set of hash-iterate- fns to use
   ;;     eg, hash, immutable-hash, mutable-hash, weak-hash
-  (define-syntax (define-in-hash-sequences stx)
+  (-define-syntax (define-in-hash-sequences stx)
     (syntax-case stx (element-types:)
      [(_ element-types: V ...)
       (with-syntax
@@ -1020,7 +1020,7 @@
   (-define (unsafe-normalise-inputs unsafe-vector-length vec start stop step)
     (values vec start (or stop (unsafe-vector-length vec)) step))
 
-  (define-syntax define-in-vector-like
+  (-define-syntax define-in-vector-like
     (syntax-rules ()
       [(define-in-vector-like (in-vector-name check-vector-name)
          type-name-str vector?-id vector-length-id :vector-gen-id)
@@ -1039,7 +1039,7 @@
            (unless (vector?-id v)
              (raise-argument-error 'in-vector-name (string-append type-name-str "?") v))))]))
 
-  (define-syntax define-:vector-like-gen
+  (-define-syntax define-:vector-like-gen
     (syntax-rules ()
       [(define-:vector-like-gen :vector-like-name unsafe-vector-ref-id)
        (-define (:vector-like-name v start stop step)
@@ -1617,7 +1617,7 @@
   ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;  core `for/fold' syntax
 
-  (define-syntax values*
+  (-define-syntax values*
     (syntax-rules ()
       [(_ x) x]
       [(_ x ...) (values x ...)]))
@@ -1652,7 +1652,7 @@
                      [else #'()]))
              expr ...))]))
   
-  (define-syntax (push-under-break stx)
+  (-define-syntax (push-under-break stx)
     (syntax-case stx ()
       [(_ inner-recur fold-bind [expr ...] next-k break-k final?-id)
        (let loop ([l (syntax->list #'(expr ...))] [pre-accum null])
@@ -1683,7 +1683,7 @@
 
   ;; For checking that parallel sequences end together; `state` for each sequence
   ;; got to `#f` when it has terminated
-  (define-syntax (if/c stx)
+  (-define-syntax (if/c stx)
     (syntax-case stx ()
       [(_ (and tst ...) => () thn els)
        ;; common case: no checking
@@ -1700,7 +1700,7 @@
              (if (and (or state ...) tst ...)
                  thn
                  els)))]))
-  (define-syntax (let-values/c stx)
+  (-define-syntax (let-values/c stx)
     (syntax-case stx ()
       [(let-values/c ((bind ...) ...) <= () on-ragged #f body ...)
        #'(let-values (bind ... ...) body ...)]
@@ -1724,14 +1724,14 @@
                                                     (void)))])
              body
              ...))]))
-  (define-syntax (guard/c stx)
+  (-define-syntax (guard/c stx)
     (syntax-case stx ()
       [(_ states) #'(void)]
       [(_ () inner-check ...)
        #'(begin inner-check ...)]
       [(_ (state ...) inner-check ...)
        #'(begin (when state inner-check (void)) ...)]))
-  (define-syntax (check/c stx)
+  (-define-syntax (check/c stx)
     (syntax-case stx ()
       [(_ () on-ragged thn els) #'els]
       [(_ (state ...) on-ragged thn els) #'(if (and (not (and state ...))
@@ -1741,7 +1741,7 @@
                                                  thn)
                                                els)]))
 
-  (define-syntax (for/foldX/derived stx)
+  (-define-syntax (for/foldX/derived stx)
     (syntax-case stx ()
       ;; Force expression context
       [_
@@ -1925,7 +1925,7 @@
       [(_ [orig-stx . _] . _)
        (raise-syntax-error #f "bad syntax" #'orig-stx)]))
 
-  (define-syntax (for/fold/derived/final stx)
+  (-define-syntax (for/fold/derived/final stx)
     (syntax-case stx ()
       [(_ [orig-stx nested?] fold-bind bind-init done-k (clause ...) expr ...)
        ;; If there's a `#:break` or `#:final`, then we need to use the
@@ -2008,7 +2008,7 @@
                                  orig-stx
                                  stx)])))
 
-      (define (make for*? right?)
+      (-define (make for*? right?)
        (lambda (stx-in)
         ;; Add a fresh scope that acts the "outer edge" scope of `let`, so
         ;; that as we expand clause transformers, we don't end up with
@@ -2185,13 +2185,13 @@
         [(_ . rest)
          #`(#,derived-id-stx #,stx fold-bind . rest)])))
   
-  (define-syntax define-syntax-via-derived
+  (-define-syntax define-syntax-via-derived
     (syntax-rules ()
       [(_ id derived-id nonnested-id fold-bind wrap rhs-wrap combine combine*)
        (define-syntax (id stx)
          (for-variant-stx stx #'derived-id #'nonnested-id  #'fold-bind wrap rhs-wrap combine combine*))]))
 
-  (define-syntax define-for-variants
+  (-define-syntax define-for-variants
     (syntax-rules ()
       [(_ (for for*) fold-bind wrap
           ;; used for original mode, which creates expansions for `for/or`, etc.,
@@ -2206,7 +2206,7 @@
 
   (define-syntaxes (for/fold for*/fold for/foldr for*/foldr)
     (let ()
-      (define (make f/f/d-id)
+      (-define (make f/f/d-id)
         (lambda (stx)
           (syntax-case stx ()
             [(_ . rest)
@@ -2312,10 +2312,10 @@
        (for_/vector #'(fv #:length length-expr #:fill 0 (for-clause ...) body ...) 
                     orig-stx for_/vector-stx for_/fold/derived-stx wrap-all?)]))
 
-  (define-syntax (for/vector stx)
+  (-define-syntax (for/vector stx)
     (for_/vector stx stx #'for/vector #'for/fold/derived #f))
 
-  (define-syntax (for*/vector stx)
+  (-define-syntax (for*/vector stx)
     (for_/vector stx stx #'for*/vector #'for*/fold/derived #t))
 
   (define-for-syntax (do-for/lists for/fold-id stx)
@@ -2349,8 +2349,8 @@
       [(_ (id ...) bindings expr1 expr ...)
        (do-without-result-clause stx)]))
 
-  (define-syntax (for/lists stx) (do-for/lists #'for/fold/derived stx))
-  (define-syntax (for*/lists stx) (do-for/lists #'for*/fold/derived stx))
+  (-define-syntax (for/lists stx) (do-for/lists #'for/fold/derived stx))
+  (-define-syntax (for*/lists stx) (do-for/lists #'for*/fold/derived stx))
 
   (define-for-variants (for/and for*/and)
     ([result #t])

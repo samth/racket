@@ -1,6 +1,6 @@
 
 (module stxparam '#%kernel
-  (#%require "define.rkt"
+  (#%require "define.rkt" "define-et-al.rkt"
              (for-syntax '#%kernel 
                          "stx.rkt" "stxcase-scheme.rkt" 
                          "define-et-al.rkt" "qq-and-or.rkt"
@@ -60,7 +60,7 @@
                      (let-local-keys ([local-key gen-id] ...)
                        (let-values () body ...))))))))]))
 
-  (define-syntax (let-local-keys stx)
+  (-define-syntax (let-local-keys stx)
     (if (eq? 'expression (syntax-local-context))
         (let-values ([(expr opaque-expr)
                       (syntax-case stx ()

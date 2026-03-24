@@ -2,7 +2,7 @@
 
   (#%require (for-syntax '#%kernel "qq-and-or.rkt" "define-et-al.rkt" "cond.rkt" "define.rkt"
                          "stx.rkt" "stxcase-scheme.rkt")
-             "define.rkt" "define-et-al.rkt" "../stxparam.rkt")
+             "define-et-al.rkt" "../stxparam.rkt")
 
   (#%provide define/generic
              generic-property
@@ -166,7 +166,7 @@
   (define-syntax-parameter generic-method-outer-context #f)
   (define-syntax-parameter generic-method-inner-context #f)
 
-  (define-syntax (implementation stx)
+  (-define-syntax (implementation stx)
     (syntax-case stx ()
       [(_ method)
        (let ([val (syntax-local-value #'method (lambda () #f))])
@@ -183,12 +183,12 @@
               [else #'(quote #f)])]
            [else #'method]))]))
 
-  (define-syntax (generic-property stx)
+  (-define-syntax (generic-property stx)
     (syntax-case stx ()
       [(_ gen)
        (generic-info-property (get-info 'generic-property stx #'gen))]))
 
-  (define-syntax (generic-methods stx)
+  (-define-syntax (generic-methods stx)
     (syntax-case stx ()
       [(_ gen combine #:scope scope #:check? check? def ...)
        (let ()
@@ -228,14 +228,14 @@
       [(_ gen combine def ...)
        #'(generic-methods gen combine #:scope gen #:check? #f def ...)]))
 
-  (define-syntax (generic-method-table stx)
+  (-define-syntax (generic-method-table stx)
     (syntax-case stx ()
       [(_ gen #:scope scope def ...)
        #'(generic-methods gen vector #:scope scope #:check? #t def ...)]
       [(_ gen def ...)
        #'(generic-method-table gen #:scope gen def ...)]))
 
-  (define-syntax (define/generic stx)
+  (-define-syntax (define/generic stx)
     (-define gen-id (syntax-parameter-value #'generic-method-outer-context))
     (-define gen-val
       (and (identifier? gen-id)

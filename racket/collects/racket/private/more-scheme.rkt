@@ -3,11 +3,11 @@
 ;; more-scheme : case, do, etc. - remaining syntax
 
 (module more-scheme '#%kernel
-  (#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" "define.rkt" '#%paramz "case.rkt" "logger.rkt"
+  (#%require "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" '#%paramz "case.rkt" "logger.rkt"
              (for-syntax '#%kernel "stx.rkt" "define-et-al.rkt" "qq-and-or.rkt" "cond.rkt" "stxcase-scheme.rkt" "qqstx.rkt"))
 
   ;; For `old-case`:
-  (define-syntax case-test
+  (-define-syntax case-test
     (lambda (x)
       (syntax-case x ()
         ;; For up to 3 elements, inline `eqv?' tests:
@@ -21,7 +21,7 @@
 	 (syntax (memv x '(k ...)))])))
 
   ;; Mostly from Dybvig:
-  (define-syntax (old-case x)
+  (-define-syntax (old-case x)
     (syntax-case* x (else) (let ([else-stx (datum->syntax #f 'else)])
                              (lambda (a b) (free-identifier=? a else-stx)))
       ((_ v)
@@ -55,7 +55,7 @@
         x))))
   
   ;; From Dybvig:
-  (define-syntax do
+  (-define-syntax do
     (lambda (orig-x)
       (syntax-case orig-x ()
 	((_ ((var init . step) ...) (e0 e1 ...) c ...)
@@ -76,7 +76,7 @@
                    (begin (void) e1 ...)
                    (begin c ... (doloop step ...))))))))))
   
-  (define-syntax parameterize
+  (-define-syntax parameterize
     (lambda (stx)
       (syntax-case stx ()
 	[(_ () expr1 expr ...)
@@ -98,7 +98,7 @@
                   expr1
                   expr ...)))))])))
 
-  (define-syntax parameterize*
+  (-define-syntax parameterize*
     (syntax-rules ()
       [(_ () body1 body ...)
        (let () body1 body ...)]
@@ -121,7 +121,7 @@
 	paramz
       (thunk)))
 
-  (define-syntax parameterize-break
+  (-define-syntax parameterize-break
     (lambda (stx)
       (syntax-case stx ()
 	[(_ bool-expr expr1 expr ...)
@@ -270,7 +270,7 @@
        (thunk))
      (void)))
 
-  (define-syntax set!-values
+  (-define-syntax set!-values
     (lambda (stx)
       (syntax-case stx ()
 	[(_ () expr) (syntax (let-values ([() expr]) (void)))]
@@ -299,13 +299,13 @@
   
   (define-values (call/cc) call-with-current-continuation)
 
-  (define-syntax let/cc
+  (-define-syntax let/cc
     (lambda (stx)
       (syntax-case stx ()
 	[(_ var body1 body ...)
 	 (syntax/loc stx (call/cc (lambda (var) body1 body ...)))])))
 
-  (define-syntax fluid-let
+  (-define-syntax fluid-let
     (lambda (stx)
       (syntax-case stx ()
 	[(_ () body1 body ...) (syntax/loc stx (let () body1 body ...))]
@@ -325,7 +325,7 @@
 		    (lambda () body1 body ...)
 		    swap)))))])))
 
-  (define-syntax time
+  (-define-syntax time
     (lambda (stx)
       (syntax-case stx ()
 	[(_ expr1 expr ...)

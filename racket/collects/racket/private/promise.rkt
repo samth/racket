@@ -46,8 +46,8 @@
 ;; are sufficient for implementing the lazy language.
 
 ;; unsafe accessors
-(define-syntax pref  (syntax-rules () [(_ p  ) (unsafe-struct-ref  p 0  )]))
-(define-syntax pset! (syntax-rules () [(_ p x) (unsafe-struct-set! p 0 x)]))
+(-define-syntax pref  (syntax-rules () [(_ p  ) (unsafe-struct-ref  p 0  )]))
+(-define-syntax pset! (syntax-rules () [(_ p x) (unsafe-struct-set! p 0 x)]))
 
 ;; ----------------------------------------------------------------------------
 ;; Forcers
@@ -276,7 +276,7 @@
 ;; Creates a composable promise
 ;;   X = (force (lazy X)) = (force (lazy (lazy X))) = (force (lazy^n X))
 (-define lazy make-composable-promise)
-(define-syntax lazy* (delayer #'lazy '()))
+(-define-syntax lazy* (delayer #'lazy '()))
 
 ;; Creates a (generic) promise that does not compose
 ;;   X = (force (delay X)) = (force (lazy (delay X)))
@@ -287,7 +287,7 @@
 ;; (This is not needed with a lazy language (see the above URL for details),
 ;; but provided for regular delay/force uses.)
 (-define delay make-promise)
-(define-syntax delay* (delayer #'delay '()))
+(-define-syntax delay* (delayer #'delay '()))
 
 ;; For simplicity and efficiency this code uses thunks in promise values for
 ;; exceptions: this way, we don't need to tag exception values in some special

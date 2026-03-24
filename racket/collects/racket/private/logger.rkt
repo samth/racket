@@ -22,18 +22,18 @@
                (when (log-level? l 'mode name)
                  (log-message l 'mode (format str-expr arg ...) (current-continuation-marks))))]))))
 
-  (define-syntax log-fatal (make-define-log 'fatal #'(current-logger) #'(logger-name l)))
-  (define-syntax log-error (make-define-log 'error #'(current-logger) #'(logger-name l)))
-  (define-syntax log-warning (make-define-log 'warning #'(current-logger) #'(logger-name l)))
-  (define-syntax log-info (make-define-log 'info #'(current-logger) #'(logger-name l)))
-  (define-syntax log-debug (make-define-log 'debug #'(current-logger) #'(logger-name l)))
+  (-define-syntax log-fatal (make-define-log 'fatal #'(current-logger) #'(logger-name l)))
+  (-define-syntax log-error (make-define-log 'error #'(current-logger) #'(logger-name l)))
+  (-define-syntax log-warning (make-define-log 'warning #'(current-logger) #'(logger-name l)))
+  (-define-syntax log-info (make-define-log 'info #'(current-logger) #'(logger-name l)))
+  (-define-syntax log-debug (make-define-log 'debug #'(current-logger) #'(logger-name l)))
 
   (-define (check-logger-or-false who v)
     (unless (or (not v) (logger? v))
       (raise-argument-error who "(or/c logger? #f)" v))
     v)
 
-  (define-syntax (define-logger stx)
+  (-define-syntax (define-logger stx)
     (syntax-case stx ()
       [(d-l X)
        (syntax/loc stx

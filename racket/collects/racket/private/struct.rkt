@@ -1,6 +1,6 @@
 
 (module struct '#%kernel
-  (#%require "define.rkt" "define-et-al.rkt"
+  (#%require "define-et-al.rkt"
              "define-struct.rkt"
              (for-syntax '#%kernel "define.rkt" "define-et-al.rkt"
                          "stx.rkt" "stxcase-scheme.rkt" "qq-and-or.rkt" "cond.rkt"
@@ -8,7 +8,7 @@
 
   (#%provide struct)
 
-  (define-syntax (struct stx)
+  (-define-syntax (struct stx)
     (-define (config-has-name? config)
       (cond
        [(syntax? config) (config-has-name? (syntax-e config))]

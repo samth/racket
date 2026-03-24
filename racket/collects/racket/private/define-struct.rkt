@@ -153,13 +153,13 @@
                             what))
     what)
 
-  (define-syntax (define-struct* stx)
+  (-define-syntax (define-struct* stx)
     (syntax-case stx ()
       [(_ . rest)
        (with-syntax ([stx stx])
          #'(define-struct/derived stx . rest))]))
 
-  (define-syntax (define-struct/derived full-stx)
+  (-define-syntax (define-struct/derived full-stx)
     (-define make-field list)
     (-define field-id car)
     (-define field-default-value cadr)
@@ -897,7 +897,7 @@
         "bad syntax"
         stx)]))
         
-  (define-syntax (struct/derived stx)
+  (-define-syntax (struct/derived stx)
     (-define (config-has-name? config)
       (cond
         [(syntax? config) (config-has-name? (syntax-e config))]
@@ -1138,7 +1138,7 @@
                                     #,(format "~a?" (syntax-e #'info))
                                     the-struct)))))
 
-  (define-syntax (struct-copy stx)
+  (-define-syntax (struct-copy stx)
     (if (not (eq? (syntax-local-context) 'expression))
         (quasisyntax/loc stx (#%expression #,stx))
         (struct-copy-core stx))))

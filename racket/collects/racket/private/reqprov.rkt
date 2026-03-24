@@ -1,5 +1,5 @@
 (module reqprov '#%kernel
-  (#%require "define.rkt"
+  (#%require "define.rkt" "define-et-al.rkt"
              (for-syntax '#%kernel
                          "stx.rkt" "stxcase-scheme.rkt" "define-et-al.rkt"
                          "qq-and-or.rkt" "cond.rkt"
@@ -169,7 +169,7 @@
                 (map (lambda (ex) (expand-export ex modes))
                      (syntax->list #'(ex ...))))])))
 
-  (define-syntax for-syntax
+  (-define-syntax for-syntax
     (make-require+provide-transformer
      (lambda (stx)
        (shift-subs stx 1))
@@ -179,7 +179,7 @@
        (recur-pre stx (if (null? modes) '(1) (map (lambda (mode) (phase+space+ mode 1))
                                                   modes))))))
   
-  (define-syntax for-template
+  (-define-syntax for-template
     (make-require+provide-transformer
      (lambda (stx)
        (shift-subs stx -1))
@@ -189,7 +189,7 @@
        (recur-pre stx (if (null? modes) '(-1) (map (lambda (mode) (phase+space+ mode -1))
                                                    modes))))))
   
-  (define-syntax for-label
+  (-define-syntax for-label
     (make-require+provide-transformer
      (lambda (stx)
        (shift-subs stx #f))
@@ -223,7 +223,7 @@
               (syntax/loc stx
                 (for-mode mode out ...))))]))))
 
-  (define-syntax for-meta
+  (-define-syntax for-meta
     (let ([extract-phase
            (lambda (stx mode)
              (let ([base-mode (syntax-e mode)])
@@ -237,7 +237,7 @@
                base-mode))])
       (make-for-mode extract-phase)))
 
-  (define-syntax for-space
+  (-define-syntax for-space
     (let ([extract-space
            (lambda (stx mode)
              (let ([base-mode (syntax-e mode)])
@@ -255,7 +255,7 @@
   ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; require
   
-  (define-syntax (require stx)
+  (-define-syntax (require stx)
     (case (syntax-local-context)
       [(module-begin)
        (quasisyntax/loc stx (begin #,stx))]
@@ -501,7 +501,7 @@
     ;; and that seems more appropriate
     (eq? (syntax-e a) (syntax-e b)))
 
-  (define-syntax only-in
+  (-define-syntax only-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -567,7 +567,7 @@
                      new-ids orig-ids))
                sources)))]))))
 
-  (define-syntax except-in
+  (-define-syntax except-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -608,7 +608,7 @@
                      imports)
              sources))]))))
 
-  (define-syntax combine-in
+  (-define-syntax combine-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -621,7 +621,7 @@
               (values (apply append (map car subs))
                       (apply append (map cdr subs))))]))))
 
-  (define-syntax only-meta-in
+  (-define-syntax only-meta-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -636,7 +636,7 @@
                #'mode))
             (filter-by-mode base-mode phase+space-phase #'(in ...)))]))))
 
-  (define-syntax only-space-in
+  (-define-syntax only-space-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -664,7 +664,7 @@
       (values (apply append (map car subs))
               (apply append (map cdr subs)))))
 
-  (define-syntax rename-in
+  (-define-syntax rename-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -748,7 +748,7 @@
   ;; prefix-in. These expand to (#%require [rename new old]). Here we
   ;; do need a syntax property on `new` to recover the component
   ;; identifiers.
-  (define-syntax prefix-in
+  (-define-syntax prefix-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -774,7 +774,7 @@
                   imports)
              sources))]))))
 
-  (define-syntax relative-in
+  (-define-syntax relative-in
     (make-require-transformer
      (lambda (stx)
        (syntax-case stx ()
@@ -793,7 +793,7 @@
   ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; provide
   
-  (define-syntax (provide stx)
+  (-define-syntax (provide stx)
     (case (syntax-local-context)
       [(module-begin)
        (quasisyntax/loc stx (begin #,stx))]
@@ -814,7 +814,7 @@
                            "not at module level"
                            stx)]))
 
-  (define-syntax (provide-trampoline stx)
+  (-define-syntax (provide-trampoline stx)
     (syntax-case stx ()
       [(_ out ...)
        (letrec ([transform-simple
@@ -898,7 +898,7 @@
          (syntax/loc stx
            (fm out ...)))]))
 
-  (define-syntax all-defined-out
+  (-define-syntax all-defined-out
     (make-provide-transformer
      (lambda (stx modes)
        (syntax-case stx ()
@@ -947,7 +947,7 @@
                                    (hash-ref ht (phase+space-phase abs-mode) null)))))
                   modes)))]))))
 
-  (define-syntax all-from-out
+  (-define-syntax all-from-out
     (make-provide-transformer
      (lambda (stx modes)
        (syntax-case stx ()
@@ -1003,7 +1003,7 @@
                        idss)))))
             (syntax->list #'(mp ...))))]))))
   
-  (define-syntax rename-out
+  (-define-syntax rename-out
     (make-provide-transformer
      (lambda (stx modes)
        (syntax-case stx ()
@@ -1049,7 +1049,7 @@
                       '(0)
                       modes))))]))))
 
-  (define-syntax except-out
+  (-define-syntax except-out
     (make-provide-transformer
      (lambda (stx modes)
        (syntax-case stx ()
@@ -1099,7 +1099,7 @@
                   parts)))
      id))
 
-  (define-syntax struct-out
+  (-define-syntax struct-out
     (make-provide-transformer
      (lambda (stx modes)
        (unless (or (null? modes)
@@ -1210,7 +1210,7 @@
                    stx
                    id))))]))))
 
-  (define-syntax combine-out
+  (-define-syntax combine-out
     (make-provide-transformer
      (lambda (stx modes)
        (syntax-case stx ()
@@ -1223,7 +1223,7 @@
      (lambda (stx modes)
        (recur-pre stx modes))))
 
-  (define-syntax protect-out
+  (-define-syntax protect-out
     (make-provide-transformer
      (lambda (stx modes)
        (syntax-case stx ()
@@ -1244,7 +1244,7 @@
      (lambda (stx modes)
        (recur-pre stx modes))))
 
-  (define-syntax prefix-out
+  (-define-syntax prefix-out
     (let ([check-prefix
            (lambda (stx pfx)
              (unless (identifier? pfx)
@@ -1319,7 +1319,7 @@
   ;; (do-local-require rename spec ...)
   ;; Lifts (require spec ...) to the (module) top level, and makes the imported
   ;; bindings available in the current context via a renaming macro.
-  (define-syntax (local-require stx)
+  (-define-syntax (local-require stx)
     (when (eq? 'expression (syntax-local-context))
       (raise-syntax-error #f "not allowed in an expression context" stx))
     (let ([stx (syntax-local-introduce stx)])

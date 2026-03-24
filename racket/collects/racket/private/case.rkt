@@ -118,13 +118,13 @@
         "bad syntax (illegal use of `.')"
         stx)]))
 
-  (define-syntax case
+  (-define-syntax case
     (make-case #'equal?))
 
 
   ;; Sequential case:
   ;; Turn the expression into a sequence of if-then-else.
-  (define-syntax (case/sequential stx)
+  (-define-syntax (case/sequential stx)
     (syntax-case stx (else)
       [(_ v compare-id [(k ...) es ...] arms ... [else xs ...])
        (syntax-protect
@@ -140,7 +140,7 @@
        (syntax-protect
         #'(let-values () xs ...))]))
 
-  (define-syntax (case/sequential-test stx)
+  (-define-syntax (case/sequential-test stx)
     (syntax-protect
      (syntax-case stx ()
        [(_ v compare-id ())         #'#f]
@@ -154,7 +154,7 @@
   ;; (2) mapping the value to the index of the consequent we need. Then,
   ;; (3) from the index, perform a binary search to find the consequent code.
   ;; Note: the else clause is given index 0.
-  (define-syntax (case/dispatch stx)
+  (-define-syntax (case/dispatch stx)
     (syntax-case stx (else)
       [(_ v compare-id [(k ...) es ...] ... [else xs ...])
        (syntax-protect

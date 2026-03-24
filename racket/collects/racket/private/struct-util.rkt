@@ -1,5 +1,5 @@
 (module struct-util '#%kernel
-  (#%require "define.rkt" "define-et-al.rkt"
+  (#%require "define-et-al.rkt"
              "cond.rkt")
 
   (#%provide predicate->struct-name)

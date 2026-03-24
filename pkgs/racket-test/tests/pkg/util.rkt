@@ -32,6 +32,12 @@
       (define dest (build-path test-directory f))
       (cond
        [(directory-exists? src) (make-directory* dest)]
+       [(and (file-exists? dest)
+             (= (file-size src) (file-size dest))
+             (>= (file-or-directory-modify-seconds dest)
+                  (file-or-directory-modify-seconds src)))
+        ;; skip files that are already up-to-date
+        (void)]
        [else (copy-file src dest #t)]))))
 
 (define-syntax-rule (this-test-is-run-by-the-main-test)
@@ -129,6 +135,9 @@
 (define server-not-modifieds 0)
 (define current-serve-etags (make-parameter #t))
 
+;; Cache ETags by path -> (cons mtime etag-string) to avoid recomputing SHA1
+(define etag-cache (make-hash))
+
 (define (make-etag-file-handler root-dir)
   (λ (req)
     (define path
@@ -138,11 +147,18 @@
              (apply build-path root-dir els))))
     (cond
       [(and path (file-exists? path))
+       (define mtime (file-or-directory-modify-seconds path))
        (define etag
-         (call-with-input-file
-          path
-          (lambda (in)
-            (format "\"et-~a\"" (sha1 in)))))
+         (let ([cached (hash-ref etag-cache path #f)])
+           (if (and cached (= (car cached) mtime))
+               (cdr cached)
+               (let ([new-etag
+                      (call-with-input-file
+                       path
+                       (lambda (in)
+                         (format "\"et-~a\"" (sha1 in))))])
+                 (hash-set! etag-cache path (cons mtime new-etag))
+                 new-etag))))
        (define want-etags
          (and (current-serve-etags)
               (extract-bindings 'if-none-match (request-headers req))))
@@ -312,9 +328,7 @@
       (copy-directory/files (build-path "pkg-git" f) (build-path pkg-git.git f))))
   (define checksum
     (parameterize ([current-directory pkg-git.git])
-      (system "git init -b main")
-      (system "git add -A")
-      (system "git commit -m 'initial commit'")
+      (system "git init -b main && git add -A && git commit -m 'initial commit'")
       (string-trim
        (with-output-to-string
          (λ () (system "git rev-parse HEAD"))))))

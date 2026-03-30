@@ -4,7 +4,7 @@
 
 (require rackunit
          racket/set
-         coverage-guided-testing/private/coverage)
+         rackcheck/guided/coverage)
 
 (test-case "setup-errortrace! enables instrumentation"
   (setup-errortrace!)

@@ -4,8 +4,8 @@
 
 (require rackunit
          racket/set
-         coverage-guided-testing/private/corpus
-         coverage-guided-testing/private/coverage)
+         rackcheck/guided/corpus
+         rackcheck/guided/coverage)
 
 (test-case "make-corpus creates empty corpus"
   (define c (make-corpus))

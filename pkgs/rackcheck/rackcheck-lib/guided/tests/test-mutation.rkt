@@ -4,7 +4,7 @@
 
 (require rackunit
          racket/list
-         coverage-guided-testing/private/mutation)
+         rackcheck/guided/mutation)
 
 (define rng (make-pseudo-random-generator))
 (parameterize ([current-pseudo-random-generator rng])

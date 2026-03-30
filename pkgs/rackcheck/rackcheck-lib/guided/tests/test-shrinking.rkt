@@ -3,7 +3,7 @@
 ;; Tests for the shrinking module.
 
 (require rackunit
-         coverage-guided-testing/private/shrinking)
+         rackcheck/guided/shrinking)
 
 (test-case "shrink integer toward 0"
   (define result

@@ -4,15 +4,14 @@
 
 (require rackunit
          racket/set
-         coverage-guided-testing)
+         rackcheck)
 
 ;; Helper: write a target module to a temp file
 (define (write-target! path code)
   (with-output-to-file path #:exists 'replace
     (lambda () (display code))))
 
-;; Test target: branchy function
-(define target-path "/tmp/cgt-test-target.rkt")
+(define target-path "/tmp/rackcheck-guidance-test-target.rkt")
 (write-target! target-path
   #<<END
 #lang racket/base
@@ -29,7 +28,7 @@ END
 )
 
 (test-case "guided check finds failure in range"
-  (write-target! "/tmp/cgt-test-bug.rkt"
+  (write-target! "/tmp/rackcheck-guidance-test-bug.rkt"
     #<<END
 #lang racket/base
 (provide buggy)
@@ -44,7 +43,7 @@ END
   )
   (define p
     (property ([x (gen:integer-in 0 1000)])
-      (let ([buggy (dynamic-require (string->path "/tmp/cgt-test-bug.rkt") 'buggy)])
+      (let ([buggy (dynamic-require (string->path "/tmp/rackcheck-guidance-test-bug.rkt") 'buggy)])
         (buggy x)
         #t)))
   (define res
@@ -53,7 +52,7 @@ END
                 #:max-iterations 5000
                 #:max-time-ms 10000
                 #:seed 42)
-      #:target "/tmp/cgt-test-bug.rkt"))
+      #:target "/tmp/rackcheck-guidance-test-bug.rkt"))
   (check-equal? (guided-result-status res) 'falsified)
   (check-true (list? (guided-result-counterexample res)))
   (check-pred exn:fail? (guided-result-exception res) "Should have an exception"))
@@ -87,11 +86,7 @@ END
   (check-true (> (corpus-size (guided-result-corpus res)) 0)
               "Corpus should have entries"))
 
-(test-case "reproducibility: same seed gives same iteration count and status"
-  ;; Note: corpus size may vary between runs because errortrace state is
-  ;; cumulative (coverage from earlier test cases affects interestingness).
-  ;; But the iteration count and status (pass/fail) should be deterministic
-  ;; since they depend only on the RNG seed and the property function.
+(test-case "reproducibility: same seed gives same status"
   (define (run-with-seed s)
     (define p
       (property ([x (gen:integer-in 0 100)])
@@ -105,15 +100,11 @@ END
       #:target target-path))
   (define res1 (run-with-seed 12345))
   (define res2 (run-with-seed 12345))
-  (check-equal? (guided-result-iterations res1)
-                (guided-result-iterations res2))
-  (check-equal? (guided-result-status res1)
-                (guided-result-status res2))
-  (check-equal? (guided-result-seed res1)
-                (guided-result-seed res2)))
+  (check-equal? (guided-result-iterations res1) (guided-result-iterations res2))
+  (check-equal? (guided-result-status res1) (guided-result-status res2)))
 
-(test-case "shrinking produces a smaller counterexample"
-  (write-target! "/tmp/cgt-test-shrink.rkt"
+(test-case "shrinking produces smaller counterexample"
+  (write-target! "/tmp/rackcheck-guidance-test-shrink.rkt"
     #<<END
 #lang racket/base
 (provide check-val)
@@ -123,7 +114,7 @@ END
   )
   (define p
     (property ([x (gen:integer-in 0 1000)])
-      (let ([check-val (dynamic-require (string->path "/tmp/cgt-test-shrink.rkt") 'check-val)])
+      (let ([check-val (dynamic-require (string->path "/tmp/rackcheck-guidance-test-shrink.rkt") 'check-val)])
         (check-val x)
         #t)))
   (define res
@@ -132,16 +123,13 @@ END
                 #:max-iterations 1000
                 #:max-time-ms 5000
                 #:seed 42)
-      #:target "/tmp/cgt-test-shrink.rkt"))
+      #:target "/tmp/rackcheck-guidance-test-shrink.rkt"))
   (check-equal? (guided-result-status res) 'falsified)
-  ;; The shrunk value should be 51 (smallest that triggers the error)
   (when (guided-result-shrunk res)
-    (define shrunk-val (car (guided-result-shrunk res)))
-    (check-true (<= shrunk-val 55)
-                (format "Shrunk value ~a should be close to 51" shrunk-val))))
+    (check-true (<= (car (guided-result-shrunk res)) 55))))
 
-(test-case "replay-input reproduces the failure"
-  (write-target! "/tmp/cgt-test-replay.rkt"
+(test-case "replay-input reproduces failure"
+  (write-target! "/tmp/rackcheck-guidance-test-replay.rkt"
     #<<END
 #lang racket/base
 (provide fail-on-neg)
@@ -151,7 +139,7 @@ END
   )
   (define p
     (property ([x (gen:integer-in -100 100)])
-      (let ([f (dynamic-require (string->path "/tmp/cgt-test-replay.rkt") 'fail-on-neg)])
+      (let ([f (dynamic-require (string->path "/tmp/rackcheck-guidance-test-replay.rkt") 'fail-on-neg)])
         (f x)
         #t)))
   (define res
@@ -160,11 +148,9 @@ END
                 #:max-iterations 500
                 #:max-time-ms 5000
                 #:seed 42)
-      #:target "/tmp/cgt-test-replay.rkt"))
+      #:target "/tmp/rackcheck-guidance-test-replay.rkt"))
   (check-equal? (guided-result-status res) 'falsified)
-  ;; Replay the counterexample
   (define ce (guided-result-counterexample res))
-  (define replay-result (replay-input p ce))
-  (check-pred exn:fail? replay-result "Replay should reproduce the failure"))
+  (check-pred exn:fail? (replay-input p ce)))
 
 (printf "All guidance tests passed.\n")

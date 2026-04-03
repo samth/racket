@@ -14,5 +14,6 @@
                  min-phase max-phase ; reachable phases via transitive requires
                  provides ; phase-level -> sym -> provided
                  stx-vec stx-mpi portal-stxes
+                 relative-runtime-module-paths?
                  pre-submodules
                  post-submodules))

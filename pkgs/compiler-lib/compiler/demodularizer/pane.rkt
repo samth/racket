@@ -55,21 +55,31 @@
     (if slice? (car origin) origin))
   (define (origin-phase-shift origin)
     (if slice? (cdr origin) 0))
-  
+
   (define (traverse! path/submod entry phase-shift)
     (unless (symbol? path/submod)
       (define one-m (hash-ref one-mods path/submod))
       (unless (one-mod-excluded? one-m)
+        (define effective-entry
+          (if (and (not (equal? (path/submod-path path/submod) top-path))
+                   ;; If runtime metadata refers to a module path relative to
+                   ;; this module, then flattening the module into another pane
+                   ;; would change what that relative path resolves to.
+                   (one-mod-relative-runtime-module-paths? one-m))
+              ;; Keep the module boundary intact by giving the module and the
+              ;; code it pulls in a distinct entry point.
+              (list 'preserve-runtime-submodule path/submod)
+              entry))
         (define-values (origin rel-phase-shift) (make-origin path/submod phase-shift))
         (define done (hash-ref uses origin '(#hash() . #hash())))
-        (unless (and (hash-ref (car done) entry #f)
+        (unless (and (hash-ref (car done) effective-entry #f)
                      (hash-ref (cdr done) rel-phase-shift #f))
           (hash-set! uses origin
-                     (cons (hash-set (car done) entry #t)
+                     (cons (hash-set (car done) effective-entry #t)
                            (hash-set (cdr done) rel-phase-shift #t)))
           (for* ([(req-phase-shift path/submods) (in-hash (one-mod-reqs one-m))]
                  [(path/submod) (in-list path/submods)])
-            (traverse! path/submod entry (+ phase-shift req-phase-shift)))))))
+            (traverse! path/submod effective-entry (+ phase-shift req-phase-shift)))))))
 
   (for ([submod (in-list (cons '() submods))])
     (traverse! (path/submod-join top-path submod) submod 0))
@@ -110,7 +120,7 @@
             ;; already merged
             (loop (cdr entries+phasess) merges)]
            [else
-            (define new-merges
+           (define new-merges
               (for/fold ([merges merges]) ([entries+phases2 (in-list (cdr entries+phasess))])
                 (cond
                   [(equal? (car entries+phases) (car entries+phases2))
@@ -290,6 +300,7 @@
                             #() ; stx-vec
                             #f ; stx-mpi
                             #hasheqv() ; portal-stxes
+                            #f ; relative-runtime-module-paths?
                             null       ; pre-submodules
                             null)))    ; post-submodules
       path/submod+pane-content))

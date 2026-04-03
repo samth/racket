@@ -4,6 +4,7 @@
          racket/match
          racket/string
          compiler/zo-parse
+         compiler/private/runtime-paths
          syntax/modcode
          racket/linklet
           setup/collects
@@ -39,6 +40,7 @@
   (define symbol-module-paths (make-hasheq))
 
   (define collects-cache (make-hash))
+  (define runtime-path-namespace (make-base-namespace))
 
   (define-values (pre-explicitly-included-modules
                   explicitly-included-dirs
@@ -59,6 +61,24 @@
   (define-values (real-deserialize-instance bulk-binding-registry register!
                                             syntax-shift-module-path-index)
     (kernel:syntax-deserialize))
+
+  (define (relative-runtime-module-path? p)
+    (let loop ([base p])
+      (match base
+        [`(module (submod ,inner-base ,_ ...))
+         (loop inner-base)]
+        [`(submod ,inner-base ,_ ...)
+         (loop inner-base)]
+        [(or "." "..") #t]
+        [_ #f])))
+
+  (define (has-relative-runtime-module-paths? path/submod compiled)
+    (define module-path (path/submod->module-path path/submod))
+    (for/or ([p (in-list (get-module-runtime-paths module-path
+                                                   compiled
+                                                   #:namespace runtime-path-namespace
+                                                   #:who 'demodularize))])
+      (relative-runtime-module-path? p)))
 
   (define (find-submod compiled submod raise-no-submod #:submod-list? submod-list?)
     (let loop ([compiled compiled] [submod submod])
@@ -274,6 +294,8 @@
 
       (define-values (pre-submodules post-submodules)
         (find-submod compiled submod void #:submod-list? #t))
+      (define relative-runtime-module-paths?
+        (has-relative-runtime-module-paths? path/submod one-compiled))
 
       (when exclude? (report-excluded))
 
@@ -289,6 +311,7 @@
                                                provides
                                                stx-vec stx-mpi
                                                portal-stxes
+                                               relative-runtime-module-paths?
                                                pre-submodules
                                                post-submodules)))
 

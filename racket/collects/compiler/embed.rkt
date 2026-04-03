@@ -25,6 +25,7 @@
          "private/pe-rsrc.rkt"
          "private/collects-path.rkt"
          "private/configdir.rkt"
+         "private/runtime-paths.rkt"
          "private/write-perm.rkt"
 	 "private/win-dll-list.rkt"
          "find-exe.rkt")
@@ -614,34 +615,16 @@
                                    ;; avoid potentially trying to redeclare cross-phase persistent modules,
                                    ;; since redeclaration isn't allowed:
                                    null
-                                   ;; check for run-time paths by visiting the module in an
-                                   ;; expand-time namespace:
-                                   (parameterize ([current-namespace expand-namespace])
-                                     (let ([module-path
-                                            (if (path? module-path)
-                                                (path->complete-path module-path)
-                                                module-path)])
-                                       (unless (module-declared? module-path)
-                                         (parameterize ([current-module-declare-name
-                                                         (module-path-index-resolve (module-path-index-join
-                                                                                     module-path
-                                                                                     #f))])
-                                           (eval code)))
-                                       (define e (expand `(,#'module m racket/kernel
-                                                                     (#%require (only ,module-path)
-                                                                                racket/runtime-path)
-                                                                     (runtime-paths ,module-path))))
-                                       (syntax-case e (quote)
-                                         [(_ m mz (#%mb req (quote (spec ...))))
-                                          (for/list ([p (in-list (syntax->datum #'(spec ...)))])
-                                            ;; Strip variable reference from 'module specs, because
-                                            ;; we don't need them and they retain the namespace:
-                                            (if (and (pair? p) (eq? 'module (car p)))
-                                                (list 'module (cadr p))
-                                                p))]
-                                         [_else (error 'create-empbedding-executable
-                                                       "expansion mismatch when getting external paths: ~e"
-                                                       (syntax->datum e))]))))]
+                                   ;; Check for run-time paths by visiting the module in an
+                                   ;; expand-time namespace.
+                                   (let ([module-path
+                                          (if (path? module-path)
+                                              (path->complete-path module-path)
+                                              module-path)])
+                                     (get-module-runtime-paths module-path
+                                                               code
+                                                               #:namespace expand-namespace
+                                                               #:who 'create-embedding-executable)))]
                               [(extra-runtime-paths) (filter-map (lambda (p)
                                                                    (and (pair? p)
                                                                         (eq? (car p) 'module)

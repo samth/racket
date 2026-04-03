@@ -1,5 +1,6 @@
 #lang racket
 (require tests/eli-tester
+         racket/file
          racket/runtime-path
          compiler/find-exe
          racket/cmdline)
@@ -104,6 +105,49 @@
   (and (not (regexp-match #rx"merged" filename))
        (regexp-match #rx"rkt$" filename)))
 
+(define (test-issue-5465)
+  (define dir (make-temporary-file "demod-issue-5465-~a" 'directory))
+  (define demod-file (build-path dir "demod.rkt"))
+  (define exe-file (build-path dir
+                               (if (eq? (system-type) 'windows)
+                                   "demod-issue-5465.exe"
+                                   "demod-issue-5465")))
+  (write-to-file '(module demod compiler/demod
+                    "main.rkt"
+                    #:dynamic
+                    #:exclude
+                    (#:module "structs.rkt"))
+                 demod-file)
+  (write-to-file '(module main racket/base
+                    (require "mystructs.rkt"
+                             "structs.rkt")
+                    (displayln (thing 1 2))
+                    (displayln (widget "a" 3)))
+                 (build-path dir "main.rkt"))
+  (write-to-file '(module mystructs racket/base
+                    (require racket/serialize)
+                    (provide (struct-out thing))
+                    (serializable-struct thing (x y)))
+                 (build-path dir "mystructs.rkt"))
+  (write-to-file '(module structs racket/base
+                    (require racket/serialize)
+                    (provide (struct-out widget))
+                    (serializable-struct widget (name value)))
+                 (build-path dir "structs.rkt"))
+  (parameterize ([current-input-port (open-input-string "")]
+                 [current-directory dir])
+    (unless (system* (find-exe) "-l-" "raco" "make" "demod.rkt")
+      (error 'demod-test "issue 5465: raco make failed"))
+    (unless (system* (find-exe) "-l-" "raco" "exe" "-o" exe-file "demod.rkt")
+      (error 'demod-test "issue 5465: raco exe failed")))
+  (define-values (out err)
+    (capture-output exe-file))
+  (test
+   #:failure-prefix "issue 5465 stdout"
+   out => "#<thing>\n#<widget>\n"
+   #:failure-prefix "issue 5465 stderr"
+   err => ""))
+
 (test
  (for ([i (in-list (directory-list tests))]
        #:when (and (regexp-match? #rx"[.]rkt$" i)
@@ -124,7 +168,8 @@
                         #:excludes
                         (list "-e"
                               (path->string
-                               (collection-file-path "pre-base.rkt" "racket/private")))))))
+                               (collection-file-path "pre-base.rkt" "racket/private"))))))
+ (test-issue-5465))
 
 (module+ test
   (module config info

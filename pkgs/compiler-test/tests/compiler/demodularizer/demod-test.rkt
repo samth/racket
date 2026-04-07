@@ -112,12 +112,15 @@
                                (if (eq? (system-type) 'windows)
                                    "demod-issue-5465.exe"
                                    "demod-issue-5465")))
-  (write-to-file '(module demod compiler/demod
-                    "main.rkt"
-                    #:dynamic
-                    #:exclude
-                    (#:module "structs.rkt"))
-                 demod-file)
+  (call-with-output-file demod-file
+    (lambda (out)
+      (displayln "#lang compiler/demod" out)
+      (for ([form (in-list '("main.rkt"
+                             #:dynamic
+                             #:exclude
+                             (#:module "structs.rkt")))])
+        (write form out)
+        (newline out))))
   (write-to-file '(module main racket/base
                     (require "mystructs.rkt"
                              "structs.rkt")

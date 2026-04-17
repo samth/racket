@@ -134,6 +134,7 @@
       (define-values (len) (length lst))
       (raise-syntax-error-if (= len 1) "bad syntax (missing identifier and body)" stx)
       (raise-syntax-error-if (= len 2) "bad syntax (missing body)" stx)
+      (raise-syntax-error-unless (identifier? (cadr lst)) "bad syntax" stx)
       (datum->syntax (quote-syntax here)
                      (list (quote-syntax call-with-escape-continuation)
                            (datum->syntax #f

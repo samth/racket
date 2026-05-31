@@ -88,8 +88,8 @@
                                   (fx+/wraparound (bitwise-bit-field z i next-i)
                                                   (mix-hash-code hc))))])))]
       [(ratnum? z) (number-hash (+ (* (numerator z) 5) (denominator z)))]
-      [else (logand (logxor (lognot (number-hash (real-part z))) (number-hash (imag-part z)))
-                    (most-positive-fixnum))])))
+      [else (hash-code-combine (number-hash (real-part z))
+                               (number-hash (imag-part z)))])))
 
 (define (eqv-hash-code x)
   (cond

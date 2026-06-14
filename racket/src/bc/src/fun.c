@@ -7694,6 +7694,27 @@ Scheme_Object *scheme_compose_continuation(Scheme_Cont *cont, int num_rands, Sch
     }
   }
 
+  /* Enforce the capture tag's `#:call/cc` result contract (the cc_guard) on
+     the value produced by the composed continuation as it returns to the
+     applier. This is the BC analogue of the CS runtime's
+     `install-composable-continuation-cc-guard!`: for a non-composable
+     (call/cc) continuation the tag's cc_guard is activated on the target
+     prompt's frame (see do_call_ec, ~line 6412), but for a composable
+     continuation the prompt has already been exited, so the value's first
+     re-crossing toward the applier is here. `cont->prompt_tag` is the
+     (possibly impersonated/chaperoned) tag retained at capture time
+     (grab_continuation, ~line 5603). A bare (uncontracted) tag contributes
+     no guard, so uncontracted tags are unaffected. */
+  if (SCHEME_NP_CHAPERONEP(cont->prompt_tag)) {
+    /* Run the capture tag's positive `#:call/cc` result projection
+       (call/cc-guard, the value-returning-OUT direction that blames the
+       server that produced the value). `do_cc_guard` with a NULL initial
+       guard walks the tag's chaperone stack in cc-guard (mode-2) position,
+       applying each call/cc-guard projection and enforcing the chaperone
+       equal?-or-error invariant. */
+    value = do_cc_guard(value, NULL, cont->prompt_tag);
+  }
+
   return value;
 }
 
@@ -7804,18 +7825,29 @@ static Scheme_Object *do_call_with_control (int argc, Scheme_Object *argv[], int
 
   scheme_check_proc_arity("call-with-composable-continuation", 1, 0, argc, argv);
   if (argc > 1) {
+    /* Retain the (possibly impersonated/chaperoned) tag as `prompt_tag` so it
+       is stored in the captured composable continuation (cont->prompt_tag, via
+       internal_call_cc/grab_continuation). At apply time, the tag's `#:call/cc`
+       cc_guard is enforced on the produced result (scheme_compose_continuation),
+       the BC analogue of the CS runtime retaining the impersonated capture tag
+       in the composable-continuation record. `internal_call_cc` and every
+       prompt-lookup site strip the impersonator (SCHEME_NP_CHAPERONEP) as they
+       already do for non-composable (call/cc) continuations, so storing the
+       impersonator here does not perturb prompt/dynamic-wind handling. */
+    Scheme_Object *bare_tag;
     prompt_tag = argv[1];
     if (!SAME_TYPE(scheme_prompt_tag_type, SCHEME_TYPE(prompt_tag))) {
       if (SCHEME_NP_CHAPERONEP(prompt_tag)
           && SCHEME_PROMPT_TAGP(SCHEME_CHAPERONE_VAL(prompt_tag)))
-        prompt_tag = SCHEME_CHAPERONE_VAL(prompt_tag);
+        bare_tag = SCHEME_CHAPERONE_VAL(prompt_tag);
       else {
         scheme_wrong_contract("call-with-composable-continuation", "continuation-prompt-tag?",
                               1, argc, argv);
         return NULL;
       }
-    }
-    if (SAME_OBJ(prompt_tag, scheme_root_prompt_tag)) {
+    } else
+      bare_tag = prompt_tag;
+    if (SAME_OBJ(bare_tag, scheme_root_prompt_tag)) {
       root_prompt_tag_misuse("abort-current-continuation");
       return NULL;
     }

@@ -591,6 +591,11 @@
      ;; The current metacontinuation frame has an
      ;; empty continuation, so we can "replace" that
      ;; with the composable one:
+     ;; Activate the capture tag's `#:call/cc` result guard (the model's
+     ;; outer/positive monitor) on this compose frame, so the value the
+     ;; spliced continuation produces is checked as it returns to the
+     ;; applier. No-op for an uncontracted (bare) capture tag.
+     (install-composable-continuation-cc-guard! (full-continuation-tag c))
      (cond
       [(and (null? (continuation-mc c))
             (null? (full-continuation-winders c))
@@ -860,8 +865,14 @@
       [(null? rmc)
        (apply-continuation-within-metacontinuation dest-c dest-args exit-winder-n entered-winder-n)]
       [else
-       (let ([mf (maybe-merge-splice (composable-continuation? dest-c)
-                                     (metacontinuation-frame-clear-cache (car rmc)))]
+       (let ([mf (let ([mf (maybe-merge-splice (composable-continuation? dest-c)
+                                               (metacontinuation-frame-clear-cache (car rmc)))])
+                   ;; For a composable continuation, activate any impersonated
+                   ;; prompt-installer's `#:call/cc` guard on the spliced frame
+                   ;; (the model's inner prompt-tag monitor).
+                   (if (composable-continuation? dest-c)
+                       (wrap-appended-frame-cc-guard-for-composable mf)
+                       mf))]
              [rmc (cdr rmc)])
          ;; Set splice before jumping, so it can be used by winders
          (current-mark-splice (metacontinuation-frame-mark-splice mf))
@@ -1833,6 +1844,62 @@
          (if (eq? r (cdr mc))
              mc
              (cons (car mc) r)))]))))
+
+;; Install the cc-guard of a composable continuation's (possibly
+;; impersonated) capture tag on the fresh compose-prompt metacontinuation
+;; frame, so that `prompt-tag/c`'s `#:call/cc` projection fires on the value
+;; the spliced continuation produces as it returns to the applier. This is
+;; the composable-continuation analogue of `activate-and-wrap-cc-guard-for-
+;; impersonator!`: for `call/cc` the cc-guard is activated on the target
+;; prompt's frame (gated on `non-composable-continuation?` in
+;; `apply-continuation-within-metacontinuation`); for `call/comp` the prompt
+;; has already been exited, so the value's first re-crossing toward the
+;; applier is the compose frame created by
+;; `call-in-empty-metacontinuation-frame-for-compose`. The capture tag is
+;; the model's *outer* (positive) monitor; it is installed on the outermost
+;; frame the value traverses (the compose frame), under any prompt-installer
+;; guards on appended frames. For a bare (uncontracted) tag the cc-guard is
+;; `values`, so this is a no-op and uncontracted tags pay nothing.
+(define (install-composable-continuation-cc-guard! tag)
+  (assert-in-engine-uninterrupted 'install-composable-continuation-cc-guard!)
+  (when (continuation-prompt-tag-impersonator-or-chaperone? tag)
+    (let ([mc (current-metacontinuation)])
+      ;; Only when a fresh compose frame was actually pushed (i.e. the
+      ;; continuation is not applied in tail position of an empty
+      ;; continuation, where `for-compose` reuses the current frame).
+      (when (and (pair? mc)
+                 (eq? (metacontinuation-frame-tag (car mc)) the-compose-prompt-tag))
+        (let* ([mf (car mc)]
+               [mf-cc-guard (metacontinuation-frame-cc-guard mf)])
+          (current-metacontinuation
+           (cons (metacontinuation-frame-update-cc-guard
+                  mf
+                  (wrap-cc-guard-for-impersonator
+                   tag
+                   (compose-cc-guard-for-impersonator tag (or mf-cc-guard values))))
+                 (cdr mc))))))))
+
+;; For a composable continuation being spliced in, activate the cc-guard of
+;; each appended prompt frame whose installing tag was impersonated/chaperoned
+;; (the model's *inner* / prompt-tag monitor). This is the composable analogue
+;; of `activate-and-wrap-cc-guard-for-impersonator!` (which handles the
+;; `call/cc` target-prompt frame): the value leaving the spliced prompt frame
+;; is checked against the prompt-installer's `#:call/cc` contract at the
+;; `:316-320` application machinery, before it crosses the outer capture-tag
+;; guard. A frame's cc-guard was just cleared (#f) by `clear-cache`, and a
+;; bare-tag frame contributes `values`, so uncontracted prompt frames are
+;; unaffected.
+(define (wrap-appended-frame-cc-guard-for-composable mf)
+  (let ([mf-tag (metacontinuation-frame-tag mf)])
+    (cond
+     [(and (continuation-prompt-tag-impersonator-or-chaperone? mf-tag)
+           (not (metacontinuation-frame-cc-guard mf)))
+      (metacontinuation-frame-update-cc-guard
+       mf
+       (wrap-cc-guard-for-impersonator
+        mf-tag
+        (compose-cc-guard-for-impersonator mf-tag values)))]
+     [else mf])))
 
 (define (compose-cc-guard-for-impersonator tag guard)
   (cond

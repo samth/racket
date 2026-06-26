@@ -805,29 +805,43 @@
 (define/final-prop none/c (make-none/c 'none/c))
 
 ;; prompt-tag/c
-(define-syntax prompt-tag/c
+;; normalize a `#:call/cc`/`#:call/comp` argument (a single contract or
+;; `(values c ...)`) into a list of contracts
+(define-syntax prompt-tag/c-arg
   (syntax-rules (values)
-    [(_ ?ctc ... #:call/cc (values ?call/cc ...))
-     (-prompt-tag/c (list ?ctc ...) (list ?call/cc ...))]
-    [(_ ?ctc ... #:call/cc ?call/cc)
-     (-prompt-tag/c (list ?ctc ...) (list ?call/cc))]
-    [(_ ?ctc ...) (-prompt-tag/c (list ?ctc ...) (list))]))
+    [(_ (values ?c ...)) (list ?c ...)]
+    [(_ ?c) (list ?c)]))
+(define-syntax prompt-tag/c
+  (syntax-rules ()
+    [(_ ?ctc ... #:call/cc ?cc #:call/comp ?cp)
+     (-prompt-tag/c (list ?ctc ...) (prompt-tag/c-arg ?cc) (prompt-tag/c-arg ?cp))]
+    [(_ ?ctc ... #:call/comp ?cp #:call/cc ?cc)
+     (-prompt-tag/c (list ?ctc ...) (prompt-tag/c-arg ?cc) (prompt-tag/c-arg ?cp))]
+    [(_ ?ctc ... #:call/cc ?cc)
+     (-prompt-tag/c (list ?ctc ...) (prompt-tag/c-arg ?cc) (list))]
+    [(_ ?ctc ... #:call/comp ?cp)
+     (-prompt-tag/c (list ?ctc ...) (list) (prompt-tag/c-arg ?cp))]
+    [(_ ?ctc ...) (-prompt-tag/c (list ?ctc ...) (list) (list))]))
 
 ;; procedural part of the contract
-;; takes two lists of contracts (abort & call/cc contracts)
-(define/subexpression-pos-prop (-prompt-tag/c ctc-args call/ccs)
+;; takes three lists of contracts (abort, call/cc & call/comp contracts)
+(define/subexpression-pos-prop (-prompt-tag/c ctc-args call/ccs call/comps)
   (define ctcs (coerce-contracts 'prompt-tag/c ctc-args))
   (define call/cc-ctcs (coerce-contracts 'prompt-tag/c call/ccs))
+  (define call/comp-ctcs (coerce-contracts 'prompt-tag/c call/comps))
   (cond [(and (andmap chaperone-contract? ctcs)
-              (andmap chaperone-contract? call/cc-ctcs))
-         (chaperone-prompt-tag/c ctcs call/cc-ctcs)]
+              (andmap chaperone-contract? call/cc-ctcs)
+              (andmap chaperone-contract? call/comp-ctcs))
+         (chaperone-prompt-tag/c ctcs call/cc-ctcs call/comp-ctcs)]
         [else
-         (impersonator-prompt-tag/c ctcs call/cc-ctcs)]))
+         (impersonator-prompt-tag/c ctcs call/cc-ctcs call/comp-ctcs)]))
 
 (define (prompt-tag/c-name ctc)
   (apply build-compound-type-name
          (append (list 'prompt-tag/c) (base-prompt-tag/c-ctcs ctc)
-                 (list '#:call/cc) (base-prompt-tag/c-call/ccs ctc))))
+                 (list '#:call/cc) (base-prompt-tag/c-call/ccs ctc)
+                 (let ([cps (base-prompt-tag/c-call/comps ctc)])
+                   (if (null? cps) '() (cons '#:call/comp cps))))))
 
 ;; build a projection for prompt tags
 (define ((prompt-tag/c-late-neg-proj chaperone?) ctc)
@@ -837,12 +851,15 @@
     (map get/build-late-neg-projection (base-prompt-tag/c-ctcs ctc)))
   (define call/cc-projs
     (map get/build-late-neg-projection (base-prompt-tag/c-call/ccs ctc)))
+  (define call/comp-projs
+    (map get/build-late-neg-projection (base-prompt-tag/c-call/comps ctc)))
   (λ (blame)
     (define swapped (blame-swap blame))
     (define ho-neg-projs (for/list ([proj (in-list ho-projs)]) (proj swapped)))
     (define ho-pos-projs (for/list ([proj (in-list ho-projs)]) (proj blame)))
     (define cc-neg-projs (for/list ([proj (in-list call/cc-projs)]) (proj swapped)))
     (define cc-pos-projs (for/list ([proj (in-list call/cc-projs)]) (proj blame)))
+    (define comp-pos-projs (for/list ([proj (in-list call/comp-projs)]) (proj blame)))
     (define (make-proj val projs neg-party blame+neg-party)
       (define proj-len (length projs))
       (λ vs
@@ -877,9 +894,18 @@
               f
               (λ args
                 (apply values (make-proj val cc-neg-projs neg-party blame+neg-party) args)))))
+         ;; comp-guard projection: applied to the result(s) of a composable
+         ;; continuation captured with this tag.  `values` (no projections)
+         ;; means no interposition, so uncontracted-for-#:call/comp tags are
+         ;; unaffected.
+         (define comp-guard
+           (if (null? comp-pos-projs)
+               values
+               (make-proj val comp-pos-projs neg-party blame+neg-party)))
          (proxy val
                 proj1 proj2
                 call/cc-guard call/cc-proxy
+                comp-guard
                 impersonator-prop:contracted ctc
                 impersonator-prop:blame blame+neg-party)]
         [else
@@ -896,7 +922,10 @@
         (base-prompt-tag/c-ctcs that))
        (pairwise-stronger-contracts?
         (base-prompt-tag/c-call/ccs this)
-        (base-prompt-tag/c-call/ccs that))))
+        (base-prompt-tag/c-call/ccs that))
+       (pairwise-stronger-contracts?
+        (base-prompt-tag/c-call/comps this)
+        (base-prompt-tag/c-call/comps that))))
 
 (define (prompt-tag/c-equivalent? this that)
   (and (base-prompt-tag/c? that)
@@ -905,10 +934,13 @@
         (base-prompt-tag/c-ctcs that))
        (pairwise-equivalent-contracts?
         (base-prompt-tag/c-call/ccs this)
-        (base-prompt-tag/c-call/ccs that))))
+        (base-prompt-tag/c-call/ccs that))
+       (pairwise-equivalent-contracts?
+        (base-prompt-tag/c-call/comps this)
+        (base-prompt-tag/c-call/comps that))))
 
-;; (listof contract) (listof contract)
-(define-struct base-prompt-tag/c (ctcs call/ccs))
+;; (listof contract) (listof contract) (listof contract)
+(define-struct base-prompt-tag/c (ctcs call/ccs call/comps))
 
 (define-struct (chaperone-prompt-tag/c base-prompt-tag/c) ()
   #:property prop:custom-write custom-write-property-proc

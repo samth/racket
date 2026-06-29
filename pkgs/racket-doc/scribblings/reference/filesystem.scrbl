@@ -952,7 +952,9 @@ Like @racket[define-runtime-path], but @racket[expr] should produce a
 list of paths.}
 
 
-@defform[(define-runtime-module-path-index id maybe-runtime?-id module-path-expr)]{
+@defform[(define-runtime-module-path-index id maybe-runtime?-id module-path-expr)
+         #:grammar ([maybe-runtime?-id code:blank
+                                       (code:line #:runtime?-id runtime?-id)])]{
 
 Similar to @racket[define-runtime-path], but @racket[id] is bound to a
 @tech{module path index} that encapsulates the result of
@@ -961,7 +963,17 @@ Similar to @racket[define-runtime-path], but @racket[id] is bound to a
 Use @racket[define-runtime-module-path-index] to bind a module path that is
 passed to a reflective function like @racket[dynamic-require] while
 also creating a module dependency for building and distributing
-executables.}
+executables.
+
+When @racket[module-path-expr] is a literal module path expression
+that can appear in @racket[require], such as a string module path or a
+quoted module path datum, the expansion creates a submodule with a
+@racket[for-label] require of the module path. The generated
+dependency cooperates with @exec{raco make}, so that changing the
+referenced module can cause the enclosing module to be recompiled, but
+the referenced module is not loaded when the enclosing module is
+loaded. If @racket[module-path-expr] computes a module path
+dynamically, then no @racket[for-label] dependency can be generated.}
 
 
 @defform[(runtime-require module-path)]{
@@ -983,14 +995,15 @@ enclosing module.
 
 The @racket[define-runtime-module-path-index] form is usually
 preferred, because it creates a weaker link to the referenced module.
-Unlike @racket[define-runtime-module-path-index], the
-@racket[define-runtime-module-path] form creates a @racket[for-label]
-dependency from an enclosing module to @racket[module-path]. Since the
-dependency is merely @racket[for-label], @racket[module-path] is not
-@tech{instantiate}d or @tech{visit}ed when the enclosing module is
-@tech{instantiate}d or @tech{visit}ed (unless such a dependency is
-created by other @racket[require]s), but the code for the referenced
-module is loaded when the enclosing module is loaded.}
+Like @racket[define-runtime-module-path-index] with a static module
+path, the @racket[define-runtime-module-path] form creates a
+@racket[for-label] dependency from an enclosing module to
+@racket[module-path]. Since the dependency is merely
+@racket[for-label], @racket[module-path] is not @tech{instantiate}d or
+@tech{visit}ed when the enclosing module is @tech{instantiate}d or
+@tech{visit}ed (unless such a dependency is created by other
+@racket[require]s), but the code for the referenced module is loaded
+when the enclosing module is loaded.}
 
 
 @defform[(runtime-paths module-path)]{

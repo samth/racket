@@ -8,7 +8,7 @@
          "private/share-search.rkt"
          "private/this-expression-source-directory.rkt"
          (only-in "private/runtime-path-table.rkt" table)
-         (for-syntax racket/base compiler/cm-accomplice))
+         (for-syntax racket/base))
   
 (provide ;; used to be in `mzlib/runtime-path`
          define-runtime-path
@@ -166,9 +166,65 @@
     (let ([files (hash-ref ext-file-table modname null)])
       (hash-set! ext-file-table modname (append paths files)))))
 
+(define-for-syntax (contains-path? v)
+  (cond
+    [(path? v) #t]
+    [(pair? v) (or (contains-path? (car v))
+                   (contains-path? (cdr v)))]
+    [(vector? v) (for/or ([v (in-vector v)])
+                   (contains-path? v))]
+    [else #f]))
+
+(define-for-syntax (literal-require-module-path? v)
+  (and (module-path? v)
+       ;; A path value is a module path indexable value, but it is not
+       ;; syntax that can appear in a `require' module path.
+       (not (contains-path? v))))
+
+(define-for-syntax (literal-module-path-expr->module-path expr)
+  (syntax-case expr (quote)
+    [(quote mod-path)
+     (and (literal-require-module-path? (syntax->datum #'mod-path))
+          (datum->syntax expr (syntax->datum #'mod-path) #'mod-path))]
+    [mod-path
+     (and (literal-require-module-path? (syntax->datum #'mod-path))
+          (let ([v (syntax-e #'mod-path)])
+            (and (string? v) #'mod-path)))]))
+
+(define-for-syntax (dependency-submodule mod-path)
+  (with-syntax ([dep-module (car (generate-temporaries
+                                  '(runtime-module-path-index-deps)))])
+    #`(module dep-module racket/base
+        (require (for-label #,mod-path)))))
+
+(define-for-syntax (module-path-for-dependency-submodule mod-path)
+  (syntax-case mod-path (submod)
+    [(submod "." elem ...)
+     #'(submod ".." elem ...)]
+    [(submod ".." elem ...)
+     #'(submod ".." ".." elem ...)]
+    [_ mod-path]))
+
+(define-for-syntax (runtime-module-path-index-compile-dependency expr)
+  (let ([mod-path (literal-module-path-expr->module-path expr)])
+    (if mod-path
+        (dependency-submodule (module-path-for-dependency-submodule mod-path))
+        #'(begin))))
+
+(define-for-syntax (do-define-runtime-module-path-index orig-stx id runtime?-id expr)
+  (with-syntax ([id id]
+                [runtime?-id runtime?-id]
+                [expr expr]
+                [compile-dependency
+                 (runtime-module-path-index-compile-dependency expr)])
+    #`(begin
+        compile-dependency
+        (-define-runtime-path #,orig-stx (id) `(module ,expr ,(#%variable-reference))
+                              list values #f runtime?-id))))
+
 (define-syntax (-define-runtime-path stx)
   (syntax-case stx ()
-    [(_ orig-stx (id ...) expr to-list to-values need-dir? runtime?-id cm-register?)
+    [(_ orig-stx (id ...) expr to-list to-values need-dir? runtime?-id)
      (let ([ids (syntax->list #'(id ...))])
        (unless (memq (syntax-local-context) '(module module-begin top-level))
          (raise-syntax-error #f "allowed only at the top level" #'orig-stx))
@@ -202,30 +258,31 @@
                                                  (to-list id ...))))))
            (begin-for-syntax
              (let-values ([(id ...) (let ([runtime?-id #f]) expr)])
-               (when cm-register? (register-external-file id) ...)
                (register-ext-files
                 (#%variable-reference)
                 (to-list id ...))))))]))
 
 (define-syntax (define-runtime-path stx)
   (syntax-case stx ()
-    [(_ id expr) #`(-define-runtime-path #,stx (id) expr list values #t runtime? #f)]
-    [(_ id #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id) expr list values #t runtime?-id #f)]))
+    [(_ id expr) #`(-define-runtime-path #,stx (id) expr list values #t runtime?)]
+    [(_ id #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id) expr list values #t runtime?-id)]))
 
 (define-syntax (define-runtime-paths stx)
   (syntax-case stx ()
-    [(_ (id ...) expr) #`(-define-runtime-path #,stx (id ...) expr list values #t runtime? #f)]
-    [(_ (id ...) #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id ...) expr list values #t runtime?-id #f)]))
+    [(_ (id ...) expr) #`(-define-runtime-path #,stx (id ...) expr list values #t runtime?)]
+    [(_ (id ...) #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id ...) expr list values #t runtime?-id)]))
 
 (define-syntax (define-runtime-path-list stx)
   (syntax-case stx ()
-    [(_ id expr) #`(-define-runtime-path #,stx (id) expr values list #t runtime? #f)]
-    [(_ id #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id) expr values list #t runtime?-id #f)]))
+    [(_ id expr) #`(-define-runtime-path #,stx (id) expr values list #t runtime?)]
+    [(_ id #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id) expr values list #t runtime?-id)]))
 
 (define-syntax (define-runtime-module-path-index stx)
   (syntax-case stx ()
-    [(_ id expr) #`(-define-runtime-path #,stx (id) `(module ,expr ,(#%variable-reference)) list values #f runtime? #f)]
-    [(_ id #:runtime?-id runtime?-id expr) #`(-define-runtime-path #,stx (id) `(module ,expr ,(#%variable-reference)) list values #f runtime?-id #f)]))
+    [(_ id expr)
+     (do-define-runtime-module-path-index stx #'id #'runtime? #'expr)]
+    [(_ id #:runtime?-id runtime?-id expr)
+     (do-define-runtime-module-path-index stx #'id #'runtime?-id #'expr)]))
 
 (define-for-syntax required-module-paths (make-hash))
 (define-syntax (runtime-require stx)

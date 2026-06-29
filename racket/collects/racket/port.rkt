@@ -1681,7 +1681,36 @@
                          (set! buf-end (+ buf-end c))
                          (read-it s)]))))]
                [(eq? status 'error)
-                (handle-error s)]
+                (if (and (not buf-eof?)
+                         (< buf-start buf-end))
+                    (begin
+                      ;; Some iconv variants (notably on newer Windows builds) report
+                      ;; EILSEQ for an incomplete multibyte sequence at the end of the
+                      ;; current buffer. Pull a little more input before giving up so
+                      ;; we don't replace valid bytes with the error marker.
+                      (when (positive? buf-start)
+                        (bytes-copy! buf 0 buf buf-start buf-end)
+                        (set! buf-end (- buf-end buf-start))
+                        (set! buf-start 0))
+                      (if (= buf-end (bytes-length buf))
+                          (handle-error s)
+                          (let* ([amt (max (bytes-length s) 4)]
+                                 [c (read-bytes-avail!*
+                                     buf port buf-end
+                                     (if (eq? buffer-mode 'block)
+                                         (bytes-length buf)
+                                         (min (bytes-length buf) (+ buf-end amt))))])
+                            (cond
+                              [(or (eof-object? c) (procedure? c))
+                               (set! buf-eof? #t)
+                               (set! buf-eof-result c)
+                               (read-it s)]
+                              [(zero? c)
+                               (wrap-evt port (lambda (v) 0))]
+                              [else
+                               (set! buf-end (+ buf-end c))
+                               (read-it s)]))))
+                    (handle-error s))]
                [(eq? status 'continues)
                 ;; Need more room to make progress at all.
                 ;; Decode into ready-bytes.

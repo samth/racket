@@ -16,7 +16,9 @@
 Applies @racket[proc] using the content of @racket[(list* v ... lst)]
 as the (by-position) arguments. The @racket[#:<kw> kw-arg] sequence is
 also supplied as keyword arguments to @racket[proc], where
-@racket[#:<kw>] stands for any keyword.
+@racket[#:<kw>] stands for any keyword. As with any function
+application, keyword arguments to @racket[apply] can be supplied in
+any order and interleaved with by-position arguments.
 
 The given @racket[proc] must accept as many arguments as the number of
 @racket[v]s plus length of @racket[lst], it must accept the supplied

@@ -9,6 +9,10 @@
 
 @note-lib-only[racket/syntax]
 
+The bindings of @racketmodname[racket/syntax] are most often used
+within macros, in which case they should be required @racket[for-syntax]:
+@racketblock[(require (for-syntax racket/syntax))]
+See @secref["stx-phases"] for more information on phase levels.
 
 @;{----}
 

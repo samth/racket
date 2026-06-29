@@ -250,8 +250,11 @@
       [(eof-object? in-v)
        (void)]
       [else
+       ;; Strip chunk extensions per RFC 9112 §7.1.1
+       ;; chunk = chunk-size [ chunk-ext ] CRLF chunk-data CRLF
        (define size-str
-         (string-trim in-v))
+         (string-trim
+          (car (regexp-split #rx";" (string-trim in-v)))))
        (define chunk-size
          (string->number size-str 16))
        (unless chunk-size
@@ -442,7 +445,7 @@
 ;; https://datatracker.ietf.org/doc/html/rfc2616#section-10.2.5
 ;; https://datatracker.ietf.org/doc/html/rfc2616#section-10.3.5
 (define (no-content? status)
-  (regexp-match? #rx#"^HTTP.... (1..|204|304) " status))
+  (regexp-match? #rx#"^HTTP.... (1..|204|304)( |$)" status))
 
 (define (http-conn-recv! hc
                          #:method [method-bss #"GET"]
@@ -468,7 +471,7 @@
                   [#f #f]
                   [(list _ cl-bs)
                    (string->number
-                    (bytes->string/utf-8 cl-bs))]))
+                    (string-trim (bytes->string/utf-8 cl-bs)))]))
               headers)
        =>
        (λ (count)

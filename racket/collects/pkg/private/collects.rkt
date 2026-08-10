@@ -29,14 +29,18 @@
                                #:only-implies? [only-implies? #f]) 
          pkg-name)
   (define pkg-dir (pkg-directory* pkg-name #:db db))
+  (define-values (run-deps build-deps)
+    (get-all-deps* metadata-ns pkg-dir))
   (define deps
     (map dependency->name 
-         (let ([l (get-all-deps metadata-ns pkg-dir)])
+         (let ([l (append run-deps build-deps)])
            (if all-platforms?
                l
                (filter dependency-this-platform? l)))))
   (if only-implies?
-      (let ([implies (list->set (get-all-implies metadata-ns pkg-dir deps))])
+      ;; `implies` is limited to run-time dependencies, even though
+      ;; `deps` includes build dependencies.
+      (let ([implies (list->set (get-all-implies metadata-ns pkg-dir run-deps))])
         (filter (lambda (dep)
                   (set-member? implies dep))
                 deps))

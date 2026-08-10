@@ -13,7 +13,9 @@
    "create packages"
    $ "raco pkg create --format zip test-pkgs/pkg-implied-one"
    $ "raco pkg create --format zip test-pkgs/pkg-implied-two"
-   $ "raco pkg create --format zip test-pkgs/pkg-implies")
+   $ "raco pkg create --format zip test-pkgs/pkg-implies"
+   $ "raco pkg create --format zip test-pkgs/pkg-implies-bad"
+   $ "raco pkg create --format zip test-pkgs/pkg-test1-v2")
 
   (define (implied-version! s)
     (hash-set! *index-ht-1* "pkg-implied"
@@ -35,7 +37,8 @@
    (shelly-case
     "install with auto-dependencies"
     $ "raco pkg install --auto pkg-implies"
-    $ "racket -l pkg-implied" =stdout> #rx"implied-1")
+    $ "racket -l pkg-implied" =stdout> #rx"implied-1"
+    $ "raco pkg install pkg-test1")
    (shelly-case
     "update checks implied, but does nothing"
     $ "raco pkg update pkg-implies" =stdout> #rx"pkg-implied.*No updates available")
@@ -71,5 +74,28 @@
     "update works ok with --all"
     $ "raco pkg update --all"
     $ "racket -l pkg-implied" =stdout> #rx"implied-1")
+
+   (hash-set! *index-ht-1* "pkg-implies"
+              (hasheq 'checksum
+                      (file->string "test-pkgs/pkg-implies-bad.zip.CHECKSUM")
+                      'source
+                      "http://localhost:9997/pkg-implies-bad.zip"))
+   (shelly-case
+    "update tolerates implies that are not dependencies"
+    $ "raco pkg update --all" =stderr> #rx"`implies` is not a subset of dependencies"
+    $ "racket -l pkg-implies" =stdout> #rx"bad-implies-update"
+    $ "racket -l racket/base -l pkg-test1/number -e '(number)'" =stdout> "1\n")
+
+   (implied-version! "two") ; << UPDATE version
+   (hash-set! *index-ht-1* "pkg-test1"
+              (hasheq 'checksum
+                      (file->string "test-pkgs/pkg-test1-v2.zip.CHECKSUM")
+                      'source
+                      "http://localhost:9997/pkg-test1-v2.zip"))
+   (shelly-case
+    "only valid implies remain effective after ignoring invalid entries"
+    $ "raco pkg update pkg-implies"
+    $ "racket -l pkg-implied" =stdout> #rx"implied-2"
+    $ "racket -l racket/base -l pkg-test1/number -e '(number)'" =stdout> "1\n")
 
    (void))))

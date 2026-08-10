@@ -15,6 +15,12 @@
 
 (define current-dependencies-pkg-dir (make-parameter '|[unknown]|))
 
+(define (filter-valid-metadata-entries entries valid? report-invalid)
+  (define-values (valid invalid) (partition valid? entries))
+  (unless (null? invalid)
+    (report-invalid invalid))
+  valid)
+
 (define ((check-dependencies which [pkg-dir (current-dependencies-pkg-dir)]) deps)
   (unless (list? deps)
     (pkg-error (~a "invalid `" which "` specification\n"
@@ -59,10 +65,7 @@
                    (loop (hash-set saw (car dep) #t)
                          (cddr dep)))])))))
 
-  (define invalid-deps
-    (filter (compose1 not pkg-dep?) deps))
-
-  (unless (null? invalid-deps)
+  (define (report-invalid-deps invalid-deps)
     (pkg-error (~a "invalid `" which "` specification\n"
                    "  specification: ~e\n"
                    (if ((length invalid-deps) . = . 1)
@@ -73,7 +76,9 @@
                (if ((length invalid-deps) . = . 1)
                    (car invalid-deps)
                    invalid-deps)
-               pkg-dir)))
+               pkg-dir))
+
+  (void (filter-valid-metadata-entries deps pkg-dep? report-invalid-deps)))
 
 (define (get-all-deps* metadata-ns pkg-dir)
   (values
@@ -89,33 +94,34 @@
   (append deps build-deps))
 
 (define (get-all-deps-subset key metadata-ns pkg-dir deps)
-  (get-metadata metadata-ns pkg-dir 
-                key (lambda () empty)
-                #:checker (lambda (l)
-                            (unless (null? l)
-                              (define deps-set (list->set
-                                                (map dependency->name deps)))
-                              (unless (and (list? l)
-                                           (andmap (lambda (v)
-                                                     (or (string? v)
-                                                         (eq? v 'core)))
-                                                   l))
+  (define deps-set (list->set (map dependency->name deps)))
+  (define (declared-dependency? i)
+    (or (eq? i 'core)
+        (set-member? deps-set i)))
+  (define l
+    (get-metadata metadata-ns pkg-dir
+                  key (lambda () empty)
+                  #:checker (lambda (l)
+                              (unless (or (null? l)
+                                          (and (list? l)
+                                               (andmap (lambda (v)
+                                                         (or (string? v)
+                                                             (eq? v 'core)))
+                                                       l)))
                                 (pkg-error (~a "invalid `~a` specification\n"
                                                "  specification: ~e\n"
                                                "  package directory: ~a")
                                            key
                                            l
-                                           pkg-dir))
-                              (unless (andmap (lambda (i)
-                                                (or (eq? i 'core)
-                                                    (set-member? deps-set i)))
-                                              l)
-                                (pkg-error (~a "`~a` is not a subset of dependencies\n"
-                                               "  specification: ~e\n"
-                                               "  package directory: ~a")
-                                           key
-                                           l
-                                           pkg-dir))))))
+                                           pkg-dir)))))
+  (define (report-undeclared _undeclared)
+    (log-pkg-error (~a "`~a` is not a subset of dependencies\n"
+                       "  specification: ~e\n"
+                       "  package directory: ~a")
+                   key
+                   l
+                   pkg-dir))
+  (filter-valid-metadata-entries l declared-dependency? report-undeclared))
 
 (define (get-all-implies metadata-ns pkg-dir deps)
   (get-all-deps-subset 'implies metadata-ns pkg-dir deps))

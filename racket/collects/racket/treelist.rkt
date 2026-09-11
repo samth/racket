@@ -1705,8 +1705,16 @@ minimum required storage. |#
                           (cond
                             [(fx= height 0) (vector*-copy n)]
                             [else
-                             (for/vector #:length (vector-length n) ([e (in-vector n)])
-                                         (copy-node e (fx- height 1)))]))])]))
+                             ;; a node that is not leftwise dense is a pair of a
+                             ;; children vector and a size vector, so reach the
+                             ;; children through `node-children` and put the
+                             ;; sizes back; the size vector is never mutated, so
+                             ;; it does not itself need copying
+                             (define children (node-children n))
+                             (Node (for/vector #:length (vector*-length children)
+                                               ([e (in-vector children)])
+                                     (copy-node e (fx- height 1)))
+                                   (node-sizes n))]))])]))
 
 (define (treelist-set! tl index el)
   (cond

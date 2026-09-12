@@ -172,7 +172,22 @@
   (err/rt-test (vector*-extend 1 #(a b) #f))
   (let ([vec (chaperone-vector #(1 2 3) (lambda (b i v) v) (lambda (b i v) v))])
     (err/rt-test (vector*-extend vec 3))
-    (err/rt-test (vector*-extend vec 5 #f))))
+    (err/rt-test (vector*-extend vec 5 #f)))
+  ;; the fast path for a small fixnum length must decide what the checks decide
+  (err/rt-test (vector*-extend #(a b) -1) exn:fail:contract? #rx"exact-nonnegative-integer[?]")
+  (err/rt-test (vector*-extend #(a b) (expt 2 100)) exn:fail?)
+  (err/rt-test (vector*-extend #(a b) 1.0) exn:fail:contract? #rx"exact-nonnegative-integer[?]")
+  (err/rt-test (vector*-extend #(a b) 1) exn:fail:contract? #rx"shorter")
+  (err/rt-test (vector*-extend 'x 3) exn:fail:contract? #rx"vector[?]")
+  (err/rt-test (vector*-extend (vector->immutable-vector (make-vector 3 'a)) 'x) exn:fail:contract?)
+  (test #(a b) vector*-extend (vector->immutable-vector #(a b)) 2)
+  (let ([v (vector 1 2)])
+    (test #f eq? v (vector*-extend v 2)))
+  (for ([n (in-list '(998 999 1000 1001 5000))])
+    (let ([v (vector*-extend #(1 2 3) n 'z)])
+      (test n vector-length v)
+      (test 3 vector-ref v 2)
+      (test 'z vector-ref v (sub1 n)))))
 
 
 ;; ---------- vector-filter[-not] ----------

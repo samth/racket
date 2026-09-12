@@ -44,6 +44,9 @@
 ;; set where one instruction yields the remainder directly, so that a
 ;; remainder need not be computed back from the quotient
 (define-constant-default integer-remainder-instruction #f)
+;; set where one instruction yields the high half of a full-width
+;; multiply, which is what dividing by a constant is turned into
+(define-constant-default multiply-high-instruction #f)
 (define-constant-default popcount-instruction #f)
 (define-constant-default sqrt-instruction #f)
 (define-constant-default fence-instruction #f)

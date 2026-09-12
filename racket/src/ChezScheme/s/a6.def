@@ -11,4 +11,5 @@
 (define-constant unaligned-integers #t)
 (define-constant integer-divide-instruction #t)
 (define-constant integer-remainder-instruction #t) ; idiv leaves it in rdx
+(define-constant multiply-high-instruction #t)      ; imul leaves it in rdx
 (define-constant popcount-instruction #t)

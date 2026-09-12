@@ -2082,6 +2082,67 @@
                          (immediate ,(fx- (constant fixnum-bits) p2))))
                      (immediate ,(fx+ p2 (constant fixnum-offset))))))))
 
+          ; Hacker's Delight 10-4, at whatever the word size is: the M and s
+          ; for which trunc(n/d) is (mulh(M,n) [+n | -n]) shifted right by s,
+          ; plus the sign bit.  Only used for a divisor known at compile time.
+          (define magic-divisor
+            (lambda (d bits)
+              (let* ([two^b-1 (ash 1 (- bits 1))]
+                     [ad (abs d)]
+                     [t (+ two^b-1 (if (< d 0) 1 0))]
+                     [anc (- t 1 (modulo t ad))])
+                (let loop ([p (- bits 1)]
+                           [q1 (quotient two^b-1 anc)]
+                           [r1 (- two^b-1 (* (quotient two^b-1 anc) anc))]
+                           [q2 (quotient two^b-1 ad)]
+                           [r2 (- two^b-1 (* (quotient two^b-1 ad) ad))])
+                  (let*-values
+                      ([(p) (+ p 1)]
+                       [(q1 r1) (let ([q1 (* 2 q1)] [r1 (* 2 r1)])
+                                  (if (>= r1 anc)
+                                      (values (+ q1 1) (- r1 anc))
+                                      (values q1 r1)))]
+                       [(q2 r2) (let ([q2 (* 2 q2)] [r2 (* 2 r2)])
+                                  (if (>= r2 ad)
+                                      (values (+ q2 1) (- r2 ad))
+                                      (values q2 r2)))]
+                       [(delta) (- ad r2)])
+                    (if (or (< q1 delta) (and (= q1 delta) (= r1 0)))
+                        (loop p q1 r1 q2 r2)
+                        (values (let* ([m (+ q2 1)]
+                                       [m (if (< d 0) (- m) m)]
+                                       [m (modulo m (ash 1 bits))])
+                                  (if (>= m two^b-1) (- m (ash 1 bits)) m))
+                                (- p bits))))))))
+
+          ; e1 is the tagged dividend, fixnum-factor * x, and the quotient
+          ; wanted is trunc(x/d).  That is trunc((fixnum-factor * x) /
+          ; (fixnum-factor * d)), so dividing the tagged value by the tagged
+          ; divisor cancels the tag and leaves the bare quotient to retag --
+          ; which is what the division instruction does too, and why `build-fx`
+          ; is applied on the way out.
+          (define build-fx/magic
+            (lambda (e1 d)
+              (let-values ([(m sh) (magic-divisor
+                                     (* (constant fixnum-factor) d)
+                                     (constant ptr-bits))])
+                (bind #t (e1)
+                  (let ([hi (make-tmp 'hi)])
+                    `(let ([,hi (inline ,(make-info-kill* (reg-list %rax)) ,%mulh
+                                        (immediate ,m) ,e1)])
+                       ,(let ([adjusted (cond
+                                          [(and (> d 0) (< m 0)) (%inline + ,hi ,e1)]
+                                          [(and (< d 0) (> m 0)) (%inline - ,hi ,e1)]
+                                          [else hi])])
+                          (let ([q (make-tmp 'q)])
+                            `(let ([,q ,(if (eqv? sh 0)
+                                            adjusted
+                                            (%inline sra ,adjusted (immediate ,sh)))])
+                               ,(build-fix
+                                  (%inline + ,q
+                                     ,(%inline srl ,q
+                                        (immediate ,(fx- (constant ptr-bits) 1))))))))))))))
+
           (define build-fx/
             (lambda (src sexpr e1 e2)
               (or (nanopass-case (L7 Expr) e2
@@ -2089,6 +2150,15 @@
                      (let ([i (target-fixnum-power-of-two d)])
                        (and i (build-fx/p2 e1 i)))]
                     [else #f])
+                  ; a divisor that is a constant but not a power of two: a
+                  ; multiply and a couple of shifts, rather than a divide
+                  (and (constant multiply-high-instruction)
+                       (nanopass-case (L7 Expr) e2
+                         [(quote ,d)
+                          (and (target-fixnum? d)
+                               (> (abs d) 1)
+                               (build-fx/magic e1 d))]
+                         [else #f]))
                   (if (constant integer-divide-instruction)
                       (build-fix (%inline / ,e1 ,e2))
                       `(call ,(make-info-call src sexpr #f #f #f) #f
@@ -2107,8 +2177,11 @@
           (define build-fxremainder
             (lambda (src sexpr e1 e2)
               (or (and (constant integer-remainder-instruction)
+                       ; only where the quotient would itself be a division:
+                       ; for a constant divisor it is shifts or a multiply, and
+                       ; subtracting from that beats a second divide
                        (not (nanopass-case (L7 Expr) e2
-                              [(quote ,d) (target-fixnum-power-of-two d)]
+                              [(quote ,d) (target-fixnum? d)]
                               [else #f]))
                        `(inline ,(make-info-kill* (reg-list %rax)) ,%rem ,e1 ,e2))
                   (bind #t (e1 e2)
@@ -2142,8 +2215,27 @@
             [(e1 e2)
              (nanopass-case (L7 Expr) e2
                [(quote ,d)
-                (and (target-fixnum-power-of-two d)
-                     (%inline logand ,e1 (immediate ,(fix (- d 1)))))]
+                (cond
+                  [(target-fixnum-power-of-two d)
+                   (%inline logand ,e1 (immediate ,(fix (- d 1))))]
+                  [(and (target-fixnum? d) (> (abs d) 1))
+                   ; A modulo differs from a remainder only where the remainder
+                   ; has the wrong sign, and with the divisor known the sign to
+                   ; test for is known too -- so no branch is needed, just the
+                   ; divisor masked by a word of sign bits.  For a positive
+                   ; divisor that is the sign of r; for a negative one it is
+                   ; the sign of -r, which is all ones exactly when r > 0 and
+                   ; zero when r is zero, which is the case that must not be
+                   ; corrected.
+                   (bind #t ([r (build-fxremainder src sexpr e1 `(quote ,d))])
+                     (%inline + ,r
+                        ,(%inline logand (immediate ,(fix d))
+                            ,(%inline sra
+                                ,(if (> d 0)
+                                     r
+                                     (%inline - (immediate 0) ,r))
+                                (immediate ,(fx- (constant ptr-bits) 1))))))]
+                  [else #f])]
                [else #f])]))
         (let ()
           (define-syntax build-fx
@@ -7978,6 +8070,50 @@
                              ;; `[$]$stencil-vector-do-update`, which has GC disabled between
                              ;; allocation and filling in the data
                              ,t-vec)))))))
+        ; Substituting one slot and leaving the mask alone -- which is what an
+        ; update whose remove bits are its add bits does -- is the same shape as
+        ; `vector-set/copy` above, and was reaching it through a call into a
+        ; case-lambda and a copy loop written in Scheme, one
+        ; `stencil-vector-ref` and one `$stencil-vector-fill-set!` per slot.
+        ; Open-coded it is an allocation, a block copy and a store.
+        ;
+        ; The mask is unchanged, so the new vector's length is the old one's.
+        ; A tagged fixnum is its own byte count when a word is eight bytes,
+        ; which is why the popcount can serve as both, exactly as
+        ; `$make-stencil-vector` already relies on.
+        (define build-stencil-vector-set/copy
+          (lambda (type e-vec e-bit e-val)
+            (let ([Ltop (make-local-label 'Ltop)]
+                  [sv (make-tmp 'sv 'ptr)]
+                  [t (make-assigned-tmp 't 'uptr)]
+                  [orig-t (make-tmp 'orig-t 'uptr)]
+                  [mask (make-tmp 'mask)]
+                  [idx (make-tmp 'idx)])
+              (bind #t (e-vec e-bit)
+                (bind #f (e-val)
+                  `(let ([,mask ,(extract-length
+                                   (%mref ,e-vec ,(constant stencil-vector-type-disp))
+                                   (constant stencil-vector-mask-offset))])
+                     (let ([,idx ,(build-fix
+                                    (%inline popcount
+                                       ,(%inline logand ,mask
+                                          ,(%inline - ,e-bit (immediate ,(fix 1))))))])
+                       (let ([,t ,(build-fix (%inline popcount ,mask))])
+                         (let ([,sv ,(do-make-stencil-vector t mask type)]
+                               [,orig-t ,t])
+                           (label ,Ltop
+                             (if ,(%inline eq? ,t (immediate 0))
+                                 ,(%seq
+                                   (set! ,(%mref ,sv ,idx ,(constant stencil-vector-data-disp))
+                                         ,e-val)
+                                   ,(build-use-trap-fuel orig-t)
+                                   ,sv)
+                                 ,(%seq
+                                   (set! ,t ,(%inline - ,t (immediate ,(constant ptr-bytes))))
+                                   (set! ,(%mref ,sv ,t ,(constant stencil-vector-data-disp))
+                                         ,(%mref ,e-vec ,t ,(constant stencil-vector-data-disp)))
+                                   (goto ,Ltop)))))))))))))
+
         (define-inline 3 stencil-vector
           [(e-mask . e-val*)
            (do-stencil-vector e-mask e-val* (constant type-stencil-vector))])
@@ -7993,6 +8129,16 @@
         (define-inline 3 $make-system-stencil-vector
           [(e-length e-mask) (do-make-stencil-vector e-length e-mask (constant type-sys-stencil-vector))])
         (define-inline 3 stencil-vector-update
+          [(e-vec e-sub-mask e-add-mask e-val)
+           ; the one-value case is worth the test: if the bits agree the mask
+           ; does not change and this is a copy with one slot substituted
+           (bind #t (e-vec e-sub-mask e-add-mask e-val)
+             `(if ,(%inline eq? ,e-sub-mask ,e-add-mask)
+                  ,(build-stencil-vector-set/copy (constant type-stencil-vector)
+                                                  e-vec e-add-mask e-val)
+                  (call ,(make-info-call src sexpr #f #f #f) #f
+                        ,(lookup-primref 3 '$stencil-vector-do-update)
+                        ,e-vec ,e-sub-mask ,e-add-mask ,e-val)))]
           [(e-vec e-sub-mask e-add-mask . e-val*)
            `(call ,(make-info-call src sexpr #f #f #f) #f
                   ,(lookup-primref 3 '$stencil-vector-do-update)

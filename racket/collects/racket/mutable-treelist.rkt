@@ -63,7 +63,17 @@
   #:property prop:sequence (lambda (mtl)
                              (in-mutable-treelist/proc mtl))
   #:property prop:serializable (make-serialize-info
-                                (lambda (mtl) (vector (mutable-treelist-tl mtl)))
+                                ;; Not `mutable-treelist-tl` directly.  This
+                                ;; lambda is handed to `make-serialize-info`,
+                                ;; which the compiler does not know, so it must
+                                ;; assume the lambda could be called while the
+                                ;; `define-values` that binds the accessor is
+                                ;; still running.  That makes the accessor a
+                                ;; possibly-undefined variable, and every use of
+                                ;; it in this module a checked variable
+                                ;; reference and an indirect call rather than a
+                                ;; field load.
+                                (lambda (mtl) (vector (mutable-treelist->tl mtl)))
                                 (cons 'deserialize-mutable-treelist
                                       (module-path-index-join '(submod "." deserialize)
                                                               (variable-reference->module-path-index
@@ -84,6 +94,9 @@
                                      (lambda (mtl2)
                                        (set-mutable-treelist-tl! mtl (treelist-copy-for-mutable (mutable-treelist-tl mtl2))))))))
   (module declare-preserve-for-embedding racket/kernel))
+
+;; only for the serialization property above; see the note there
+(define (mutable-treelist->tl mtl) (mutable-treelist-tl mtl))
 
 (define (make-mutable-treelist n [v #f])
   (cond

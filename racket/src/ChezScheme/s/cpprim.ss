@@ -8069,6 +8069,50 @@
                              ;; `[$]$stencil-vector-do-update`, which has GC disabled between
                              ;; allocation and filling in the data
                              ,t-vec)))))))
+        ; Substituting one slot and leaving the mask alone -- which is what an
+        ; update whose remove bits are its add bits does -- is the same shape as
+        ; `vector-set/copy` above: an allocation, a block copy and a store.
+        ; The general path reaches `$stencil-vector-do-update`, which copies in
+        ; Scheme with one `stencil-vector-ref` and one
+        ; `$stencil-vector-fill-set!` per slot.
+        ;
+        ; The mask is unchanged, so the new vector's length is the old one's.
+        ; A tagged fixnum is its own byte count when a word is eight bytes,
+        ; which is why the popcount can serve as both, exactly as
+        ; `$make-stencil-vector` already relies on.
+        (define build-stencil-vector-set/copy
+          (lambda (type e-vec e-bit e-val)
+            (let ([Ltop (make-local-label 'Ltop)]
+                  [sv (make-tmp 'sv 'ptr)]
+                  [t (make-assigned-tmp 't 'uptr)]
+                  [orig-t (make-tmp 'orig-t 'uptr)]
+                  [mask (make-tmp 'mask)]
+                  [idx (make-tmp 'idx)])
+              (bind #t (e-vec e-bit)
+                (bind #f (e-val)
+                  `(let ([,mask ,(extract-length
+                                   (%mref ,e-vec ,(constant stencil-vector-type-disp))
+                                   (constant stencil-vector-mask-offset))])
+                     (let ([,idx ,(build-fix
+                                    (%inline popcount
+                                       ,(%inline logand ,mask
+                                          ,(%inline - ,e-bit (immediate ,(fix 1))))))])
+                       (let ([,t ,(build-fix (%inline popcount ,mask))])
+                         (let ([,sv ,(do-make-stencil-vector t mask type)]
+                               [,orig-t ,t])
+                           (label ,Ltop
+                             (if ,(%inline eq? ,t (immediate 0))
+                                 ,(%seq
+                                   (set! ,(%mref ,sv ,idx ,(constant stencil-vector-data-disp))
+                                         ,e-val)
+                                   ,(build-use-trap-fuel orig-t)
+                                   ,sv)
+                                 ,(%seq
+                                   (set! ,t ,(%inline - ,t (immediate ,(constant ptr-bytes))))
+                                   (set! ,(%mref ,sv ,t ,(constant stencil-vector-data-disp))
+                                         ,(%mref ,e-vec ,t ,(constant stencil-vector-data-disp)))
+                                   (goto ,Ltop)))))))))))))
+
         (define-inline 3 stencil-vector
           [(e-mask . e-val*)
            (do-stencil-vector e-mask e-val* (constant type-stencil-vector))])
@@ -8084,6 +8128,16 @@
         (define-inline 3 $make-system-stencil-vector
           [(e-length e-mask) (do-make-stencil-vector e-length e-mask (constant type-sys-stencil-vector))])
         (define-inline 3 stencil-vector-update
+          [(e-vec e-sub-mask e-add-mask e-val)
+           ; the one-value case is worth the test: if the bits agree the mask
+           ; does not change and this is a copy with one slot substituted
+           (bind #t (e-vec e-sub-mask e-add-mask e-val)
+             `(if ,(%inline eq? ,e-sub-mask ,e-add-mask)
+                  ,(build-stencil-vector-set/copy (constant type-stencil-vector)
+                                                  e-vec e-add-mask e-val)
+                  (call ,(make-info-call src sexpr #f #f #f) #f
+                        ,(lookup-primref 3 '$stencil-vector-do-update)
+                        ,e-vec ,e-sub-mask ,e-add-mask ,e-val)))]
           [(e-vec e-sub-mask e-add-mask . e-val*)
            `(call ,(make-info-call src sexpr #f #f #f) #f
                   ,(lookup-primref 3 '$stencil-vector-do-update)

@@ -82,6 +82,7 @@
    treelist-set!
    ;; To perform the same checks, but for mutable:
    check-treelist-index
+   check-treelist-index*
    check-treelist-end-index
    check-treelist-bound-index
    check-sort-arguments
@@ -99,8 +100,10 @@
 (define MASK (- MAX_WIDTH 1))
 (define MAX_ERROR 2)
 
+;; `fxand`, not `bitwise-and`: both arguments are fixnums by construction, and
+;; the generic operation still dispatches on their types in an unsafe module.
 (define (radix index height)
-  (bitwise-and (fxrshift index (fx* BITS height)) MASK))
+  (fxand (fxrshift index (fx* BITS height)) MASK))
 
 ;; a node in the RRB Tree
 ;;
@@ -127,6 +130,10 @@
 (define (vector*-drop vec n) (vector*-copy vec n (vector*-length vec)))
 (define (vector*-drop-right vec n) (vector*-copy vec 0 (- (vector*-length vec) n)))
 (define (vector*-add-left val a) (vector*-append (vector val) a))
+;; `vector*-extend a (add1 len) val` computes exactly this in one primitive
+;; and one allocation, where the append allocates a one-element vector first.
+;; It is nonetheless slower -- 3.41 ns against 2.28 appending to a 4-slot node,
+;; 7.13 against 5.02 at 16, 11.15 against 8.98 at 31 -- so this stays.
 (define (vector*-add-right a val) (vector*-append a (vector val)))
 
 (define (assert-node n)
@@ -215,6 +222,22 @@
 (define (check-treelist who tl)
   (unless (treelist? tl)
     (raise-argument-error* who 'racket/primitive "treelist?" tl)))
+
+;; The common case is a nonnegative fixnum below the size, which is two
+;; comparisons -- but `check-treelist-index` takes optional arguments and has
+;; three ways to raise, so it is a call, and the disassembly of `treelist-ref`
+;; showed it pushing a frame and calling before doing any work at all.  This
+;; does the common case in the caller and calls only to raise.
+(define-syntax check-treelist-index*
+  (syntax-rules ()
+    [(_ who tl size index)
+     (let ([s size] [i index])
+       (unless (and (fixnum? i) (fx>= i 0) (fx< i s))
+         (check-treelist-index who tl s i)))]
+    [(_ who tl size index tl-in type)
+     (let ([s size] [i index])
+       (unless (and (fixnum? i) (fx>= i 0) (fx< i s))
+         (check-treelist-index who tl s i tl-in type)))]))
 
 (define (check-treelist-index who tl size index
                               [tl-in tl] [type "treelist"])
@@ -353,18 +376,41 @@
     [(#t #f) (display ">" port)]
     [else (display ")" port)]))
 
+;; The descent to an element, expanded where it is used.  Reaching it through
+;; `treelist-node-for` costs a call, a two-value return, and a second
+;; `impersonator?` test that the caller has already done; this is the same
+;; walk without them.  `treelist-node-for` keeps the shared version for the
+;; callers that want the node and the position rather than the element.
+;;
+;; `tl` must not be an impersonator -- the callers test that first.
+(define-syntax-rule (walk-to-element tl index)
+  (let walk ([node (treelist-root tl)]
+             [index index]
+             [height (treelist-height tl)])
+    (cond
+      [(fx= height 0)
+       (node-ref node (fxand index MASK))]
+      [(node-leftwise-dense? node)
+       (walk (node*-ref node (radix index height)) index (fx- height 1))]
+      [else
+       (define-values (bi si) (step node index height))
+       (walk (node-ref node bi) si (fx- height 1))])))
+
 (define (treelist-ref tl index)
   (cond
     [(impersonator? tl) (treelist-ref/slow tl index)]
     [else
      (check-treelist 'treelist-ref tl)
-     (check-treelist-index 'treelist-ref tl (treelist-size tl) index)
-     (define-values (node pos) (treelist-node-for tl index))
-     (node-ref node pos)]))
+     (check-treelist-index* 'treelist-ref tl (treelist-size tl) index)
+     (walk-to-element tl index)]))
 
 (define (unsafe-treelist-ref tl index)
-  (define-values (node pos) (treelist-node-for tl index))
-  (node-ref node pos))
+  (cond
+    [(impersonator? tl)
+     (define-values (node pos) (treelist-node-for tl index))
+     (node-ref node pos)]
+    [else
+     (walk-to-element tl index)]))
 
 (define (treelist-first tl)
   (cond
@@ -399,7 +445,7 @@
                 [height (treelist-height tl)])
        (cond
          [(fx= height 0)
-          (values node (bitwise-and index MASK))]
+          (values node (fxand index MASK))]
          [(node-leftwise-dense? node)
           (walk (node*-ref node (radix index height)) index (fx- height 1))]
          [else
@@ -519,7 +565,7 @@
     [else
      (check-treelist 'treelist-set tl)
      (define size (treelist-size tl))
-     (check-treelist-index 'treelist-set tl size index)
+     (check-treelist-index* 'treelist-set tl size index)
      (define height (treelist-height tl))
      (define new-node
        (let set ([node (treelist-root tl)]
@@ -899,7 +945,7 @@ minimum required storage. |#
     [else
      (check-treelist 'treelist-delete tl)
      (define size (treelist-size tl))
-     (check-treelist-index 'treelist-delete tl size at)
+     (check-treelist-index* 'treelist-delete tl size at)
      (cond
        [(fx= at 0) (treelist-drop tl 1)]
        [(fx= at (fx- size 1))
@@ -1177,7 +1223,7 @@ minimum required storage. |#
 ;; set at `height` radix or above)
 (define (step node index height)
   (define sizes (node-sizes node))
-  (define target-index (bitwise-and index (fx- (fxlshift 1 (fx* (fx+ height 1) BITS)) 1)))
+  (define target-index (fxand index (fx- (fxlshift 1 (fx* (fx+ height 1) BITS)) 1)))
   (define branch (let loop ([i 0])
                    (if (fx<= (vector*-ref sizes i) target-index)
                        (loop (fx+ i 1))
@@ -1510,7 +1556,7 @@ minimum required storage. |#
 (define (treelist-ref/slow tl index)
   (define who 'treelist-ref)
   (check-treelist who tl)
-  (check-treelist-index who tl (treelist-size tl) index)
+  (check-treelist-index* who tl (treelist-size tl) index)
   (define w (treelist-chaperone-ref tl))
   (define prev (treelist-wrapper-prev w))
   (define v (treelist-ref prev index))
@@ -1588,7 +1634,7 @@ minimum required storage. |#
 (define (treelist-set/slow tl index el)
   (define who 'treelist-set)
   (check-treelist who tl)
-  (check-treelist-index who tl (treelist-size tl) index)
+  (check-treelist-index* who tl (treelist-size tl) index)
   (define w (treelist-chaperone-ref tl))
   (define prev (treelist-wrapper-prev w))
   (call-with-chaperone-values

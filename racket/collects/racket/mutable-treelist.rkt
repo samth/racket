@@ -135,12 +135,17 @@
   (check-mutable-treelist 'mutable-treelist-empty? mtl)
   (treelist-empty? (mutable-treelist-tl mtl)))
 
+;; `treelist-length` has checked that `tl` is a treelist and
+;; `check-treelist-index*` that `index` is in range, so `treelist-ref` would
+;; do the whole sequence a second time -- which is why it was two thirds
+;; slower than `treelist-ref` itself.  `unsafe-treelist-ref` skips the checks
+;; and keeps the impersonator dispatch, which is the part that still matters.
 (define (mutable-treelist-ref mtl index)
   (check-mutable-treelist 'mutable-treelist-ref mtl)
   (define tl (mutable-treelist-tl mtl))
-  (check-treelist-index 'mutable-treelist-ref tl (treelist-length tl) index
+  (check-treelist-index* 'mutable-treelist-ref tl (treelist-length tl) index
                         mtl "mutable treelist")
-  (treelist-ref tl index))
+  (unsafe-treelist-ref tl index))
 
 (define (mutable-treelist-first mtl)
   (check-mutable-treelist 'mutable-treelist-first mtl)
@@ -159,7 +164,7 @@
 (define (mutable-treelist-set! mtl index val)
   (check-mutable-treelist 'mutable-treelist-set! mtl)
   (define tl (mutable-treelist-tl mtl))
-  (check-treelist-index 'mutable-treelist-set! tl (treelist-length tl) index
+  (check-treelist-index* 'mutable-treelist-set! tl (treelist-length tl) index
                         mtl "mutable treelist")
   (cond
     [(impersonator? mtl)
@@ -209,7 +214,7 @@
 (define (mutable-treelist-delete! mtl index)
   (check-mutable-treelist 'mutable-treelist-delete! mtl)
   (define tl (mutable-treelist-tl mtl))
-  (check-treelist-index 'mutable-treelist-delete! tl (treelist-length tl) index
+  (check-treelist-index* 'mutable-treelist-delete! tl (treelist-length tl) index
                         mtl "mutable treelist")
   (set-mutable-treelist-tl! mtl (treelist-delete tl index)))
 

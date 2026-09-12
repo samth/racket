@@ -604,17 +604,31 @@
    [(v new-size)
     (vector*-extend v new-size 0)]
    [(v new-size fill)
-    (check who #%vector? :contract  "(and/c vector? (not impersonator?))" v)
-    (check who exact-nonnegative-integer? new-size)
-    (let ([old-size (#%vector-length v)])
-      (unless (<= old-size new-size)
-	(raise-arguments-error who
-                               "new length is shorter than existing length"
-                               "new length" new-size
-                               "existing length" old-size))
-      (unless (and (fixnum? new-size)
-                   (fx< new-size 1000))
-	(guard-large-allocation who 'vector new-size (foreign-sizeof 'void*)))
-      (#%vector-append
-       v
-       (#3%make-vector (fx- new-size old-size) fill)))]))
+    ;; The common case -- a vector and a small fixnum length -- is three
+    ;; comparisons, and the checks below add up to more than the copy for a
+    ;; short vector.  `fixnum?` plus `fx>=` against the old length implies
+    ;; both `exact-nonnegative-integer?` and the not-shorter test, and being
+    ;; under the threshold is what says the allocation guard can be skipped,
+    ;; so this path decides exactly what the checking path would decide.
+    (let ([old-size (and (#%vector? v) (#%vector-length v))])
+      (cond
+        [(and old-size
+              (fixnum? new-size)
+              (fx>= new-size old-size)
+              (fx< new-size 1000))
+         (#%vector-append v (#3%make-vector (fx- new-size old-size) fill))]
+        [else
+         (check who #%vector? :contract  "(and/c vector? (not impersonator?))" v)
+         (check who exact-nonnegative-integer? new-size)
+         (let ([old-size (#%vector-length v)])
+           (unless (<= old-size new-size)
+             (raise-arguments-error who
+                                    "new length is shorter than existing length"
+                                    "new length" new-size
+                                    "existing length" old-size))
+           (unless (and (fixnum? new-size)
+                        (fx< new-size 1000))
+             (guard-large-allocation who 'vector new-size (foreign-sizeof 'void*)))
+           (#%vector-append
+            v
+            (#3%make-vector (fx- new-size old-size) fill)))]))]))

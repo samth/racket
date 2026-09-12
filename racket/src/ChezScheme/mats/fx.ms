@@ -1034,6 +1034,71 @@
     '(0 -5 -31 -32 -33 -63 0 -1 -63 0 -1))
  )
 
+(mat fx-division-inline
+  ;; check the open-coded unsafe-mode `fxquotient`, `fxremainder`,
+  ;; and `fxmodulo` against `quotient`, `remainder`, and `modulo`,
+  ;; for constant divisors (including powers of two and negative
+  ;; divisors) and for a variable divisor
+  (let ()
+    (define m (most-positive-fixnum))
+    (define n (most-negative-fixnum))
+    (define dividends
+      (append (map (lambda (i) (- i 300)) (iota 601))
+              (list m (- m 1) (- m 2) n (+ n 1) (+ n 2)
+                    (quotient m 2) (quotient n 2) (quotient m 3) (quotient n 3)
+                    (- (expt 2 20) 1) (expt 2 20) (- (expt 2 20)))))
+    (define divisors
+      (list 1 2 3 4 5 6 7 8 9 10 11 13 16 25 31 64 100 641 1000 1024 12345
+            (expt 2 20) (+ (expt 2 20) 1) (quotient m 3) (quotient m 2) m
+            -1 -2 -3 -4 -5 -7 -8 -10 -64 -100 -641 (- (expt 2 20))
+            (quotient n 3) (quotient n 2) (+ n 1) n))
+    (define ops
+      (list (cons 'fxquotient quotient)
+            (cons 'fxremainder remainder)
+            (cons 'fxmodulo modulo)))
+    (define (skip? op x d)
+      ;; the quotient is not a fixnum
+      (and (eq? op 'fxquotient) (eqv? x n) (eqv? d -1)))
+    (define (compile3 e)
+      (parameterize ([optimize-level 3]
+                     [enable-cp0 #t]
+                     [#%$suppress-primitive-inlining #f])
+        (compile e)))
+    (define failures
+      (append
+       (apply append
+              (map (lambda (op)
+                     (apply append
+                            (map (lambda (d)
+                                   (let ([f (compile3 `(lambda (x) (,(car op) x ,d)))])
+                                     (fold-right
+                                      (lambda (x acc)
+                                        (if (or (skip? (car op) x d)
+                                                (eqv? (f x) ((cdr op) x d)))
+                                            acc
+                                            (cons (list (car op) x d) acc)))
+                                      '()
+                                      dividends)))
+                                 divisors)))
+                   ops))
+       (apply append
+              (map (lambda (op)
+                     (let ([f (compile3 `(lambda (x y) (,(car op) x y)))])
+                       (apply append
+                              (map (lambda (d)
+                                     (fold-right
+                                      (lambda (x acc)
+                                        (if (or (skip? (car op) x d)
+                                                (eqv? (f x d) ((cdr op) x d)))
+                                            acc
+                                            (cons (list (car op) 'var x d) acc)))
+                                      '()
+                                      dividends))
+                                   divisors))))
+                   ops))))
+    (or (null? failures) failures))
+ )
+
 (mat fxlogior ; same as fxlogor
   (error? (fxlogior "hello"))
   (error? (fxlogior (+ (most-positive-fixnum) 1)))

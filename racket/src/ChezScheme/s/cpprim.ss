@@ -2095,6 +2095,28 @@
                          ,(lookup-primref 3 '$fx/)
                          ,e1 ,e2)))))
 
+          ; Where the machine has an instruction that yields the remainder,
+          ; use it: the quotient this would otherwise compute is thrown away
+          ; after the multiply and the subtract that recover the remainder from
+          ; it.  A constant power-of-two divisor still goes the other way,
+          ; since there the quotient is a shift and no division happens at all.
+          ;
+          ; No retagging is needed.  Dividing the tagged values gives
+          ; 8x = q*(8y) + r with r = 8*(x rem y), so the remainder comes out
+          ; already scaled, where the quotient comes out bare.
+          (define build-fxremainder
+            (lambda (src sexpr e1 e2)
+              (or (and (constant integer-remainder-instruction)
+                       (not (nanopass-case (L7 Expr) e2
+                              [(quote ,d) (target-fixnum-power-of-two d)]
+                              [else #f]))
+                       `(inline ,(make-info-kill* (reg-list %rax)) ,%rem ,e1 ,e2))
+                  (bind #t (e1 e2)
+                    (%inline - ,e1
+                       ,(build-fx*
+                          (build-fx/ src sexpr e1 e2)
+                          e2 #f))))))
+
           (define-inline 3 fx/
             [(e) (build-fx/ src sexpr `(quote 1) e)]
             [(e1 e2) (build-fx/ src sexpr e1 e2)]
@@ -2106,12 +2128,23 @@
             [(e1 . e*) (reduce src sexpr moi e1 e*)])
 
           (define-inline 3 fxremainder
+            [(e1 e2) (build-fxremainder src sexpr e1 e2)])
+
+          ; fxmodulo had no inline expansion at all, so even a power-of-two
+          ; divisor went through the library procedure.  For a positive divisor
+          ; d = 2^k, (modulo x d) is (logand x (- d 1)) in two's complement,
+          ; negative x included, and that holds of the tagged representation
+          ; directly: (x mod d) * fixnum-factor is (x * fixnum-factor) masked
+          ; with ((d - 1) * fixnum-factor).  It is the rule fxmod above already
+          ; uses.  Any other divisor falls back to the library procedure, whose
+          ; cost next to the division itself is small.
+          (define-inline 3 fxmodulo
             [(e1 e2)
-             (bind #t (e1 e2)
-               (%inline - ,e1
-                  ,(build-fx*
-                     (build-fx/ src sexpr e1 e2)
-                     e2 #f)))]))
+             (nanopass-case (L7 Expr) e2
+               [(quote ,d)
+                (and (target-fixnum-power-of-two d)
+                     (%inline logand ,e1 (immediate ,(fix (- d 1)))))]
+               [else #f])]))
         (let ()
           (define-syntax build-fx
             (lambda (x)

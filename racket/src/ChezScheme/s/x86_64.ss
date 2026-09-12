@@ -435,6 +435,30 @@
     [(op (z mem) (x ur mem imm) (y ur mem)) (go z x y)]
     [(op (z ur) (x ur mem imm) (y ur mem)) (go z x y)])
 
+  ; x86's idiv computes both halves at once: the quotient into rax and the
+  ; remainder into rdx.  The instruction above keeps rax and throws rdx away,
+  ; so a remainder had to be recovered from the quotient with a multiply and a
+  ; subtract.  This one is the same divide, reading rdx instead.
+  ;
+  ; The quotient it also computes lands in rax and is thrown away, so rax is
+  ; named in the instruction's kill list -- the same way `read-time-stamp-
+  ; counter` below declares that it clobbers rdx.
+  (define-instruction value (rem)
+    (definitions
+      (define go
+        (lambda (info z x y)
+          (safe-assert (and (info-kill*? info) (memq %rax (info-kill*-kill* info))))
+          (let ([urax (make-precolored-unspillable 'urax %rax)]
+                [urdx (make-precolored-unspillable 'urdx %rdx)])
+            (with-output-language (L15d Effect)
+              (seq
+                `(set! ,(make-live-info) ,urax ,x)
+                `(set! ,(make-live-info) ,urdx (asm ,null-info ,asm-sext-rax->rdx ,urax))
+                `(set! ,(make-live-info) ,urdx (asm ,info ,asm-rem ,urax ,urdx ,y))
+                `(set! ,(make-live-info) ,z ,urdx)))))))
+    [(op (z mem) (x ur mem imm) (y ur mem)) (go info z x y)]
+    [(op (z ur) (x ur mem imm) (y ur mem)) (go info z x y)])
+
   (define-instruction value (logand logor logxor)
     [(op (z mem) (x z) (y ur imm32))
      `(set! ,(make-live-info) ,z (asm ,info ,(asm-addop op) ,z ,y))]
@@ -895,7 +919,7 @@
                      asm-logtest asm-fp-relop asm-relop asm-push asm-indirect-jump asm-literal-jump
                      asm-direct-jump asm-return-address asm-jump asm-conditional-jump
                      asm-lea1 asm-lea2 asm-indirect-call asm-condition-code
-                     asm-fl-cvt asm-store-single asm-load-single asm-fpt asm-fptrunc asm-div asm-popcount
+                     asm-fl-cvt asm-store-single asm-load-single asm-fpt asm-fptrunc asm-div asm-rem asm-popcount
                      asm-exchange asm-pause asm-debug asm-locked-incr asm-locked-decr asm-locked-cmpxchg
                      asm-fpsqrt asm-fpop-2 asm-fpmove asm-fpcast asm-fpsingle
                      asm-c-simple-call
@@ -1948,6 +1972,12 @@
     (lambda (code* dest-rax src-rax src-rdx src2)
       (Trivit (src2)
         (safe-assert (and (eq? dest-rax %rax) (eq? src-rax %rax) (eq? src-rdx %rdx)))
+        (emit divsax src2 code*))))
+
+  (define asm-rem
+    (lambda (code* dest-rdx src-rax src-rdx src2)
+      (Trivit (src2)
+        (safe-assert (and (eq? dest-rdx %rdx) (eq? src-rax %rax) (eq? src-rdx %rdx)))
         (emit divsax src2 code*))))
 
   (define asm-sext-rax->rdx

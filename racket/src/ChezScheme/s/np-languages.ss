@@ -708,6 +708,7 @@
 
   (declare-primitive - value #t)
   (declare-primitive / value #t)
+  (declare-primitive rem value #t)
   (declare-primitive + value #t)
   (declare-primitive +/ovfl value #f)
   (declare-primitive +/carry value #f)

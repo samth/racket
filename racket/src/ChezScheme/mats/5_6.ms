@@ -2304,6 +2304,81 @@
 
   )
 
+(mat stencil-vector-update-inline
+  ;; check the open-coded unsafe-mode `stencil-vector-update` that
+  ;; replaces one slot, along with the general paths it falls back to,
+  ;; for every slot of dense and sparse masks
+  (let ()
+    (define (compile3 e)
+      (parameterize ([optimize-level 3]
+                     [enable-cp0 #t]
+                     [#%$suppress-primitive-inlining #f])
+        (compile e)))
+    (define update3 (compile3 '(lambda (sv sub add v) (stencil-vector-update sv sub add v))))
+    (define update3/2 (compile3 '(lambda (sv sub add v w) (stencil-vector-update sv sub add v w))))
+    (define width (min 20 (stencil-vector-mask-width)))
+    (define (bits mask)
+      (let loop ([i 0])
+        (cond
+         [(= i (stencil-vector-mask-width)) '()]
+         [(logbit? i mask) (cons (ash 1 i) (loop (+ i 1)))]
+         [else (loop (+ i 1))])))
+    (define (make-sv mask)
+      (apply stencil-vector mask (map (lambda (i) (list 'slot i)) (iota (length (bits mask))))))
+    (define (contents sv)
+      (let loop ([i 0])
+        (if (= i (stencil-vector-length sv))
+            '()
+            (cons (stencil-vector-ref sv i) (loop (+ i 1))))))
+    (define (expected-replace sv bit v)
+      ;; the slot for `bit` is the number of mask bits below it
+      (let ([idx (length (bits (logand (stencil-vector-mask sv) (- bit 1))))])
+        (let loop ([l (contents sv)] [i 0])
+          (cond
+           [(null? l) '()]
+           [(= i idx) (cons v (loop (cdr l) (+ i 1)))]
+           [else (cons (car l) (loop (cdr l) (+ i 1)))]))))
+    (define masks
+      (append
+       (map (lambda (w) (- (expt 2 w) 1)) (map (lambda (i) (+ i 1)) (iota width)))
+       (list #b1 #b10 #b1000000 #b10101010101010101010 #b1001
+             #b1100110011001100 #b10000000000000000001
+             (ash 1 (- (stencil-vector-mask-width) 1))
+             (- (expt 2 (stencil-vector-mask-width)) 1))))
+    (define (check-mask mask)
+      (let* ([sv (make-sv mask)]
+             [before (contents sv)])
+        (andmap
+         (lambda (bit)
+           (let ([new (update3 sv bit bit 'new)])
+             (and (stencil-vector? new)
+                  (not (eq? new sv))
+                  (eqv? (stencil-vector-mask new) mask)
+                  (equal? (contents new) (expected-replace sv bit 'new))
+                  (equal? (contents sv) before)
+                  ;; same as the safe-mode result
+                  (equal? (contents (stencil-vector-update sv bit bit 'new))
+                          (contents new)))))
+         (bits mask))))
+    (and
+     (andmap check-mask masks)
+     ;; remove and add different bits, which takes the general path
+     (let* ([sv (make-sv #b1011)]
+            [new (update3 sv #b10 #b100 'x)])
+       (and (eqv? (stencil-vector-mask new) #b1101)
+            (equal? (contents new) '((slot 0) x (slot 2)))))
+     ;; add a bit without removing one
+     (let* ([sv (make-sv #b1001)]
+            [new (update3 sv 0 #b10 'x)])
+       (and (eqv? (stencil-vector-mask new) #b1011)
+            (equal? (contents new) '((slot 0) x (slot 1)))))
+     ;; two values
+     (let* ([sv (make-sv #b111)]
+            [new (update3/2 sv #b101 #b101 'x 'y)])
+       (and (eqv? (stencil-vector-mask new) #b111)
+            (equal? (contents new) '(x (slot 1) y))))))
+ )
+
 (mat system-stencil-vector
   (#%$stencil-vector? (stencil-vector 1 0))
   (not (#%$stencil-vector? 10))

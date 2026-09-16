@@ -1972,6 +1972,7 @@ void S_prim5_init(void) {
     S_install_c_entry(CENTRY_fllog, proc2ptr(s_log));
     S_install_c_entry(CENTRY_fllog2, proc2ptr(s_log2));
     S_install_c_entry(CENTRY_flexpt, proc2ptr(s_pow));
+    S_install_c_entry(CENTRY_flhypot, proc2ptr(s_hypot));
     S_install_c_entry(CENTRY_flsqrt, proc2ptr(s_sqrt));
 
     S_check_c_entry_vector();

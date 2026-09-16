@@ -133,6 +133,7 @@
   (flacos [sig [(flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (flatan [sig [(flonum) (flonum flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (flsqrt [sig [(flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
+  (flhypot [sig [(flonum flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (flexpt [sig [(flonum flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (make-no-infinities-violation [sig [() -> (condition)]] [flags pure unrestricted alloc])
   (no-infinities-violation? [sig [(ptr) -> (boolean)]] [flags pure unrestricted mifoldable discard])

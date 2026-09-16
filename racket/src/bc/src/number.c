@@ -3960,6 +3960,14 @@ double scheme_double_expt(double x, double y) {
   return sch_pow(x, y);
 }
 
+double scheme_double_hypot(double x, double y) XFORM_SKIP_PROC {
+#ifdef _MSC_VER
+  return _hypot(x, y);
+#else
+  return hypot(x, y);
+#endif
+}
+
 #ifdef MZ_LONG_DOUBLE
 long_double scheme_long_double_expt(long_double x, long_double y) {
   return sch_powl(x, y);

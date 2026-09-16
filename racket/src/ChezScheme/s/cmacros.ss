@@ -357,7 +357,7 @@
 ;; ---------------------------------------------------------------------
 ;; Version and machine types:
 
-(define-constant scheme-version #x0a050001)
+(define-constant scheme-version #x0a050002)
 
 (define-syntax define-machine-types
   (lambda (x)
@@ -3018,6 +3018,7 @@
      (fl<=? #f 2 #t #t)
      (fl>=? #f 2 #t #t)
      (flsqrt #f 1 #t #t)
+     (flhypot #f 2 #t #t)
      (flround #f 1 #t #t)
      (flfloor #f 1 #t #t)
      (flceiling #f 1 #t #t)
@@ -3170,6 +3171,7 @@
      fllog
      fllog2
      flexpt
+     flhypot
      flsqrt
      null-immutable-vector
      null-immutable-bytevector

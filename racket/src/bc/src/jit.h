@@ -1685,6 +1685,8 @@ Scheme_Object *scheme_jit_continuation_apply_install(Apply_LWC_Args *args);
 #define ARITH_LSH_WRAP      20
 /*  arithmetic-shift */
 #define ARITH_SH            21
+/*  flhypot, unsafe-flhypot */
+#define ARITH_HYPOT         22
 
 /* Comparison codes. Used in jitarith.c and jitinline.c. */
 

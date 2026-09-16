@@ -5038,6 +5038,9 @@
 
       (define-inline 3 flexpt
         [(e1 e2) (build-fl-call (lookup-c-entry flexpt) e1 e2)])
+
+      (define-inline 3 flhypot
+        [(e1 e2) (build-fl-call (lookup-c-entry flhypot) e1 e2)])
       
       (let ()
         (define build-fl-make-rectangular
@@ -5415,6 +5418,12 @@
                    (lambda (e1 e2) (build-fl-call (lookup-c-entry flexpt) e1 e2))
                    (lambda (e1 e2)
                      (build-libcall #t src sexpr flexpt e1 e2)))])
+
+      (define-inline 2 flhypot
+        [(e1 e2) (build-checked-fp-op e1 e2
+                   (lambda (e1 e2) (build-fl-call (lookup-c-entry flhypot) e1 e2))
+                   (lambda (e1 e2)
+                     (build-libcall #t src sexpr flhypot e1 e2)))])
 
       ;; NB: assuming that we have a trunc instruction for now, will need to change to support Sparc
       (define-inline 3 flonum->fixnum

@@ -3784,6 +3784,12 @@ int scheme_generate_inlined_binary(mz_jit_state *jitter, Scheme_App3_Rec *app, i
     } else if (IS_NAMED_PRIM(rator, "flexpt")) {
       scheme_generate_arith(jitter, rator, app->rand1, app->rand2, 2, ARITH_EXPT, 0, 0, NULL, 1, 0, -1, NULL, dest);
       return 1;
+    } else if (IS_NAMED_PRIM(rator, "unsafe-flhypot")) {
+      scheme_generate_arith(jitter, rator, app->rand1, app->rand2, 2, ARITH_HYPOT, 0, 0, NULL, 1, 0, 1, NULL, dest);
+      return 1;
+    } else if (IS_NAMED_PRIM(rator, "flhypot")) {
+      scheme_generate_arith(jitter, rator, app->rand1, app->rand2, 2, ARITH_HYPOT, 0, 0, NULL, 1, 0, -1, NULL, dest);
+      return 1;
 #ifdef MZ_LONG_DOUBLE
     } else if (IS_NAMED_PRIM(rator, "unsafe-extfl+")) {
       scheme_generate_extflonum_arith(jitter, rator, app->rand1, app->rand2, 2, ARITH_ADD, 0, 0, NULL, 1, 0, 1, NULL, dest);

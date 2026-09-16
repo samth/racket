@@ -417,7 +417,7 @@
 
 (define log2 ($fllog 2.0))
 
-(define flhypot (cflop2 "(cs)hypot"))
+(define $flhypot (cflop2 "(cs)hypot"))
 
 (define flasinh
    ; scheme-coded version needs "log2"
@@ -3362,6 +3362,7 @@
   (fl-op flasin $flasin x)
   (fl-op flacos $flacos x)
   (fl-op flsqrt $flsqrt x)
+  (fl-op flhypot $flhypot x y)
   (fl-op flexpt $flexpt x y)
   (fl-op flfloor $flfloor x)
   (fl-op flceiling $flceiling x))

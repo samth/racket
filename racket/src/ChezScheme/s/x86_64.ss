@@ -1081,6 +1081,7 @@
   (define-op sse.cvtsi2sd  sse-op1 #xF2 #x2A 1)
   (define-op sse.divsd     sse-op1 #xF2 #x5E 0)
   (define-op sse.movd      sse-op2 #x66 #x6E #x7E 1)
+  (define-op sse.movapd    sse-op2 #x66 #x28 #x29 0)
   (define-op sse.movsd     sse-op2 #xF2 #x10 #x11 0)
   (define-op sse.movss     sse-op2 #xF3 #x10 #x11 0)
   (define-op sse.mulsd     sse-op1 #xF2 #x59 0)
@@ -1827,6 +1828,12 @@
       (Trivit (dest src)
          (emit sse.cvtsi2sd src dest code*))))
 
+  (define emit-fpmove
+    (lambda (src dest code*)
+      (if (and (ax-fp-register? src) (ax-fp-register? dest))
+          (emit sse.movapd src dest code*)
+          (emit sse.movsd src dest code*))))
+
   (define asm-fpop-2
     (lambda (op)
       (lambda (code* dest-reg src1 src2)
@@ -1847,16 +1854,16 @@
                ;; Assuming that any subtraction or division will be
                ;; done before we try to fill C arguments...
                (Trivit (dest-reg src1 src2)
-                 (emit sse.movsd src2 (cons 'reg %Cfparg1)
-                   (emit sse.movsd src1 dest-reg
-                         (emit-it (cons 'reg %Cfparg1) dest-reg code*)))))]
+                 (emit-fpmove src2 (cons 'reg %Cfparg1)
+                   (emit-fpmove src1 dest-reg
+                     (emit-it (cons 'reg %Cfparg1) dest-reg code*)))))]
           [else
            (Trivit (dest-reg src1 src2)
              (if (equal? src1 src2)
                  ;; avoid redundant load
-                 (emit sse.movsd src1 dest-reg
-                       (emit-it dest-reg dest-reg code*))
-                 (emit sse.movsd src1 dest-reg
+                 (emit-fpmove src1 dest-reg
+                   (emit-it dest-reg dest-reg code*))
+                 (emit-fpmove src1 dest-reg
                        (emit-it src2 dest-reg code*))))]))))
 
   (define asm-fpsqrt
@@ -1867,7 +1874,7 @@
   (define asm-fpmove
     (lambda (code* dest src)
       (Trivit (dest src)
-        (emit sse.movsd src dest code*))))
+        (emit-fpmove src dest code*))))
 
   (define asm-fpcast
     (lambda (code* dest src)

@@ -280,4 +280,5 @@
              struct-field-index
              struct-copy
              double-flonum?
+             hypot
              (rename -random random)))

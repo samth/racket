@@ -463,6 +463,7 @@
   [hasheq (known-procedure/no-prompt -1)]
   [hashalw (known-procedure/single-valued -1)]
   [hasheqv (known-procedure/no-prompt -1)]
+  [hypot (known-procedure/folding 4)]
   [imag-part (known-procedure/folding 2)]
   [immutable? (known-procedure/pure/folding 2)]
   [immutable-bytes? (known-procedure/pure/folding 2)]

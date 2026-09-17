@@ -3104,6 +3104,7 @@
      (arity-wrapper-apply #f 0 #f #f)
      (popcount-slow #f 0 #f #t)
      (cpu-features #f 0 #f #t)
+     (hypot #f 2 #f #t)
   ))
 
 (let ()

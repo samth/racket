@@ -800,6 +800,22 @@ Returns the imaginary part of the complex number @racket[z] in
 @mz-examples[(imag-part 3+4i) (imag-part 5.0) (imag-part 5.0+0.0i)]}
 
 
+@defproc[(hypot [x real?] [y real?]) (and/c real? (not/c negative?))]{
+
+ Returns the square root of the sum of the squares of @racket[x] and
+ @racket[y]. For flonum arguments, the calculation avoids undue
+ overflow or underflow in the intermediate calculation. If either
+ argument is an infinity, the result is @racket[+inf.0], even when the
+ other argument is @racket[+nan.0].
+
+ The result is equivalent to
+ @racket[(magnitude (make-rectangular x y))].
+
+@mz-examples[(hypot 3 4) (hypot 3.0 4.0)]
+
+@history[#:added "9.3.0.9"]}
+
+
 @defproc[(magnitude [z number?]) (and/c real? (not/c negative?))]{
 
  Returns the magnitude of the complex number @racket[z] in polar

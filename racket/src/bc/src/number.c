@@ -85,6 +85,7 @@ static Scheme_Object *asin_prim (int argc, Scheme_Object *argv[]);
 static Scheme_Object *acos_prim (int argc, Scheme_Object *argv[]);
 static Scheme_Object *atan_prim (int argc, Scheme_Object *argv[]);
 static Scheme_Object *magnitude (int argc, Scheme_Object *argv[]);
+static Scheme_Object *sch_hypot (int argc, Scheme_Object *argv[]);
 static Scheme_Object *angle (int argc, Scheme_Object *argv[]);
 static Scheme_Object *int_sqrt (int argc, Scheme_Object *argv[]);
 static Scheme_Object *int_sqrt_rem (int argc, Scheme_Object *argv[]);
@@ -756,6 +757,12 @@ scheme_init_number (Scheme_Startup_Env *env)
 						      1, 1, 1),
 			     env);
   
+  scheme_addto_prim_instance("hypot",
+                             scheme_make_folding_prim(sch_hypot,
+                                                      "hypot",
+                                                      2, 2, 1),
+                             env);
+
   p = scheme_make_folding_prim(scheme_exact_to_inexact, "exact->inexact", 1, 1, 1);
   if (scheme_can_inline_fp_op())
     flags = SCHEME_PRIM_IS_UNARY_INLINED;
@@ -4103,12 +4110,32 @@ static Scheme_Object *magnitude(int argc, Scheme_Object *argv[])
   if (SCHEME_COMPLEXP(o)) {
     Scheme_Object *r = _scheme_complex_real_part(o);
     Scheme_Object *i = _scheme_complex_imaginary_part(o);
-    Scheme_Object *a[1], *q;
+    Scheme_Object *a[1], *q, *rsq, *isq;
+    double d;
+
+    if (SCHEME_FLOATP(r) && SCHEME_FLOATP(i)) {
+      d = scheme_double_hypot(SCHEME_FLOAT_VAL(r), SCHEME_FLOAT_VAL(i));
+#ifdef MZ_USE_SINGLE_FLOATS
+      if (SCHEME_FLTP(r) && SCHEME_FLTP(i))
+        return scheme_make_float((float)d);
+#endif
+      return scheme_make_double(d);
+    }
+
+    if (scheme_is_exact(r) && scheme_is_exact(i)) {
+      rsq = scheme_bin_mult(r, r);
+      isq = scheme_bin_mult(i, i);
+      q = scheme_bin_plus(rsq, isq);
+      a[0] = q;
+      return scheme_sqrt(1, a);
+    }
+
+    /* Preserve the overflow-safe path for extended and mixed representations. */
     a[0] = r;
     r = scheme_abs(1, a);
     a[0] = i;
     i = scheme_abs(1, a);
-    
+
     if (SAME_OBJ(r, scheme_make_integer(0)))
       return i;
 
@@ -4122,41 +4149,26 @@ static Scheme_Object *magnitude(int argc, Scheme_Object *argv[])
       a[0] = i;
       return scheme_exact_to_inexact(1, a);
     }
-#ifdef MZ_USE_SINGLE_FLOATS
-    if (SCHEME_FLTP(i)) {
-      float f;
-      f = SCHEME_FLT_VAL(i);
-      if (MZ_IS_INFINITY((double) f))
-        return scheme_single_inf_object;
-      else if (MZ_IS_NAN((double) f)) {
-        if (SCHEME_FLTP(r)) { /* `r` is either a single-precision float or exact 0 */
-          f = SCHEME_FLT_VAL(r);
-          if (MZ_IS_INFINITY((double) f))
-            return scheme_single_inf_object;
-        }
-      }
-    }
-#endif
-    if (SCHEME_FLOATP(i)) {
-      double d;
-      d = SCHEME_FLOAT_VAL(i);
-      if (MZ_IS_INFINITY(d))
-        return scheme_inf_object;
-      else if (MZ_IS_NAN(d)) {
-        if (SCHEME_FLOATP(r)) {
-          d = SCHEME_FLOAT_VAL(r);
-          if (MZ_IS_INFINITY(d))
-            return scheme_inf_object;
-        }
-      }
-    }
     q = scheme_bin_div(r, i);
     q = scheme_bin_plus(scheme_make_integer(1),
-			scheme_bin_mult(q, q));
+                        scheme_bin_mult(q, q));
     a[0] = q;
     return scheme_bin_mult(i, scheme_sqrt(1, a));
   } else
     return scheme_abs(1, argv);
+}
+
+static Scheme_Object *sch_hypot(int argc, Scheme_Object *argv[])
+{
+  Scheme_Object *c;
+
+  if (!SCHEME_REALP(argv[0]))
+    scheme_wrong_contract("hypot", "real?", 0, argc, argv);
+  if (!SCHEME_REALP(argv[1]))
+    scheme_wrong_contract("hypot", "real?", 1, argc, argv);
+
+  c = scheme_make_complex(argv[0], argv[1]);
+  return magnitude(1, &c);
 }
 
 static Scheme_Object *angle(int argc, Scheme_Object *argv[])

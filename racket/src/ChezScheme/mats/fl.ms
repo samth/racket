@@ -1178,6 +1178,24 @@
   (check-loop-allocation (lambda (v) (fl+ v v v)))
   (check-loop-allocation (lambda (v) (fl+ v (fl* v v) (fl/ v 2.0))))
 
+  ;; Recognize a nonescaping recursive procedure when its single entry call is
+  ;; a `let` initializer instead of the whole `letrec` body. The guarded
+  ;; recursive operator models a procedure check left by an earlier compiler.
+  (check-loop-allocation
+    (lambda (v)
+      (let ()
+        (define loop
+          (lambda (n v)
+            (if (fx= n 0)
+                v
+                ((if (procedure? loop)
+                     loop
+                     (lambda args (error 'loop "not a procedure")))
+                 (fx- n 1)
+                 (fl+ v 1.0)))))
+        (let ([result (loop 100 (fl+ v))])
+          (fl- result 100.0)))))
+
   (check-loop-allocation (lambda (v) (flabs v)))
   (check-loop-allocation (lambda (v) (fl- v)))
 

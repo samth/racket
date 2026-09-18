@@ -1,0 +1,289 @@
+{
+  "purpose": "Optimization targets for all currently included Benchmarks Game families; legacy tests remain separate.",
+  "site_snapshot_utc": "2026-09-18T20:10:25.430216+00:00",
+  "site_program_count": 26,
+  "acceptance": "Candidates audited against published rules; no submission or acceptance is implied.",
+  "compiler_baseline": "Racket CS a65063990b, regenerated schemify loop-entry bootstrap; backend changes separate.",
+  "families": [
+    {
+      "family": "nbody",
+      "site_family": "nbody",
+      "primary": "nbody.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/nbody.html",
+      "comparison_reference": "nbody-racket-2.rkt",
+      "fixture": {
+        "n": 1000,
+        "stdin": null,
+        "stdout": "nbody-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "nbody.rkt",
+          "sha256": "822a59a25473f702d2b485617a27f1b9a736101d3c833453fdf196c2749a8cf0",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "spectralnorm",
+      "site_family": "spectralnorm",
+      "primary": "spectralnorm.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/spectralnorm.html",
+      "comparison_reference": "spectralnorm-racket-2.rkt",
+      "fixture": {
+        "n": 100,
+        "stdin": null,
+        "stdout": "spectralnorm-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "spectralnorm-par.rkt",
+          "sha256": "1ec6bacadb2bfafb08d5a05b4e765cbcd209ec29b3aa892167ed679c38d2cb77",
+          "status": "submission-candidate",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "spectralnorm-recurrence-par.rkt",
+          "sha256": "2765b916660c3a96ee2a427023c0c0998c2f5cbcc84d5079556b73a97d1d6a4b",
+          "status": "experimental",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "spectralnorm-recurrence.rkt",
+          "sha256": "e40f43db015ce80b1c231a7b200ec9b98d1ad5facc56bca05fe881c20c001045",
+          "status": "experimental",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "spectralnorm.rkt",
+          "sha256": "68976432655e2493542896226395a59d6433c653f6558bcb14fcc361e79f7dcc",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "fannkuch-redux",
+      "site_family": "fannkuchredux",
+      "primary": "fannkuch-redux.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/fannkuchredux.html",
+      "comparison_reference": "fannkuchredux-racket-2.rkt",
+      "fixture": {
+        "n": 7,
+        "stdin": null,
+        "stdout": "fannkuchredux-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "fannkuch-redux-par.rkt",
+          "sha256": "0ec38e9040bab3a1b9f046386aea5d5018bebd0619e23a13eb683055ad9eda17",
+          "status": "submission-candidate",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "fannkuch-redux.rkt",
+          "sha256": "7147f024b24145fb97012c7469bdae5f8d468a594ab3dcc3dccdb5b37ea56d3a",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "binarytrees",
+      "site_family": "binarytrees",
+      "primary": "binarytrees-par.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/binarytrees.html",
+      "comparison_reference": "binarytrees-racket-3.rkt",
+      "fixture": {
+        "n": 10,
+        "stdin": null,
+        "stdout": "binarytrees-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "binarytrees-par.rkt",
+          "sha256": "0106fa8238c07d486480064aaf0323901c71c0a8b8b12adcf70ea7370f63d348",
+          "status": "submission-candidate",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "binarytrees.rkt",
+          "sha256": "1b0362967465ad6d4d73686e8893448ceaffa754dcb4f861c156d8b8e8ae2ee6",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "pidigits",
+      "site_family": "pidigits",
+      "primary": "pidigits.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/pidigits.html",
+      "comparison_reference": "pidigits-racket-1.rkt",
+      "fixture": {
+        "n": 30,
+        "stdin": null,
+        "stdout": "pidigits-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "pidigits-pure.rkt",
+          "sha256": "87d6c21df4e92b56cffe1b5a1228b8181dc97b0acd6e926240e9c008579b9bc5",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "pidigits.rkt",
+          "sha256": "321c06607e01023c5fd0e1e2a5f328450115d79e4475d5e155e05b580c850a5e",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "GMP shared library"
+        }
+      ]
+    },
+    {
+      "family": "fasta",
+      "site_family": "fasta",
+      "primary": "fasta.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/fasta.html",
+      "comparison_reference": "fasta-racket-3.rkt",
+      "fixture": {
+        "n": 1000,
+        "stdin": null,
+        "stdout": "fasta-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "fasta.rkt",
+          "sha256": "9d82c70fd60715632e9a9d332990c73ab0e27027ce200b72f631553bb4046015",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "knucleotide",
+      "site_family": "knucleotide",
+      "primary": "knucleotide-par.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/knucleotide.html",
+      "comparison_reference": "knucleotide-racket-4.rkt",
+      "fixture": {
+        "n": 0,
+        "stdin": "knucleotide-input.txt",
+        "stdout": "knucleotide-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "knucleotide-bytes.rkt",
+          "sha256": "0afa45d9829915e2d139e2da22d40b58b9812c43e56b05605393b7e02958c799",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "knucleotide-par.rkt",
+          "sha256": "ca7ac84056a4fdf402b817e711d3d1469028473f2a56ab20a112547231a312a4",
+          "status": "submission-candidate",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "knucleotide.rkt",
+          "sha256": "65adc315a050e11d1f30c39c023f58a23a82eab8e793f8196a6342acfd4585d5",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "mandelbrot",
+      "site_family": "mandelbrot",
+      "primary": "mandelbrot-par.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/mandelbrot.html",
+      "comparison_reference": "mandelbrot-racket-4.rkt",
+      "fixture": {
+        "n": 200,
+        "stdin": null,
+        "stdout": "mandelbrot-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "mandelbrot-par.rkt",
+          "sha256": "c9df8a3b000164709f0ee1180eaf6d68ccd436daeeb83752941ed2a2c61b3db8",
+          "status": "submission-candidate",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "mandelbrot.rkt",
+          "sha256": "4cdf5de318595134084174013fd6a829df394a3e312e8902e74822cc002d68d3",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "regexredux",
+      "site_family": "regexredux",
+      "primary": "regexredux-par.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/regexredux.html",
+      "comparison_reference": "regexredux-racket-2.rkt",
+      "fixture": {
+        "n": 0,
+        "stdin": "regexredux-input.txt",
+        "stdout": "regexredux-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "regexredux-par.rkt",
+          "sha256": "e12e01c4396bfd13c103acb05fc4e1bbf6f78bbf5fd9766dd1cc2e830de45af3",
+          "status": "submission-candidate",
+          "parallel": true,
+          "dependency": "Racket standard distribution"
+        },
+        {
+          "source": "regexredux.rkt",
+          "sha256": "3292aac1999d0b058965f39b17d3f4a69fa11c70c4d7188352b97132decdc0b3",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    },
+    {
+      "family": "revcomp",
+      "site_family": "revcomp",
+      "primary": "revcomp.rkt",
+      "rules_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/revcomp.html",
+      "comparison_reference": "revcomp-racket-2.rkt",
+      "fixture": {
+        "n": 0,
+        "stdin": "revcomp-input.txt",
+        "stdout": "revcomp-output.txt"
+      },
+      "candidates": [
+        {
+          "source": "revcomp.rkt",
+          "sha256": "32c4a3023552840ef84c2f7b23403351a5a24fc0f6c14c1178c15295c149b37b",
+          "status": "submission-candidate",
+          "parallel": false,
+          "dependency": "Racket standard distribution"
+        }
+      ]
+    }
+  ]
+}

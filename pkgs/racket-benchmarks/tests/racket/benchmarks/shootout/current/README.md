@@ -1,75 +1,67 @@
-# Current Benchmarks Game optimization targets
+# Current Benchmarks Game submission candidates
 
-These standalone programs target the ten families currently included on the
-[Benchmarks Game site](https://benchmarksgame-team.pages.debian.net/benchmarksgame/).
-The optimized fixnum domains assume 64-bit Racket CS, matching the measured
-platform; 32-bit operation is not a target of this study.
-They are the optimization targets for those families. The parent directory
-preserves historical shootout programs, including workloads no longer in the
-Game. Historical results are not automatically results for these programs.
+Exactly one standalone candidate is selected for each of the ten benchmarks
+currently in the [Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/).
+`targets.json` is the authoritative submission and optimization inventory.
+There are no legacy benchmarks or alternative candidates in this directory.
 
-`targets.json` lists each primary target, all candidates, SHA256 hashes, rule URLs, exact small
-fixtures, dependencies and parallel/experimental status. Every program runs
-directly with Racket; no report harness or compiler dump library is required:
+| Benchmark | Sole candidate |
+| --- | --- |
+| binary-trees | `binarytrees-par.rkt` |
+| fannkuch-redux | `fannkuch-redux-par.rkt` |
+| fasta | `fasta.rkt` |
+| k-nucleotide | `knucleotide-par.rkt` |
+| mandelbrot | `mandelbrot-par.rkt` |
+| n-body | `nbody.rkt` |
+| pidigits | `pidigits.rkt` |
+| regex-redux | `regexredux-par.rkt` |
+| reverse-complement | `revcomp.rkt` |
+| spectral-norm | `spectralnorm-recurrence-par.rkt` |
+
+Unselected versions are preserved in `../analysis-controls/` for experiments
+and reproducibility only. Historical programs in the parent directory are
+not submission candidates either. Improving or replacing a candidate must
+preserve the one-program-per-benchmark invariant.
+
+The measured platform is 64-bit Racket CS; 32-bit operation is not a target.
+All programs use the standard Racket distribution, except `pidigits.rkt`,
+which also requires the permitted GMP shared library. No compiler-dump or
+report harness package is needed to run them:
 
 ```
 racket nbody.rkt 50000000
 racket fasta.rkt 25000000 > input25000000.txt
-racket knucleotide.rkt < input25000000.txt
+racket knucleotide-par.rkt < input25000000.txt
 racket fasta.rkt 5000000 > input5000000.txt
 racket regexredux-par.rkt < input5000000.txt
 ```
 
-Use FASTA N=5000000 for the regex-redux performance workload. The programs
-and their original contributors retain the accompanying Benchmarks Game BSD
-license. Do not remove `LICENSE` when redistributing the set.
+FASTA generates every random value; k-nucleotide builds all seven histograms
+using a built-in hash table; binary-trees allocates every node; regex-redux
+performs the current five ordered substitutions; pidigits retains both
+extractions. The spectral-norm denominator recurrence has direct precedent in
+the currently listed [C++ #6](https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/spectralnorm-gpp-6.html)
+and [#5](https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/spectralnorm-gpp-5.html).
+Its former experimental rules label has been withdrawn. Parallel execution
+does not omit work and must not be reported as a single-core compiler gain.
 
-## Submission-oriented choices
-
-- `fasta.rkt` generates every random value and searches cumulative
-  probabilities. The historical cached-period implementation is excluded.
-- `knucleotide.rkt` packs DNA keys into fixnums and uses Racket's built-in
-  `hasheq`. `knucleotide-bytes.rkt` retains the measured byte-key alternative.
-  The large-input primary, `knucleotide-par.rkt`, distributes complete
-  histograms over three execution contexts, trading more memory for lower wall time.
-  All three count every required histogram, extract only THREE, and sort frequency
-  ties by key. No benchmark-specific hash-table implementation is introduced.
-- `binarytrees.rkt` uses the current allocation/checking workload rather than
-  the old signed payload checks. Every node, including leaves, is allocated.
-- `regexredux.rkt` and its parallel alternate use the current five ordered
-  substitutions, not the historical eleven IUB replacements.
-- `pidigits.rkt` uses the permitted GMP library and performs both candidate
-  extractions on each transition. `pidigits-pure.rkt` uses Racket integers.
-- `spectralnorm.rkt` and `spectralnorm-par.rkt` genuinely use all four
-  required procedures, including the matrix-element function. Files named
-  `spectralnorm-recurrence*` are **experimental**, pending clarification of
-  the four-procedure rule; they are not submission candidates.
-- Parallel variants retain the complete workload and ordered output. Their
-  multicore wall times must not be presented as single-core compiler gains.
-
-The target is the fastest implementation consistent with the rules, not a
-promise that optimization is exhausted. Keep measured losing controls in the
-analysis evidence instead of silently replacing a faster working candidate.
-
-## Conformance checks
+## Checks
 
 ```
+python3 check.py --inventory-only
+python3 test-checker.py
 python3 check.py --racket /path/to/racket
 ```
 
-This offline smoke check verifies source hashes and compares each candidate
-against the site's downloaded official small output. Its byte-exact nbody
-comparison is stricter than the site's absolute-error tolerance; a differing
-cross-platform result needs that numerical tolerance check before rejection.
-GMP must be available
-for `pidigits.rkt`. Use `--experimental` to check the recurrence controls too.
-For an uninstalled Racket CS executable, `--collects`, `--config` and
-`--compiled-root` select its collection/configuration/cache paths.
+The checker rejects duplicate candidates, missing or extra programs, analysis
+controls, legacy families, and changed source hashes. It then compares the ten
+programs with the downloaded official small fixtures. For an uninstalled
+runtime, `--collects`, `--config` and `--compiled-root` specify its paths.
+The byte-exact n-body check is stricter than the site's absolute-error
+tolerance; differing cross-platform output needs that tolerance check before
+rejection. Larger-input, complete-state and measurement evidence is in the
+associated report; small output equality alone does not prove compliance.
 
-The detailed audit additionally checks full internal states/histograms,
-larger inputs, boundary cases, compiler passes and generated assembly. Small
-output equality alone does not establish compliance with the required work.
-
-These are candidates for eventual submission. Nothing has been submitted;
-final acceptance is the Game maintainers' decision. Website sources are
-comparison references, not exemptions from the current written rules.
+The programs retain their contributors' accompanying BSD `LICENSE`. These
+are candidates for eventual submission, not a claim of maintainer acceptance
+or globally optimal performance. Nothing has been submitted to the Game.

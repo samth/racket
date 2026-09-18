@@ -14,17 +14,45 @@ ap.add_argument('--racket',default='racket')
 ap.add_argument('--collects')
 ap.add_argument('--config')
 ap.add_argument('--compiled-root')
-ap.add_argument('--experimental',action='store_true')
+ap.add_argument('--inventory-only',action='store_true',help='check the exact ten-program inventory without running Racket')
 a=ap.parse_args()
 prefix=[a.racket]
 for flag,value in [('-X',a.collects),('-G',a.config),('-R',a.compiled_root)]:
     if value:prefix.extend([flag,value])
 prefix.append('-y')
 manifest=json.loads((P/'targets.json').read_text())
+CURRENT_FAMILIES={'nbody':'nbody','spectralnorm':'spectralnorm',
+    'fannkuch-redux':'fannkuchredux','binarytrees':'binarytrees','pidigits':'pidigits',
+    'fasta':'fasta','knucleotide':'knucleotide','mandelbrot':'mandelbrot',
+    'regexredux':'regexredux','revcomp':'revcomp'}
+def require(condition,message):
+    if not condition:sys.exit('Invalid submission inventory: '+message)
+families=manifest['families']
+require(len(families)==len(CURRENT_FAMILIES),'expected exactly ten benchmark families')
+require({f['family']:f['site_family'] for f in families}==CURRENT_FAMILIES,
+        'families must match the current Benchmarks Game, with no legacy tests')
+declared=[]
+for family in families:
+    require(len(family['candidates'])==1,family['family']+' must have exactly one candidate')
+    candidate=family['candidates'][0]
+    source=candidate['source']
+    require(candidate['status']=='submission-candidate','analysis controls are not submission candidates')
+    require(source==Path(source).name and source.endswith('.rkt') and source!='info.rkt',
+            'candidate must be a standalone program in this directory')
+    require(family['primary']==source,'primary must be the sole candidate')
+    declared.append(source)
+    require((P/source).is_file(),'missing source '+source)
+    require(hashlib.sha256((P/source).read_bytes()).hexdigest()==candidate['sha256'],
+            'source changed since manifest generation: '+source)
+require(len(set(declared))==10,'each benchmark must have its own source')
+actual={str(p.relative_to(P)) for p in P.rglob('*.rkt') if p.name!='info.rkt'}
+require(actual==set(declared),'extra or missing benchmark programs: '+str(sorted(actual^set(declared))))
+if a.inventory_only:
+    print('PASS exactly ten current families, one submission candidate each; source hashes match')
+    sys.exit(0)
 rows=[]
-for family in manifest['families']:
+for family in families:
     for candidate in family['candidates']:
-        if candidate['status']=='experimental' and not a.experimental:continue
         source=P/candidate['source']
         source_hash=hashlib.sha256(source.read_bytes()).hexdigest()
         if source_hash!=candidate['sha256']:

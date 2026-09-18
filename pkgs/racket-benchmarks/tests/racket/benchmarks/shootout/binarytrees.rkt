@@ -8,16 +8,16 @@
          (filtered-in (lambda (name) (regexp-replace #rx"unsafe-" name ""))
                       racket/unsafe/ops))
 
-(struct *leaf (val))
-(struct *node *leaf (left right))
+(struct *leaf (val) #:authentic)
+(struct *node *leaf (left right) #:authentic #:sealed)
 
 (define-syntax leaf  (make-rename-transformer #'*leaf))
 (define-syntax leaf? (make-rename-transformer #'*leaf?))
 (define-syntax node  (make-rename-transformer #'*node))
 (define-syntax node? (make-rename-transformer #'*node?))
-(define-syntax-rule (leaf-val l)   (struct-ref l 0))
-(define-syntax-rule (node-left n)  (struct-ref n 1))
-(define-syntax-rule (node-right n) (struct-ref n 2))
+(define-syntax-rule (leaf-val l)   (struct*-ref l 0))
+(define-syntax-rule (node-left n)  (struct*-ref n 1))
+(define-syntax-rule (node-right n) (struct*-ref n 2))
 
 (define (make item d)
   (if (fx= d 0)

@@ -8,8 +8,8 @@
          (filtered-in (lambda (name) (regexp-replace #rx"unsafe-" name ""))
                       racket/unsafe/ops))
 
-(struct leaf (val))
-(struct node leaf (left right))
+(struct leaf (val) #:authentic)
+(struct node leaf (left right) #:authentic #:sealed)
 
 (define (make item d)
   (if (fx= d 0)

@@ -4,14 +4,14 @@
 ;;   http://shootout.alioth.debian.org/
 
 (define (all-counts len dna)
-  (let ([table (make-hasheq)]
+  (let ([table (make-hash)]
         [seq (make-string len)])
     (for ([s (in-range (- (string-length dna) len) -1 -1)])
       (string-copy! seq 0 dna s (+ s len))
-      (let ([key (string->symbol seq)])
+      (let ([key seq])
         (let ([b (or (hash-ref table key #f)
                      (let ([b (box 0)])
-                       (hash-set! table key b)
+                       (hash-set! table (string->immutable-string key) b)
                        b))])
           (set-box! b (add1 (unbox b))))))
     table))
@@ -50,4 +50,4 @@
 ;; Specific sequences:
 (for ([seq '("GGT" "GGTA" "GGTATT" "GGTATTTTAATT" "GGTATTTTAATTTATAGT")]) 
   (write-one-freq (all-counts (string-length seq) dna)
-                  (string->symbol seq)))
+                  seq))

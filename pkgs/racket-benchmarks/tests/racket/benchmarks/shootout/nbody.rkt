@@ -36,8 +36,17 @@ Correct output N = 1000 is
 
 (define +dt+ 0.01)
 
-(define-struct body (x y z vx vy vz mass)
-  #:mutable)
+(define make-body flvector)
+(define-syntax-rule (deffield n getter setter)
+  (begin (define-syntax-rule (getter b) (flvector-ref b n))
+         (define-syntax-rule (setter b x) (flvector-set! b n x))))
+(deffield 0 body-x set-body-x!)
+(deffield 1 body-y set-body-y!)
+(deffield 2 body-z set-body-z!)
+(deffield 3 body-vx set-body-vx!)
+(deffield 4 body-vy set-body-vy!)
+(deffield 5 body-vz set-body-vz!)
+(deffield 6 body-mass set-body-mass!)
 
 (define *sun*
   (make-body 0.0 0.0 0.0 0.0 0.0 0.0 +solar-mass+))
@@ -124,11 +133,15 @@ Correct output N = 1000 is
              [o1x (body-x o1)]
              [o1y (body-y o1)]
              [o1z (body-z o1)]
-             [om  (body-mass o1)])
-        (let loop-i ([i  (cdr o)]
-                     [vx (body-vx o1)]
-                     [vy (body-vy o1)]
-                     [vz (body-vz o1)])
+             [om  (body-mass o1)]
+             [initial-i (cdr o)]
+             [initial-vx (body-vx o1)]
+             [initial-vy (body-vy o1)]
+             [initial-vz (body-vz o1)])
+        (let loop-i ([i initial-i]
+                    [vx initial-vx]
+                    [vy initial-vy]
+                    [vz initial-vz])
           (if (pair? i)
             (let* ([i1    (car i)]
                    [dx    (fl- o1x (body-x i1))]

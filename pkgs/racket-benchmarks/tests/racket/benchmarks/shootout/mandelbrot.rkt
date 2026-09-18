@@ -27,11 +27,12 @@
 
 (define-syntax-rule (mandelbrot Cr Ci)
   (let loop ([i 0] [Zr 0.0] [Zi 0.0])
-    (cond [(fl> (fl+ (fl* Zr Zr) (fl* Zi Zi)) LIMIT-SQR) 0]
-          [(fx= i ITERATIONS) 1]
-          [else (let ([Zr (fl+ (fl- (fl* Zr Zr) (fl* Zi Zi)) Cr)]
-                      [Zi (fl+ (fl* 2.0 (fl* Zr Zi)) Ci)])
-                  (loop (fx+ i 1) Zr Zi))])))
+    (let ([Zr2 (fl* Zr Zr)] [Zi2 (fl* Zi Zi)])
+      (cond [(fl> (fl+ Zr2 Zi2) LIMIT-SQR) 0]
+            [(fx= i ITERATIONS) 1]
+            [else (let ([Zr (fl+ (fl- Zr2 Zi2) Cr)]
+                        [Zi (fl+ (fl* 2.0 (fl* Zr Zi)) Ci)])
+                    (loop (fx+ i 1) Zr Zi))]))))
 
 (fprintf O "P4\n~a ~a\n" N N)
 (let loop-y ([y N])

@@ -50,7 +50,6 @@ static Scheme_Object *unsafe_fl_mult (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_fl_div (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_fl_abs (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_fl_sqrt (int argc, Scheme_Object *argv[]);
-static Scheme_Object *unsafe_fl_hypot (int argc, Scheme_Object *argv[]);
 
 static Scheme_Object *extfl_plus (int argc, Scheme_Object *argv[]);
 static Scheme_Object *extfl_minus (int argc, Scheme_Object *argv[]);
@@ -514,7 +513,7 @@ void scheme_init_unsafe_numarith(Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_WANTS_FLONUM_FIRST);
   scheme_addto_prim_instance("unsafe-flsqrt", p, env);
 
-  p = scheme_make_folding_prim(unsafe_fl_hypot, "unsafe-flhypot", 2, 2, 1);
+  p = scheme_make_folding_prim(fl_hypot, "unsafe-flhypot", 2, 2, 1);
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
                                                             | SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
@@ -1453,12 +1452,6 @@ static Scheme_Object *pos_sqrt(int argc, Scheme_Object **argv)
 
 UNSAFE_FL1(unsafe_fl_sqrt, sqrt, pos_sqrt)
 
-static Scheme_Object *unsafe_fl_hypot(int argc, Scheme_Object *argv[])
-{
-  return scheme_make_double(scheme_double_hypot(SCHEME_DBL_VAL(argv[0]),
-                                                SCHEME_DBL_VAL(argv[1])));
-}
-
 #define SAFE_FL(name, sname, op, zero_args, PRE_CHECK)      \
  static Scheme_Object *name(int argc, Scheme_Object *argv[]) \
  {                                                           \
@@ -1499,7 +1492,8 @@ static Scheme_Object *fl_hypot(int argc, Scheme_Object *argv[])
     scheme_wrong_contract("flhypot", "flonum?", 0, argc, argv);
   if (!SCHEME_DBLP(argv[1]))
     scheme_wrong_contract("flhypot", "flonum?", 1, argc, argv);
-  return unsafe_fl_hypot(argc, argv);
+  return scheme_make_double(scheme_double_hypot(SCHEME_DBL_VAL(argv[0]),
+                                                SCHEME_DBL_VAL(argv[1])));
 }
 
 #ifdef MZ_LONG_DOUBLE

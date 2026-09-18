@@ -7,11 +7,14 @@
 (require racket/cmdline racket/future racket/fixnum racket/flonum)
 (#%declare #:unsafe)
 
-(define-syntax-rule (for/par k ([i N]) b)  
-  (let ([stride (fxquotient N k)])
-    (define fs 
-      (for/list ([n k])
-        (future (λ () (for ([i (in-range (fx* n stride) (fxmin N (fx* (fx+ n 1) stride)))]) b)))))
+(define-syntax-rule (for/par k ([i N]) b)
+  (let ([count k] [size N])
+    (define fs
+      (for/list ([n (in-range count)])
+        ;; Complete disjoint intervals, including when size < count.
+        (define start (quotient (* n size) count))
+        (define end (quotient (* (add1 n) size) count))
+        (future (λ () (for ([i (in-range start end)]) b)))))
     (for-each touch fs)))
 
 
@@ -24,22 +27,48 @@
                             (fx->fl (fx+ ij 1)))
                        0.5) 
                   (fx->fl (fx+ i 1))))))
+;; 4*N*N bounds the original floating product and all recurrence
+;; intermediates, including the update after the last matrix element.
+(define (integer-denominator? N)
+  (<= (* 4 N N) (min (most-positive-fixnum) 9007199254740992)))
 (define (Av x y N)
-  (for/par C ([i N])
-           (flvector-set!
-            y i
-            (let L ([a 0.0] [j 0])
-              (if (fx= j N) a
-                  (L (fl+ a (fl* (flvector-ref x j) (A i j)))
-                     (fx+ j 1)))))))
+  (if (integer-denominator? N)
+      (for/par C ([i N])
+        (flvector-set!
+         y i
+         ;; A(i,j)'s denominator increases by i+j+1.
+         (let ([initial-d (fx+ (fxrshift (fx* i (fx+ i 1)) 1) (fx+ i 1))]
+               [initial-delta (fx+ i 1)])
+           (let L ([a 0.0] [j 0] [d initial-d] [delta initial-delta])
+             (if (fx= j N) a
+                 (L (fl+ a (fl* (flvector-ref x j) (fl/ 1.0 (fx->fl d))))
+                    (fx+ j 1) (fx+ d delta) (fx+ delta 1)))))))
+      (for/par C ([i N])
+        (flvector-set!
+         y i
+         (let L ([a 0.0] [j 0])
+           (if (fx= j N) a
+               (L (fl+ a (fl* (flvector-ref x j) (A i j)))
+                  (fx+ j 1))))))))
 (define (Atv x y N)
-  (for/par C ([i N])
-           (flvector-set!
-            y i
-            (let L ([a 0.0] [j 0])
-              (if (fx= j N) a
-                  (L (fl+ a (fl* (flvector-ref x j) (A j i)))
-                     (fx+ j 1)))))))
+  (if (integer-denominator? N)
+      (for/par C ([i N])
+        (flvector-set!
+         y i
+         ;; A(j,i)'s denominator increases by i+j+2.
+         (let ([initial-d (fx+ (fxrshift (fx* i (fx+ i 1)) 1) 1)]
+               [initial-delta (fx+ i 2)])
+           (let L ([a 0.0] [j 0] [d initial-d] [delta initial-delta])
+             (if (fx= j N) a
+                 (L (fl+ a (fl* (flvector-ref x j) (fl/ 1.0 (fx->fl d))))
+                    (fx+ j 1) (fx+ d delta) (fx+ delta 1)))))))
+      (for/par C ([i N])
+        (flvector-set!
+         y i
+         (let L ([a 0.0] [j 0])
+           (if (fx= j N) a
+               (L (fl+ a (fl* (flvector-ref x j) (A j i)))
+                  (fx+ j 1))))))))
 (define (AtAv x y t N) (Av x t N) (Atv t y N))
 (define u (make-flvector N 1.0))
 (define v (make-flvector N))

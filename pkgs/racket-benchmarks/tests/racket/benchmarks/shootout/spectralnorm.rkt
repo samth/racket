@@ -4,7 +4,8 @@
 ;; Translated from Mike Pall's Lua version.
 
 (require racket/cmdline racket/trace racket/contract
-         racket/unsafe/ops racket/flonum)
+         racket/unsafe/ops racket/flonum
+         (only-in racket/fixnum most-positive-fixnum))
 
 (let* ([A (lambda (i j)
             (let ([ij (unsafe-fx+ i j)])
@@ -12,24 +13,54 @@
                                                                   (unsafe-fx->fl (unsafe-fx+ ij 1)))
                                                       0.5) 
                                           (unsafe-fx->fl (unsafe-fx+ i 1))))))]
-       [Av 
+       ;; 4*N*N bounds the original floating product and all recurrence
+       ;; intermediates, including the update after the last matrix element.
+       [integer-denominator?
+        (lambda (N)
+          (<= (* 4 N N) (min (most-positive-fixnum) 9007199254740992)))]
+       [Av
         (lambda (x y N)
-          (for ([i (in-range N)])
-               (unsafe-flvector-set!
-                y i
-                (let L ([a 0.0] [j 0])
-                  (if (unsafe-fx= j N) a
-                      (L (unsafe-fl+ a (unsafe-fl* (unsafe-flvector-ref x j) (A i j)))
-                         (unsafe-fx+ j 1)))))))]
+          (if (integer-denominator? N)
+              (for ([i (in-range N)])
+                (unsafe-flvector-set!
+                 y i
+                 ;; A(i,j)'s denominator increases by i+j+1.
+                 (let ([initial-d (unsafe-fx+ (unsafe-fxrshift (unsafe-fx* i (unsafe-fx+ i 1)) 1)
+                                              (unsafe-fx+ i 1))]
+                       [initial-delta (unsafe-fx+ i 1)])
+                   (let L ([a 0.0] [j 0] [d initial-d] [delta initial-delta])
+                     (if (unsafe-fx= j N) a
+                         (L (unsafe-fl+ a (unsafe-fl* (unsafe-flvector-ref x j)
+                                                     (unsafe-fl/ 1.0 (unsafe-fx->fl d))))
+                            (unsafe-fx+ j 1) (unsafe-fx+ d delta) (unsafe-fx+ delta 1)))))))
+              (for ([i (in-range N)])
+                (unsafe-flvector-set!
+                 y i
+                 (let L ([a 0.0] [j 0])
+                   (if (unsafe-fx= j N) a
+                       (L (unsafe-fl+ a (unsafe-fl* (unsafe-flvector-ref x j) (A i j)))
+                          (unsafe-fx+ j 1))))))))]
        [Atv
         (lambda (x y N)
-          (for ([i (in-range N)])
-               (unsafe-flvector-set!
-                y i
-                (let L ([a 0.0] [j 0])
-                  (if (unsafe-fx= j N) a
-                      (L (unsafe-fl+ a (unsafe-fl* (unsafe-flvector-ref x j) (A j i)))
-                         (unsafe-fx+ j 1)))))))]
+          (if (integer-denominator? N)
+              (for ([i (in-range N)])
+                (unsafe-flvector-set!
+                 y i
+                 ;; A(j,i)'s denominator increases by i+j+2.
+                 (let ([initial-d (unsafe-fx+ (unsafe-fxrshift (unsafe-fx* i (unsafe-fx+ i 1)) 1) 1)]
+                       [initial-delta (unsafe-fx+ i 2)])
+                   (let L ([a 0.0] [j 0] [d initial-d] [delta initial-delta])
+                     (if (unsafe-fx= j N) a
+                         (L (unsafe-fl+ a (unsafe-fl* (unsafe-flvector-ref x j)
+                                                     (unsafe-fl/ 1.0 (unsafe-fx->fl d))))
+                            (unsafe-fx+ j 1) (unsafe-fx+ d delta) (unsafe-fx+ delta 1)))))))
+              (for ([i (in-range N)])
+                (unsafe-flvector-set!
+                 y i
+                 (let L ([a 0.0] [j 0])
+                   (if (unsafe-fx= j N) a
+                       (L (unsafe-fl+ a (unsafe-fl* (unsafe-flvector-ref x j) (A j i)))
+                          (unsafe-fx+ j 1))))))))]
        [AtAv (lambda (x y t N) (Av x t N) (Atv t y N))]
        [N (command-line #:args (n) (string->number n))]
        [u (make-flvector N 1.0)]

@@ -295,11 +295,7 @@ void scheme_init_flfxnum_numarith(Scheme_Startup_Env *env)
   scheme_addto_prim_instance("flsqrt", p, env);
 
   p = scheme_make_folding_prim(fl_hypot, "flhypot", 2, 2, 1);
-  if (scheme_can_inline_fp_op())
-    flags = SCHEME_PRIM_IS_BINARY_INLINED;
-  else
-    flags = SCHEME_PRIM_SOMETIMES_INLINED;
-  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(flags
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
                                                             | SCHEME_PRIM_WANTS_FLONUM_BOTH);
   scheme_addto_prim_instance("flhypot", p, env);
@@ -519,11 +515,7 @@ void scheme_init_unsafe_numarith(Scheme_Startup_Env *env)
   scheme_addto_prim_instance("unsafe-flsqrt", p, env);
 
   p = scheme_make_folding_prim(unsafe_fl_hypot, "unsafe-flhypot", 2, 2, 1);
-  if (scheme_can_inline_fp_op())
-    flags = SCHEME_PRIM_IS_BINARY_INLINED;
-  else
-    flags = SCHEME_PRIM_SOMETIMES_INLINED;
-  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(flags
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
                                                             | SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
                                                             | SCHEME_PRIM_WANTS_FLONUM_BOTH);

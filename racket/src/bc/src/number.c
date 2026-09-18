@@ -85,7 +85,6 @@ static Scheme_Object *asin_prim (int argc, Scheme_Object *argv[]);
 static Scheme_Object *acos_prim (int argc, Scheme_Object *argv[]);
 static Scheme_Object *atan_prim (int argc, Scheme_Object *argv[]);
 static Scheme_Object *magnitude (int argc, Scheme_Object *argv[]);
-static Scheme_Object *sch_hypot (int argc, Scheme_Object *argv[]);
 static Scheme_Object *angle (int argc, Scheme_Object *argv[]);
 static Scheme_Object *int_sqrt (int argc, Scheme_Object *argv[]);
 static Scheme_Object *int_sqrt_rem (int argc, Scheme_Object *argv[]);
@@ -757,12 +756,6 @@ scheme_init_number (Scheme_Startup_Env *env)
 						      1, 1, 1),
 			     env);
   
-  scheme_addto_prim_instance("hypot",
-                             scheme_make_folding_prim(sch_hypot,
-                                                      "hypot",
-                                                      2, 2, 1),
-                             env);
-
   p = scheme_make_folding_prim(scheme_exact_to_inexact, "exact->inexact", 1, 1, 1);
   if (scheme_can_inline_fp_op())
     flags = SCHEME_PRIM_IS_UNARY_INLINED;
@@ -4156,19 +4149,6 @@ static Scheme_Object *magnitude(int argc, Scheme_Object *argv[])
     return scheme_bin_mult(i, scheme_sqrt(1, a));
   } else
     return scheme_abs(1, argv);
-}
-
-static Scheme_Object *sch_hypot(int argc, Scheme_Object *argv[])
-{
-  Scheme_Object *c;
-
-  if (!SCHEME_REALP(argv[0]))
-    scheme_wrong_contract("hypot", "real?", 0, argc, argv);
-  if (!SCHEME_REALP(argv[1]))
-    scheme_wrong_contract("hypot", "real?", 1, argc, argv);
-
-  c = scheme_make_complex(argv[0], argv[1]);
-  return magnitude(1, &c);
 }
 
 static Scheme_Object *angle(int argc, Scheme_Object *argv[])

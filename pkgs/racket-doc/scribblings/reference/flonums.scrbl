@@ -122,7 +122,8 @@ or @racket[flsqrt].}
 
 Computes the square root of the sum of the squares of @racket[a] and
 @racket[b] without undue overflow or underflow during the intermediate
-calculation.
+calculation. The result is equivalent to
+@racket[(magnitude (make-rectangular a b))].
 
 If either argument is an infinity, the result is @racket[+inf.0], even
 when the other argument is @racket[+nan.0]. Otherwise, if either argument

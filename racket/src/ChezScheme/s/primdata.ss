@@ -248,7 +248,6 @@
   (real-part [sig [(number) -> (real)]] [flags arith-op mifoldable discard safeongoodargs ieee r5rs])
   (imag-part [sig [(number) -> (real)]] [flags arith-op mifoldable discard safeongoodargs ieee r5rs])
   (magnitude [sig [(number) -> (real)]] [flags arith-op mifoldable discard safeongoodargs ieee r5rs])
-  (hypot [sig [(real real) -> (real)]] [flags arith-op mifoldable discard safeongoodargs ieee])
   (angle [sig [(number) -> (real)]] [flags arith-op mifoldable discard ieee r5rs]) ; not safeongoodargs due to 0
   ((r6rs: number->string) [sig [(number) (number sub-ufixnum) (number sub-ufixnum sub-ufixnum) -> (string)]] [flags alloc ieee r5rs]) ; radix restricted to 2, 4, 8, 16
   ((r6rs: string->number) [sig [(string) (string sub-ufixnum) -> (maybe-number)]] [flags discard ieee r5rs]) ; radix restricted to 2, 4, 8, 16

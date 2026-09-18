@@ -1822,18 +1822,6 @@
 (test-i-nan.0 / (make-rectangular +inf.0 -inf.0) 0.+1.0i)
 (test-i-nan.0 / (make-rectangular +inf.0 -inf.0) -3.+0.i)
 
-(test 5 hypot 3 4)
-(test 5.0 hypot 3.0 4.0)
-(test 5.0 hypot 3 4.0)
-(test 4.9999999999999995e+200 hypot 3e200 4e200)
-(test 5e-200 hypot 3e-200 4e-200)
-(test +inf.0 hypot +inf.0 +nan.0)
-(test +inf.0 hypot +nan.0 +inf.0)
-(test +nan.0 hypot +nan.0 1.0)
-(err/rt-test (hypot 1+2i 3) exn:fail:contract?)
-(err/rt-test (hypot 3 1+2i) exn:fail:contract?)
-(arity-test hypot 2 2)
-
 (test 1 magnitude 1)
 (test 1 magnitude -1)
 (test 1.0 magnitude 1.0)

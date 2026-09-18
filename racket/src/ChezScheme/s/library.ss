@@ -435,7 +435,6 @@
 
   (define-library-entry (exact? x) (number-oops 'exact? x))
   (define-library-entry (inexact? x) (number-oops 'inexact? x))
-  (define-library-entry (hypot x y) (real-oops 'hypot (if (real? x) y x)))
 
   (define-library-entry ($real->flonum who x)
     (cond

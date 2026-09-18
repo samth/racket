@@ -1521,14 +1521,6 @@
          [(ratnum?) (if (< z 0) (- z) z)]
          [else (noncomplex-error 'magnitude z)])))
 
-(set-who! hypot
-   (lambda (x y)
-      (unless (real? x) (nonreal-error who x))
-      (unless (real? y) (nonreal-error who y))
-      (if (and (flonum? x) (flonum? y))
-          (flhypot x y)
-          (magnitude (make-rectangular x y)))))
-
 (set! angle
    (lambda (z)
       (type-case z

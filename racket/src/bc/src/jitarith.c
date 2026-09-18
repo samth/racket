@@ -48,7 +48,6 @@ static int is_inline_unboxable_op(Scheme_Object *obj, int flag, int unsafely, in
     if (IS_NAMED_PRIM(obj, "unsafe-fl/")) return 1;
     if (IS_NAMED_PRIM(obj, "unsafe-flabs")) return 1;
     if (IS_NAMED_PRIM(obj, "unsafe-flsqrt")) return 1;
-    if (IS_NAMED_PRIM(obj, "unsafe-flhypot")) return 1;
     if (IS_NAMED_PRIM(obj, "unsafe-flmin")) return 1;
     if (IS_NAMED_PRIM(obj, "unsafe-flmax")) return 1;
     if (IS_NAMED_PRIM(obj, "unsafe-fx->fl")) return 1;
@@ -66,7 +65,6 @@ static int is_inline_unboxable_op(Scheme_Object *obj, int flag, int unsafely, in
       if (IS_NAMED_PRIM(obj, "fl/")) return 2;
       if (IS_NAMED_PRIM(obj, "flabs")) return 2;
       if (IS_NAMED_PRIM(obj, "flsqrt")) return 2;
-      if (IS_NAMED_PRIM(obj, "flhypot")) return 2;
       if (IS_NAMED_PRIM(obj, "flmin")) return 2;
       if (IS_NAMED_PRIM(obj, "flmax")) return 2;
       if (IS_NAMED_PRIM(obj, "flimag-part")) return 2;
@@ -454,7 +452,6 @@ static int can_fast_double(int arith, int cmp, int two_args)
       || (arith == ARITH_ABS)
       || (arith == ARITH_EX_INEX)
       || (arith == ARITH_SQRT)
-      || (arith == ARITH_HYPOT)
       || (arith == ARITH_FLUNOP)
       || (arith == ARITH_INEX_EX)
       || (arith == ARITH_INEX_TRUNC_EX))
@@ -511,7 +508,6 @@ typedef void (*call_extfp_proc)(void);
 #  endif
 
 DECL_BIN_FP_GLUE(expt)
-DECL_BIN_FLONUM_GLUE(hypot)
 typedef void (*call_fp_bin_proc)(void);
 
 #  ifdef MZ_LONG_DOUBLE
@@ -991,20 +987,6 @@ static int generate_float_point_arith(mz_jit_state *jitter, Scheme_Object *rator
             (void)mz_finish(call_expt);
             (void)mz_tl_ldi_d_fppush(JIT_FPR0, tl_scheme_jit_save_fp, JIT_R2);          
           }
-        }
-        break;
-      case ARITH_HYPOT:
-        {
-          if (!reversed) {
-            (void)mz_tl_sti_d_fppop(tl_scheme_jit_save_fp2, JIT_FPR0, JIT_R2);
-            (void)mz_tl_sti_d_fppop(tl_scheme_jit_save_fp, JIT_FPR1, JIT_R2);
-          } else {
-            (void)mz_tl_sti_d_fppop(tl_scheme_jit_save_fp, JIT_FPR0, JIT_R2);
-            (void)mz_tl_sti_d_fppop(tl_scheme_jit_save_fp2, JIT_FPR1, JIT_R2);
-          }
-          mz_prepare(0);
-          (void)mz_finish(call_hypot);
-          (void)mz_tl_ldi_d_fppush(JIT_FPR0, tl_scheme_jit_save_fp, JIT_R2);
         }
         break;
 # endif

@@ -1831,7 +1831,10 @@
   (define asm-fpt
     (lambda (code* dest src)
       (Trivit (dest src)
-         (emit sse.cvtsi2sd src dest code*))))
+        ;; CVTSI2SD preserves the upper destination bits. Clear them to
+        ;; avoid a false dependency on the previous register contents.
+        (emit sse.xorpd dest dest
+          (emit sse.cvtsi2sd src dest code*)))))
 
   (define asm-fpop-2
     (lambda (op)

@@ -1793,19 +1793,29 @@
             [(zext32) (emit movl src dest code*)]
             [else (sorry! who "unexpected op ~s" op)])))))
 
+  (define maybe-clear-fp-dest
+    (lambda (src dest code*)
+      ;; Scalar conversions and square root preserve unused destination bits.
+      ;; Break that dependency, unless the destination is also the input.
+      (if (equal? src dest)
+          code*
+          (emit sse.xorpd dest dest code*))))
+
   (define asm-fl-cvt
     (lambda (op)
-      (lambda (code* dest-reg src)
-        (Trivit (src)
-          (case op
-            [(single->double) (emit sse.cvtss2sd src (cons 'reg dest-reg) code*)]
-            [(double->single) (emit sse.cvtsd2ss src (cons 'reg dest-reg) code*)])))))
+      (lambda (code* dest src)
+        (Trivit (dest src)
+          (maybe-clear-fp-dest src dest
+            (case op
+              [(single->double) (emit sse.cvtss2sd src dest code*)]
+              [(double->single) (emit sse.cvtsd2ss src dest code*)]))))))
 
   (define asm-fpsingle
     (lambda (code* dest src)
       (Trivit (dest src)
-        (emit sse.cvtsd2ss src dest
-          (emit sse.cvtss2sd dest dest code*)))))
+        (maybe-clear-fp-dest src dest
+          (emit sse.cvtsd2ss src dest
+            (emit sse.cvtss2sd dest dest code*))))))
 
   (define asm-store-single->double
     (lambda (flreg)
@@ -1871,7 +1881,8 @@
   (define asm-fpsqrt
     (lambda (code* dest-reg src)
       (Trivit (dest-reg src)
-        (emit sse.sqrtsd src dest-reg code*))))
+        (maybe-clear-fp-dest src dest-reg
+          (emit sse.sqrtsd src dest-reg code*)))))
 
   (define asm-fpmove
     (lambda (code* dest src)

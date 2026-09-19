@@ -40,32 +40,80 @@
         (match-count str rx (cdar m) (add1 cnt))
         cnt)))
 
+;; Literal replacement using the same regex engine and patterns. All benchmark
+;; patterns consume at least one byte and none uses replacement backreferences.
+;; Keep a logical length so the next pass need not copy a trimmed byte string.
+(define (replace-into rx source length replacement destination)
+  (define replacement-length (bytes-length replacement))
+  (define buffer destination)
+  (define (reserve! needed)
+    (when (> needed (bytes-length buffer))
+      (define larger (make-bytes (max needed (* 2 (bytes-length buffer)))))
+      (bytes-copy! larger 0 buffer)
+      (set! buffer larger)))
+  (let loop ([start 0] [written 0])
+    (define positions (regexp-match-positions rx source start length))
+    (cond
+      [positions
+       (define match (car positions))
+       (define end (+ written (- (car match) start)))
+       (define next (+ end replacement-length))
+       (reserve! next)
+       (bytes-copy! buffer written source start (car match))
+       (bytes-copy! buffer end replacement)
+       (loop (cdr match) next)]
+      [else
+       (define end (+ written (- length start)))
+       (reserve! end)
+       (bytes-copy! buffer written source start length)
+       (values buffer end)])))
+
+(define (strip-input original)
+  (define-values (buffer length)
+    (replace-into #rx#"(?:>.*?\n)|\n" original (bytes-length original)
+                  #"" (make-bytes (bytes-length original))))
+  (subbytes buffer 0 length))
+
+(define (replace-sequence filtered)
+  (define buffer1 (make-bytes (bytes-length filtered)))
+  (define buffer2 (make-bytes (bytes-length filtered)))
+  (let loop ([rules IUBS] [source filtered] [length (bytes-length filtered)]
+             [destination buffer1] [spare buffer2])
+    (cond
+      [(null? rules) (values source length)]
+      [else
+       (define-values (result next-length)
+         (replace-into (byte-regexp (caar rules)) source length (cadar rules) destination))
+       (loop (cdr rules) result next-length spare result)])))
+
 ;; -------------------------------
 
 (module+ main
   (define-values (original-length filtered)
     (let* ([orig (port->bytes)]
-           [stripped (regexp-replace* #rx#"(?:>.*?\n)|\n" orig #"")])
+           [stripped (strip-input orig)])
       (values (bytes-length orig) stripped)))
   ;; Compile before launching readers. The filtered bytes are never mutated;
   ;; replacement passes construct separate byte strings.
   (define patterns (map ci-byte-regexp VARIANTS))
-  (define pool (make-parallel-thread-pool (min 2 (processor-count))))
+  (define workers (min 3 (processor-count)))
+  (define pool (make-parallel-thread-pool workers))
   (define (start group)
     (thread #:pool pool #:keep 'results
             (lambda () (for/list ([rx (in-list group)])
                          (match-count filtered rx 0 0)))))
-  (define worker1 (start (drop-right patterns 4)))
-  (define worker2 (start (take-right patterns 4)))
+  (define threads
+    (for/list ([worker (in-range workers)])
+      (start (for/list ([rx (in-list patterns)] [i (in-naturals)]
+                        #:when (= (quotient (* i workers) (length patterns)) worker))
+               rx))))
   (parallel-thread-pool-close pool)
-  (define replaced
-    (for/fold ([sequence filtered]) ([IUB (in-list IUBS)])
-      (regexp-replace* (byte-regexp (car IUB)) sequence (cadr IUB))))
+  (define-values (replaced replaced-length) (replace-sequence filtered))
   (define counts
-    (append
-     (thread-wait worker1 (lambda () (error 'regexredux "parallel worker failed")))
-     (thread-wait worker2 (lambda () (error 'regexredux "parallel worker failed")))))
+    (apply append
+           (for/list ([worker (in-list threads)])
+             (thread-wait worker (lambda () (error 'regexredux "parallel worker failed"))))))
   (for ([pattern (in-list VARIANTS)] [count (in-list counts)])
     (printf "~a ~a\n" pattern count))
   (printf "\n~a\n~a\n~a\n"
-          original-length (bytes-length filtered) (bytes-length replaced)))
+          original-length (bytes-length filtered) replaced-length))

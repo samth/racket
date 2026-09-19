@@ -25,11 +25,7 @@
                         (= (bytes-ref line 0) 59))
              (write-bytes line out))
            (collect)))
-       (define dna (get-output-bytes out))
-       (for ([i (in-range (bytes-length dna))])
-         (define b (bytes-ref dna i))
-         (when (<= 97 b 122) (bytes-set! dna i (- b 32))))
-       dna]
+       (get-output-bytes out)]
       [else (seek)])))
 
 ;; Current rules explicitly permit compact DNA codes. This control still
@@ -40,7 +36,7 @@
   (define encoded (make-bytes (bytes-length dna)))
   (for ([b (in-bytes dna)] [i (in-naturals)])
     (bytes-set! encoded i
-                (case b [(65) 0] [(67) 1] [(71) 2] [(84) 3]
+                (case b [(65 97) 0] [(67 99) 1] [(71 103) 2] [(84 116) 3]
                   [else (error 'knucleotide "expected A, C, G or T in record THREE")])))
   encoded)
 
@@ -92,33 +88,74 @@
     (printf "~a ~a\n" (car entry)
             (real->decimal-string (* 100.0 (/ (cdr entry) total)) 3))))
 
-(define (produce-row dna len)
-  (define table (all-counts len dna))
+(define lengths '(1 2 3 4 6 12 18))
+
+;; One complete built-in histogram per reading frame, as in the current
+;; Java submission. Start the longer frame jobs first; the parent participates.
+(define jobs
+  (list->vector
+   (for*/list ([len (in-list lengths)] [frame (in-range len)])
+     (cons len frame))))
+
+(define (parallel-counts dna)
+  (define results (make-vector (vector-length jobs)))
+  (define next (box 0))
+  (define (work)
+    (let loop ()
+      (define i (unbox next))
+      (when (< i (vector-length jobs))
+        (when (box-cas! next i (add1 i))
+          (define job (vector-ref jobs i))
+          (define table (make-hasheq))
+          (count-frame! table dna (car job) (cdr job))
+          (vector-set! results i table))
+        (loop))))
+  (define workers (min 4 (processor-count)))
+  (define pool (make-parallel-thread-pool (max 1 (sub1 workers))))
+  (define threads
+    (for/list ([i (in-range (sub1 workers))])
+      (thread #:pool pool #:keep 'results work)))
+  (parallel-thread-pool-close pool)
+  (work)
+  (for ([worker (in-list threads)])
+    (thread-wait worker (lambda () (error 'knucleotide "parallel worker failed"))))
+  results)
+
+(define (tables-for results len)
+  (for/list ([job (in-vector jobs)] [table (in-vector results)]
+             #:when (= (car job) len))
+    table))
+
+(define (merge-counts tables)
+  (define result (make-hasheq))
+  (for* ([table (in-list tables)] [(key count) (in-hash table)])
+    (define previous (hash-ref result key #f))
+    (if previous
+        (set-box! previous (+ (unbox previous) (unbox count)))
+        (hash-set! result key (box (unbox count)))))
+  result)
+
+(define (produce-row dna len [tables (list (all-counts len dna))])
   (define out (open-output-bytes))
   (parameterize ([current-output-port out])
     (if (<= len 2)
-        (begin (write-frequencies table len) (newline))
+        (begin (write-frequencies (merge-counts tables) len) (newline))
         (let* ([key (case len
                       [(3) #"GGT"] [(4) #"GGTA"] [(6) #"GGTATT"]
                       [(12) #"GGTATTTTAATT"] [(18) #"GGTATTTTAATTTATAGT"])]
-               [counter (hash-ref table (encode-key key) #f)])
-          (printf "~a\t~a\n" (if counter (unbox counter) 0) key))))
+               [encoded (encode-key key)]
+               [count (for/sum ([table (in-list tables)])
+                        (define counter (hash-ref table encoded #f))
+                        (if counter (unbox counter) 0))])
+          (printf "~a\t~a\n" count key))))
   (get-output-bytes out))
 
 (define (main [in (current-input-port)] [out (current-output-port)])
-  ;; Fully initialize once before starting readers. Each table is private.
+  ;; Fully initialize once before starting readers. Each frame table is private.
   (define dna (encode-dna (read-three in)))
-  (define pool (make-parallel-thread-pool (min 2 (processor-count))))
-  (define (start len)
-    (thread #:pool pool #:keep 'results (lambda () (produce-row dna len))))
-  (define worker12 (start 12))
-  (define worker18 (start 18))
-  (parallel-thread-pool-close pool)
-  (for ([len '(1 2 3 4 6)]) (write-bytes (produce-row dna len) out))
-  (for ([worker (in-list (list worker12 worker18))])
-    (write-bytes
-     (thread-wait worker (lambda () (error 'knucleotide "parallel worker failed")))
-     out))
+  (define results (parallel-counts dna))
+  (for ([len (in-list lengths)])
+    (write-bytes (produce-row dna len (tables-for results len)) out))
   (void))
 
 (module+ main (main))

@@ -45,6 +45,13 @@ and [#5](https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/spe
 Its former experimental rules label has been withdrawn. Parallel execution
 does not omit work and must not be reported as a single-core compiler gain.
 
+Regex-redux uses three counting places and reusable byte buffers for the five
+ordered replacement passes, retaining the standard regex engine and patterns.
+This follows the buffer-copy approach of the listed C #2 submission. K-nucleotide
+combines ASCII case handling with byte encoding, and balances its seven complete
+histograms across the parent and three places. Both remain independent of the
+newer parallel-thread API; thread-specific scheduling lives in analysis controls.
+
 ## Checks
 
 ```

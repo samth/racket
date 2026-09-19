@@ -23,11 +23,7 @@
                         (= (bytes-ref line 0) 59))
              (write-bytes line out))
            (collect)))
-       (define dna (get-output-bytes out))
-       (for ([i (in-range (bytes-length dna))])
-         (define b (bytes-ref dna i))
-         (when (<= 97 b 122) (bytes-set! dna i (- b 32))))
-       dna]
+       (get-output-bytes out)]
       [else (seek)])))
 
 ;; Current rules explicitly permit compact DNA codes. This control still
@@ -38,7 +34,7 @@
   (define encoded (make-shared-bytes (bytes-length dna)))
   (for ([b (in-bytes dna)] [i (in-naturals)])
     (bytes-set! encoded i
-                (case b [(65) 0] [(67) 1] [(71) 2] [(84) 3]
+                (case b [(65 97) 0] [(67 99) 1] [(71 103) 2] [(84 116) 3]
                   [else (error 'knucleotide "expected A, C, G or T in record THREE")])))
   encoded)
 
@@ -103,24 +99,28 @@
           (printf "~a\t~a\n" (if counter (unbox counter) 0) key))))
   (get-output-bytes out))
 
+(define (produce-rows dna lengths)
+  (apply bytes-append
+         (for/list ([len (in-list lengths)]) (produce-row dna len))))
+
 (define (make-worker)
   (place channel
     (define message (place-channel-get channel))
-    (place-channel-put channel (produce-row (car message) (cadr message)))))
+    (place-channel-put channel (produce-rows (car message) (cadr message)))))
 
 (define (main [in (current-input-port)] [out (current-output-port)])
   ;; The shared input is completely initialized before any worker receives it;
-  ;; thereafter all three places only read it. Each hash table stays private.
+  ;; thereafter all four places only read it. Each hash table stays private.
   (define dna (encode-dna (read-three in)))
-  (define worker12 (make-worker))
-  (define worker18 (make-worker))
-  (place-channel-put worker12 (list dna 12))
-  (place-channel-put worker18 (list dna 18))
-  (for ([len '(1 2 3 4 6)]) (write-bytes (produce-row dna len) out))
-  (write-bytes (place-channel-get worker12) out)
-  (write-bytes (place-channel-get worker18) out)
-  (place-wait worker12)
-  (place-wait worker18)
+  (define workers
+    (for/list ([lengths '((3 4 6) (12) (18))])
+      (define worker (make-worker))
+      (place-channel-put worker (list dna lengths))
+      worker))
+  (write-bytes (produce-rows dna '(1 2)) out)
+  (for ([worker (in-list workers)])
+    (write-bytes (place-channel-get worker) out)
+    (place-wait worker))
   (void))
 
 (module+ main (main))

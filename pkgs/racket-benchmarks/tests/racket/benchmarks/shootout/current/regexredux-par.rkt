@@ -40,6 +40,52 @@
 
 ;; -------------------------------
 
+;; Literal replacement using the same regex engine and patterns. All benchmark
+;; patterns consume at least one byte and none uses replacement backreferences.
+;; Keep a logical length so the next pass need not copy a trimmed byte string.
+(define (replace-into rx source length replacement destination)
+  (define replacement-length (bytes-length replacement))
+  (define buffer destination)
+  (define (reserve! needed)
+    (when (> needed (bytes-length buffer))
+      (define larger (make-bytes (max needed (* 2 (bytes-length buffer)))))
+      (bytes-copy! larger 0 buffer)
+      (set! buffer larger)))
+  (let loop ([start 0] [written 0])
+    (define positions (regexp-match-positions rx source start length))
+    (cond
+      [positions
+       (define match (car positions))
+       (define end (+ written (- (car match) start)))
+       (define next (+ end replacement-length))
+       (reserve! next)
+       (bytes-copy! buffer written source start (car match))
+       (bytes-copy! buffer end replacement)
+       (loop (cdr match) next)]
+      [else
+       (define end (+ written (- length start)))
+       (reserve! end)
+       (bytes-copy! buffer written source start length)
+       (values buffer end)])))
+
+(define (strip-input original)
+  (define-values (buffer length)
+    (replace-into #rx#"(?:>.*?\n)|\n" original (bytes-length original)
+                  #"" (make-bytes (bytes-length original))))
+  (subbytes buffer 0 length))
+
+(define (replace-sequence filtered)
+  (define buffer1 (make-bytes (bytes-length filtered)))
+  (define buffer2 (make-bytes (bytes-length filtered)))
+  (let loop ([rules IUBS] [source filtered] [length (bytes-length filtered)]
+             [destination buffer1] [spare buffer2])
+    (cond
+      [(null? rules) (values source length)]
+      [else
+       (define-values (result next-length)
+         (replace-into (byte-regexp (caar rules)) source length (cadar rules) destination))
+       (loop (cdr rules) result next-length spare result)])))
+
 (define (make-counting-place)
   (place ch
     (define filtered (place-channel-get ch))
@@ -56,42 +102,37 @@
    ;; Load sequence
   (define-values (original-length filtered)
     (let* ([orig (port->bytes)]
-           [stripped (regexp-replace* #rx#"(?:>.*?\n)|\n" orig #"")]
+           [stripped (strip-input orig)]
            [shared (make-shared-bytes (bytes-length stripped))])
       (bytes-copy! shared 0 stripped)
       (values (bytes-length orig) shared)))
 
-  ;; Create the places and launch the regexp counts
-  ;; Since it is not possible to split the replacement part,
-  ;; it's faster to use two places instead of three. 
-  (define VARIANTS1 (drop-right VARIANTS 4))
-  (define VARIANTS2 (take-right VARIANTS 4))
-
-  (define place/ch1 (make-counting-place))
-  (place-channel-put place/ch1 filtered)
-  (place-channel-put place/ch1 VARIANTS1)
-
-  (define place/ch2 (make-counting-place))
-  (place-channel-put place/ch2 filtered)
-  (place-channel-put place/ch2 VARIANTS2)
+  ;; Buffer reuse makes the replacements short enough to balance three
+  ;; groups of counting passes against the parent-side replacement chain.
+  (define workers
+    (for/list ([start (in-range 0 9 3)])
+      (define worker (make-counting-place))
+      (place-channel-put worker filtered)
+      (place-channel-put worker (take (drop VARIANTS start) 3))
+      worker))
     
   ;; Perform regexp replacements while the places are running
-  (define replaced
-          (for/fold ([sequence filtered]) ([IUB IUBS])
-            (regexp-replace* (byte-regexp (car IUB)) sequence (cadr IUB))))
+  (define-values (replaced replaced-length) (replace-sequence filtered))
 
   ;; Collect the results of the regexp counts
-  (define count1 (place-channel-get place/ch1))
-  (define count2 (place-channel-get place/ch2))
+  (define counts
+    (apply append (for/list ([worker (in-list workers)])
+                    (place-channel-get worker))))
+  (for ([worker (in-list workers)]) (place-wait worker))
 
 
   ;; Print regexp counts
   (for ([i (in-list VARIANTS)]
-        [j (in-list (append count1 count2))])
+        [j (in-list counts)])
     (printf "~a ~a\n" i j))
 
   ;; Print statistics
   (printf "\n~a\n~a\n~a\n"
-          original-length (bytes-length filtered) (bytes-length replaced))
+          original-length (bytes-length filtered) replaced-length)
 
   )

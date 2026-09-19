@@ -147,7 +147,7 @@
       "candidates": [
         {
           "source": "knucleotide-par.rkt",
-          "sha256": "ca7ac84056a4fdf402b817e711d3d1469028473f2a56ab20a112547231a312a4",
+          "sha256": "415921b71cec4c4308a6d8ef6b7245d323677510df617c8010281383679d74fc",
           "status": "submission-candidate",
           "parallel": true,
           "dependency": "Racket standard distribution"
@@ -189,7 +189,7 @@
       "candidates": [
         {
           "source": "regexredux-par.rkt",
-          "sha256": "e12e01c4396bfd13c103acb05fc4e1bbf6f78bbf5fd9766dd1cc2e830de45af3",
+          "sha256": "51e963b5635160f3cf12fcbacf83557d6b4d725096e83abb439c1ef1a25a34bc",
           "status": "submission-candidate",
           "parallel": true,
           "dependency": "Racket standard distribution"

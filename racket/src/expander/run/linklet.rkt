@@ -467,8 +467,28 @@
                                             (marshal (srcloc-parts-span c)))]
                 [else c]))))
 
+;; `file:line:column` for a correlated with a source location, using
+;; just the file's name so that the result does not depend on where the
+;; source is; #f otherwise
+(define (source-location-name c)
+  (define src (correlated-source c))
+  (define line (correlated-line c))
+  (define col (correlated-column c))
+  (and (or (path? src) (string? src))
+       line
+       col
+       (let-values ([(base name dir?) (split-path src)])
+         (and (path? name)
+              (string->symbol (format "~a:~a:~a" (path->string name) line col))))))
+
 ;; Like `correlated->datum`, but preserves 'inferred-name information
 ;; by encoding it as a symbol in a `lambda` or `case-lambda` body.
+;; An inferred name that is void means that the function's name should
+;; come from its source location rather than from the binding that holds
+;; it (as for an argument to a function with keyword arguments); since
+;; source locations do not survive this conversion, encode a name made
+;; from the location, or else the function would be named after the
+;; binding, such as `temp50`.
 ;; Remove any existing symbol in the name position that might
 ;; otherwise be confused for the name. This conversion avoids parsing
 ;; expressions in general by relying on the fact that bindings are
@@ -514,9 +534,12 @@
                    (or (eq? 'lambda (car e))
                        (eq? 'case-lambda (car e)))))
             (correlated-property c 'inferred-name))
-       => (lambda (name)
+       => (lambda (inferred-name)
+            (define name (if (void? inferred-name)
+                             (source-location-name c)
+                             inferred-name))
             (cond
-              [(void? name)
+              [(not name)
                ;; Don't try to hide the name after all
                (correlated->datum/lambda-name (correlated-e c))]
               [else

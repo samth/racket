@@ -1869,6 +1869,47 @@
 (define (remember-original-place!)
   (set! orig-place-async-callback-queue (current-async-callback-queue)))
 
+;; When the PLT_CS_GC_ON_CALLBACK environment variable is set, perform a
+;; collection at the start of every callback into Racket, and then
+;; allocate and drop a few megabytes of #f-filled vectors. A foreign call
+;; that keeps using GC-managed memory across a callback then finds that
+;; memory moved, or freed and overwritten, every time, instead of only
+;; when a collection happens to land there. The collection is minor,
+;; which moves only young objects, unless the variable is "major", for a
+;; major collection every time, or "major:N", for a major collection
+;; every Nth time.
+(define gc-on-callback-setting (getenv "PLT_CS_GC_ON_CALLBACK"))
+(define gc-on-callback? (and gc-on-callback-setting #t))
+
+;; #f or a positive fixnum
+(define gc-on-callback-major-period
+  (let ([s gc-on-callback-setting])
+    (cond
+     [(not s) #f]
+     [(string=? s "major") 1]
+     [(and (fx> (string-length s) 6)
+           (string=? (substring s 0 6) "major:"))
+      (let ([n (string->number (substring s 6 (string-length s)))])
+        (and (fixnum? n) (fx> n 0) n))]
+     [else #f])))
+
+(define callbacks-until-major gc-on-callback-major-period)
+
+(define (collect-and-scribble)
+  (cond
+   [(and callbacks-until-major
+         (begin
+           (set! callbacks-until-major (fx- callbacks-until-major 1))
+           (fx= callbacks-until-major 0)))
+    (set! callbacks-until-major gc-on-callback-major-period)
+    (collect-garbage 'major)]
+   [else
+    (collect-garbage 'minor)])
+  (let loop ([i 0])
+    (when (fx< i 16)
+      (make-vector 32768 #f)
+      (loop (fx+ i 1)))))
+
 ;; Can be called in any Scheme thread
 (define (call-as-atomic-callback thunk atomic? async-apply async-callback-queue)
   ;; Interrupts are diabled at this point, because `__disable_interrupts` is
@@ -1880,6 +1921,7 @@
      [(not atomic?)
       ;; reenable interrupts
       (enable-interrupts)
+      (when gc-on-callback? (collect-and-scribble))
       (let ([v (thunk)])
         (disable-interrupts)
         v)]
@@ -1888,6 +1930,7 @@
       (scheduler-start-atomic/counter-only)
       ;; Now that the schedule is in atomic mode, reenable interrupts (for GC)
       (enable-interrupts)
+      (when gc-on-callback? (collect-and-scribble))
       ;; See also `call-guarding-foreign-escape`, which will need to take
       ;; appropriate steps if `(thunk)` escapes, which currently means ending
       ;; the scheduler's atomic mode

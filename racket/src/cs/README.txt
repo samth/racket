@@ -388,6 +388,25 @@ several different ways:
    declared with `#:callback-exns?` to raise an exception that escapes
    to an enclosing foreign callout.
 
+ * Memory from `malloc` in a GC-managed mode (the default for most
+   types) can move in any collection, including one during a callback
+   that a foreign procedure makes while it still uses a pointer to that
+   memory. Such code usually works, since collections are rare, and
+   then fails under load. Memory that Racket code no longer refers to
+   can even be freed and reused while the foreign procedure still uses
+   it. Set the `PLT_CS_GC_ON_CALLBACK` environment variable to perform
+   a minor collection at the start of every callback and then allocate
+   and drop a few megabytes, so that such memory moves or is
+   overwritten every time and the bug shows up reliably. Use 'raw or
+   'atomic-interior memory, kept reachable, for anything a foreign
+   procedure uses across a callback.
+
+   A minor collection moves only recently allocated objects. To also
+   move older ones, set `PLT_CS_GC_ON_CALLBACK` to "major" for a major
+   collection at every callback, which is slow enough for only a small
+   program, or to "major:N" for a major collection at every Nth
+   callback and a minor collection at the others.
+
 Threads, Threads, Atomicity, Atomicity, and Atomicity
 -----------------------------------------------------
 

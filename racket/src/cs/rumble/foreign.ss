@@ -1074,14 +1074,23 @@
           (reference-bytevector? (ftype-scheme-object-pointer-object from))
           (eqv? 0 (bitwise-and len (sub1 (foreign-sizeof 'ptr)))))
      ;; use `bytevector-reference-set!` to get write barrier
-     (let ([dest (ftype-scheme-object-pointer-object to)]
-           [src (ftype-scheme-object-pointer-object from)]
-           [to-offset (+ to-offset (ftype-scheme-object-pointer-offset to))]
-           [from-offset (+ to-offset (ftype-scheme-object-pointer-offset to))])
-       (let loop ([i 0])
-         (unless (eqv? i len)
-           (bytevector-reference-set! dest (+ to-offset i) (bytevector-reference-ref src (+ from-offset i)))
-           (loop (+ i (foreign-sizeof 'ptr))))))]
+     (let* ([dest (ftype-scheme-object-pointer-object to)]
+            [src (ftype-scheme-object-pointer-object from)]
+            [to-offset (+ to-offset (ftype-scheme-object-pointer-offset to))]
+            [from-offset (+ from-offset (ftype-scheme-object-pointer-offset from))]
+            [step (foreign-sizeof 'ptr)]
+            [copy! (lambda (i)
+                     (bytevector-reference-set! dest (+ to-offset i) (bytevector-reference-ref src (+ from-offset i))))])
+       (if (and move? (eq? dest src) (> to-offset from-offset))
+           ;; copy backward, so that an overlapping source is read before it is overwritten
+           (let loop ([i (- len step)])
+             (unless (< i 0)
+               (copy! i)
+               (loop (- i step))))
+           (let loop ([i 0])
+             (unless (eqv? i len)
+               (copy! i)
+               (loop (+ i step))))))]
     [else
      (if move?
          (with-interrupts-disabled*

@@ -652,6 +652,27 @@
   (test #t ptr-equal? #f (ptr-add (ptr-add #f 8) -8))
   )
 
+;; The same operations on 'nonatomic memory, which can hold Racket values
+(let ([src (malloc 4 _racket 'nonatomic)]
+      [dst (malloc 4 _racket 'nonatomic)])
+  (define (fill! p vals)
+    (for ([v (in-list vals)] [i (in-naturals)])
+      (ptr-set! p _racket i v)))
+  (define (contents p) (for/list ([i 4]) (ptr-ref p _racket i)))
+  (fill! src '(a b c d))
+  (fill! dst '(x x x x))
+  (memcpy dst 0 src 1 2 _racket)
+  (test '(b c x x) contents dst)
+  (fill! dst '(x x x x))
+  (memcpy (ptr-add dst 1 _racket) (ptr-add src 2 _racket) 2 _racket)
+  (test '(x c d x) contents dst)
+  ;; overlapping moves in both directions
+  (memmove src 1 src 0 3 _racket)
+  (test '(a a b c) contents src)
+  (fill! src '(a b c d))
+  (memmove src 0 src 1 3 _racket)
+  (test '(b c d d) contents src))
+
 ;; Test cstruct alignment
 (let ()
   (define-cstruct _stuff ([a _int16]

@@ -1035,6 +1035,30 @@
     (with-handlers ([(lambda (x) (eq? x 'out)) void])
       (callback_hungry (lambda () (raise 'out))))
     (sync (system-idle-evt))))
+;; An escape from a callback or from a fault in the foreign procedure
+;; itself leaves the caller's atomic mode as it was
+(let ([callback_hungry (get-ffi-obj 'callback_hungry test-lib
+                                    (_fun #:callback-exns? #t
+                                          (_fun #:atomic? #t -> _int) -> _int))])
+  (define (escape-in-atomic-mode call)
+    (start-atomic)
+    (define r (with-handlers ([(lambda (x) #t) (lambda (x) 'escaped)])
+                (call)))
+    (define atomic? (in-atomic-mode?))
+    (when atomic? (end-atomic))
+    (list r atomic?))
+  (test '(escaped #t) escape-in-atomic-mode
+        (lambda () (callback_hungry (lambda () (raise 'out)))))
+  (test #f in-atomic-mode?)
+  ;; Racket CS turns an invalid memory reference into an exception
+  (when (and (eq? 'chez-scheme (system-type 'vm))
+             (eq? 'unix (system-type)))
+    (define grab7th (get-ffi-obj 'grab7th test-lib
+                                 (_fun #:callback-exns? #t _intptr -> _int)))
+    (err/rt-test (grab7th 16) exn:fail?)
+    (test #f in-atomic-mode?)
+    (test '(escaped #t) escape-in-atomic-mode (lambda () (grab7th 16)))
+    (test #f in-atomic-mode?)))
 
 ;; check in-array
 (let ()

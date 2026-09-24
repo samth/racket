@@ -1934,10 +1934,18 @@
 
 ;; ----------------------------------------
 
+;; The scheduler's atomic-mode depth, which the thread layer keeps in a
+;; virtual register
+(define-syntax (current-atomic-depth stx)
+  (syntax-case stx ()
+    [(_) (with-syntax ([pos (datum->syntax #'here current-atomic-virtual-register)])
+           #'(virtual-register pos))]))
+
 ;; Call `thunk` to enter a foreign call while wrapping it with a way
 ;; to escape with an exception from a foreign callback during the
 ;; call:
 (define (call-guarding-foreign-escape thunk clean-up)
+  (define atomic-depth (current-atomic-depth))
   ((call-with-c-return
     (lambda ()
       (call-with-current-continuation
@@ -1947,7 +1955,15 @@
             ;; Deliver an exception re-raise after returning back
             ;; from `call-with-c-return`:
             (|#%app| esc (lambda ()
-                           (scheduler-end-atomic) ; error in callback means during atomic mode
+                           ;; An exception from a callback arrives in the
+                           ;; callback's atomic mode, which the escape
+                           ;; abandons; one from the foreign procedure
+                           ;; itself, such as an invalid memory reference,
+                           ;; arrives with no added atomic mode to end
+                           (let loop ()
+                             (when (fx> (current-atomic-depth) atomic-depth)
+                               (scheduler-end-atomic)
+                               (loop)))
                            (clean-up)
                            (raise x))))
           (lambda ()

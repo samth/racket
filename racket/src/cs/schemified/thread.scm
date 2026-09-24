@@ -2918,11 +2918,16 @@
     (cons
      prop:waiter
      (let ((temp10_0
-            (lambda args_0
-              (|#%app|
-               host:internal-error
-               "should not suspend a select-waiter"))))
-       (let ((temp11_0 (lambda (w_0 s_0) (|#%app| (select-waiter-proc w_0)))))
+            (|#%name|
+             waiter.rkt:38:34
+             (lambda args_0
+               (|#%app|
+                host:internal-error
+                "should not suspend a select-waiter")))))
+       (let ((temp11_0
+              (|#%name|
+               waiter.rkt:39:33
+               (lambda (w_0 s_0) (|#%app| (select-waiter-proc w_0))))))
          (make-waiter-methods.1 temp11_0 temp10_0)))))
    (current-inspector)
    #f
@@ -6258,7 +6263,10 @@
          (raise-argument-error 'make-custodian-box "custodian?" c_0))
        (let ((b_0 (custodian-box1.1 v_0 (custodian-get-shutdown-sema c_0))))
          (begin
-           (if (let ((temp78_0 (lambda (b_1) (set-custodian-box-v! b_1 #f))))
+           (if (let ((temp78_0
+                      (|#%name|
+                       custodian.rkt:496:37
+                       (lambda (b_1) (set-custodian-box-v! b_1 #f)))))
                  (do-custodian-register.1 #f #f #t #f #t c_0 b_0 temp78_0))
              (void)
              (raise-arguments-error
@@ -6757,11 +6765,15 @@
                   (cons
                    prop:waiter
                    (let ((temp51_0
-                          (lambda (t_0 i-cb_0)
-                            (thread-deschedule!.1 void t_0 #f i-cb_0))))
+                          (|#%name|
+                           thread.rkt:163:14
+                           (lambda (t_0 i-cb_0)
+                             (thread-deschedule!.1 void t_0 #f i-cb_0)))))
                      (let ((temp52_0
-                            (lambda (t_0 v_0)
-                              (begin (thread-reschedule! t_0) v_0))))
+                            (|#%name|
+                             thread.rkt:164:13
+                             (lambda (t_0 v_0)
+                               (begin (thread-reschedule! t_0) v_0)))))
                        (make-waiter-methods.1 temp52_0 temp51_0))))))
              (list
               app_0
@@ -8404,7 +8416,10 @@
                       (lambda ()
                         (|#%app|
                          (let ((temp89_0 (1/current-thread)))
-                           (let ((temp91_0 (lambda () (lambda () (loop_0)))))
+                           (let ((temp91_0
+                                  (|#%name|
+                                   thread.rkt:955:28
+                                   (lambda () (lambda () (loop_0))))))
                              (let ((temp89_1 temp89_0))
                                (thread-deschedule!.1
                                 void
@@ -8730,8 +8745,12 @@
                  t_0
                  (lambda () (thread-reschedule! t_0)))
                 (let ((temp96_0
-                       (lambda ()
-                         (begin (set-thread-mailbox-wakeup! t_0 void) void))))
+                       (|#%name|
+                        thread.rkt:1236:29
+                        (lambda ()
+                          (begin
+                            (set-thread-mailbox-wakeup! t_0 void)
+                            void)))))
                   (let ((do-yield_0
                          (thread-deschedule!.1 void t_0 #f temp96_0)))
                     (lambda ()
@@ -10261,20 +10280,22 @@
                                               (lambda (thunk_0) thunk_0))
                                              #f)))
                                       (let ((temp45_0
-                                             (lambda (sched-info_0
-                                                      polled-all?_0
-                                                      no-wrappers?_0)
-                                               (if (not polled-all?_0)
-                                                 (poll-loop_0)
-                                                 (if (procedure? timeout10_0)
-                                                   (if thunk-result?38_0
-                                                     timeout10_0
-                                                     (begin
-                                                       (future-barrier-exit)
-                                                       (|#%app| timeout10_0)))
-                                                   (if thunk-result?38_0
-                                                     (lambda () #f)
-                                                     #f))))))
+                                             (|#%name|
+                                              sync.rkt:114:32
+                                              (lambda (sched-info_0
+                                                       polled-all?_0
+                                                       no-wrappers?_0)
+                                                (if (not polled-all?_0)
+                                                  (poll-loop_0)
+                                                  (if (procedure? timeout10_0)
+                                                    (if thunk-result?38_0
+                                                      timeout10_0
+                                                      (begin
+                                                        (future-barrier-exit)
+                                                        (|#%app| timeout10_0)))
+                                                    (if thunk-result?38_0
+                                                      (lambda () #f)
+                                                      #f)))))))
                                         (sync-poll.1
                                          #f
                                          #t
@@ -10332,22 +10353,24 @@
                                                     (lambda (thunk_0) thunk_0))
                                                    #f)))
                                             (let ((temp50_0
-                                                   (lambda (sched-info_0
-                                                            now-polled-all?_0
-                                                            no-wrappers?_0)
-                                                     (begin
-                                                       (if timeout-at_0
-                                                         (schedule-info-add-timeout-at!
-                                                          sched-info_0
-                                                          timeout-at_0)
-                                                         (void))
-                                                       (thread-yield
-                                                        sched-info_0)
-                                                       (loop_0
-                                                        #f
-                                                        (if polled-all?_0
-                                                          polled-all?_0
-                                                          now-polled-all?_0))))))
+                                                   (|#%name|
+                                                    sync.rkt:163:35
+                                                    (lambda (sched-info_0
+                                                             now-polled-all?_0
+                                                             no-wrappers?_0)
+                                                      (begin
+                                                        (if timeout-at_0
+                                                          (schedule-info-add-timeout-at!
+                                                           sched-info_0
+                                                           timeout-at_0)
+                                                          (void))
+                                                        (thread-yield
+                                                         sched-info_0)
+                                                        (loop_0
+                                                         #f
+                                                         (if polled-all?_0
+                                                           polled-all?_0
+                                                           now-polled-all?_0)))))))
                                               (sync-poll.1
                                                did-work?_0
                                                #t
@@ -10379,20 +10402,22 @@
                      (1/check-for-break)
                      (|#%app| thunk_0)))
                  (let ((temp52_0
-                        (lambda (sched-info_0 polled-all?_0 no-wrappers?_0)
-                          (begin
-                            (future-barrier-exit)
-                            (if polled-all?_0
-                              (if (if (real? timeout10_0)
-                                    (zero? timeout10_0)
-                                    #f)
-                                #f
-                                (if (procedure? timeout10_0)
-                                  (|#%app| timeout10_0)
-                                  (if no-wrappers?_0
-                                    (go_0 #f)
-                                    (|#%app| (go_0 #t)))))
-                              (|#%app| (go_0 #t)))))))
+                        (|#%name|
+                         sync.rkt:195:25
+                         (lambda (sched-info_0 polled-all?_0 no-wrappers?_0)
+                           (begin
+                             (future-barrier-exit)
+                             (if polled-all?_0
+                               (if (if (real? timeout10_0)
+                                     (zero? timeout10_0)
+                                     #f)
+                                 #f
+                                 (if (procedure? timeout10_0)
+                                   (|#%app| timeout10_0)
+                                   (if no-wrappers?_0
+                                     (go_0 #f)
+                                     (|#%app| (go_0 #t)))))
+                               (|#%app| (go_0 #t))))))))
                    (sync-poll.1
                     #f
                     #t
@@ -11245,23 +11270,25 @@
                               (thread-reschedule! t_0)
                               (void)))))
                        (let ((temp88_0
-                              (lambda ()
-                                (begin
-                                  (set-syncing-wakeup! s_0 void)
-                                  (if (syncing-selected s_0)
-                                    (void)
-                                    (syncing-interrupt! s_0))
-                                  (lambda ()
-                                    (|#%app|
-                                     (begin
-                                       (start-atomic)
-                                       (begin0
-                                         (begin
-                                           (if (syncing-selected s_0)
-                                             (void)
-                                             (syncing-retry! s_0))
-                                           (retry_0))
-                                         (end-atomic/no-barrier-exit)))))))))
+                              (|#%name|
+                               sync.rkt:746:28
+                               (lambda ()
+                                 (begin
+                                   (set-syncing-wakeup! s_0 void)
+                                   (if (syncing-selected s_0)
+                                     (void)
+                                     (syncing-interrupt! s_0))
+                                   (lambda ()
+                                     (|#%app|
+                                      (begin
+                                        (start-atomic)
+                                        (begin0
+                                          (begin
+                                            (if (syncing-selected s_0)
+                                              (void)
+                                              (syncing-retry! s_0))
+                                            (retry_0))
+                                          (end-atomic/no-barrier-exit))))))))))
                          (thread-deschedule!.1
                           void
                           t_0
@@ -11458,27 +11485,31 @@
   (lambda (ns_0 just-poll?_0 fast-only?_0 sched-info_0)
     (let ((temp93_0 (nested-sync-evt-s ns_0)))
       (let ((temp94_0
-             (lambda (sched-info_1 polled-all?_0 no-wrappers?_0)
-               (values polled-all?_0 ns_0))))
+             (|#%name|
+              sync.rkt:794:22
+              (lambda (sched-info_1 polled-all?_0 no-wrappers?_0)
+                (values polled-all?_0 ns_0)))))
         (let ((temp95_0
-               (lambda (thunk_0)
-                 (let ((next_0 (nested-sync-evt-next ns_0)))
-                   (let ((orig-evt_0 (nested-sync-evt-orig-evt ns_0)))
-                     (values
-                      #f
-                      (control-state-evt9.1
-                       (poll-guard-evt10.1
-                        (lambda (poll?_0)
-                          (let ((r_0 (|#%call-with-values| thunk_0 next_0)))
-                            (if (1/evt? r_0)
-                              r_0
-                              (wrap-evt7.1
-                               the-always-evt
-                               (lambda (v_0) orig-evt_0))))))
-                       values
-                       'reset
-                       void
-                       'reset)))))))
+               (|#%name|
+                sync.rkt:796:25
+                (lambda (thunk_0)
+                  (let ((next_0 (nested-sync-evt-next ns_0)))
+                    (let ((orig-evt_0 (nested-sync-evt-orig-evt ns_0)))
+                      (values
+                       #f
+                       (control-state-evt9.1
+                        (poll-guard-evt10.1
+                         (lambda (poll?_0)
+                           (let ((r_0 (|#%call-with-values| thunk_0 next_0)))
+                             (if (1/evt? r_0)
+                               r_0
+                               (wrap-evt7.1
+                                the-always-evt
+                                (lambda (v_0) orig-evt_0))))))
+                        values
+                        'reset
+                        void
+                        'reset))))))))
           (let ((temp94_1 temp94_0) (temp93_1 temp93_0))
             (sync-poll.1
              #f
@@ -12755,18 +12786,20 @@
                                  (create-future thunk-in-prompt_0 #f #f)))
                             (let ((temp61_0 (object-name thunk11_0)))
                               (let ((temp67_0
-                                     (lambda ()
-                                       (letrec*
-                                        ((loop_0
-                                          (|#%name|
-                                           loop
-                                           (lambda ()
-                                             (call-with-continuation-prompt
-                                              (lambda ()
-                                                (touch-blocked me-f_0))
-                                              future-start-prompt-tag
-                                              (lambda args_0 (loop_0)))))))
-                                        (loop_0)))))
+                                     (|#%name|
+                                      future.rkt:384:23
+                                      (lambda ()
+                                        (letrec*
+                                         ((loop_0
+                                           (|#%name|
+                                            loop
+                                            (lambda ()
+                                              (call-with-continuation-prompt
+                                               (lambda ()
+                                                 (touch-blocked me-f_0))
+                                               future-start-prompt-tag
+                                               (lambda args_0 (loop_0)))))))
+                                         (loop_0))))))
                                 (let ((temp61_1 temp61_0))
                                   (call-with-values
                                    (lambda ()
@@ -13033,7 +13066,9 @@
               (begin
                 (|#%app|
                  (let ((temp87_0
-                        (lambda () (lock-release (future*-lock f_0)))))
+                        (|#%name|
+                         future.rkt:581:38
+                         (lambda () (lock-release (future*-lock f_0))))))
                    (let ((temp88_0 (current-thread/in-racket)))
                      (let ((temp87_1 temp87_0))
                        (thread-deschedule!.1 temp87_1 temp88_0 #f 'future)))))
@@ -13076,12 +13111,14 @@
              break-enabled-key
              parallel-break-disabled-cell
              (let ((temp93_0
-                    (lambda ()
-                      (begin
-                        (1/current-future #f)
-                        (unsafe-abort-current-continuation/no-wind
-                         future-start-prompt-tag
-                         (void))))))
+                    (|#%name|
+                     future.rkt:635:39
+                     (lambda ()
+                       (begin
+                         (1/current-future #f)
+                         (unsafe-abort-current-continuation/no-wind
+                          future-start-prompt-tag
+                          (void)))))))
                (future-suspend.1 temp93_0 #t #f))))
           (void)))
       (void))))
@@ -13743,14 +13780,16 @@
                                                    (let ((temp117_0
                                                           (not stop?_0)))
                                                      (let ((temp118_0
-                                                            (lambda ()
-                                                              (begin
-                                                                (|#%app|
-                                                                 set-engine-thread-cell-state!
-                                                                 #f)
-                                                                (unsafe-abort-current-continuation/no-wind
-                                                                 future-scheduler-prompt-tag
-                                                                 (void))))))
+                                                            (|#%name|
+                                                             future.rkt:1120:32
+                                                             (lambda ()
+                                                               (begin
+                                                                 (|#%app|
+                                                                  set-engine-thread-cell-state!
+                                                                  #f)
+                                                                 (unsafe-abort-current-continuation/no-wind
+                                                                  future-scheduler-prompt-tag
+                                                                  (void)))))))
                                                        (future-suspend.1
                                                         temp118_0
                                                         temp117_0
@@ -14309,7 +14348,7 @@
         (void)
         null)
       (begin
-        (let ((temp4_0 (lambda () (void))))
+        (let ((temp4_0 (|#%name| schedule.rkt:301:21 (lambda () (void)))))
           (do-make-thread.1
            #t
            unsafe-undefined
@@ -14551,65 +14590,67 @@
                                  break-enabled-key
                                  (make-thread-cell #f)
                                  (let ((temp5_0
-                                        (lambda ()
-                                          (begin
-                                            (1/semaphore-wait ready-sema_0)
-                                            (let ((with-handlers-predicate7_0
-                                                   (|#%name|
-                                                    with-handlers-predicate7
-                                                    (lambda (x_0) #t))))
-                                              (let ((with-handlers-handler8_0
-                                                     (|#%name|
-                                                      with-handlers-handler8
-                                                      (lambda (x_0)
-                                                        (begin
-                                                          (set! result-kind_0
-                                                            'exn)
-                                                          (set! result_0
-                                                            x_0))))))
-                                                (let ((bpz_0
-                                                       (continuation-mark-set-first
-                                                        #f
-                                                        break-enabled-key)))
-                                                  (call-handled-body
-                                                   bpz_0
-                                                   (lambda (e_0)
-                                                     (select-handler/no-breaks
-                                                      e_0
-                                                      bpz_0
-                                                      (list
-                                                       (cons
-                                                        with-handlers-predicate7_0
-                                                        with-handlers-handler8_0))))
-                                                   (lambda ()
-                                                     (with-continuation-mark*
-                                                      authentic
-                                                      break-enabled-key
-                                                      init-break-cell_0
-                                                      (begin
-                                                        (set! result_0
-                                                          (call-with-continuation-barrier
-                                                           (lambda ()
-                                                             (call-with-values
-                                                              (lambda ()
-                                                                (call-with-continuation-prompt
-                                                                 thunk2_0
-                                                                 (default-continuation-prompt-tag)
-                                                                 (lambda (thunk_0)
-                                                                   (abort-current-continuation
-                                                                    (default-continuation-prompt-tag)
-                                                                    thunk_0))))
-                                                              list))))
-                                                        (begin
-                                                          (start-atomic)
-                                                          (begin0
-                                                            (begin
-                                                              (set! result-kind_0
-                                                                'value)
-                                                              (thread-dead!
-                                                               t_0))
-                                                            (end-atomic)))
-                                                        (thread-engine-block))))))))))))
+                                        (|#%name|
+                                         nested-thread.rkt:30:11
+                                         (lambda ()
+                                           (begin
+                                             (1/semaphore-wait ready-sema_0)
+                                             (let ((with-handlers-predicate7_0
+                                                    (|#%name|
+                                                     with-handlers-predicate7
+                                                     (lambda (x_0) #t))))
+                                               (let ((with-handlers-handler8_0
+                                                      (|#%name|
+                                                       with-handlers-handler8
+                                                       (lambda (x_0)
+                                                         (begin
+                                                           (set! result-kind_0
+                                                             'exn)
+                                                           (set! result_0
+                                                             x_0))))))
+                                                 (let ((bpz_0
+                                                        (continuation-mark-set-first
+                                                         #f
+                                                         break-enabled-key)))
+                                                   (call-handled-body
+                                                    bpz_0
+                                                    (lambda (e_0)
+                                                      (select-handler/no-breaks
+                                                       e_0
+                                                       bpz_0
+                                                       (list
+                                                        (cons
+                                                         with-handlers-predicate7_0
+                                                         with-handlers-handler8_0))))
+                                                    (lambda ()
+                                                      (with-continuation-mark*
+                                                       authentic
+                                                       break-enabled-key
+                                                       init-break-cell_0
+                                                       (begin
+                                                         (set! result_0
+                                                           (call-with-continuation-barrier
+                                                            (lambda ()
+                                                              (call-with-values
+                                                               (lambda ()
+                                                                 (call-with-continuation-prompt
+                                                                  thunk2_0
+                                                                  (default-continuation-prompt-tag)
+                                                                  (lambda (thunk_0)
+                                                                    (abort-current-continuation
+                                                                     (default-continuation-prompt-tag)
+                                                                     thunk_0))))
+                                                               list))))
+                                                         (begin
+                                                           (start-atomic)
+                                                           (begin0
+                                                             (begin
+                                                               (set! result-kind_0
+                                                                 'value)
+                                                               (thread-dead!
+                                                                t_0))
+                                                             (end-atomic)))
+                                                         (thread-engine-block)))))))))))))
                                    (do-make-thread.1
                                     #f
                                     unsafe-undefined

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+# define _GNU_SOURCE /* for REG_RIP and dladdr's Dl_info */
+#endif
 #include "system.h"
 #include <setjmp.h>
 #include <errno.h>
@@ -777,7 +780,62 @@ void S_register_scheme_signal(iptr sig) {
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
-static void handle_signal(INT sig, UNUSED siginfo_t *si, UNUSED void *data) {
+#if defined(__linux__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__)) \
+    && !defined(PORTABLE_BYTECODE)
+# define DESCRIBE_FAULT_PC
+# include <dlfcn.h>
+# include <ucontext.h>
+#endif
+
+/* Describe a memory fault for its error message: the faulting address,
+   and where the platform lets us find it, the instruction that faulted,
+   named when it is in a shared object or executable. The result is used
+   as a format string, so tildes are doubled. */
+static void describe_memory_fault(siginfo_t *si, void *data, char *buf, size_t len) {
+  char raw[512];
+  size_t n, i, j;
+  void *pc = NULL;
+#if defined(DESCRIBE_FAULT_PC)
+  ucontext_t *uc = (ucontext_t *)data;
+# if defined(__x86_64__)
+  pc = (void *)uc->uc_mcontext.gregs[REG_RIP];
+# elif defined(__i386__)
+  pc = (void *)uc->uc_mcontext.gregs[REG_EIP];
+# elif defined(__aarch64__)
+  pc = (void *)uc->uc_mcontext.pc;
+# endif
+#else
+  (void)data;
+#endif
+
+  n = snprintf(raw, sizeof(raw), "invalid memory reference at address %p",
+               si ? si->si_addr : NULL);
+  if ((pc != NULL) && (n < sizeof(raw))) {
+#if defined(DESCRIBE_FAULT_PC)
+    Dl_info info;
+    if (dladdr(pc, &info) && (info.dli_fname != NULL)) {
+      if ((info.dli_sname != NULL) && (info.dli_saddr != NULL))
+        snprintf(raw + n, sizeof(raw) - n, " (pc %p in %s+0x%lx from %s)",
+                 pc, info.dli_sname,
+                 (unsigned long)((char *)pc - (char *)info.dli_saddr),
+                 info.dli_fname);
+      else
+        snprintf(raw + n, sizeof(raw) - n, " (pc %p in %s+0x%lx)",
+                 pc, info.dli_fname,
+                 (unsigned long)((char *)pc - (char *)info.dli_fbase));
+    } else
+#endif
+      snprintf(raw + n, sizeof(raw) - n, " (pc %p)", pc);
+  }
+
+  for (i = 0, j = 0; raw[i] && (j + 2 < len); i++) {
+    if (raw[i] == '~') buf[j++] = '~';
+    buf[j++] = raw[i];
+  }
+  buf[j] = 0;
+}
+
+static void handle_signal(INT sig, siginfo_t *si, void *data) {
 /* printf("handle_signal(%d) for tc %x\n", sig, UNFIX(get_thread_context())); fflush(stdout); */
   /* check for particular signals */
     switch (sig) {
@@ -816,11 +874,14 @@ static void handle_signal(INT sig, UNUSED siginfo_t *si, UNUSED void *data) {
 #endif /* SIGBUS */
         case SIGSEGV: {
             ptr tc = get_thread_context();
+            char msg[1024];
             RESET_SIGNAL
-            if ((tc == (ptr)0) || THREAD_GC(tc)->during_alloc)
+            describe_memory_fault(si, data, msg, sizeof(msg));
+            if ((tc == (ptr)0) || THREAD_GC(tc)->during_alloc) {
+                fprintf(stderr, "%s\n", msg);
                 S_error_abort("nonrecoverable invalid memory reference");
-            else
-                S_error_reset("invalid memory reference");
+            } else
+                S_error_reset(msg);
             break;
         }
         default:

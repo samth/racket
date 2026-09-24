@@ -14,6 +14,7 @@
          compiler/find-exe
          raco/command-name
          racket/system
+         (only-in racket/os getpid)
          raco/testing
          pkg/lib
          pkg/path
@@ -46,6 +47,46 @@
 (define task-sema (make-semaphore 1))
 
 (define default-timeout #f) ; #f means "none"
+
+;; In 'direct mode, the test runs in a thread of this process, and the
+;; timeout is enforced by another thread of this process. If the test
+;; keeps Racket's threads from running at all (say, by spinning in atomic
+;; mode), that timeout never fires. So on Unix, also start a small shell
+;; process that, a grace period after the timeout, reports the timeout on
+;; the original stderr and kills this process. The shell kills only its
+;; parent, so it does nothing if this process has exited and the pid has
+;; been reused; a plumber kills the shell if this process exits early.
+;; Returns a procedure that cancels the watchdog.
+(define (start-timeout-watchdog timeout name)
+  (define stderr (current-error-port))
+  (cond
+    [(and (real? timeout)
+          (< timeout +inf.0)
+          (eq? (system-path-convention-type) 'unix)
+          (file-exists? "/bin/sh"))
+     (define grace (max 10 (* 0.1 timeout)))
+     (define-values (sp out in err)
+       (subprocess #f #f (and (file-stream-port? stderr) stderr)
+                   "/bin/sh" "-c"
+                   (string-append
+                    "sleep \"$1\"; "
+                    "if [ \"$(ps -o ppid= -p $$ | tr -d ' ')\" = \"$3\" ]; then "
+                    "echo \"$2\" >&2; kill -KILL \"$3\"; fi")
+                   "watchdog"
+                   (number->string (inexact->exact (ceiling (+ timeout grace))))
+                   (format "~a: ~a: timeout after ~a seconds, and the test did not respond; killing"
+                           test-exe-name name timeout)
+                   (number->string (getpid))))
+     (close-output-port in)
+     (close-input-port out)
+     (when err (close-input-port err))
+     (define flush-handle
+       (plumber-add-flush! (current-plumber) (lambda (h) (subprocess-kill sp #t))))
+     (lambda ()
+       (plumber-flush-handle-remove! flush-handle)
+       (subprocess-kill sp #t))]
+    [else void]))
+
 (define default-mode #f) ; #f => depends on how many files are provided
 (define default-output-file #f) ; #f means no --output option specified
 
@@ -200,6 +241,7 @@
           [(direct)
            (define pre (test-report #:display? #f #:exit? #f))
            (define done? #f)
+           (define cancel-watchdog (start-timeout-watchdog timeout (extract-file-name p)))
            (define t
              (parameterize ([current-output-port stdout]
                             [current-error-port stderr]
@@ -211,7 +253,9 @@
                   (dynamic-require p d)
                   ((executable-yield-handler) 0)
                   (set! done? #t)))))
-           (unless (thread? (sync/timeout timeout t))
+           (define finished? (thread? (sync/timeout timeout t)))
+           (cancel-watchdog)
+           (unless finished?
              (set! timeout? #t)
              (error test-exe-name "timeout after ~a seconds" timeout))
            (unless done?

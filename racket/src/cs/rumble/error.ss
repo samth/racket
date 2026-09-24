@@ -1277,3 +1277,9 @@
 
 (define (set-log-system-message! proc)
   (set! log-system-message proc))
+
+;; For layers below "io", such as "thread", to log through the logger
+;; that "io" installs; `log-system-message` itself is assigned, so it
+;; cannot be exported
+(define (log-system-message* level msg)
+  (log-system-message level msg))

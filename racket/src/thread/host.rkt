@@ -115,4 +115,5 @@
 
         [prop:unsafe-authentic-override host:prop:unsafe-authentic-override]
         [get-system-stats host:get-system-stats]
-        [internal-error host:internal-error])
+        [internal-error host:internal-error]
+        [log-system-message host:log-system-message])

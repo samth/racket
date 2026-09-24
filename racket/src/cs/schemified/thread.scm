@@ -1366,6 +1366,8 @@
   (hash-ref (primitive-table '|#%engine|) 'get-system-stats #f))
 (define host:internal-error
   (hash-ref (primitive-table '|#%engine|) 'internal-error #f))
+(define host:log-system-message
+  (hash-ref (primitive-table '|#%engine|) 'log-system-message #f))
 (define finish_2698
   (make-struct-type-install-properties
    '(node)
@@ -10292,72 +10294,92 @@
                                           app_0
                                           (current-inexact-monotonic-milliseconds)))
                                        #f)))
-                                (letrec*
-                                 ((loop_0
-                                   (|#%name|
-                                    loop
-                                    (lambda (did-work?_0 polled-all?_0)
-                                      (if (if polled-all?_0
-                                            (if timeout10_0
-                                              (<=
-                                               timeout-at_0
-                                               (current-inexact-monotonic-milliseconds))
-                                              #f)
-                                            #f)
-                                        (begin
-                                          (start-atomic)
-                                          (if (syncing-selected s_0)
-                                            (begin (end-atomic) (loop_0 #f #f))
-                                            (begin
-                                              (syncing-done! s_0 none-syncer)
-                                              (end-atomic)
-                                              (if thunk-result?38_0
-                                                (lambda () #f)
-                                                #f))))
-                                        (if (if (all-asynchronous? s_0)
-                                              (if (not (syncing-selected s_0))
-                                                (not (syncing-need-retry? s_0))
+                                (let ((atomic-spins_0 0))
+                                  (letrec*
+                                   ((loop_0
+                                     (|#%name|
+                                      loop
+                                      (lambda (did-work?_0 polled-all?_0)
+                                        (if (if polled-all?_0
+                                              (if timeout10_0
+                                                (<=
+                                                 timeout-at_0
+                                                 (current-inexact-monotonic-milliseconds))
                                                 #f)
                                               #f)
                                           (begin
-                                            (suspend-syncing-thread
-                                             s_0
-                                             timeout-at_0)
-                                            (set-syncing-wakeup! s_0 void)
-                                            (loop_0 #f #t))
-                                          (let ((temp48_0
-                                                 (if thunk-result?38_0
-                                                   (|#%name|
-                                                    temp48
-                                                    (lambda (thunk_0) thunk_0))
-                                                   #f)))
-                                            (let ((temp50_0
-                                                   (lambda (sched-info_0
-                                                            now-polled-all?_0
-                                                            no-wrappers?_0)
-                                                     (begin
-                                                       (if timeout-at_0
-                                                         (schedule-info-add-timeout-at!
-                                                          sched-info_0
-                                                          timeout-at_0)
-                                                         (void))
-                                                       (thread-yield
-                                                        sched-info_0)
-                                                       (loop_0
-                                                        #f
-                                                        (if polled-all?_0
-                                                          polled-all?_0
-                                                          now-polled-all?_0))))))
-                                              (sync-poll.1
-                                               did-work?_0
-                                               #t
-                                               temp50_0
-                                               #f
-                                               #f
-                                               unsafe-undefined
-                                               temp48_0
-                                               s_0)))))))))
-                                 (loop_0 #t #f))))))
+                                            (start-atomic)
+                                            (if (syncing-selected s_0)
+                                              (begin
+                                                (end-atomic)
+                                                (loop_0 #f #f))
+                                              (begin
+                                                (syncing-done! s_0 none-syncer)
+                                                (end-atomic)
+                                                (if thunk-result?38_0
+                                                  (lambda () #f)
+                                                  #f))))
+                                          (if (if (all-asynchronous? s_0)
+                                                (if (not
+                                                     (syncing-selected s_0))
+                                                  (not
+                                                   (syncing-need-retry? s_0))
+                                                  #f)
+                                                #f)
+                                            (begin
+                                              (suspend-syncing-thread
+                                               s_0
+                                               timeout-at_0)
+                                              (set-syncing-wakeup! s_0 void)
+                                              (loop_0 #f #t))
+                                            (let ((temp48_0
+                                                   (if thunk-result?38_0
+                                                     (|#%name|
+                                                      temp48
+                                                      (lambda (thunk_0)
+                                                        thunk_0))
+                                                     #f)))
+                                              (let ((temp50_0
+                                                     (lambda (sched-info_0
+                                                              now-polled-all?_0
+                                                              no-wrappers?_0)
+                                                       (begin
+                                                         (if timeout-at_0
+                                                           (schedule-info-add-timeout-at!
+                                                            sched-info_0
+                                                            timeout-at_0)
+                                                           (void))
+                                                         (if (fx=
+                                                              0
+                                                              (current-atomic))
+                                                           (void)
+                                                           (begin
+                                                             (set! atomic-spins_0
+                                                               (fx+
+                                                                atomic-spins_0
+                                                                1))
+                                                             (if (fx=
+                                                                  atomic-spins_0
+                                                                  1000000)
+                                                               (report-sync-in-atomic-mode)
+                                                               (void))))
+                                                         (thread-yield
+                                                          sched-info_0)
+                                                         (loop_0
+                                                          #f
+                                                          (if polled-all?_0
+                                                            polled-all?_0
+                                                            now-polled-all?_0))))))
+                                                (sync-poll.1
+                                                 did-work?_0
+                                                 #t
+                                                 temp50_0
+                                                 #f
+                                                 #f
+                                                 unsafe-undefined
+                                                 temp48_0
+                                                 s_0)))))))))
+                                   (loop_0 #t #f)))))))
                         (lambda ()
                           (begin
                             (start-atomic)
@@ -11146,6 +11168,15 @@
               (void))))))
        (loop_0 (syncing-syncers s_0))))))
 (define syncing-queue-retry! (lambda (s_0) (set-syncing-need-retry?! s_0 #t)))
+(define ATOMIC-SPINS-TO-REPORT 1000000)
+(define report-sync-in-atomic-mode
+  (lambda ()
+    (|#%app|
+     host:log-system-message
+     'error
+     (string-append
+      "sync: still waiting after a million polls in atomic mode,"
+      " where no other thread can run; the waiting thread may never proceed"))))
 (define all-asynchronous?
   (lambda (s_0)
     (begin

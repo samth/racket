@@ -102,6 +102,7 @@
           linklet-instantiate-key ; not exported to Racket
           set-error-display-eprintf! ; not exported to Racket
           set-log-system-message! ; not exported to Racket
+          log-system-message* ; not exported to Racket
           set-error-value->string! ; not exported to Racket
 
           current-inspector

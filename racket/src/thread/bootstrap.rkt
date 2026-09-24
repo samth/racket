@@ -315,7 +315,9 @@
                   'continuation-current-primitive (lambda (k excls incls) #f)
                   'prop:unsafe-authentic-override prop:unsafe-authentic-override
                   'get-system-stats (lambda () (values 0))
-                  'internal-error error))
+                  'internal-error error
+                  'log-system-message (lambda (level msg)
+                                        (log-message (current-logger) level msg #f))))
 
 ;; add dummy definitions that implement pthreads and conditions etc.
 ;; dummy definitions that error

@@ -256,7 +256,8 @@
         'continuation-current-primitive rumble:continuation-current-primitive
         'prop:unsafe-authentic-override prop:unsafe-authentic-override
         'get-system-stats get-system-stats
-        'internal-error internal-error)]
+        'internal-error internal-error
+        'log-system-message log-system-message*)]
       [else #f]))
 
   ;; Tie knots:

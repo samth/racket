@@ -1,5 +1,6 @@
 #lang racket/base
-(require "check.rkt"
+(require racket/fixnum
+         "check.rkt"
          "internal-error.rkt"
          "evt.rkt"
          "atomic.rkt"
@@ -11,7 +12,8 @@
          (only-in (submod "thread.rkt" scheduling)
                   thread-descheduled?)
          "schedule-info.rkt"
-         "pre-poll.rkt")
+         "pre-poll.rkt"
+         (only-in "host.rkt" host:log-system-message))
 
 (provide sync
          sync/timeout
@@ -132,6 +134,8 @@
           (define timeout-at
             (and timeout
                  (+ (* timeout 1000) (current-inexact-monotonic-milliseconds))))
+          ;; failed polls in a row while the caller is in atomic mode
+          (define atomic-spins 0)
           (let loop ([did-work? #t] [polled-all? #f])
             (cond
               [(and polled-all?
@@ -163,6 +167,10 @@
                           #:fail-k (lambda (sched-info now-polled-all? no-wrappers?)
                                      (when timeout-at
                                        (schedule-info-add-timeout-at! sched-info timeout-at))
+                                     (unless (fx= 0 (current-atomic))
+                                       (set! atomic-spins (fx+ atomic-spins 1))
+                                       (when (fx= atomic-spins ATOMIC-SPINS-TO-REPORT)
+                                         (report-sync-in-atomic-mode)))
                                      (thread-yield sched-info)
                                      (loop #f (or polled-all? now-polled-all?))))]))]))
      (lambda ()
@@ -670,6 +678,21 @@
 ;; that might immediately succeed
 (define (syncing-queue-retry! s)
   (set-syncing-need-retry?! s #t))
+
+;; ----------------------------------------
+
+;; In atomic mode, `thread-yield` cannot switch to another thread, so a
+;; `sync` that waits for something another thread must do can spin
+;; forever; that happens when code leaves atomic mode on by mistake, for
+;; example by escaping from an `atomically` region. Report a wait that has
+;; spun this many times, which takes seconds.
+(define ATOMIC-SPINS-TO-REPORT 1000000)
+
+(define (report-sync-in-atomic-mode)
+  (host:log-system-message
+   'error
+   (string-append "sync: still waiting after a million polls in atomic mode,"
+                  " where no other thread can run; the waiting thread may never proceed")))
 
 ;; ----------------------------------------
 

@@ -11,6 +11,7 @@
          ffi/unsafe/global
          ffi/unsafe/atomic
          ffi/unsafe/os-async-channel
+         (only-in ffi/unsafe/vm vm-primitive)
          ffi/vector
          racket/extflonum
          racket/place
@@ -1015,6 +1016,21 @@
           (loop)))))
     (check (lambda (f) (os-async-channel-put chan f)) add1))
   (check (box 20) (lambda (x) 20)))
+
+;; Racket CS's handler for GLib log messages must not let a collection run
+;; while C code is in the middle of a call, where the C code may still use
+;; GC-managed memory that it was passed. Converting a large message to a
+;; string allocates enough to request a collection.
+(when (eq? 'chez-scheme (system-type 'vm))
+  (define log_then_write (get-ffi-obj 'log_then_write test-lib
+                                      (_fun _intptr _bytes/nul-terminated _pointer -> _void)))
+  (define glib-log-message (vm-primitive 'glib-log-message))
+  (define big-message (make-bytes (* 16 1024 1024) (char->integer #\x)))
+  (for ([i 3])
+    (define out (malloc _int 'atomic))
+    (ptr-set! out _int 0)
+    (log_then_write glib-log-message big-message out)
+    (test 42 ptr-ref out _int)))
 
 ;; check `#:callback-exns?`
 (let ([callback_hungry (get-ffi-obj 'callback_hungry test-lib

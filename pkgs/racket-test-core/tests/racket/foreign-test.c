@@ -424,6 +424,15 @@ X int callback_hungry(int (*f)(void*)) {
   return f(use_stack_space);
 }
 
+/* Log a message through `log`, as a GLib log handler, and then write to
+   `*out`, the way a GTK function can log a warning while it computes a
+   size that it stores through a pointer argument */
+X void log_then_write(void (*log)(const char *domain, int level, const char *message),
+                      const char *message, int *out) {
+  log("test", 1 << 7 /* G_LOG_LEVEL_DEBUG */, message);
+  *out = 42;
+}
+
 X void underscore_variable() {
   return;
 }

@@ -575,9 +575,20 @@
                  (cond
                   [(eqv? 0 (get-thread-id)) (go)]
                   [else
+                   ;; `__disable_interrupts` below is for the main thread;
+                   ;; here, as before, allow interrupts
+                   (enable-interrupts)
                    (ensure-virtual-registers)
-                   (post-as-asynchronous-callback go)]))))])
-      (let ([callable (foreign-callable __collect_safe glib-log-message (string int string) void)])
+                   (post-as-asynchronous-callback go)
+                   (disable-interrupts)]))))])
+      ;; GLib calls this handler in the middle of whatever function logged,
+      ;; which may be a GTK function that Racket called with pointers to
+      ;; GC-managed memory, as for an out argument. `__disable_interrupts`
+      ;; keeps a collection from running (and moving that memory) until
+      ;; the handler has returned to C; interrupts are enabled again on
+      ;; return without handling events, so a collection that became due
+      ;; waits until Racket code checks for events after C returns.
+      (let ([callable (foreign-callable __collect_safe __disable_interrupts glib-log-message (string int string) void)])
         (values
          (foreign-callable-entry-point callable)
          callable))))

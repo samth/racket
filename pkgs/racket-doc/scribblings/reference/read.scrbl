@@ -156,7 +156,10 @@ interpretation of results is up to external tools, such as DrRacket (see
          #:doc '(lib "scribblings/tools/tools.scrbl")
          #:indirect? #t]{the DrRacket documentation}).
 If no information is available for a given key, the result should be
-the second argument.
+the second argument. Tools may call the function in multiple threads
+at once, so if the function loads modules on demand (for example, to
+produce a color lexer), it should load them while holding the registry
+lock via @racket[namespace-call-with-registry-lock].
 @mz-examples[
 (define scribble-manual-info
   (read-language (open-input-string "#lang scribble/manual")))

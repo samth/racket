@@ -310,7 +310,11 @@ parsing on an input stream. For @racket[literal], the
 @racketmodname[syntax-color/default-lexer] module provides a
 @racket[default-lexer] syntax-coloring parser that is suitable for
 plain text, so @racket[literal] loads and returns that parser in
-response to a @racket['color-lexer] query.
+response to a @racket['color-lexer] query. Since tools may call the
+function in multiple threads at once, @racket[literal] loads the parser
+while holding the module registry's lock via
+@racket[namespace-call-with-registry-lock], which prevents concurrent
+loads from interfering with each other.
 
 The set of symbols that a programming tool uses for queries
 is entirely between the tool and the languages that choose to

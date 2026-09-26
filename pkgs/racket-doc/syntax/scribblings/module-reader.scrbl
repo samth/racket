@@ -209,7 +209,14 @@ identifiers used by the @racket[reader-option]s.
        supplies @racket[#f] as the default. The default-filtering
        argument (i.e., the third argument to the @racket[#:info]
        function) currently just returns the default for
-       @racket['color-lexer].}
+       @racket['color-lexer].
+
+       Tools may call the @racket[#:info] function in multiple
+       threads at once. If the function loads modules on demand, such
+       as a module that implements a color lexer, it should load them
+       while holding the registry lock via
+       @racket[namespace-call-with-registry-lock], so that concurrent
+       loads do not interfere with each other.}
 
  @item{@racket[#:interaction-info] specifies an implementation of
        reflective information that is used by external tools for
@@ -442,11 +449,16 @@ languages supply a @racket[module-path-parser] that converts a byte
 string to a module path. Lang-extensions like @racketmodname[at-exp]
 use @racket[lang-reader-module-paths] as this argument.
 
-If loading the module produced by @racket[module-path-parser]
-succeeds, then the loaded module's @racketidfont{read},
-@racketidfont{read-syntax}, or @racketidfont{get-info} export is
-passed to @racket[convert-read], @racket[convert-read-syntax], or
-@racket[convert-get-info], respectively.
+The module produced by @racket[module-path-parser] is loaded while
+holding the registry lock of the @tech[#:doc ref-doc]{current
+namespace} (see @racket[namespace-call-with-registry-lock]), as
+@racket[read] does for a reader module, so that tools can use the
+generated procedures in multiple threads.
+If loading the module succeeds, then the loaded module's
+@racketidfont{read}, @racketidfont{read-syntax}, or
+@racketidfont{get-info} export is passed to @racket[convert-read],
+@racket[convert-read-syntax], or @racket[convert-get-info],
+respectively.
 See @secref["parse-reader" #:doc ref-doc] for information on
 the protocol of @racketidfont{read} and @racketidfont{read-syntax}.
 

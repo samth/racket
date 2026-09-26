@@ -1447,6 +1447,42 @@
   (err/rt-test (read-language p)
                (lambda (exn) (regexp-match? #rx"read-language" (exn-message exn)))))
 
+;; A meta-language like `at-exp` loads the reader of the language that it
+;; extends; check that concurrent uses of `read-language` in multiple
+;; threads can do that, even when the reader module takes a while to
+;; instantiate
+(require (only-in racket/file make-temporary-directory delete-directory/files))
+(let ()
+  (define dir (make-temporary-directory))
+  (define lang-dir (build-path dir "rl-lock-lang"))
+  (make-directory lang-dir)
+  (call-with-output-file (build-path lang-dir "main.rkt")
+    (lambda (o)
+      (write '(module main '#%kernel
+                (module reader '#%kernel
+                  (#%provide get-info)
+                  (define-values (get-info)
+                    (begin
+                      (sleep 0.1)
+                      (lambda (in mod line col pos)
+                        (lambda (key default)
+                          (if (eq? key 'which) 'slow default)))))))
+             o)))
+  (parameterize ([current-namespace (make-base-namespace)]
+                 [current-library-collection-paths
+                  (cons dir (current-library-collection-paths))])
+    (define results (make-vector 5 #f))
+    (define threads
+      (for/list ([i (in-range 5)])
+        (thread (lambda ()
+                  (vector-set! results i
+                               (with-handlers ([exn:fail? exn-message])
+                                 ((read-language (open-input-string "#lang at-exp rl-lock-lang"))
+                                  'which #f)))))))
+    (for-each thread-wait threads)
+    (test '#(slow slow slow slow slow) values results))
+  (delete-directory/files dir))
+
 (parameterize ([read-accept-reader #t])
   (err/rt-test (read (open-input-string "#lang"))
                (lambda (exn) (regexp-match? #rx"expected a single space" (exn-message exn))))

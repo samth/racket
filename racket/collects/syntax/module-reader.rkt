@@ -259,6 +259,11 @@
               (let ([spec (regexp-try-match #px"^[ \t]+(.*?)(?=\\s|$)" in)]) ;; if this changes, the regexp in planet's lang/reader.rkt must also change
                 (and spec (let ([s (cadr spec)])
                             (if (equal? s "") #f s)))))])
+    ;; Tools can use readers and `get-info` in multiple threads, so load
+    ;; the reader of the extended language while holding the registry
+    ;; lock, as for a `#lang` reader itself
+    (define (call-with-registry-lock thunk)
+      (namespace-call-with-registry-lock (current-namespace) thunk))
     (define (peek-leading-spaces in)
       (let ([m (regexp-match-peek #px"^[ \t]+" in)])
         (if m (bytes-length (car m)) 0)))
@@ -286,10 +291,13 @@
                     (define parsed-spec (car specs))
                     (define guarded-spec ((current-reader-guard) parsed-spec))
                     (if (or (null? (cdr specs))
-                            (module-declared? guarded-spec #t))
+                            (call-with-registry-lock
+                             (lambda () (module-declared? guarded-spec #t))))
                         (values
-                         (dynamic-require guarded-spec export-sym
-                                          (mk-fail-thunk spec))
+                         (call-with-registry-lock
+                          (lambda ()
+                            (dynamic-require guarded-spec export-sym
+                                             (mk-fail-thunk spec))))
                          (if spec-as-stx?
                              (datum->syntax #f
                                             guarded-spec

@@ -27,6 +27,9 @@
     (lambda (key default)
       (case key
         [(color-lexer)
-         (dynamic-require 'syntax-color/default-lexer
-                          'default-lexer)]
+         (namespace-call-with-registry-lock
+          (current-namespace)
+          (lambda ()
+            (dynamic-require 'syntax-color/default-lexer
+                             'default-lexer)))]
         [else default]))))

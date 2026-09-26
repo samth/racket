@@ -4526,5 +4526,52 @@ case of module-leve bindings; it doesn't cover local bindings.
                   exn:fail:contract:variable?)
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Concurrent loading and instantiation: a thread that needs a module
+;; that another thread is loading or instantiating waits for it, but a
+;; module body that runs indefinitely doesn't block other modules
+
+(require (only-in racket/file make-temporary-directory delete-directory/files))
+(let ()
+  (define dir (make-temporary-directory))
+  (define coll-dir (build-path dir "concurrent-require"))
+  (make-directory coll-dir)
+  (define (write-module name form)
+    (call-with-output-file (build-path coll-dir name)
+      (lambda (o) (write form o))))
+  (write-module "slow.rkt"
+                '(module slow '#%kernel
+                   (#%provide slow)
+                   (define-values (slow) (begin (sleep 0.1) 'slow))))
+  (write-module "blocked.rkt"
+                '(module blocked '#%kernel
+                   (semaphore-wait (namespace-variable-value 'go-ahead))))
+  (write-module "other.rkt"
+                '(module other '#%kernel
+                   (#%provide other)
+                   (define-values (other) 'other)))
+  (parameterize ([current-namespace (make-base-namespace)]
+                 [current-library-collection-paths
+                  (cons dir (current-library-collection-paths))])
+    (define results (make-vector 5 #f))
+    (define threads
+      (for/list ([i (in-range 5)])
+        (thread (lambda ()
+                  (vector-set! results i
+                               (with-handlers ([exn:fail? exn-message])
+                                 (dynamic-require '(lib "concurrent-require/slow.rkt") 'slow)))))))
+    (for-each thread-wait threads)
+    (test '#(slow slow slow slow slow) values results)
+
+    (define go-ahead (make-semaphore))
+    (namespace-set-variable-value! 'go-ahead go-ahead)
+    (define blocked-t (thread (lambda ()
+                                (dynamic-require '(lib "concurrent-require/blocked.rkt") #f))))
+    (test #f sync/timeout 0.1 blocked-t)
+    (test 'other dynamic-require '(lib "concurrent-require/other.rkt") 'other)
+    (semaphore-post go-ahead)
+    (thread-wait blocked-t))
+  (delete-directory/files dir))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)

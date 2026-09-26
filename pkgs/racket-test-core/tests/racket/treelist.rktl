@@ -659,6 +659,47 @@
   (test '(12 CHANGED) (list (mutable-treelist-ref mtl 0)
                             (mutable-treelist-ref copy 0))))
 
+;; `treelist-cons` leaves relaxed nodes, so a tree whose rightmost path is full
+;; can hold fewer elements than a full tree of its height; growing it by a
+;; level must not treat it as full
+
+(let ()
+  (define-values (tl l)
+    (for/fold ([tl (treelist)] [l '()]) ([i (in-range 2000)])
+      (if (even? i)
+          (values (treelist-cons tl i) (cons i l))
+          (values (treelist-add tl i) (append l (list i))))))
+  (test l treelist->list tl)
+  (test (last l) treelist-last tl))
+
+;; a dense node passes its whole index to a relaxed last child, so `take` and
+;; `drop` into that child have to reduce the index to the child's subtree
+
+(let ()
+  (define (range-tl n) (for/treelist ([i (in-range n)]) i))
+  (define tl (treelist-append (range-tl 1024) (treelist-drop (range-tl 41) 1)))
+  (define l (append (range 1024) (range 1 41)))
+  (test (drop l 1025) treelist->list (treelist-drop tl 1025))
+  (test (drop l 1044) treelist->list (treelist-drop tl 1044))
+  (test (append (take l 1050) '(x)) treelist->list (treelist-add (treelist-take tl 1050) 'x)))
+
+(let ()
+  (define (range-tl n) (for/treelist ([i (in-range n)]) i))
+  (define tl (treelist-append (range-tl 1024) (treelist-drop (range-tl 101) 1)))
+  (define l (append (range 1024) (range 1 101)))
+  (test (append (take l 1087) '(x)) treelist->list (treelist-add (treelist-take tl 1087) 'x)))
+
+;; the last child of a leftwise-dense node may be relaxed; when adding puts a
+;; sibling after it, the node needs sizes
+
+(let ()
+  (define (range-tl n) (for/treelist ([i (in-range n)]) i))
+  (define tl (for/fold ([tl (treelist-append (range-tl 1024) (treelist-drop (range-tl 64) 1))])
+                       ([i (in-range 1000)])
+               (treelist-add tl (- -1 i))))
+  (define l (append (range 1024) (range 1 64) (for/list ([i (in-range 1000)]) (- -1 i))))
+  (test l treelist->list tl))
+
 ;; ----------------------------------------
 
 (report-errs)

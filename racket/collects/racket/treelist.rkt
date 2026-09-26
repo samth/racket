@@ -557,18 +557,26 @@
             ;; enough space in original tree
             (treelist new-root (fx+ size 1) height)
             ;; not enough space in original tree
-            (treelist (Node (vector root
-                                    (new-branch el height)))
+            (treelist (grow-root root size height el)
                       (fx+ size 1)
                       (fx+ height 1)))])]))
+
+;; A new root over a full `root` and a branch for `el`.  `build` fails when
+;; the rightmost path of `root` is full, but a relaxed tree can be full along
+;; that path and still hold fewer than MAX_WIDTH^(height+1) elements; the new
+;; root is leftwise dense only when `root` is fully dense.
+(define (grow-root root size height el)
+  (define children (vector root (new-branch el height)))
+  (if (fx= size (fxlshift 1 (fx* (fx+ height 1) BITS)))
+      (Node children)
+      (Node children (vector size (fx+ size 1)))))
 
 (define (unsafe-root-add root size height el)
   ;; similar to `treelist-add`, used for `for/treelist`
   (define new-root (build root height el))
   (if new-root
       (values new-root (fx+ size 1) height)
-      (values (Node (vector root
-                            (new-branch el height)))
+      (values (grow-root root size height el)
               (fx+ size 1)
               (fx+ height 1))))
 
@@ -750,7 +758,7 @@ minimum required storage. |#
                  [else
                   ;; it's possible that we drop off a non-dense part and end up leftwise dense, but we don't try to check
                   (define new-sizes (vector*-take (node-sizes node) (fx+ branch-index 1)))
-                  (vector*-set! new-sizes branch-index (fx+ index 1))
+                  (vector*-set! new-sizes branch-index (fx+ (subtree-index index height) 1))
                   (Node new-children new-sizes)])])))
         (squash new-root pos height)])]))
 
@@ -818,7 +826,8 @@ minimum required storage. |#
                   ;; it's possible that the result is leftwise dense, but we don't try to check
                   (define new-sizes (for/vector #:length new-len
                                                 ([i (in-range branch-index old-len)])
-                                                (fx- (vector*-ref (node-sizes node) i) index)))
+                                                (fx- (vector*-ref (node-sizes node) i)
+                                                     (subtree-index index height))))
                   (Node new-children new-sizes)])])))
         (squash new-root (fx- size pos) height)])]))
 
@@ -1172,12 +1181,17 @@ minimum required storage. |#
 
 ;; helper functions
 
+;; An index passed down from a leftwise-dense parent still carries the
+;; parent's radix digits; this is its offset within the subtree of `height`.
+(define (subtree-index index height)
+  (fxand index (fx- (fxlshift 1 (fx* (fx+ height 1) BITS)) 1)))
+
 ;; calculate next branch to take and subindex of `index` along that path;
 ;; the returned subindex is always in range for the subtree (i.e., no bits
 ;; set at `height` radix or above)
 (define (step node index height)
   (define sizes (node-sizes node))
-  (define target-index (bitwise-and index (fx- (fxlshift 1 (fx* (fx+ height 1) BITS)) 1)))
+  (define target-index (subtree-index index height))
   (define branch (let loop ([i 0])
                    (if (fx<= (vector*-ref sizes i) target-index)
                        (loop (fx+ i 1))
@@ -1209,12 +1223,28 @@ minimum required storage. |#
        [(fx< (node-size n) MAX_WIDTH)
         (Node (vector*-add-right (node-children n)
                            (new-branch el (fx- height 1)))
-              (let ([sizes (node-sizes n)])
+              (let ([sizes (or (node-sizes n)
+                               (dense-sizes-if-last-not-full n height))])
                 (and sizes
                      (vector*-add-right sizes
                                         (fx+ (vector*-ref sizes (fx- (vector*-length sizes) 1)) 1)))))]
        [else
         #false])]))
+
+;; A leftwise-dense node's last child may be relaxed, and `build` fails on it
+;; once its rightmost path is full even if it holds fewer than a full subtree.
+;; Adding a sibling after it makes it an inner child, so the node then needs
+;; sizes; returns them, or #f when the last child is fully dense.
+(define (dense-sizes-if-last-not-full n height)
+  (define step (fxlshift 1 (fx* height BITS)))
+  (define k (node*-size n))
+  (define last-size (size-subtree (node*-last n) (fx- height 1)))
+  (and (not (fx= last-size step))
+       (let ([sizes (make-vector k 0)])
+         (for ([i (in-range (fx- k 1))])
+           (vector*-set! sizes i (fx* (fx+ i 1) step)))
+         (vector*-set! sizes (fx- k 1) (fx+ (fx* (fx- k 1) step) last-size))
+         sizes)))
 
 ;; create a branch of height `height` terminating in a unary leaf node containing `el`
 (define (new-branch el height)

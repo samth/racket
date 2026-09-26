@@ -1447,6 +1447,67 @@
   (err/rt-test (read-language p)
                (lambda (exn) (regexp-match? #rx"read-language" (exn-message exn)))))
 
+;; A language's info procedure can load modules on demand, even when
+;; `read-language` and the procedure are used concurrently in multiple
+;; threads; that includes a meta-language like `at-exp`, which loads the
+;; reader of the language that it extends
+(require (only-in racket/file make-temporary-directory delete-directory/files))
+(let ()
+  (define (check-concurrent-language modules lang key)
+    (define dir (make-temporary-directory))
+    (define lang-dir (build-path dir "rl-lock-lang"))
+    (make-directory lang-dir)
+    (for ([name+form (in-list modules)])
+      (call-with-output-file (build-path lang-dir (car name+form))
+        (lambda (o) (write (cadr name+form) o))))
+    (parameterize ([current-namespace (make-base-namespace)]
+                   [current-library-collection-paths
+                    (cons dir (current-library-collection-paths))])
+      (define results (make-vector 5 #f))
+      (define threads
+        (for/list ([i (in-range 5)])
+          (thread (lambda ()
+                    (vector-set! results i
+                                 (with-handlers ([exn:fail? exn-message])
+                                   ((read-language (open-input-string (string-append "#lang " lang)))
+                                    key #f)))))))
+      (for-each thread-wait threads)
+      (test '#(slow slow slow slow slow) values results))
+    (delete-directory/files dir))
+  ;; An info procedure that loads a module whose body takes a while, so
+  ;; that other threads try to use it before it's instantiated:
+  (check-concurrent-language
+   '(("main.rkt"
+      (module main '#%kernel
+        (module reader '#%kernel
+          (#%provide get-info)
+          (define-values (get-info)
+            (lambda (in mod line col pos)
+              (lambda (key default)
+                (if (eq? key 'slow)
+                    (dynamic-require '(lib "rl-lock-lang/slow.rkt") 'slow)
+                    default)))))))
+     ("slow.rkt"
+      (module slow '#%kernel
+        (#%provide slow)
+        (define-values (slow) (begin (sleep 0.1) 'slow)))))
+   "rl-lock-lang"
+   'slow)
+  ;; A reader module whose body takes a while, loaded by `at-exp`:
+  (check-concurrent-language
+   '(("main.rkt"
+      (module main '#%kernel
+        (module reader '#%kernel
+          (#%provide get-info)
+          (define-values (get-info)
+            (begin
+              (sleep 0.1)
+              (lambda (in mod line col pos)
+                (lambda (key default)
+                  (if (eq? key 'which) 'slow default)))))))))
+   "at-exp rl-lock-lang"
+   'which))
+
 (parameterize ([read-accept-reader #t])
   (err/rt-test (read (open-input-string "#lang"))
                (lambda (exn) (regexp-match? #rx"expected a single space" (exn-message exn))))

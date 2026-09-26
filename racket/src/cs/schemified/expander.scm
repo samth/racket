@@ -6824,6 +6824,23 @@
 (define small-hash-set!
   (lambda (small-ht_0 key_0 val_0)
     (set-box! small-ht_0 (hash-set (unbox small-ht_0) key_0 val_0))))
+(define small-hash-cas!
+  (lambda (small-ht_0 key_0 old-val_0 new-val_0)
+    (letrec*
+     ((loop_0
+       (|#%name|
+        loop
+        (lambda ()
+          (let ((ht_0 (unbox small-ht_0)))
+            (if (eq? old-val_0 (hash-ref ht_0 key_0 #f))
+              (let ((or-part_0
+                     (unsafe-box*-cas!
+                      small-ht_0
+                      ht_0
+                      (hash-set ht_0 key_0 new-val_0))))
+                (if or-part_0 or-part_0 (loop_0)))
+              #f))))))
+     (loop_0))))
 (define small-hash-keys (lambda (small-ht_0) (hash-keys (unbox small-ht_0))))
 (define finish_1890
   (make-struct-type-install-properties
@@ -15455,16 +15472,16 @@
        (error
         "broken '#%linklet primitive table; maybe you need to use \"bootstrap-run.rkt\"")))
     (void)))
-(define finish_2938
+(define finish_2602
   (make-struct-type-install-properties
    '(module-registry)
-   2
+   3
    0
    #f
    null
    (current-inspector)
    #f
-   '(0 1)
+   '(0 1 2)
    #f
    'module-registry))
 (define struct:module-registry
@@ -15475,13 +15492,13 @@
    (|#%nongenerative-uid| module-registry)
    #f
    #f
-   '(2 . 0)
+   '(3 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2565 (finish_2938 struct:module-registry))
+(define effect_2565 (finish_2602 struct:module-registry))
 (define module-registry1.1
   (|#%name|
    module-registry
@@ -15533,9 +15550,28 @@
          1
          s
          'lock-box))))))
+(define module-registry-loading_2353
+  (|#%name|
+   module-registry-loading
+   (record-accessor struct:module-registry 2)))
+(define module-registry-loading
+  (|#%name|
+   module-registry-loading
+   (lambda (s)
+     (if (module-registry?_2653 s)
+       (module-registry-loading_2353 s)
+       ($value
+        (impersonate-ref
+         module-registry-loading_2353
+         struct:module-registry
+         2
+         s
+         'loading))))))
 (define make-module-registry
   (lambda ()
-    (let ((app_0 (make-hasheq))) (module-registry1.1 app_0 (box #f)))))
+    (let ((app_0 (make-hasheq)))
+      (let ((app_1 (box #f)))
+        (module-registry1.1 app_0 app_1 (make-small-hasheq))))))
 (define registry-call-with-lock
   (lambda (r_0 proc_0)
     (let ((lock-box_0 (module-registry-lock-box r_0)))
@@ -15582,6 +15618,136 @@
                          (if or-part_0 or-part_0 always-evt))))
                     (loop_0)))))))))
        (loop_0)))))
+(define registry-lock-held?
+  (lambda (r_0)
+    (let ((v_0 (unbox (module-registry-lock-box r_0))))
+      (if v_0
+        (if (let ((app_0 (current-thread)))
+              (eq? app_0 (weak-box-value (cdr v_0))))
+          (not (sync/timeout 0 (car v_0)))
+          #f)
+        #f))))
+(define finish_2741
+  (make-struct-type-install-properties
+   '(in-progress)
+   2
+   0
+   #f
+   null
+   (current-inspector)
+   #f
+   '(0 1)
+   #f
+   'in-progress))
+(define struct:in-progress
+  (|#%make-record-type-descriptor|
+   |#%racket-base-rtd|
+   'in-progress
+   #f
+   (|#%nongenerative-uid| in-progress)
+   #f
+   #f
+   '(2 . 0)
+   'make-struct-type
+   #f
+   #f
+   #f
+   |#%system-inspector|))
+(define effect_2700 (finish_2741 struct:in-progress))
+(define in-progress2.1
+  (|#%name|
+   in-progress
+   (record-constructor
+    (make-record-constructor-descriptor struct:in-progress #f #f))))
+(define in-progress?_2243
+  (|#%name| in-progress? (record-predicate struct:in-progress)))
+(define in-progress?
+  (|#%name|
+   in-progress?
+   (lambda (v)
+     (if (in-progress?_2243 v)
+       #t
+       ($value
+        (if (impersonator? v) (in-progress?_2243 (impersonator-val v)) #f))))))
+(define in-progress-thread_2925
+  (|#%name| in-progress-thread (record-accessor struct:in-progress 0)))
+(define in-progress-thread
+  (|#%name|
+   in-progress-thread
+   (lambda (s)
+     (if (in-progress?_2243 s)
+       (in-progress-thread_2925 s)
+       ($value
+        (impersonate-ref
+         in-progress-thread_2925
+         struct:in-progress
+         0
+         s
+         'thread))))))
+(define in-progress-done_2456
+  (|#%name| in-progress-done (record-accessor struct:in-progress 1)))
+(define in-progress-done
+  (|#%name|
+   in-progress-done
+   (lambda (s)
+     (if (in-progress?_2243 s)
+       (in-progress-done_2456 s)
+       ($value
+        (impersonate-ref
+         in-progress-done_2456
+         struct:in-progress
+         1
+         s
+         'done))))))
+(define make-in-progress
+  (lambda ()
+    (let ((app_0 (current-thread))) (in-progress2.1 app_0 (make-semaphore)))))
+(define in-progress-mine?
+  (lambda (p_0)
+    (let ((app_0 (current-thread))) (eq? app_0 (in-progress-thread p_0)))))
+(define in-progress-abandoned?
+  (lambda (p_0) (not (thread-running? (in-progress-thread p_0)))))
+(define in-progress-done!
+  (lambda (p_0) (semaphore-post (in-progress-done p_0))))
+(define in-progress-wait
+  (lambda (p_0 r_0)
+    (if (in-progress-mine? p_0)
+      #f
+      (if (registry-lock-held? r_0)
+        #f
+        (let ((t_0 (in-progress-thread p_0)))
+          (begin
+            (if (thread-running? t_0)
+              (let ((app_0 (semaphore-peek-evt (in-progress-done p_0))))
+                (sync app_0 t_0 (thread-suspend-evt t_0)))
+              (void))
+            #t))))))
+(define registry-call-with-loading-claim
+  (lambda (r_0 name_0 load_0)
+    (let ((loading_0 (module-registry-loading r_0)))
+      (let ((p_0 (make-in-progress)))
+        (letrec*
+         ((claim_0
+           (|#%name|
+            claim
+            (lambda ()
+              (let ((other-p_0 (hash-ref (unbox loading_0) name_0 #f)))
+                (if (if other-p_0 (not (in-progress-abandoned? other-p_0)) #f)
+                  (if (in-progress-wait other-p_0 r_0)
+                    #f
+                    (begin (|#%app| load_0) #t))
+                  (if (small-hash-cas! loading_0 name_0 other-p_0 p_0)
+                    (begin
+                      (dynamic-wind
+                       void
+                       load_0
+                       (lambda ()
+                         (begin
+                           (small-hash-cas! loading_0 name_0 p_0 #f)
+                           (semaphore-post (in-progress-done p_0)))))
+                      #t)
+                    (claim_0))))))))
+         (claim_0))))))
 (define finish_2563
   (make-struct-type-install-properties
    '(namespace)
@@ -15688,7 +15854,7 @@
   (|#%name| namespace-module-instances (record-accessor struct:namespace 16)))
 (define set-namespace-inspector!
   (|#%name| set-namespace-inspector! (record-mutator struct:namespace 13)))
-(define finish_2741
+(define finish_2742
   (make-struct-type-install-properties
    '(definitions)
    2
@@ -15714,7 +15880,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2319 (finish_2741 struct:definitions))
+(define effect_2319 (finish_2742 struct:definitions))
 (define definitions2.1
   (|#%name|
    definitions
@@ -18429,120 +18595,89 @@
                                                               phase_0
                                                               run-phase121_0)
                                                              #f)
-                                                         (if (eq?
-                                                              'started
-                                                              (let ((small-ht_0
-                                                                     (module-instance-phase-level-to-state
-                                                                      mi137_0)))
-                                                                (hash-ref
-                                                                 (unbox
-                                                                  small-ht_0)
-                                                                 pos_0
-                                                                 #f)))
-                                                           (void)
-                                                           (begin
-                                                             (let ((small-ht_0
-                                                                    (module-instance-phase-level-to-state
-                                                                     mi137_0)))
-                                                               (set-box!
-                                                                small-ht_0
-                                                                (hash-set
-                                                                 (unbox
-                                                                  small-ht_0)
-                                                                 pos_0
-                                                                 'started)))
-                                                             (begin
-                                                               (void
-                                                                (namespace->definitions
-                                                                 m-ns_0
-                                                                 pos_0))
-                                                               (let ((p-ns_0
-                                                                      (namespace->namespace-at-phase
-                                                                       m-ns_0
-                                                                       phase_0)))
-                                                                 (let ((insp_0
-                                                                        (module-inspector
-                                                                         m_1)))
-                                                                   (let ((data-box_0
-                                                                          (module-instance-data-box
-                                                                           mi137_0)))
-                                                                     (let ((prep_0
-                                                                            (module-prepare-instance
-                                                                             m_1)))
-                                                                       (let ((go_0
-                                                                              (module-instantiate-phase
-                                                                               m_1)))
-                                                                         (begin
-                                                                           (|#%app|
-                                                                            prep_0
-                                                                            data-box_0
-                                                                            p-ns_0
-                                                                            instance-phase_0
-                                                                            mpi_0
-                                                                            bulk-binding-registry_0
-                                                                            insp_0)
-                                                                           (|#%app|
-                                                                            go_0
-                                                                            data-box_0
-                                                                            p-ns_0
-                                                                            instance-phase_0
-                                                                            pos_0
-                                                                            mpi_0
-                                                                            bulk-binding-registry_0
-                                                                            insp_0))))))))))
+                                                         (run-phase-level-once!
+                                                          mi137_0
+                                                          ns138_0
+                                                          pos_0
+                                                          (lambda ()
+                                                            (begin
+                                                              (void
+                                                               (namespace->definitions
+                                                                m-ns_0
+                                                                pos_0))
+                                                              (let ((p-ns_0
+                                                                     (namespace->namespace-at-phase
+                                                                      m-ns_0
+                                                                      phase_0)))
+                                                                (let ((insp_0
+                                                                       (module-inspector
+                                                                        m_1)))
+                                                                  (let ((data-box_0
+                                                                         (module-instance-data-box
+                                                                          mi137_0)))
+                                                                    (let ((prep_0
+                                                                           (module-prepare-instance
+                                                                            m_1)))
+                                                                      (let ((go_0
+                                                                             (module-instantiate-phase
+                                                                              m_1)))
+                                                                        (begin
+                                                                          (|#%app|
+                                                                           prep_0
+                                                                           data-box_0
+                                                                           p-ns_0
+                                                                           instance-phase_0
+                                                                           mpi_0
+                                                                           bulk-binding-registry_0
+                                                                           insp_0)
+                                                                          (|#%app|
+                                                                           go_0
+                                                                           data-box_0
+                                                                           p-ns_0
+                                                                           instance-phase_0
+                                                                           pos_0
+                                                                           mpi_0
+                                                                           bulk-binding-registry_0
+                                                                           insp_0))))))))))
                                                          (if (if otherwise-available?123_0
                                                                (if (not
                                                                     (negative?
                                                                      run-phase121_0))
-                                                                 (not
-                                                                  (let ((small-ht_0
-                                                                         (module-instance-phase-level-to-state
-                                                                          mi137_0)))
-                                                                    (hash-ref
-                                                                     (unbox
-                                                                      small-ht_0)
-                                                                     pos_0
-                                                                     #f)))
+                                                                 (small-hash-cas!
+                                                                  (module-instance-phase-level-to-state
+                                                                   mi137_0)
+                                                                  pos_0
+                                                                  #f
+                                                                  'available)
                                                                  #f)
                                                                #f)
-                                                           (begin
-                                                             (if (module-cross-phase-persistent?
-                                                                  m_1)
-                                                               (let ((bx_0
-                                                                      (namespace-available-cross-phase-module-instances
-                                                                       ns138_0)))
-                                                                 (set-box!
-                                                                  bx_0
-                                                                  (cons
-                                                                   mi137_0
-                                                                   (unbox
-                                                                    bx_0))))
-                                                               (let ((ht_0
-                                                                      (namespace-available-module-instances
-                                                                       ns138_0)))
-                                                                 (let ((xform_0
-                                                                        (lambda (l_0)
-                                                                          (cons
-                                                                           mi137_0
-                                                                           l_0))))
-                                                                   (do-hash-update
-                                                                    'hash-update!
-                                                                    #t
-                                                                    hash-set!
-                                                                    ht_0
-                                                                    phase_0
-                                                                    xform_0
-                                                                    null))))
-                                                             (let ((small-ht_0
-                                                                    (module-instance-phase-level-to-state
-                                                                     mi137_0)))
+                                                           (if (module-cross-phase-persistent?
+                                                                m_1)
+                                                             (let ((bx_0
+                                                                    (namespace-available-cross-phase-module-instances
+                                                                     ns138_0)))
                                                                (set-box!
-                                                                small-ht_0
-                                                                (hash-set
+                                                                bx_0
+                                                                (cons
+                                                                 mi137_0
                                                                  (unbox
-                                                                  small-ht_0)
-                                                                 pos_0
-                                                                 'available))))
+                                                                  bx_0))))
+                                                             (let ((ht_0
+                                                                    (namespace-available-module-instances
+                                                                     ns138_0)))
+                                                               (let ((xform_0
+                                                                      (lambda (l_0)
+                                                                        (cons
+                                                                         mi137_0
+                                                                         l_0))))
+                                                                 (do-hash-update
+                                                                  'hash-update!
+                                                                  #t
+                                                                  hash-set!
+                                                                  ht_0
+                                                                  phase_0
+                                                                  xform_0
+                                                                  null))))
                                                            (void))))
                                                      (for-loop_0 (+ pos_0 -1)))
                                                    (values))))))
@@ -18560,16 +18695,70 @@
                                    (void))
                                  (if skip-run?122_0
                                    (void)
-                                   (let ((small-ht_0
+                                   (let ((states_0
                                           (module-instance-phase-level-to-state
                                            mi137_0)))
-                                     (set-box!
-                                      small-ht_0
-                                      (hash-set
-                                       (unbox small-ht_0)
-                                       run-phase-level_0
-                                       'started))))))))))))))))
+                                     (letrec*
+                                      ((loop_0
+                                        (|#%name|
+                                         loop
+                                         (lambda ()
+                                           (let ((state_0
+                                                  (hash-ref
+                                                   (unbox states_0)
+                                                   run-phase-level_0
+                                                   #f)))
+                                             (if (let ((or-part_0
+                                                        (eq?
+                                                         state_0
+                                                         'started)))
+                                                   (if or-part_0
+                                                     or-part_0
+                                                     (in-progress? state_0)))
+                                               (void)
+                                               (if (small-hash-cas!
+                                                    states_0
+                                                    run-phase-level_0
+                                                    state_0
+                                                    'started)
+                                                 (void)
+                                                 (loop_0))))))))
+                                      (loop_0))))))))))))))))
          (if log-performance? (end-performance-region) (void)))))))
+(define run-phase-level-once!
+  (lambda (mi_0 ns_0 phase-level_0 run!_0)
+    (let ((states_0 (module-instance-phase-level-to-state mi_0)))
+      (letrec*
+       ((loop_0
+         (|#%name|
+          loop
+          (lambda ()
+            (let ((state_0 (hash-ref (unbox states_0) phase-level_0 #f)))
+              (if (eq? state_0 'started)
+                (void)
+                (if (in-progress? state_0)
+                  (if (in-progress-wait
+                       state_0
+                       (namespace-module-registry$1 ns_0))
+                    (begin
+                      (small-hash-cas! states_0 phase-level_0 state_0 'started)
+                      (loop_0))
+                    (void))
+                  (let ((p_0 (make-in-progress)))
+                    (if (small-hash-cas! states_0 phase-level_0 state_0 p_0)
+                      (dynamic-wind
+                       void
+                       run!_0
+                       (lambda ()
+                         (begin
+                           (small-hash-cas!
+                            states_0
+                            phase-level_0
+                            p_0
+                            'started)
+                           (semaphore-post (in-progress-done p_0)))))
+                      (loop_0))))))))))
+       (loop_0)))))
 (define namespace-visit-available-modules!
   (let ((namespace-visit-available-modules!_0
          (|#%name|
@@ -19397,7 +19586,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish915
+  (let ((finish922
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -19419,11 +19608,11 @@
             #f
             '(1 . 0)
             'make-struct-type
-            (finish915 'proc)
-            (finish915 'arity)
+            (finish922 'proc)
+            (finish922 'arity)
             #f
             |#%system-inspector|)))
-      (let ((effect916 (finish915 struct:set!-transformer_0)))
+      (let ((effect923 (finish922 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -77662,154 +77851,170 @@
                                                                     root-modname_0)))
                                                              (begin
                                                                (if load?_0
-                                                                 (let ((got_0
-                                                                        (hash-ref
-                                                                         (car
-                                                                          hts_0)
-                                                                         modname_0
-                                                                         #f)))
-                                                                   (if got_0
-                                                                     (void)
-                                                                     (let ((loading_0
-                                                                            (let ((tag_0
-                                                                                   (if (continuation-prompt-available?
-                                                                                        -loading-prompt-tag)
-                                                                                     -loading-prompt-tag
-                                                                                     (default-continuation-prompt-tag))))
-                                                                              (continuation-mark-set-first
-                                                                               #f
-                                                                               -loading-filename
-                                                                               null
-                                                                               tag_0))))
-                                                                       (let ((nsr_0
-                                                                              (get-reg_1)))
-                                                                         (let ((loading_1
-                                                                                loading_0))
-                                                                           (begin
-                                                                             (for-each_2009
-                                                                              (lambda (s_3)
-                                                                                (if (if (equal?
-                                                                                         (cdr
-                                                                                          s_3)
-                                                                                         normal-filename_0)
-                                                                                      (eq?
-                                                                                       (car
-                                                                                        s_3)
-                                                                                       nsr_0)
-                                                                                      #f)
-                                                                                  (error
-                                                                                   'standard-module-name-resolver
-                                                                                   "cycle in loading\n  at path: ~a\n  paths:~a"
-                                                                                   filename_0
-                                                                                   (apply-string-append
-                                                                                    0
-                                                                                    (letrec*
-                                                                                     ((loop_0
-                                                                                       (|#%name|
-                                                                                        loop
-                                                                                        (lambda (l_0)
-                                                                                          (if (null?
-                                                                                               l_0)
-                                                                                            '()
-                                                                                            (let ((app_0
-                                                                                                   (path->string
-                                                                                                    (cdar
-                                                                                                     l_0))))
-                                                                                              (list*
-                                                                                               "\n   "
-                                                                                               app_0
-                                                                                               (loop_0
-                                                                                                (cdr
-                                                                                                 l_0)))))))))
-                                                                                     (loop_0
-                                                                                      (reverse$1
-                                                                                       loading_1)))))
-                                                                                  (void)))
-                                                                              loading_1)
-                                                                             (|#%app|
-                                                                              (if (continuation-prompt-available?
-                                                                                   -loading-prompt-tag)
-                                                                                (lambda (f_0)
-                                                                                  (|#%app|
-                                                                                   f_0))
-                                                                                (lambda (f_0)
-                                                                                  (call-with-continuation-prompt
-                                                                                   f_0
-                                                                                   -loading-prompt-tag)))
-                                                                              (lambda ()
-                                                                                (with-continuation-mark*
-                                                                                 general
-                                                                                 -loading-filename
-                                                                                 (cons
-                                                                                  (cons
-                                                                                   nsr_0
-                                                                                   normal-filename_0)
-                                                                                  loading_1)
-                                                                                 (with-continuation-mark*
-                                                                                  authentic
-                                                                                  parameterization-key
-                                                                                  (let ((app_0
-                                                                                         (continuation-mark-set-first
-                                                                                          #f
-                                                                                          parameterization-key)))
-                                                                                    (extend-parameterization
-                                                                                     app_0
-                                                                                     1/current-module-declare-name
-                                                                                     root-modname_0
-                                                                                     1/current-module-path-for-load
-                                                                                     (|#%app|
-                                                                                      (if stx_0
-                                                                                        (lambda (p_0)
-                                                                                          (1/datum->syntax
-                                                                                           #f
-                                                                                           p_0
-                                                                                           stx_0))
-                                                                                        values)
-                                                                                      (if (symbol?
-                                                                                           s_2)
-                                                                                        s_2
-                                                                                        (if (if (pair?
-                                                                                                 s_2)
-                                                                                              (eq?
-                                                                                               (car
-                                                                                                s_2)
-                                                                                               'lib)
-                                                                                              #f)
-                                                                                          s_2
-                                                                                          (if (1/resolved-module-path?
-                                                                                               root-modname_0)
-                                                                                            (let ((src_0
-                                                                                                   (1/resolved-module-path-name
-                                                                                                    root-modname_0)))
-                                                                                              (if (symbol?
-                                                                                                   src_0)
-                                                                                                (list
-                                                                                                 'quote
-                                                                                                 src_0)
-                                                                                                src_0))
-                                                                                            root-modname_0))))))
-                                                                                  (let ((app_0
-                                                                                         (1/current-load/use-compiled)))
-                                                                                    (|#%app|
-                                                                                     app_0
-                                                                                     filename_0
-                                                                                     (let ((sym_0
-                                                                                            (string->symbol
-                                                                                             (path->string
-                                                                                              no-sfx_0))))
-                                                                                       (if subm-path_0
-                                                                                         (if (hash-ref
-                                                                                              (car
-                                                                                               hts_0)
-                                                                                              root-modname_0
-                                                                                              #f)
-                                                                                           (cons
-                                                                                            #f
-                                                                                            subm-path_0)
-                                                                                           (cons
-                                                                                            sym_0
-                                                                                            subm-path_0))
-                                                                                         sym_0))))))))))))))
+                                                                 (letrec*
+                                                                  ((retry_0
+                                                                    (|#%name|
+                                                                     retry
+                                                                     (lambda ()
+                                                                       (let ((got_0
+                                                                              (hash-ref
+                                                                               (car
+                                                                                hts_0)
+                                                                               modname_0
+                                                                               #f)))
+                                                                         (if got_0
+                                                                           (void)
+                                                                           (let ((loading_0
+                                                                                  (let ((tag_0
+                                                                                         (if (continuation-prompt-available?
+                                                                                              -loading-prompt-tag)
+                                                                                           -loading-prompt-tag
+                                                                                           (default-continuation-prompt-tag))))
+                                                                                    (continuation-mark-set-first
+                                                                                     #f
+                                                                                     -loading-filename
+                                                                                     null
+                                                                                     tag_0))))
+                                                                             (let ((nsr_0
+                                                                                    (get-reg_1)))
+                                                                               (let ((loading_1
+                                                                                      loading_0))
+                                                                                 (begin
+                                                                                   (for-each_2009
+                                                                                    (lambda (s_3)
+                                                                                      (if (if (equal?
+                                                                                               (cdr
+                                                                                                s_3)
+                                                                                               normal-filename_0)
+                                                                                            (eq?
+                                                                                             (car
+                                                                                              s_3)
+                                                                                             nsr_0)
+                                                                                            #f)
+                                                                                        (error
+                                                                                         'standard-module-name-resolver
+                                                                                         "cycle in loading\n  at path: ~a\n  paths:~a"
+                                                                                         filename_0
+                                                                                         (apply-string-append
+                                                                                          0
+                                                                                          (letrec*
+                                                                                           ((loop_0
+                                                                                             (|#%name|
+                                                                                              loop
+                                                                                              (lambda (l_0)
+                                                                                                (if (null?
+                                                                                                     l_0)
+                                                                                                  '()
+                                                                                                  (let ((app_0
+                                                                                                         (path->string
+                                                                                                          (cdar
+                                                                                                           l_0))))
+                                                                                                    (list*
+                                                                                                     "\n   "
+                                                                                                     app_0
+                                                                                                     (loop_0
+                                                                                                      (cdr
+                                                                                                       l_0)))))))))
+                                                                                           (loop_0
+                                                                                            (reverse$1
+                                                                                             loading_1)))))
+                                                                                        (void)))
+                                                                                    loading_1)
+                                                                                   (let ((load!_0
+                                                                                          (|#%name|
+                                                                                           load!
+                                                                                           (lambda ()
+                                                                                             (|#%app|
+                                                                                              (if (continuation-prompt-available?
+                                                                                                   -loading-prompt-tag)
+                                                                                                (lambda (f_0)
+                                                                                                  (|#%app|
+                                                                                                   f_0))
+                                                                                                (lambda (f_0)
+                                                                                                  (call-with-continuation-prompt
+                                                                                                   f_0
+                                                                                                   -loading-prompt-tag)))
+                                                                                              (lambda ()
+                                                                                                (with-continuation-mark*
+                                                                                                 general
+                                                                                                 -loading-filename
+                                                                                                 (cons
+                                                                                                  (cons
+                                                                                                   nsr_0
+                                                                                                   normal-filename_0)
+                                                                                                  loading_1)
+                                                                                                 (with-continuation-mark*
+                                                                                                  authentic
+                                                                                                  parameterization-key
+                                                                                                  (let ((app_0
+                                                                                                         (continuation-mark-set-first
+                                                                                                          #f
+                                                                                                          parameterization-key)))
+                                                                                                    (extend-parameterization
+                                                                                                     app_0
+                                                                                                     1/current-module-declare-name
+                                                                                                     root-modname_0
+                                                                                                     1/current-module-path-for-load
+                                                                                                     (|#%app|
+                                                                                                      (if stx_0
+                                                                                                        (lambda (p_0)
+                                                                                                          (1/datum->syntax
+                                                                                                           #f
+                                                                                                           p_0
+                                                                                                           stx_0))
+                                                                                                        values)
+                                                                                                      (if (symbol?
+                                                                                                           s_2)
+                                                                                                        s_2
+                                                                                                        (if (if (pair?
+                                                                                                                 s_2)
+                                                                                                              (eq?
+                                                                                                               (car
+                                                                                                                s_2)
+                                                                                                               'lib)
+                                                                                                              #f)
+                                                                                                          s_2
+                                                                                                          (if (1/resolved-module-path?
+                                                                                                               root-modname_0)
+                                                                                                            (let ((src_0
+                                                                                                                   (1/resolved-module-path-name
+                                                                                                                    root-modname_0)))
+                                                                                                              (if (symbol?
+                                                                                                                   src_0)
+                                                                                                                (list
+                                                                                                                 'quote
+                                                                                                                 src_0)
+                                                                                                                src_0))
+                                                                                                            root-modname_0))))))
+                                                                                                  (let ((app_0
+                                                                                                         (1/current-load/use-compiled)))
+                                                                                                    (|#%app|
+                                                                                                     app_0
+                                                                                                     filename_0
+                                                                                                     (let ((sym_0
+                                                                                                            (string->symbol
+                                                                                                             (path->string
+                                                                                                              no-sfx_0))))
+                                                                                                       (if subm-path_0
+                                                                                                         (if (hash-ref
+                                                                                                              (car
+                                                                                                               hts_0)
+                                                                                                              root-modname_0
+                                                                                                              #f)
+                                                                                                           (cons
+                                                                                                            #f
+                                                                                                            subm-path_0)
+                                                                                                           (cons
+                                                                                                            sym_0
+                                                                                                            subm-path_0))
+                                                                                                         sym_0))))))))))))
+                                                                                     (if (registry-call-with-loading-claim
+                                                                                          nsr_0
+                                                                                          root-modname_0
+                                                                                          load!_0)
+                                                                                       (void)
+                                                                                       (retry_0)))))))))))))
+                                                                  (retry_0))
                                                                  (void))
                                                                (if (if (not
                                                                         (vector?

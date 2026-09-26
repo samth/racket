@@ -375,9 +375,14 @@ Calls @racket[thunk] while holding a reentrant lock for the namespace's
 
 Namespace functions do not automatically use the registry lock, but it
 can be used via @racket[namespace-call-with-registry-lock] among
-threads that load and instantiate modules to avoid internal race
-conditions. On-demand @tech{instantiation} of @tech{available} modules
-also takes the lock; see @secref["mod-parse"].
+threads to perform a sequence of operations on a registry without
+interference. Threads that load and @tech{instantiate} modules do not
+need the lock to avoid internal race conditions, since a thread that
+needs a module that another thread is loading or instantiating waits
+for the other thread to finish; a thread that holds the lock does not
+wait, however, since the other thread might need the lock to finish.
+On-demand @tech{instantiation} of @tech{available} modules takes the
+lock; see @secref["mod-parse"].
 
 @history[#:added "8.1.0.5"]}
 

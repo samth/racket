@@ -12,6 +12,7 @@
          "../eval/main.rkt"
          "../eval/dynamic-require.rkt"
          "../namespace/api.rkt"
+         (only-in "../namespace/registry.rkt" registry-call-with-loading-claim)
          "../common/module-path.rkt"
          "../eval/module-read.rkt"
          "../expand/missing-module.rkt"
@@ -482,68 +483,75 @@
                                    root-modname))
                ;; Loaded already?
                (when load?
-                 (let ([got (hash-ref (car hts) modname #f)])
-                   (unless got
-                     ;; Currently loading?
-                     (let ([loading
-                            (let ([tag (if (continuation-prompt-available? -loading-prompt-tag)
-                                           -loading-prompt-tag
-                                           (default-continuation-prompt-tag))])
-                              (continuation-mark-set-first
-                               #f
-                               -loading-filename
-                               null
-                               tag))]
-                           [nsr (get-reg)])
-                       (for-each
-                        (lambda (s)
-                          (when (and (equal? (cdr s) normal-filename)
-                                     (eq? (car s) nsr))
-                            (error
-                             'standard-module-name-resolver
-                             "cycle in loading\n  at path: ~a\n  paths:~a"
-                             filename
-                             (apply string-append
-                                    (let loop ([l (reverse loading)])
-                                      (if (null? l)
-                                          '()
-                                          (list* "\n   " (path->string (cdar l)) (loop (cdr l)))))))))
-                        loading)
-                       ((if (continuation-prompt-available? -loading-prompt-tag)
-                            (lambda (f) (f))
-                            (lambda (f) (call-with-continuation-prompt f -loading-prompt-tag)))
-                        (lambda ()
-                          (with-continuation-mark
-                           -loading-filename (cons (cons nsr normal-filename)
-                                                   loading)
-                           (parameterize ([current-module-declare-name root-modname]
-                                          [current-module-path-for-load
-                                           ;; If `s' is an absolute module path, then
-                                           ;; keep it as-is, the better to let a tool
-                                           ;; recommend how to get an unavailable module;
-                                           ;; also, propagate the source location.
-                                           ((if stx
-                                                (lambda (p) (datum->syntax #f p stx))
-                                                values)
-                                            (cond
-                                              [(symbol? s) s]
-                                              [(and (pair? s) (eq? (car s) 'lib)) s]
-                                              [else (if (resolved-module-path? root-modname)
-                                                        (let ([src (resolved-module-path-name root-modname)])
-                                                          (if (symbol? src)
-                                                              (list 'quote src)
-                                                              src))
-                                                        root-modname)]))])
-                             ((current-load/use-compiled) 
-                              filename 
-                              (let ([sym (string->symbol (path->string no-sfx))])
-                                (if subm-path
-                                    (if (hash-ref (car hts) root-modname #f)
-                                        ;; Root is already loaded, so only use .zo
-                                        (cons #f subm-path)
-                                        ;; Root isn't loaded, so it's ok to load form source:
-                                        (cons sym subm-path))
-                                    sym)))))))))))
+                 (let retry ()
+                   (let ([got (hash-ref (car hts) modname #f)])
+                     (unless got
+                       ;; Currently loading?
+                       (let ([loading
+                              (let ([tag (if (continuation-prompt-available? -loading-prompt-tag)
+                                             -loading-prompt-tag
+                                             (default-continuation-prompt-tag))])
+                                (continuation-mark-set-first
+                                 #f
+                                 -loading-filename
+                                 null
+                                 tag))]
+                             [nsr (get-reg)])
+                         (for-each
+                          (lambda (s)
+                            (when (and (equal? (cdr s) normal-filename)
+                                       (eq? (car s) nsr))
+                              (error
+                               'standard-module-name-resolver
+                               "cycle in loading\n  at path: ~a\n  paths:~a"
+                               filename
+                               (apply string-append
+                                      (let loop ([l (reverse loading)])
+                                        (if (null? l)
+                                            '()
+                                            (list* "\n   " (path->string (cdar l)) (loop (cdr l)))))))))
+                          loading)
+                         (define (load!)
+                           ((if (continuation-prompt-available? -loading-prompt-tag)
+                                (lambda (f) (f))
+                                (lambda (f) (call-with-continuation-prompt f -loading-prompt-tag)))
+                            (lambda ()
+                              (with-continuation-mark
+                               -loading-filename (cons (cons nsr normal-filename)
+                                                       loading)
+                               (parameterize ([current-module-declare-name root-modname]
+                                              [current-module-path-for-load
+                                               ;; If `s' is an absolute module path, then
+                                               ;; keep it as-is, the better to let a tool
+                                               ;; recommend how to get an unavailable module;
+                                               ;; also, propagate the source location.
+                                               ((if stx
+                                                    (lambda (p) (datum->syntax #f p stx))
+                                                    values)
+                                                (cond
+                                                  [(symbol? s) s]
+                                                  [(and (pair? s) (eq? (car s) 'lib)) s]
+                                                  [else (if (resolved-module-path? root-modname)
+                                                            (let ([src (resolved-module-path-name root-modname)])
+                                                              (if (symbol? src)
+                                                                  (list 'quote src)
+                                                                  src))
+                                                            root-modname)]))])
+                                 ((current-load/use-compiled)
+                                  filename
+                                  (let ([sym (string->symbol (path->string no-sfx))])
+                                    (if subm-path
+                                        (if (hash-ref (car hts) root-modname #f)
+                                            ;; Root is already loaded, so only use .zo
+                                            (cons #f subm-path)
+                                            ;; Root isn't loaded, so it's ok to load form source:
+                                            (cons sym subm-path))
+                                        sym))))))))
+                         ;; If another thread is loading the same file, wait for it
+                         ;; instead of loading again, and then check whether the
+                         ;; module is declared
+                         (unless (registry-call-with-loading-claim nsr root-modname load!)
+                           (retry)))))))
                ;; If a `lib' path, cache pathname manipulations
                (when (and (not (vector? s-parsed))
                           load?

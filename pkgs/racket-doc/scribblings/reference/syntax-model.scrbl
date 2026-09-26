@@ -941,6 +941,16 @@ instantiating and visiting available modules. On-demand instantiation
 of available modules uses the same reentrant lock as
 @racket[namespace-call-with-registry-lock].
 
+More generally, when one thread needs a module at a phase while
+another thread is still running the module's body to @tech{instantiate}
+it, the first thread waits for the second to finish, so that it does
+not use a partially initialized module. A thread does not wait for
+itself (as when a module body requires itself through
+@racket[dynamic-require]), and a thread that holds the registry lock
+does not wait, since the other thread might need the lock to finish.
+A module body that runs indefinitely, such as a program's main module,
+delays only threads that need that module.
+
 When the expander encounters @racket[require] and @racket[(require
 (for-syntax ....))] within a @tech{module context}, the resulting
 @tech{visits} and @tech{instantiations} are specific to the expansion

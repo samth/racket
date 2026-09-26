@@ -170,7 +170,7 @@
 (struct module-instance (namespace
                          module                        ; can be #f for the module being expanded
                          [shifted-requires #:mutable]  ; computed on demand; shifted from `module-requires` or `module-flattened-requires`
-                         phase-level-to-state          ; phase-level -> #f, 'available, or 'started
+                         phase-level-to-state          ; phase-level -> #f, 'available, in-progress, or 'started
                          [made-available? #:mutable]   ; no #f in `phase-level-to-state`?
                          [attached? #:mutable]         ; whether the instance has been attached elsewhere
                          data-box                      ; for use by module implementation
@@ -616,19 +616,20 @@
           [(and (not skip-run?)
                 (eqv? phase run-phase))
            ;; This is the phase to make sure that we've run
-           (unless (eq? 'started (small-hash-ref (module-instance-phase-level-to-state mi) phase-level #f))
-             (small-hash-set! (module-instance-phase-level-to-state mi) phase-level 'started)
-             (void (namespace->definitions m-ns phase-level))
-             (define p-ns (namespace->namespace-at-phase m-ns phase))
-             (define insp (module-inspector m))
-             (define data-box (module-instance-data-box mi))
-             (define prep (module-prepare-instance m))
-             (define go (module-instantiate-phase m))
-             (prep data-box p-ns phase-shift mpi bulk-binding-registry insp)
-             (go data-box p-ns phase-shift phase-level mpi bulk-binding-registry insp))]
+           (run-phase-level-once!
+            mi ns phase-level
+            (lambda ()
+              (void (namespace->definitions m-ns phase-level))
+              (define p-ns (namespace->namespace-at-phase m-ns phase))
+              (define insp (module-inspector m))
+              (define data-box (module-instance-data-box mi))
+              (define prep (module-prepare-instance m))
+              (define go (module-instantiate-phase m))
+              (prep data-box p-ns phase-shift mpi bulk-binding-registry insp)
+              (go data-box p-ns phase-shift phase-level mpi bulk-binding-registry insp)))]
           [(and otherwise-available?
                 (not (negative? run-phase))
-                (not (small-hash-ref (module-instance-phase-level-to-state mi) phase-level #f)))
+                (small-hash-cas! (module-instance-phase-level-to-state mi) phase-level #f 'available))
            ;; This is a phase to merely make available
            (if (module-cross-phase-persistent? m)
                (let ([bx (namespace-available-cross-phase-module-instances ns)])
@@ -636,8 +637,7 @@
                (hash-update! (namespace-available-module-instances ns)
                              phase
                              (lambda (l) (cons mi l))
-                             null))
-           (small-hash-set! (module-instance-phase-level-to-state mi) phase-level 'available)])))
+                             null))])))
 
      (when otherwise-available?
        (set-module-instance-made-available?! mi #t))
@@ -649,8 +649,44 @@
 
      (unless skip-run?
        ;; In case there's no such phase for this module instance, claim 'started
-       ;; to short-circuit future attempts:
-       (small-hash-set! (module-instance-phase-level-to-state mi) run-phase-level 'started)))))
+       ;; to short-circuit future attempts (but leave a phase that is running
+       ;; in another thread to that thread):
+       (define states (module-instance-phase-level-to-state mi))
+       (let loop ()
+         (define state (small-hash-ref states run-phase-level #f))
+         (unless (or (eq? state 'started)
+                     (in-progress? state))
+           (unless (small-hash-cas! states run-phase-level state 'started)
+             (loop))))))))
+
+;; Runs a phase level of a module instance's body unless it has run
+;; already. While the body runs, the phase level's state is an
+;; `in-progress` value, and another thread that needs the phase level
+;; waits for the body to finish, instead of using a partially run
+;; instance; as before, a thread that re-enters its own instantiation,
+;; or whose body fails, leaves the phase level 'started.
+(define (run-phase-level-once! mi ns phase-level run!)
+  (define states (module-instance-phase-level-to-state mi))
+  (let loop ()
+    (define state (small-hash-ref states phase-level #f))
+    (cond
+      [(eq? state 'started) (void)]
+      [(in-progress? state)
+       (when (in-progress-wait state (namespace-module-registry ns))
+         ;; In case the other thread was killed or suspended:
+         (small-hash-cas! states phase-level state 'started)
+         (loop))]
+      [else
+       (define p (make-in-progress))
+       (cond
+         [(small-hash-cas! states phase-level state p)
+          (dynamic-wind
+           void
+           run!
+           (lambda ()
+             (small-hash-cas! states phase-level p 'started)
+             (in-progress-done! p)))]
+         [else (loop)])])))
 
 (define (namespace-visit-available-modules! ns [run-phase (namespace-phase ns)])
   (namespace-run-available-modules! ns (add1 run-phase)))

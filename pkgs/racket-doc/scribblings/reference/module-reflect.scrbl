@@ -146,7 +146,11 @@ name (while the @tech{compiled-load handler} sets
 mark} the module being loaded, and it checks whether such a mark
 already exists; if such a continuation mark does exist in the current
 continuation, then the @exnraise[exn:fail] with a message about a
-dependency cycle.
+dependency cycle. If another thread is loading the same file for the
+same @tech{module registry}, the default @tech{module name resolver}
+waits for that thread to finish, instead of loading the file again,
+unless the current thread holds the registry lock (see
+@racket[namespace-call-with-registry-lock]).
 
 The default module name resolver cooperates with the default
 @tech{compiled-load handler}: on a module-attach notification,
@@ -310,9 +314,9 @@ resolved name can depend on the value of
 the last argument to the @tech{module name resolver}, while the
 @racket[src-stx] argument is propagated as the next-to-last argument.
 
-Beware that concurrent resolution in namespaces that share a module
-registry can create race conditions when loading modules. See also
-@racket[namespace-call-with-registry-lock].
+Concurrent resolution in namespaces that share a module registry
+coordinates loading as described for the default @tech{module name
+resolver}. See also @racket[namespace-call-with-registry-lock].
 
 If @racket[mpi] represents a ``self'' (see above) module path that was
 not created by the expander as already resolved, then
@@ -563,9 +567,9 @@ phase}, if it is not yet @tech{instantiate}d. The current @tech{module
 name resolver} may load a module declaration to resolve @racket[mod]
 (see @racket[current-module-name-resolver]); the path is resolved
 relative to @racket[current-load-relative-directory] and/or
-@racket[current-directory]. Beware that concurrent @racket[dynamic-require]s
-in namespaces that share a @tech{module registry} can create race
-conditions; see also @racket[namespace-call-with-registry-lock].
+@racket[current-directory]. Concurrent @racket[dynamic-require]s in
+namespaces that share a @tech{module registry} wait for each other to
+load and @tech{instantiate} a module; see @secref["mod-parse"].
 
 If @racket[provided] is @racket[#f], then the result is @|void-const|,
 and the module is not @tech{visit}ed (see @secref["mod-parse"]) or

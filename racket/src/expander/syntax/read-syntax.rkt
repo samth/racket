@@ -83,15 +83,33 @@
               #:coerce-key read-coerce-key)))
 
 (define (read-language in fail-thunk)
-  (main:read-language in fail-thunk
-                      #:for-syntax? #t
-                      #:wrap read-to-syntax
-                      #:read-compiled read-linklet-bundle-or-directory
-                      #:call-with-root-namespace call-with-root-namespace
-                      #:dynamic-require locked-dynamic-require
-                      #:module-declared? read-module-declared?
-                      #:coerce read-coerce
-                      #:coerce-key read-coerce-key))
+  (define failed? #f)
+  (define get-info
+    (main:read-language in (and fail-thunk
+                                (lambda ()
+                                  (set! failed? #t)
+                                  (fail-thunk)))
+                        #:for-syntax? #t
+                        #:wrap read-to-syntax
+                        #:read-compiled read-linklet-bundle-or-directory
+                        #:call-with-root-namespace call-with-root-namespace
+                        #:dynamic-require locked-dynamic-require
+                        #:module-declared? read-module-declared?
+                        #:coerce read-coerce
+                        #:coerce-key read-coerce-key))
+  (if (or failed? (not get-info))
+      get-info
+      (locked-get-info get-info)))
+
+;; A language's info procedure commonly loads modules on demand, such
+;; as a color lexer, and tools call it from multiple threads; so, as
+;; for loading the reader module, hold the registry lock during a call
+(define (locked-get-info get-info)
+  (lambda (key default)
+    (registry-call-with-lock
+     (namespace-module-registry (current-namespace))
+     (lambda ()
+       (get-info key default)))))
 
 (define (read-to-syntax s-exp srcloc rep)
   (struct-copy syntax empty-syntax

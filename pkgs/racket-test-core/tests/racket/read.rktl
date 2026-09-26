@@ -1446,6 +1446,50 @@
   (port-count-lines! p)
   (err/rt-test (read-language p)
                (lambda (exn) (regexp-match? #rx"read-language" (exn-message exn)))))
+;; A failure thunk's result is returned as is:
+(test car read-language (open-input-string "8") (lambda () car))
+
+;; A language's info procedure can load a module on demand, even when
+;; called concurrently in multiple threads:
+(require (only-in racket/file make-temporary-directory delete-directory/files))
+(let ()
+  (define dir (make-temporary-directory))
+  (define lang-dir (build-path dir "rl-lock-lang"))
+  (make-directory lang-dir)
+  (define (write-module name form)
+    (call-with-output-file (build-path lang-dir name)
+      (lambda (o) (write form o))))
+  (write-module "main.rkt"
+                '(module main '#%kernel
+                   (module reader '#%kernel
+                     (#%provide get-info)
+                     (define-values (get-info)
+                       (lambda (in mod line col pos)
+                         (lambda (key default)
+                           (if (eq? key 'slow)
+                               (dynamic-require '(lib "rl-lock-lang/slow.rkt") 'slow)
+                               default)))))))
+  ;; A module whose body takes a while, so that another thread can try
+  ;; to use it before it's instantiated:
+  (write-module "slow.rkt"
+                '(module slow '#%kernel
+                   (#%provide slow)
+                   (define-values (slow) (begin (sleep 0.1) 'slow))))
+  (parameterize ([current-namespace (make-base-namespace)]
+                 [current-library-collection-paths
+                  (cons dir (current-library-collection-paths))])
+    (define get-info (read-language (open-input-string "#lang rl-lock-lang")))
+    (define results (make-vector 5 #f))
+    (define threads
+      (for/list ([i (in-range 5)])
+        (thread (lambda ()
+                  (vector-set! results i
+                               (with-handlers ([exn:fail? exn-message])
+                                 (get-info 'slow #f)))))))
+    (for-each thread-wait threads)
+    (test '#(slow slow slow slow slow) values results)
+    (test 'other get-info 'other 'other))
+  (delete-directory/files dir))
 
 (parameterize ([read-accept-reader #t])
   (err/rt-test (read (open-input-string "#lang"))

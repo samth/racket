@@ -141,9 +141,13 @@ function as @racket[read] and @racket[read-syntax] do,
 @racket[read-language] dispatches to the @racketidfont{get-info}
 function (if any) exported by the same module. The arguments to
 @racketidfont{get-info} are the same as for @racketidfont{read}
-as described in @secref["parse-reader"]. The result of the
-@racketidfont{get-info} function is the result of
-@racket[read-language] if it is a function of two arguments; if
+as described in @secref["parse-reader"]. If the result of the
+@racketidfont{get-info} function is a function of two arguments, then
+@racket[read-language] returns a function of two arguments that calls
+it; each call holds the registry lock (see
+@racket[namespace-call-with-registry-lock]) of the @tech{current
+namespace} at the time of the call, so that the function can load
+modules on demand even when multiple threads call it. If
 @racketidfont{get-info} produces any other kind of result, the
 @exnraise[exn:fail:contract]. If no @racketidfont{get-info} function is
 exported, @racket[read-language] returns @racket[#f].

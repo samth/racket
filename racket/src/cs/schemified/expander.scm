@@ -72227,19 +72227,38 @@
   (|#%name|
    read-language
    (lambda (in_0 fail-thunk_0)
-     (let ((read-module-declared?57_0 read-module-declared?))
-       (let ((read-coerce-key59_0 read-coerce-key))
-         (read-language.1
-          call-with-root-namespace
-          read-coerce
-          read-coerce-key59_0
-          locked-dynamic-require
-          #t
-          read-module-declared?57_0
-          read-linklet-bundle-or-directory
-          read-to-syntax
-          in_0
-          fail-thunk_0))))))
+     (let ((failed?_0 #f))
+       (let ((temp51_0
+              (if fail-thunk_0
+                (|#%name|
+                 temp51
+                 (lambda ()
+                   (begin (set! failed?_0 #t) (|#%app| fail-thunk_0))))
+                #f)))
+         (let ((get-info_0
+                (let ((read-module-declared?57_0 read-module-declared?))
+                  (let ((read-coerce-key59_0 read-coerce-key))
+                    (read-language.1
+                     call-with-root-namespace
+                     read-coerce
+                     read-coerce-key59_0
+                     locked-dynamic-require
+                     #t
+                     read-module-declared?57_0
+                     read-linklet-bundle-or-directory
+                     read-to-syntax
+                     in_0
+                     temp51_0)))))
+           (if (let ((or-part_0 failed?_0))
+                 (if or-part_0 or-part_0 (not get-info_0)))
+             get-info_0
+             (locked-get-info get-info_0))))))))
+(define locked-get-info
+  (lambda (get-info_0)
+    (lambda (key_0 default_0)
+      (registry-call-with-lock
+       (namespace-module-registry$1 (1/current-namespace))
+       (lambda () (|#%app| get-info_0 key_0 default_0))))))
 (define read-to-syntax
   (lambda (s-exp_0 srcloc_0 rep_0)
     (if (syntax?$1 empty-syntax)

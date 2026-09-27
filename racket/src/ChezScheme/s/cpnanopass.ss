@@ -2896,25 +2896,28 @@
         (define primref-flonum-result?
           (lambda (pr)
             (eq? 'flonum ($sgetprop (primref-name pr) '*result-type* #f)))))
-      (Expr : Expr (ir [lhs #f]) -> * (#f) ; result is whether the expression produces a flonum
+      ;; result is whether the expression produces a flonum; `exit?` is true
+      ;; in tail position of a loop body other than a call to the loop, which
+      ;; runs at most once each time the loop runs
+      (Expr : Expr (ir [lhs #f] [exit? #f]) -> * (#f)
         [(quote ,d) (flonum? d)]
         [,pr #f]
         [(if ,[e0 #f -> * fp?] ,e1 ,e2)
-         (let ([fp1? (Expr e1 lhs)]
-               [fp2? (Expr e2 lhs)])
+         (let ([fp1? (Expr e1 lhs exit?)]
+               [fp2? (Expr e2 lhs exit?)])
            (and fp1? fp2?))]
         [(seq ,[e0 #f -> * fp?] ,e1)
-         (Expr e1 lhs)]
-        [,lvalue (Lvalue lvalue lhs)]
+         (Expr e1 lhs exit?)]
+        [,lvalue (Lvalue lvalue lhs exit?)]
         [(let ([,x* ,e*] ...) ,body)
          (for-each (lambda (x e)
                      ;; Optimistically assume 'fp, so it will unify ok with
                      ;; another variable that might be 'fp
                      (uvar-type-set! x 'fp)
-                     (unless (Expr e x)
+                     (unless (Expr e x #f)
                        (ensure-not-unboxed! x)))
                    x* e*)
-         (let ([fp? (Expr body lhs)])
+         (let ([fp? (Expr body lhs exit?)])
            (for-each (lambda (x) (uvar-location-set! x #f)) x*)
            fp?)]
         [(call ,info ,mdcl ,pr ,e* ...)
@@ -2923,14 +2926,14 @@
                            [i* (primref-arity pr)])
                        (and (ormap (lambda (i) (if (fx< i 0) (fx>= n (fx- -1 i)) (fx= n i))) i*)
                             (fx<= n (constant inline-args-limit))))))
-         (for-each (lambda (e) (Expr e #t)) e*)
+         (for-each (lambda (e) (Expr e #t #f)) e*)
          (primref-flonum-result? pr)]
         [(call ,info ,mdcl ,pr ,e1 ,[e2 #f -> * fp?2] ,[e3 #f -> * fp?3] ,e4)
          (guard (and (eq? '$object-set! (primref-name pr))
                      (nanopass-case (L7 Expr) e1
                        [(quote ,d) (eq? d 'double)]
                        [else #f])))
-         (Expr e4 #t)
+         (Expr e4 #t #f)
          #f]
         [(call ,info ,mdcl ,pr ,e1 ,[e2 #f -> * fp?2] ,[e3 #f -> * fp?3])
          (guard (and (eq? '$object-ref (primref-name pr))
@@ -2940,33 +2943,33 @@
          #t]
         [(call ,info ,mdcl ,pr ,[e1 #f -> * fp?1] ,[e2 #f -> * fp?2] ,e3)
          (guard (memq (primref-name pr) '(bytevector-ieee-double-native-set! bytevector-ieee-single-native-set!)))
-         (Expr e3 #t)
+         (Expr e3 #t #f)
          #f]
         [(call ,info ,mdcl ,pr ,[e1 #f -> * fp?1] ,[e2 #f -> * fp?2] ,e3)
          (guard (eq? 'flvector-set! (primref-name pr)))
-         (Expr e3 #t)
+         (Expr e3 #t #f)
          #f]
         [(call ,info ,mdcl ,pr ,[e1 #f -> * fp?1] ,[e2 #f -> * fp?2] ,[e3 #f -> * fp?3] ,e4)
          (guard (memq (primref-name pr) '($fptr-set-double-float! $fptr-set-single-float!)))
-         (Expr e4 #t)
+         (Expr e4 #t #f)
          #f]
         [(call ,info ,mdcl ,pr ,e1 ,[e2 #f -> * fp?1] ,[e3 #f -> * fp?2])
          (guard (eq? 'flbit-field (primref-name pr)))
-         (Expr e1 #t)
+         (Expr e1 #t #f)
          #f]
         [(call ,info ,mdcl ,pr ,[e* #f -> * fp?] ...)
          (primref-flonum-result? pr)]
         [(loop ,x (,x* ...) ,body)
          (safe-assert (uvar-loop? x))
          (uvar-location-set! x x*)
-         (let ([fp? (Expr body lhs)])
+         (let ([fp? (Expr body lhs #t)])
            (uvar-location-set! x #f)
            fp?)]
         [(call ,info ,mdcl ,x ,e* ...)
          (guard (uvar-loop? x))
          (let ([x* (uvar-location x)])
            (for-each (lambda (x e)
-                       (unless (Expr e x)
+                       (unless (Expr e x #f)
                          (ensure-not-unboxed! x)))
                      x* e*))
          ;; Assume fp result until proven otherwise:
@@ -2977,7 +2980,7 @@
         [(mvlet ,[e #f -> * fp?] ((,x** ...) ,interface* ,[body* #f -> * body-fp?]) ...)
          (andmap values body-fp?)]
         [(set! ,x ,e)
-         (unless (Expr e x)
+         (unless (Expr e x #f)
            (ensure-not-unboxed! x))
          #f]
         [(set! ,[lvalue #f -> * fp?l] ,[e #f -> * fp?])
@@ -2986,7 +2989,7 @@
          #t]
         [(alloc ,info ,[e #f -> * fp?]) #f]
         [(goto ,l) #f]
-        [(label ,l ,body) (Expr body lhs)]
+        [(label ,l ,body) (Expr body lhs exit?)]
         [(label-ref ,l ,offset) #f]
         [(values ,info ,[e* #f -> * fp?] ...) #f]
         [(inline ,info ,prim ,[e* #f -> * fp?] ...) #f]
@@ -3000,29 +3003,33 @@
         [(foreign-call ,info ,[e #f -> * fp?] ,e* ...)
          (cond
            [(equal? (length e*) (length (info-foreign-arg-type* info)))
-            (for-each (lambda (e arg-type) (Expr e (fp-type? arg-type)))
+            (for-each (lambda (e arg-type) (Expr e (fp-type? arg-type) #f))
                       e*
                       (info-foreign-arg-type* info))]
            [else
-            (for-each (lambda (e) (Expr e #f)) e*)])
+            (for-each (lambda (e) (Expr e #f #f)) e*)])
          (fp-type? (info-foreign-result-type info))]
         [(profile ,src) #f]
         [(raw ,e) #f]
         [(pariah) #f])
-      (Lvalue : Lvalue (ir [lhs #f]) -> * (#f)
+      (Lvalue : Lvalue (ir [lhs #f] [exit? #f]) -> * (#f)
         [,x
          (guard (uvar? x))
+         ;; A boxed use forces `x` to stay boxed, since otherwise every
+         ;; use would allocate. A use on loop exit is the exception: boxing
+         ;; there allocates once per run of the loop, where keeping `x` boxed
+         ;; allocates on every iteration that computes a new value for it.
          (cond
-           [(not lhs) (ensure-not-unboxed! x)]
+           [(not lhs) (unless exit? (ensure-not-unboxed! x))]
            [(eq? lhs #t) (void)]
-           [(not (eq? (uvar-type lhs) 'fp)) (ensure-not-unboxed! x)]
+           [(not (eq? (uvar-type lhs) 'fp)) (unless exit? (ensure-not-unboxed! x))]
            [(not (eq? (uvar-type x) 'fp)) (ensure-not-unboxed! lhs)]
            [else (unify-boxed! x lhs)])
          (eq? (uvar-type x) 'fp)]
         [,x #f]
         [(mref ,[e1 #f -> * fp?1] ,[e2 #f -> * fp?2] ,imm ,type) (eq? type 'fp)])
       (CaseLambdaClause : CaseLambdaClause (ir) -> CaseLambdaClause ()
-        [(clause (,x* ...) ,mcp ,interface ,body) (Expr body #f) ir]))
+        [(clause (,x* ...) ,mcp ,interface ,body) (Expr body #f #f) ir]))
 
     (define-pass np-place-overflow-and-trap : L9 (ir) -> L9.5 ()
       (definitions

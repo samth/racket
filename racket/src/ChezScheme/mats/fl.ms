@@ -1600,6 +1600,39 @@
                                                  (loop (fx- n 1) (fl+ v 1.0))))])
                              (loop2 100 v))))
 
+  (check-loop-allocation (lambda (v)
+                           ;; returning the loop variable itself should box it
+                           ;; only on exit, not on every iteration
+                           (let loop ([n 100] [v (fl+ v)])
+                             (if (fx= n 0)
+                                 v
+                                 (loop (fx- n 1) (fl+ v 1.0))))))
+
+  (check-loop-allocation (lambda (v)
+                           ;; same, with the accumulator rebound by `let` before
+                           ;; the recursive call and the exit in the else branch
+                           (let loop ([n 100] [acc 0.0])
+                             (if (fx> n 0)
+                                 (let ([acc (fl+ acc v)])
+                                   (loop (fx- n 1) acc))
+                                 acc))))
+
+  ;; in safe mode, the inner loop's result is boxed for `fl+` even when
+  ;; written as `(fl+ s)`, so check only unsafe mode
+  (or (not (= 3 (optimize-level)))
+      (check-loop-allocation (lambda (v)
+                               ;; an inner loop's exit boxes at most once per run
+                               ;; of the inner loop, and here not at all, since its
+                               ;; result goes straight to `fl+`
+                               (let outer ([m 10] [acc (fl+ v)])
+                                 (if (fx= m 0)
+                                     acc
+                                     (outer (fx- m 1)
+                                            (fl+ acc (let inner ([n 10] [s 0.0])
+                                                       (if (fx= n 0)
+                                                           s
+                                                           (inner (fx- n 1) (fl+ s 1.0)))))))))))
+
   (let ([bv (make-bytevector 8 0)])
     (check-loop-allocation (lambda (v) (fl+ v (bytevector-ieee-double-native-ref bv 0)))))
   (let ([bv (make-bytevector 8 0)])

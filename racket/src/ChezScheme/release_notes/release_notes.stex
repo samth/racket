@@ -184,6 +184,9 @@ also slightly more accurate.
 Improve unboxing of floating-point arguments to \scheme{flbit-field}
 and \scheme{fl-make-rectangular}. Adjust x86\_64 instruction selection
 to reduce false dependencies for floating-point operations.
+A loop can keep a flonum loop variable unboxed even when the loop
+returns that variable as its result, since the variable is boxed
+only on loop exit.
 
 \subsection{Compiler loop-detection improvements (10.5.0)}
 

@@ -861,6 +861,14 @@
 (try-eip-seq "UTF-8" #f #"apple" `((#t 3 #"app") (#f 2 #"le") (#t 4 ,eof)))
 (try-eip-seq "UTF-8" #f #"ap\303\251ple" `((#t 3 #"ap\303") (#f 2 #"pl") (#t 4 #"\251e") (#t 5 ,eof)))
 ;; Re-enable the Windows CI case temporarily to capture its failure.
+(let ([c (bytes-open-converter "ISO-8859-1" "UTF-8")])
+  (when c
+    (let ([dest (make-bytes 3)])
+      (let-values ([(got used status)
+                    (bytes-convert c #"ap\303" 0 3 dest)])
+        (printf "ISO-8859-1 short-output probe: ~s, consumed ~s, status ~s\n"
+                (subbytes dest 0 got) used status)))
+    (bytes-close-converter c)))
 (try-eip-seq "ISO-8859-1" #t #"ap\303\251ple" `((#t 3 #"ap\303") (#f 2 #"\251p") (#t 4 #"\203le") (#t 5 ,eof)))
 (try-eip-seq "UTF-8" #f #"ap\251ple" `((#t 2 #"ap") (#f 2 #"\251p") (#t 4 #"le") (#t 5 ,eof)))
 (try-eip-seq "UTF-8" #f #"ap\251ple" `((#t 3 #"ap.") (#f 1 #"p") (#t 4 #"!le") (#t 5 ,eof)))

@@ -34,3 +34,20 @@ jobs:
         }
         Write-Host "Processes with failures: $failedProcesses/20"
         if ($failedProcesses -gt 0) { exit 1 }
+    - name: Run portlib in the test sandbox
+      if: matrix.os == 'windows-2022' && matrix.version == 'current'
+      shell: pwsh
+      timeout-minutes: 8
+      run: |
+        $ErrorActionPreference = 'Continue'
+        $failedRuns = 0
+        for ($trial = 1; $trial -le 3; $trial++) {
+          $log = Join-Path $env:RUNNER_TEMP "portlib-sandbox-$trial.log"
+          & racket -f .\pkgs\racket-test-core\tests\racket\portlib-only.rktl *> $log
+          $exitCode = $LASTEXITCODE
+          Write-Host "Sandbox run $trial, exit $exitCode"
+          Get-Content $log -Tail 15
+          if ($exitCode -ne 0) { $failedRuns++ }
+        }
+        Write-Host "Sandbox runs with failures: $failedRuns/3"
+        if ($failedRuns -gt 0) { exit 1 }

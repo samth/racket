@@ -8,19 +8,20 @@ permissions:
 
 jobs:
   reproduce:
-    runs-on: windows-2022
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        mode: ['BC', 'CS']
+        os: ['windows-2022', 'windows-2025']
+        version: ['9.2', 'current']
     steps:
     - uses: actions/checkout@v7
     - uses: Bogdanp/setup-racket@v1.15
       with:
         architecture: x64
         distribution: full
-        variant: ${{ matrix.mode }}
-        version: current
+        variant: CS
+        version: ${{ matrix.version }}
         snapshot_site: utah
     - name: Run repeated focused trials
       shell: pwsh

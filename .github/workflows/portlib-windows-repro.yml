@@ -7,47 +7,45 @@ permissions:
   contents: read
 
 jobs:
-  reproduce:
+  # An installed Racket keeps iconv-2.dll in its own lib directory. Hiding
+  # that DLL makes rktio search the way a source-built CI tree does, since
+  # there raco setup puts iconv-2.dll in the user-scope lib directory.
+  iconv-search:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: ['windows-2022', 'windows-2025']
-        version: ['9.2', 'current']
     steps:
     - uses: actions/checkout@v7
+      with:
+        sparse-checkout: |
+          portlib-iconv-probe.rkt
+          portlib-iconv-scan.ps1
+          racket/src/worksp/msvcprep.bat
     - uses: Bogdanp/setup-racket@v1.15
       with:
         architecture: x64
-        distribution: full
+        distribution: minimal
         variant: CS
-        version: ${{ matrix.version }}
-        snapshot_site: utah
-    - name: Run repeated focused trials
+        version: current
+        snapshot_site: northwestern
+    - name: Hide the bundled iconv-2.dll
       shell: pwsh
       run: |
-        $failedProcesses = 0
-        for ($trial = 1; $trial -le 20; $trial++) {
-          Write-Host "Process $trial"
-          & racket .\portlib-windows-repro.rkt
-          if ($LASTEXITCODE -ne 0) { $failedProcesses++ }
-        }
-        Write-Host "Processes with failures: $failedProcesses/20"
-        if ($failedProcesses -gt 0) { exit 1 }
-    - name: Run portlib in the test sandbox
-      if: matrix.os == 'windows-2022' && matrix.version == 'current'
-      shell: pwsh
-      timeout-minutes: 8
+        $root = Split-Path (Get-Command racket).Source
+        Write-Host "Racket root: $root"
+        racket -e "(displayln (version))"
+        Move-Item "$root\lib\iconv-2.dll" "$root\lib\iconv-2.dll.hidden"
+        "RKTROOT=$root" >> $env:GITHUB_ENV
+    - name: Probe without msvcprep
+      shell: cmd
       run: |
-        $ErrorActionPreference = 'Continue'
-        $failedRuns = 0
-        for ($trial = 1; $trial -le 3; $trial++) {
-          $log = Join-Path $env:RUNNER_TEMP "portlib-sandbox-$trial.log"
-          & racket -f .\pkgs\racket-test-core\tests\racket\portlib-only.rktl *> $log
-          $exitCode = $LASTEXITCODE
-          Write-Host "Sandbox run $trial, exit $exitCode"
-          Get-Content $log -Tail 15
-          if ($exitCode -ne 0) { $failedRuns++ }
-        }
-        Write-Host "Sandbox runs with failures: $failedRuns/3"
-        if ($failedRuns -gt 0) { exit 1 }
+        racket portlib-iconv-probe.rkt
+        pwsh -NoProfile -File portlib-iconv-scan.ps1 "%RKTROOT%" "%RKTROOT%\lib"
+    - name: Probe with msvcprep
+      shell: cmd
+      run: |
+        call racket\src\worksp\msvcprep.bat x86_amd64
+        racket portlib-iconv-probe.rkt
+        pwsh -NoProfile -File portlib-iconv-scan.ps1 "%RKTROOT%" "%RKTROOT%\lib"

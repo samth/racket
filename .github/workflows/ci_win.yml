@@ -54,6 +54,17 @@ jobs:
       shell: cmd
       run: |
         call racket\raco.exe pkg install --auto --no-docs racket-test unstable-flonum-lib net-test
+    - name: Probe iconv without msvcprep
+      shell: cmd
+      run: |
+        racket\racket.exe portlib-iconv-probe.rkt
+        pwsh -NoProfile -File portlib-iconv-scan.ps1 %cd%\racket %cd%\racket\lib
+    - name: Probe iconv with msvcprep
+      shell: cmd
+      run: |
+        call .\racket\src\worksp\msvcprep.bat x86_amd64
+        racket\racket.exe portlib-iconv-probe.rkt
+        pwsh -NoProfile -File portlib-iconv-scan.ps1 %cd%\racket %cd%\racket\lib
     - name: Run tests/racket/test
       shell: cmd
       run: |

@@ -1,0 +1,40 @@
+name: Portlib Windows reproduction
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ['3m', 'CS']
+    steps:
+    - uses: actions/checkout@v7
+    - name: Build 3m
+      if: matrix.mode == '3m'
+      shell: cmd
+      run: |
+        call racket\src\worksp\msvcprep.bat x86_amd64
+        nmake bc-base RACKETBC_SUFFIX=
+    - name: Build CS
+      if: matrix.mode == 'CS'
+      shell: cmd
+      run: |
+        call racket\src\worksp\msvcprep.bat x86_amd64
+        nmake cs-base RACKETCS_SUFFIX=
+    - name: Run repeated focused trials
+      shell: pwsh
+      run: |
+        $failedProcesses = 0
+        for ($trial = 1; $trial -le 20; $trial++) {
+          Write-Host "Process $trial"
+          & .\racket\racket.exe .\portlib-windows-repro.rkt
+          if ($LASTEXITCODE -ne 0) { $failedProcesses++ }
+        }
+        Write-Host "Processes with failures: $failedProcesses/20"
+        if ($failedProcesses -gt 0) { exit 1 }

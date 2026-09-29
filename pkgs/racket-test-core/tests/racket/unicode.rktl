@@ -1035,6 +1035,27 @@
   (test-values '(#"" complete)
                (lambda () (bytes-convert-end c))))
 
+;; A converter implemented by iconv should report each documented way
+;; that conversion stops: 'continues when the output is full, 'aborts
+;; when the input ends mid-sequence, and 'error for an invalid sequence.
+(let ([from-latin-1 (bytes-open-converter "ISO-8859-1" "UTF-8")]
+      [to-latin-1 (bytes-open-converter "UTF-8" "ISO-8859-1")])
+  (when (and from-latin-1 to-latin-1)
+    (define (convert c src dest-size)
+      (call-with-values
+       (lambda () (bytes-convert c src 0 (bytes-length src) #f 0 dest-size))
+       list))
+    (test (list #"ap\303\251" 3 'complete) convert from-latin-1 #"ap\351" #f)
+    ;; "\351" needs two bytes of output, but only one is left:
+    (test (list #"ap" 2 'continues) convert from-latin-1 #"ap\351" 3)
+    (test (list #"ap\351" 4 'complete) convert to-latin-1 #"ap\303\251" #f)
+    (test (list #"ap" 2 'aborts) convert to-latin-1 #"ap\303" #f)
+    (test (list #"ap" 2 'error) convert to-latin-1 #"ap\377le" #f)
+    ;; U+3042 has no Latin-1 encoding:
+    (test (list #"ap" 2 'error) convert to-latin-1 #"ap\343\201\202" #f)
+    (bytes-close-converter from-latin-1)
+    (bytes-close-converter to-latin-1)))
+
 (for ([c (append
           (if (eq? (system-type) 'windows)
               (list (bytes-open-converter "platform-UTF-8-permissive" "platform-UTF-16"))

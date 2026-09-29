@@ -1523,8 +1523,7 @@
            '(module ? racket/base
               (define x (if (zero? (random 2)) '() '(1)))
               x))
-(test-comp #:except 'chez-scheme
-           '(lambda (x) (if (null? x) x x))
+(test-comp '(lambda (x) (if (null? x) x x))
            '(lambda (x) x))
 (test-comp #:except 'chez-scheme
            '(lambda (x) (if (null? x) null x))
@@ -2010,12 +2009,12 @@
                 (let-values ([(a b) (values (cons 1 z) (cons 2 z))])
                   (list a b)))))
            '(module m racket/base
-             ;; Reference to a ready module-level variable shouldn't
-             ;; prevent let-values splitting
              (#%plain-module-begin
               (define z (random))
               (define (f)
-                (list (cons 1 z) (cons 2 z))))))
+                (let ([x (cons 1 z)]
+                      [y (cons 2 z)])
+                  (list x y))))))
 
 (test-comp '(module m racket/base
              ;; Don't reorder references to a mutable variable
@@ -2026,14 +2025,33 @@
                   (list b a)))
               (set! z 5)))
            '(module m racket/base
-             ;; Reference to a ready module-level variable shouldn't
-             ;; prevent let-values splitting
              (#%plain-module-begin
               (define z (random))
               (define (f)
                 (list (cons 2 z) (cons 1 z)))
               (set! z 5)))
            #f)
+
+(test-comp #:except 'racket
+           '(module m racket/base
+             ;; Allow `values` splitting with nested `let` on RHS
+             (#%plain-module-begin
+              (define (f)
+                (let-values ([(a b) (let ([one (f)])
+                                      (values (cons one 0) (cons one 0)))])
+                  (list a b)))))
+           '(module m racket/base
+             (#%plain-module-begin
+              (define (f)
+                (let ([one (f)])
+                  (list (cons one 0)
+                        (cons one 0)))))))
+
+(test-comp '(module m racket/base
+              (let-values ([(vx vy) (values (add1 10) 12)])
+                (println (+ vx vy))))
+           '(module m racket/base
+              (println 23)))
 
 (test-comp #:except 'chez-scheme
            '(lambda (z)
@@ -2254,6 +2272,14 @@
                      (E (λ () T)))
              5)
            5)
+
+(test-comp '(letrec-values ([() (begin 'ok (values))]
+                            [() (let () (begin (list 1) (vector 2 3) (values)))]
+                            [(f) (lambda (x) (if (zero? x) x (f (sub1 x))))]
+                            [() (begin #'x (values))])
+              (f 10))
+           '(letrec ([f (lambda (x) (if (zero? x) x (f (sub1 x))))])
+              (f 10)))
 
 (parameterize ([compile-context-preservation-enabled 
                 ;; Avoid different amounts of unrolling

@@ -143,6 +143,12 @@ The armv7le and tarmv7le machine types correspond to a 32-bit ARM
 compilation target using the armel ABI, which is consistent with (old)
 Android devices.
 
+\subsection{Floating-point performance improvements (10.5.0)}
+
+Improve unboxing of floating-point arguments to \scheme{flbit-field}
+and \scheme{fl-make-rectangular}. Adjust x86\_64 instruction selection
+to reduce false dependencies for floating-point operations.
+
 \subsection{Named Cost Center (10.4.0)}
 
 The procedure \scheme{make-cost-center} now
@@ -3023,6 +3029,20 @@ argument raises an error and the offset is out of bounds has been fixed.
 When \scheme{log} is called with exact \scheme{1} as the second argument, the error is now
 reported in terms of \scheme{log} instead of a divide-by-zero error in \scheme{/}.
 
+When a vector, string, or bytevector constructor is given an exact nonnegative
+integer that exceeds the corresponding maximum object length, it now raises a
+condition of type \scheme{\&implementation-restriction} instead of
+\scheme{\&assertion}. This applies to \scheme{make-vector},
+\scheme{make-string}, \scheme{make-bytevector}, and their immobile or reference
+variants.
+
+\subsection{Repair large-object \scheme{make-immobile-bytevector} (10.5.0)}
+
+When \scheme{make-immobile-bytevector} was called with a size greater
+than the minimum segment allocation, which is roughtly 2MB on a 64-bit
+platform, then the resulting bytevector was not reliably immobile.
+That bug has been fixed.
+
 \subsection{Repairs for x86\_64 Windows foreign callables (10.5.0)}
 
 A foreign callable on x86\_64 Windows did not properly preserve XMM
@@ -3037,6 +3057,22 @@ that does not fit into registers, the callee receives a result pointer
 as an extra argument. The generated code incorrectly assumed or
 implemented a pop of the result-pointer argument by the callee. That
 bug has been fixed.
+
+\subsection{Improve support for W-xor-X hosts (10.5.0)}
+
+The new \scheme{--enable-wx} configuration option supports hosts that
+enforce exclusive write vs. execute mode on memory pages. This option
+is needed only when enforcement is process-wide (as on iOS or on
+OpenBSD when not on an wxallowed filesystem) as opposed to
+configurable per thread (as on Mac OS). The trade-off is that
+\scheme{__collect_safe} is ignored for foreign-procedure calls and
+callables.
+
+Partial support was previously available by compiling the Chez Scheme
+kernel with \scheme{WRITE_XOR_EXECUTE_CODE} defined, but that did not
+work correctly with threads. In addition, a bug has been fixed where a
+\scheme{(collect 0 0)} collection request could lead to a ``failed to
+protect recent allocation segments'' failure.
 
 \subsection{Repairs for 32-bit ARM foreign call and callables (10.5.0)}
 

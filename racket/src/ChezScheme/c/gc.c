@@ -920,7 +920,8 @@ ptr GCENTRY(ptr tc, ptr count_roots_ls) {
 #ifndef NO_DIRTY_NEWSPACE_POINTERS
     S_G.new_dirty_cards = NULL;
 #endif /* !NO_DIRTY_NEWSPACE_POINTERS */
-    S_G.must_mark_gen0 = 0;
+    if (MIN_TG > 0)
+      S_G.must_mark_gen0 = 0;
 
     setup_sweepers(tgc); /* maps  threads to sweepers */
 
@@ -1717,6 +1718,15 @@ ptr GCENTRY(ptr tc, ptr count_roots_ls) {
     S_G.g0_bytes_after_last_gc = S_G.bytes_of_generation[0];
 
     if (MAX_CG >= S_G.min_free_gen) S_free_chunks();
+
+#if defined(WRITE_XOR_EXECUTE_CODE)
+    /* any new allocation of code needs to happen on a new page */
+    for (ls = S_threads; ls != Snil; ls = Scdr(ls)) {
+      ptr t_tc = (ptr)THREADTC(Scar(ls));
+      for (g = 0; g <= MAX_TG; g++)
+        S_close_off_thread_local_segment(t_tc, space_code, g);
+    }
+#endif
 
     S_flush_instruction_cache(tc);
     S_thread_end_code_write(tc, MAX_TG, 0, NULL, 0);

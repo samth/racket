@@ -53,18 +53,7 @@ jobs:
     - name: Install Testing Deps
       shell: cmd
       run: |
-        call racket\raco.exe pkg install --auto --no-docs racket-test unstable-flonum-lib net-test
-    - name: Probe iconv without msvcprep
-      shell: cmd
-      run: |
-        racket\racket.exe portlib-iconv-probe.rkt
-        pwsh -NoProfile -File portlib-iconv-scan.ps1 %cd%\racket %cd%\racket\lib
-    - name: Probe iconv with msvcprep
-      shell: cmd
-      run: |
-        call .\racket\src\worksp\msvcprep.bat x86_amd64
-        racket\racket.exe portlib-iconv-probe.rkt
-        pwsh -NoProfile -File portlib-iconv-scan.ps1 %cd%\racket %cd%\racket\lib
+        call racket\raco.exe pkg install -i --auto --no-docs racket-test unstable-flonum-lib net-test
     - name: Run tests/racket/test
       shell: cmd
       run: |
@@ -114,7 +103,7 @@ jobs:
       run: racket\raco.exe test -c tests/future
     - name: Install db tests dependency
       shell: cmd
-      run: racket\raco.exe pkg install --auto db-test
+      run: racket\raco.exe pkg install -i --auto db-test
     - name: Run db tests
       shell: cmd
       run: racket\raco.exe test -l tests/db/all-tests
@@ -126,7 +115,7 @@ jobs:
       run: racket\raco.exe test -c tests/syntax
     - name: Install demo tests dependency
       shell: cmd
-      run: racket\raco.exe pkg install --auto compiler-test
+      run: racket\raco.exe pkg install -i --auto compiler-test
     - name: Run demod tests
       shell: cmd
       run: racket\raco.exe test  -l tests/compiler/demodularizer/demod-test.rkt

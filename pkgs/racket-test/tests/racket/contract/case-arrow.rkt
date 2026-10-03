@@ -196,6 +196,24 @@
      #f)
    #f)
   
+  (test/neg-blame
+   'contract-case->17
+   '((contract (-> (case-> (-> any/c) (-> any/c any/c)) any)
+               (λ (f) (f))
+               'pos
+               'neg)
+     (case-lambda
+       [(x) x]
+       [(x y) y])))
+
+  (test/neg-blame
+   'contract-case->18
+   '((contract (-> (case->) any)
+               (λ (f) (f))
+               'pos
+               'neg)
+     1))
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;                                                        ;;
   ;;   case-> arity checking tests                          ;;

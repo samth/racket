@@ -5036,6 +5036,9 @@
         (define-fl-call flexp)
         (define-fl2-call fllog fllog2))
 
+      (define-inline 3 flhypot
+        [(e1 e2) (build-fl-call (lookup-c-entry flhypot) e1 e2)])
+
       (define-inline 3 flexpt
         [(e1 e2) (build-fl-call (lookup-c-entry flexpt) e1 e2)])
       
@@ -5410,6 +5413,12 @@
         (define-fl-call flexp)
         (define-fl2-call fllog fllog2))
       
+      (define-inline 2 flhypot
+        [(e1 e2) (build-checked-fp-op e1 e2
+                   (lambda (e1 e2) (build-fl-call (lookup-c-entry flhypot) e1 e2))
+                   (lambda (e1 e2)
+                     (build-libcall #t src sexpr flhypot e1 e2)))])
+
       (define-inline 2 flexpt
         [(e1 e2) (build-checked-fp-op e1 e2
                    (lambda (e1 e2) (build-fl-call (lookup-c-entry flexpt) e1 e2))

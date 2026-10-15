@@ -718,6 +718,7 @@
   (define-library-entry (flexp x) (flonum-oops 'flexp x))
   (define-library-entry (fllog x) (flonum-oops 'fllog x))
   (define-library-entry (fllog2 x y) (flonum-oops 'fllog (if (flonum? x) y x)))
+  (define-library-entry (flhypot x y) (flonum-oops 'flhypot (if (flonum? x) y x)))
   (define-library-entry (flexpt x y) (flonum-oops 'flexpt (if (flonum? x) y x)))
   (define-library-entry (flbit-field x y z) (flonum-oops 'flbit-field x))
 

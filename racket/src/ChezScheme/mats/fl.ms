@@ -466,6 +466,27 @@
     (== (fllog -inf.0) +nan.0)
  )
 
+(mat flhypot
+    (error? (flhypot))
+    (error? (flhypot 3.0))
+    (error? (flhypot 3.0 4.0 5.0))
+    (error? (flhypot 'a 4.0))
+    (error? (flhypot 3.0 'a))
+    (error? (flhypot 3 4.0))
+    (error? (flhypot 3.0 4))
+    (error? (flhypot 3.0 +1i))
+    (eqv? (flhypot 3.0 4.0) 5.0)
+    (eqv? (flhypot -3.0 -4.0) 5.0)
+    (eqv? (flhypot -0.0 -0.0) 0.0)
+    (fl~= (flhypot 3e200 4e200) 5e200)
+    (fl~= (flhypot 3e-200 4e-200) 5e-200)
+    (== (flhypot +inf.0 +nan.0) +inf.0)
+    (== (flhypot +nan.0 -inf.0) +inf.0)
+    (== (flhypot +nan.0 1.0) +nan.0)
+    (eqv? (apply flhypot '(3.0 4.0)) 5.0)
+    (test-cp0-expansion eqv? '(flhypot 3.0 4.0) 5.0)
+ )
+
 (mat flexp
     (error? (flexp))
     (error? (flexp 3.0 4.0)) 

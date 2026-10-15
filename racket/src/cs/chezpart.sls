@@ -51,7 +51,7 @@
                            bitwise-xor
                            bitwise-and
                            bitwise-not
-                           fllog flatan
+                           fllog flatan flhypot
                            fxquotient
                            expt
                            make-flvector flvector-copy

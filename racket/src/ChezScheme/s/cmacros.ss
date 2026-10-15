@@ -3034,6 +3034,7 @@
      (fllog #f 1 #t #t)
      (fllog2 #f 2 #t #t)
      (flexpt #f 2 #t #t)
+     (flhypot #f 2 #t #t)
      (flonum->fixnum #f 1 #t #t)
      (bitwise-and #f 2 #f #t)
      (bitwise-ior #f 2 #f #t)
@@ -3170,6 +3171,7 @@
      fllog
      fllog2
      flexpt
+     flhypot
      flsqrt
      null-immutable-vector
      null-immutable-bytevector

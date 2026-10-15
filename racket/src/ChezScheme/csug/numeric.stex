@@ -663,6 +663,26 @@ reported as a nonnegative exact integer.
 (flbit-field 3.14e132 52 63) ; => 1463
 \endschemedisplay
 
+%----------------------------------------------------------------------------
+\entryheader
+\formdef{flhypot}{\categoryprocedure}{(flhypot \var{flonum_1} \var{flonum_2})}
+\returns a flonum
+\listlibraries
+\endentryheader
+
+\noindent
+\var{flonum_1} and \var{flonum_2} must be flonums.
+\scheme{flhypot} returns the magnitude of the complex number whose real
+and imaginary parts are \var{flonum_1} and \var{flonum_2}.
+The computation avoids unnecessary intermediate overflow and underflow.
+If either argument is infinite, the result is \scheme{+inf.0}, even if
+the other argument is NaN. Otherwise, a NaN argument produces NaN.
+
+\schemedisplay
+(flhypot 3.0 4.0) ;=> 5.0
+(flhypot -0.0 -0.0) ;=> 0.0
+\endschemedisplay
+
 \section{Inexact Complex Operations\label{SECTNUMERICCOMPLEXNUM}}
 
 The procedures described in this section provide mechanisms for

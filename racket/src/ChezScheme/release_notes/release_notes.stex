@@ -122,6 +122,12 @@ Online versions of both books can be found at
 %-----------------------------------------------------------------------------
 \section{Functionality Changes}\label{section:functionality}
 
+\subsection{New procedure \scheme{flhypot} (10.5.0)}
+
+The new \scheme{flhypot} procedure accepts two flonums and computes the
+magnitude of the complex number with those real and imaginary parts,
+avoiding unnecessary intermediate overflow and underflow.
+
 \subsection{Anonymous fields in struct and union ftypes (10.5.0)}
 
 Struct and union ftypes now support anonymous fields, which mirror anonymous

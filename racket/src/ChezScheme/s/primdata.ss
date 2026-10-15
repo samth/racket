@@ -1353,6 +1353,7 @@
   (file-regular? [sig [(pathname) (pathname ptr) -> (boolean)]] [flags discard])
   (file-symbolic-link? [sig [(pathname) -> (boolean)]] [flags discard])
   (fllp [sig [(flonum) -> (ufixnum)]] [flags arith-op mifoldable discard safeongoodargs])
+  (flhypot [sig [(flonum flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (flsingle [sig [(flonum) -> (flonum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (fl-make-rectangular [sig [(flonum flonum) -> ($inexactnum)]] [flags arith-op mifoldable discard safeongoodargs unboxed-arguments])
   (flbit-field [sig [(flonum sub-uint sub-uint) -> (uint)]] [flags arith-op mifoldable discard safeongoodargs])

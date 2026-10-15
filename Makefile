@@ -112,8 +112,8 @@ CFLAGS_FOR_BUILD =
 
 # This branch name must be changed each time the pb boot files are
 # updated:
-PB_BRANCH = v10.5.0-pre-release.1-1
-PB_REPO = https://github.com/racket/pb
+PB_BRANCH = flhypot-primitive-pb-grouped
+PB_REPO = https://github.com/samth/ChezScheme
 
 # Set to empty for Git before v1.7.10:
 SINGLE_BRANCH_FLAG = --single-branch

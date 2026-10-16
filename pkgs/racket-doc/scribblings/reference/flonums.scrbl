@@ -133,7 +133,8 @@ Otherwise, a @racket[+nan.0] argument produces @racket[+nan.0].
 Signed zeros follow the rules for multiplication and addition.
 
 On Racket CS, this operation uses the Chez Scheme primitive, which
-uses fused multiply-add instructions on AArch64 and on x86-64 when
+uses fused multiply-add instructions on AArch64, RISC-V64, LoongArch64,
+and PowerPC32, and on x86-64 when
 the processor and operating system support FMA3. Other configurations
 use the platform's fused multiply-add implementation.
 

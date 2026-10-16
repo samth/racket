@@ -1,4 +1,5 @@
-Add flfma with single rounding, native AArch64 FMADD and guarded x86-64 FMA3.
+Add flfma with single rounding, native AArch64, RISC-V64, LoongArch64, and PowerPC32 FMA,
+and guarded x86-64 FMA3.
 
 9.4 changes:
 - updated version to 9.4

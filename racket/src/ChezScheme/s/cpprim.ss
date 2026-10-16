@@ -4959,7 +4959,7 @@
       (define build-flfma
         (lambda (e1 e2 e3)
           (constant-case architecture
-            [(arm64)
+            [(arm64 riscv64 loongarch64 ppc32)
              (bind #f fp (e1 e2 e3)
                `(unboxed-fp (inline ,(make-info-unboxed-args '(#t #t #t)) ,%fpfma ,e1 ,e2 ,e3)))]
             [(x86_64)

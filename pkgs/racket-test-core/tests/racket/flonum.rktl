@@ -518,4 +518,41 @@
 
 ;; ----------------------------------------
 
+
+;; Check literals (constant folding), inlined runtime calls, and first-class
+;; calls. An exact rational oracle catches an intermediate rounding.
+(let ()
+  (define (inline-fma a b c) (flfma a b c))
+  (define (inline-unsafe-fma a b c) (unsafe-flfma a b c))
+  (test -4.930380657631324e-32 'folded-flfma
+        (flfma 1.0000000000000002 0.9999999999999998 -1.0))
+  (test 1e308 'folded-flfma (flfma 1e308 2.0 -1e308))
+  (for ([f (list flfma unsafe-flfma inline-fma inline-unsafe-fma)])
+    (test 3 procedure-arity f)
+    (for ([args '((2.0 3.0 4.0)
+                  (1.0000000000000002 0.9999999999999998 -1.0)
+                  (1e308 2.0 -1e308)
+                  (5e-324 0.5 5e-324)
+                  (3.0 3.0 3.0))])
+      (define a (car args))
+      (define b (cadr args))
+      (define c (caddr args))
+      (test (exact->inexact (+ (* (inexact->exact a) (inexact->exact b))
+                              (inexact->exact c)))
+            apply f args))
+    (test -0.0 f -0.0 1.0 -0.0)
+    (test 0.0 f -0.0 1.0 0.0)
+    (test 0.0 f 1.0 1.0 -1.0)
+    (test +inf.0 f +inf.0 2.0 +inf.0)
+    (test +nan.0 f +inf.0 0.0 1.0)
+    (test +nan.0 f +inf.0 1.0 -inf.0)
+    (test +nan.0 f +nan.0 1.0 2.0)
+    (test +nan.0 f 1.0 +nan.0 2.0)
+    (test +nan.0 f 1.0 2.0 +nan.0))
+  (err/rt-test (flfma 1 2.0 3.0) exn:fail:contract?)
+  (err/rt-test (flfma 1.0 2 3.0) exn:fail:contract?)
+  (err/rt-test (flfma 1.0 2.0 3) exn:fail:contract?)
+  (err/rt-test (flfma 1.0 2.0) exn:fail:contract:arity?)
+  (err/rt-test (flfma 1.0 2.0 3.0 4.0) exn:fail:contract:arity?))
+
 (report-errs)

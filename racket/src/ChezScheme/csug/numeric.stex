@@ -568,6 +568,35 @@ are considered nonpositive and nonnegative.
 
 %----------------------------------------------------------------------------
 \entryheader
+\formdef{flfma}{\categoryprocedure}{(flfma \var{fl_1} \var{fl_2} \var{fl_3})}
+\returns a flonum
+\listlibraries
+\endentryheader
+
+\noindent
+Computes the product of \var{fl_1} and \var{fl_2}, plus \var{fl_3},
+with a single rounding to the flonum format.  The intermediate product
+is not rounded and cannot overflow or underflow.  The arguments must
+all be flonums.
+
+Multiplying an infinity by zero or adding an infinite product to an
+infinity of the opposite sign produces a NaN.  A NaN argument produces
+a NaN result.  Signed zeros follow the rules for multiplication and addition.
+
+On AArch64, this operation uses the \scheme{FMADD} instruction.
+On x86\_64, it uses FMA3 instructions when both the processor and the
+operating system support them.  Otherwise, it uses the C library's
+fused multiply-add operation.
+
+\schemedisplay
+(flfma 2.0 3.0 4.0) ;=> 10.0
+(flfma 1.0000000000000002 0.9999999999999998 -1.0) ;=> -4.930380657631324e-32
+(fl+ (fl* 1.0000000000000002 0.9999999999999998) -1.0) ;=> 0.0
+(flfma 1e308 2.0 -1e308) ;=> 1e308
+\endschemedisplay
+
+%----------------------------------------------------------------------------
+\entryheader
 \formdef{flsingle}{\categoryprocedure}{(flsingle \var{fl})}
 \returns a possibly less precise variant of \var{fl}
 \listlibraries

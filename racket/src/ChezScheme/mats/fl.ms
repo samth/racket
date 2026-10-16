@@ -1247,6 +1247,7 @@
   (check-loop-allocation (lambda (v) (flceiling v)))
   
   (check-loop-allocation (lambda (v) (flsqrt v)))
+  (check-loop-allocation (lambda (v) (flfma v v v)))
   (check-loop-allocation (lambda (v) (flsin v)))
   (check-loop-allocation (lambda (v) (flcos v)))
   (check-loop-allocation (lambda (v) (fltan v)))
@@ -1447,3 +1448,69 @@
   (eqv? (let ([x 5.0]) (fl* x)) 5.0)
 
   )
+
+(mat flfma
+  (let ([reject? (lambda (args)
+                   (guard (c [else (assertion-violation? c)])
+                     (apply #2%flfma args)
+                     #f))])
+    (andmap reject? '(() (1.0 2.0) (1.0 2.0 3.0 4.0)
+                     (1 2.0 3.0) (1.0 a 3.0) (1.0 2.0 3))))
+  (== (flfma 2.0 3.0 4.0) 10.0)
+  (== (flfma 1.0000000000000002 0.9999999999999998 -1.0) -4.930380657631324e-32)
+  (== (flfma 1e308 2.0 -1e308) 1e308)
+  (== (flfma 5e-324 0.5 5e-324) 1e-323)
+  (== (flfma -0.0 1.0 -0.0) -0.0)
+  (== (flfma -0.0 1.0 0.0) 0.0)
+  (== (flfma 1.0 1.0 -1.0) 0.0)
+  (== (flfma +inf.0 0.0 1.0) (nan))
+  (== (flfma +inf.0 1.0 -inf.0) (nan))
+  (== (flfma +nan.0 1.0 2.0) (nan))
+  (== (flfma 1.0 +nan.0 2.0) (nan))
+  (== (flfma 1.0 2.0 +nan.0) (nan))
+  (== (flfma +inf.0 2.0 +inf.0) +inf.0)
+  ;; Exercise both first-class and inlined calls with nonconstant inputs,
+  ;; including register overlap and unboxed results used in a loop.
+  (let ([f (lambda (a b c) (flfma a b c))])
+    (andmap
+      (lambda (args)
+        (let ([expected (apply (lambda (a b c) (inexact (+ (* (exact a) (exact b)) (exact c)))) args)])
+          (and (eqv? (apply f args) expected)
+               (eqv? (apply flfma args) expected))))
+      '((2.0 3.0 4.0)
+        (1.0000000000000002 0.9999999999999998 -1.0)
+        (1e308 2.0 -1e308)
+        (5e-324 0.5 5e-324)
+        (3.0 3.0 3.0))))
+  (let ([fs (list (lambda (a b c) (flfma a b c))
+                  (lambda (a b c) (fl+ (flfma a b c) a))
+                  (lambda (a b c) (fl+ (flfma a b c) b))
+                  (lambda (a b c) (fl+ (flfma a b c) c))
+                  (lambda (a b c) (flfma a a c))
+                  (lambda (a b c) (flfma a b a))
+                  (lambda (a b c) (flfma a b b))
+                  (lambda (a b c) (flfma a a a)))]
+        [xs '(-1e308 -1.0 -5e-324 -0.0 0.0 5e-324 0.5
+              0.9999999999999998 1.0 1.0000000000000002 1e308)])
+    (define (oracle a b c) (inexact (+ (* (exact a) (exact b)) (exact c))))
+    (andmap
+      (lambda (a)
+        (andmap
+          (lambda (b)
+            (andmap
+              (lambda (c)
+                (let ([r (oracle a b c)])
+                  (andmap
+                    (lambda (f expected)
+                      (let ([v (f a b c)])
+                        (or (eqv? v expected) (and (= v 0.0) (= expected 0.0)))))
+                    fs (list r (fl+ r a) (fl+ r b) (fl+ r c)
+                             (oracle a a c) (oracle a b a) (oracle a b b) (oracle a a a)))))
+              xs))
+          xs))
+      xs))
+  (let loop ([n 1000] [x 0.0])
+    (if (fxzero? n)
+        (eqv? x 1000.0)
+        (loop (fx- n 1) (flfma x 1.0 1.0))))
+)

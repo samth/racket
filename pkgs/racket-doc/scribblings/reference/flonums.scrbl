@@ -118,6 +118,27 @@ the range @racket[-1.0] to @racket[1.0] is given to @racket[flasin] or
 @racket[flacos], or when a negative number is given to @racket[fllog]
 or @racket[flsqrt].}
 
+@defproc[(flfma [a flonum?] [b flonum?] [c flonum?]) flonum?]{
+
+Computes @racket[(+ (* a b) c)] with a single rounding to a
+@tech{flonum}. The intermediate product is computed without rounding,
+overflow, or underflow. For example,
+@racket[(flfma 1.0000000000000002 0.9999999999999998 -1.0)]
+produces @racket[-4.930380657631324e-32], while separate
+@racket[fl*] and @racket[fl+] operations produce @racket[0.0].
+
+The result is @racket[+nan.0] when an infinity is multiplied by zero,
+or when an infinite product is added to an infinity of the opposite sign.
+Otherwise, a @racket[+nan.0] argument produces @racket[+nan.0].
+Signed zeros follow the rules for multiplication and addition.
+
+On Racket CS, this operation uses the Chez Scheme primitive, which
+uses fused multiply-add instructions on AArch64 and on x86-64 when
+the processor and operating system support FMA3. Other configurations
+use the platform's fused multiply-add implementation.
+
+@history[#:added "9.3.0.11"]}
+
 @defproc[(flhypot [a flonum?] [b flonum?]) flonum?]{
 
 Computes the square root of the sum of the squares of @racket[a] and

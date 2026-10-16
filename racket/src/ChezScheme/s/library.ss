@@ -702,6 +702,11 @@
   (define-library-entry (flmin x y) (flonum-oops 'flmin (if (flonum? x) y x)))
   (define-library-entry (flmax x y) (flonum-oops 'flmax (if (flonum? x) y x)))
 
+  (define-library-entry (flfma x y z)
+    (cond
+      [(not (flonum? x)) (flonum-oops 'flfma x)]
+      [(not (flonum? y)) (flonum-oops 'flfma y)]
+      [else (flonum-oops 'flfma z)]))
   (define-library-entry (flsqrt x) (flonum-oops 'flsqrt x))
   (define-library-entry (flround x) (flonum-oops 'flround x))
   (define-library-entry (flfloor x) (flonum-oops 'flfloor x))

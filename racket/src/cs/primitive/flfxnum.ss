@@ -21,6 +21,7 @@
   [flcos (known-procedure/folding 2)]
   [flexp (known-procedure/folding 2)]
   [flexpt (known-procedure/folding 4)]
+  [flfma (known-procedure/has-unsafe/folding 8 'unsafe-flfma)]
   [flfloor (known-procedure/folding 2)]
   [flhypot (known-procedure/has-unsafe/folding 4 'unsafe-flhypot)]
   [flimag-part (known-procedure/has-unsafe/folding 2 'unsafe-flimag-part)]

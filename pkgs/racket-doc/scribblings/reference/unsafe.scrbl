@@ -185,6 +185,13 @@ For @tech{flonums}: Unchecked version of @racket[flbit-field].
 @history[#:added "8.15.0.3"]}
 
 
+@defproc[(unsafe-flfma [a flonum?] [b flonum?] [c flonum?]) flonum?]{
+
+For @tech{flonums}: Unchecked version of @racket[flfma], with the same
+single-rounding behavior.
+
+@history[#:added "9.3.0.11"]}
+
 @deftogether[(
 @defproc[(unsafe-flsin [a flonum?]) flonum?]
 @defproc[(unsafe-flcos [a flonum?]) flonum?]

@@ -426,6 +426,10 @@
 
 (define flhypot (cflop2 "(cs)hypot"))
 
+(define $flfma
+  (foreign-procedure __atomic "(cs)fma"
+    (double-float double-float double-float) double-float))
+
 (define flasinh
    ; scheme-coded version needs "log2"
    (or (op-if-entry? cflop1 "(cs)asinh")
@@ -3374,6 +3378,7 @@
   (fl-op flasin $flasin x)
   (fl-op flacos $flacos x)
   (fl-op flsqrt $flsqrt x)
+  (fl-op flfma $flfma x y z)
   (fl-op flexpt $flexpt x y)
   (fl-op flfloor $flfloor x)
   (fl-op flceiling $flceiling x))

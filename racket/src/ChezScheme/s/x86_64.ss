@@ -647,6 +647,12 @@
     [(op (x fpur) (y fpmem) (z fpmem fpur))
      `(set! ,(make-live-info) ,x (asm ,info ,(asm-fpop-2 op) ,y ,z))])
 
+  (define-instruction value (fpfma)
+    [(op (x fpur) (a fpur) (b fpur) (c fpur))
+     (seq
+      `(move-related ,x ,c)
+      `(set! ,(make-live-info) ,x (asm ,info ,asm-fpfma ,a ,b ,c)))])
+
   (define-instruction value (fpsqrt)
     [(op (x fpur) (y fpmem fpur)) `(set! ,(make-live-info) ,x (asm ,info ,asm-fpsqrt ,y))])
 
@@ -901,7 +907,7 @@
                      asm-lea1 asm-lea2 asm-indirect-call asm-condition-code
                      asm-fl-cvt asm-store-single asm-load-single asm-fpt asm-fptrunc asm-div asm-popcount
                      asm-exchange asm-pause asm-debug asm-locked-incr asm-locked-decr asm-locked-cmpxchg
-                     asm-fpsqrt asm-fpop-2 asm-fpmove asm-fpmove128 asm-fpcast asm-fpsingle
+                     asm-fpsqrt asm-fpfma asm-fpop-2 asm-fpmove asm-fpmove128 asm-fpcast asm-fpsingle
                      asm-c-simple-call
                      asm-save-flrv asm-restore-flrv asm-return asm-c-return asm-size
                      asm-enter asm-foreign-call asm-foreign-callable
@@ -1077,6 +1083,8 @@
   (define-op bgt branch-op #b1111) ; jump on greater than
 
   ; SSE2 instructions
+  (define-op vfmadd213sd fma-op #xa9)
+  (define-op vfmadd231sd fma-op #xb9)
   (define-op sse.addsd     sse-op1 #xF2 #x58 0)
   (define-op sse.andpd     sse-op1 #x66 #x54 0)
   (define-op sse.cvtss2sd  sse-op1 #xF3 #x5A 0)
@@ -1456,6 +1464,21 @@
     (lambda (op op-code code*)
       (emit-code (op code*)
         (build byte op-code))))
+
+  ;; VEX.NDS.LIG.66.0F38.W1: scalar double FMA3. All operands
+  ;; are registers, so VEX.X is one and ModRM.mod is 11.
+  (define fma-op
+    (lambda (op opcode dest a b code*)
+      (emit-code (op dest a b code*)
+        (build byte #xc4)
+        (build byte (byte-fields
+                      [7 (if (fxbit-set? (ax-ea-reg-code dest) 3) 0 1)]
+                      [6 1]
+                      [5 (if (fxbit-set? (ax-ea-reg-code b) 3) 0 1)]
+                      [0 2]))
+        (build byte (byte-fields [7 1] [3 (fxlogxor (ax-ea-reg-code a) 15)] [0 1]))
+        (build byte opcode)
+        (ax-ea-modrm-reg b dest))))
 
   (define two-byte-op
     (lambda (op op-code1 op-code2 code*)
@@ -1886,6 +1909,19 @@
                    (emit-it dest-reg dest-reg code*))
                  (emit-fpmove src1 dest-reg
                        (emit-it src2 dest-reg code*))))]))))
+
+  (define asm-fpfma
+    (lambda (code* dest a b c)
+      (cond
+        [(eq? dest a)
+         (Trivit (dest b c) (emit vfmadd213sd dest b c code*))]
+        [(eq? dest b)
+         (Trivit (dest a c) (emit vfmadd213sd dest a c code*))]
+        [else
+         (Trivit (dest a b c)
+           (if (equal? dest c)
+               (emit vfmadd231sd dest a b code*)
+               (emit sse.movsd c dest (emit vfmadd231sd dest a b code*))))])))
 
   (define asm-fpsqrt
     (lambda (code* dest-reg src)

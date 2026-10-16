@@ -22,6 +22,9 @@
 #include <limits.h>
 #include <ctype.h>
 #include <math.h>
+#if defined(_MSC_VER) && defined(_M_X64)
+# include <intrin.h>
+#endif
 
 #if defined(__GNU__) /* Hurd */
 #include <sys/resource.h>
@@ -1516,6 +1519,23 @@ static double s_trunc(double x) { return trunc(x); }
 
 static double s_hypot(double x, double y) { return HYPOT(x, y); }
 
+static double s_fma(double x, double y, double z) { return fma(x, y, z); }
+static uptr fma_supported;
+
+static void init_fma_supported(void) {
+    fma_supported = 0;
+#if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
+    __builtin_cpu_init();
+    fma_supported = !!(__builtin_cpu_supports("fma") && __builtin_cpu_supports("avx"));
+#elif defined(_MSC_VER) && defined(_M_X64)
+    int regs[4];
+    __cpuid(regs, 1);
+    if ((regs[2] & ((1 << 12) | (1 << 27) | (1 << 28)))
+        == ((1 << 12) | (1 << 27) | (1 << 28)))
+        fma_supported = ((_xgetbv(0) & 6) == 6);
+#endif
+}
+
 #ifdef ARCHYPERBOLIC
 static double s_asinh(double x) { return CHECK_ASINTAN_ZERO(x, asinh(x)); }
 
@@ -1921,6 +1941,13 @@ void S_prim5_init(void) {
     Sforeign_symbol("(cs)floor", (void *)s_floor);
     Sforeign_symbol("(cs)ceil", (void *)s_ceil);
     Sforeign_symbol("(cs)hypot", (void *)s_hypot);
+    Sforeign_symbol("(cs)fma", (void *)s_fma);
+    init_fma_supported();
+    /* Bootstrap kernels can still use an older portable boot header. */
+#ifdef CENTRY_flfma
+    S_install_c_entry(CENTRY_flfma, proc2ptr(s_fma));
+    S_install_c_entry(CENTRY_fma_supported, (ptr)&fma_supported);
+#endif
 
 #ifdef ARCHYPERBOLIC
     Sforeign_symbol("(cs)asinh", (void *)s_asinh);

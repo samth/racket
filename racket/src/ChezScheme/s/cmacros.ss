@@ -3103,6 +3103,7 @@
      (arity-wrapper-apply #f 0 #f #f)
      (popcount-slow #f 0 #f #t)
      (cpu-features #f 0 #f #t)
+     (flfma #f 3 #t #t)
   ))
 
 (let ()
@@ -3173,7 +3174,9 @@
      flsqrt
      null-immutable-vector
      null-immutable-bytevector
-     null-immutable-string))
+     null-immutable-string
+     flfma
+     fma-supported))
 )
 
 

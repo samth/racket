@@ -1,3 +1,5 @@
+Add flfma with single rounding, native AArch64 FMADD and guarded x86-64 FMA3.
+
 9.4 changes:
 - updated version to 9.4
     bintar README NOTICE makefiles/Mf-install.in scheme.1.in

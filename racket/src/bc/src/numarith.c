@@ -42,6 +42,8 @@ static Scheme_Object *fl_mult (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_div (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_abs (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_sqrt (int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_fma (int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_fma (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_hypot (int argc, Scheme_Object *argv[]);
 
 static Scheme_Object *unsafe_fl_plus (int argc, Scheme_Object *argv[]);
@@ -293,6 +295,10 @@ void scheme_init_flfxnum_numarith(Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_WANTS_FLONUM_FIRST);
   scheme_addto_prim_instance("flsqrt", p, env);
 
+  p = scheme_make_folding_prim(fl_fma, "flfma", 3, 3, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flfma", p, env);
+
   p = scheme_make_folding_prim(fl_hypot, "flhypot", 2, 2, 1);
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
@@ -512,6 +518,11 @@ void scheme_init_unsafe_numarith(Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
                                                             | SCHEME_PRIM_WANTS_FLONUM_FIRST);
   scheme_addto_prim_instance("unsafe-flsqrt", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_fma, "unsafe-flfma", 3, 3, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL
+                                                            | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flfma", p, env);
 
   p = scheme_make_folding_prim(fl_hypot, "unsafe-flhypot", 2, 2, 1);
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
@@ -1485,6 +1496,23 @@ SAFE_FL(fl_div, "fl/", /, scheme_false, if (argc == 1) v = 1.0 / v;)
 
 SAFE_FL1(fl_abs, "flabs", fabs)
 SAFE_FL1(fl_sqrt, "flsqrt", sqrt)
+
+static Scheme_Object *unsafe_fl_fma(int argc, Scheme_Object *argv[])
+{
+  return scheme_make_double(fma(SCHEME_DBL_VAL(argv[0]),
+                                SCHEME_DBL_VAL(argv[1]),
+                                SCHEME_DBL_VAL(argv[2])));
+}
+
+static Scheme_Object *fl_fma(int argc, Scheme_Object *argv[])
+{
+  int i;
+  for (i = 0; i < 3; i++) {
+    if (!SCHEME_DBLP(argv[i]))
+      scheme_wrong_contract("flfma", "flonum?", i, argc, argv);
+  }
+  return unsafe_fl_fma(argc, argv);
+}
 
 static Scheme_Object *fl_hypot(int argc, Scheme_Object *argv[])
 {

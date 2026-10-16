@@ -4,7 +4,7 @@ Add the `PLT_YES_MAKE` and `PLT_SETUP_QUIET` environment variables
 Change Windows DLL loading to the "altered" search path, which
  checks for dependencies in a DLL's own directory instead of
  checking the executable's directory
-racket/flonum: Add `flhypot`
+racket/flonum: Add `flhypot` and `flfma`
 Change `lcm` to consistently produce exact `0` for an exact `0`
  argument and inexact arguments
 Improve precision and performance of some inexact operations

@@ -203,6 +203,7 @@
             (define new-maybe-cc? (or maybe-cc?
                                       (not (simple? rhs prim-knowns knowns imports mutated simples unsafe-mode?
                                                     #:pure? #f
+                                                    #:mutations-checked? #t
                                                     #:result-arity (length ids)))))
             ;; Each `id` in `ids` is now ready (but might also hold a delay):
             (for ([id (in-wrap-list ids)])

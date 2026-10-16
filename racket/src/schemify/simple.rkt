@@ -3,6 +3,7 @@
          "wrap.rkt"
          "match.rkt"
          "known.rkt"
+         "lambda.rkt"
          "import.rkt"
          "mutated-state.rkt")
 
@@ -38,7 +39,12 @@
                  #:no-alloc? [no-alloc? #f]
                  #:ordered? [ordered? #f] ; weakens `pure?` to allow some reordering
                  #:succeeds? [succeeds? #f] ; weakens `ordered?` to allow more reordering
-                 #:result-arity [result-arity 1])
+                 #:result-arity [result-arity 1]
+                 ;; Enable only after mutation discovery has visited e.
+                 #:mutations-checked? [mutations-checked? #f])
+  (define (simple/knowns e knowns result-arity)
+    (simple? e prim-knowns knowns imports mutated (make-hasheq) unsafe-mode?
+             #:pure? #f #:result-arity result-arity #:mutations-checked? #t))
   (let simple? ([e e] [result-arity result-arity])
     (define-syntax-rule (cached expr)
       (let* ([c (hash-ref simples e #(0 0 1))]
@@ -180,6 +186,25 @@
                       (ok-to-call? proc v #f))))
              (for/and ([e (in-list es)])
                (simple? e 1))))]
+      ;; Prove an immediately called named loop no-prompt under the same
+      ;; assumption for recursive calls. Mutation discovery must be complete.
+      [`((letrec-values ([(,id) ,rhs]) ,rator) ,rands ...)
+       (cached
+        (and mutations-checked? (not pure?) (returns 1)
+             (eq? (unwrap id) (unwrap rator))
+             (not (hash-ref mutated (unwrap id) #f))
+             (match rhs
+               [`(lambda ,_ ,loop-body ...)
+                (define arity-mask (lambda-arity-mask rhs))
+                (and (bitwise-bit-set? arity-mask (length rands))
+                     (simple/knowns `(begin ,@loop-body)
+                                    (hash-set knowns (unwrap id)
+                                              (known-procedure/no-prompt arity-mask))
+                                    1))]
+               [`,_ #f])
+             ;; Arguments are outside the recursive binding's scope.
+             (for/and ([rand (in-list rands)])
+               (simple? rand 1))))]
       [`(,proc . ,args)
        (cached
         (let ([proc (unwrap proc)])

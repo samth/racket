@@ -3,6 +3,7 @@
          "wrap.rkt"
          "match.rkt"
          "known.rkt"
+         "lambda.rkt"
          "import.rkt"
          "mutated-state.rkt")
 
@@ -39,6 +40,51 @@
                  #:ordered? [ordered? #f] ; weakens `pure?` to allow some reordering
                  #:succeeds? [succeeds? #f] ; weakens `ordered?` to allow more reordering
                  #:result-arity [result-arity 1])
+  ;; Bindings have unique names, but mutation discovery may still be in
+  ;; progress when this analysis runs. Reject assignments to candidate
+  ;; procedures even when they have not reached the mutated table yet.
+  (define (assigns-local? e local-ids)
+    (match e
+      [`(quote . ,_) #f]
+      [`(quote-syntax . ,_) #f]
+      [`(set! ,id ,rhs)
+       (or (memq (unwrap id) local-ids) (assigns-local? rhs local-ids))]
+      [`(,a . ,d)
+       (or (assigns-local? a local-ids) (assigns-local? d local-ids))]
+      [`,_ #f]))
+  ;; Infer a no-prompt summary for a group of local procedures. Assuming
+  ;; every member is no-prompt while checking all bodies handles recursion;
+  ;; an unknown call in any member rejects the whole group.
+  (define (local-no-prompt-knowns idss rhss body)
+    (and (not pure?)
+         (for/and ([ids (in-list idss)] [rhs (in-list rhss)])
+           (and (= (length ids) 1)
+                (simple-mutated-state? (hash-ref mutated (unwrap (car ids)) #f))
+                (match rhs
+                  [`(lambda . ,_) #t]
+                  [`(case-lambda . ,_) #t]
+                  [`,_ #f])))
+         (let* ([local-ids (for/list ([ids (in-list idss)]) (unwrap (car ids)))]
+                [candidate-knowns
+                 (for/fold ([new-knowns knowns]) ([ids (in-list idss)]
+                                                 [rhs (in-list rhss)])
+                   (hash-set new-knowns (unwrap (car ids))
+                             (known-procedure/no-prompt (lambda-arity-mask rhs))))])
+           (define (simple-body? body)
+             (simple/local-body `(begin ,@body) candidate-knowns 1))
+           (and (not (assigns-local? body local-ids))
+                (for/and ([rhs (in-list rhss)])
+                  (and (not (assigns-local? rhs local-ids))
+                       (match rhs
+                         [`(lambda ,_ ,body ...) (simple-body? body)]
+                         [`(case-lambda [,_ ,body ...] ...)
+                          (for/and ([clause-body (in-list body)])
+                            (simple-body? clause-body))]
+                         [`,_ #f])))
+                candidate-knowns))))
+  (define (simple/local-body body local-knowns result-arity)
+    (simple? body prim-knowns local-knowns imports mutated (make-hasheq) unsafe-mode?
+             #:pure? #f #:result-arity result-arity))
   (let simple? ([e e] [result-arity result-arity])
     (define-syntax-rule (cached expr)
       (let* ([c (hash-ref simples e #(0 0 1))]
@@ -114,6 +160,13 @@
                    n-args
                    (<= n-args (known-procedure/no-prompt-up-to-n v))
                    (returns 1)))))
+    (define (simple-letrec? idss rhss body)
+      (or (let ([local-knowns (local-no-prompt-knowns idss rhss body)])
+            (and local-knowns
+                 (simple/local-body body local-knowns result-arity)))
+          (and (for/and ([ids (in-list idss)] [rhs (in-list rhss)])
+                 (simple? rhs (length ids)))
+               (simple? body result-arity))))
     (match e
       [`(lambda . ,_) (returns 1)]
       [`(case-lambda . ,_) (returns 1)]
@@ -136,16 +189,10 @@
                (simple? rhs 1))
              (simple? body result-arity)))]
       [`(letrec-values ([(,idss ...) ,rhss] ...) ,body)
-       (cached
-        (and (for/and ([ids (in-list idss)]
-                       [rhs (in-list rhss)])
-               (simple? rhs (length ids)))
-             (simple? body result-arity)))]
+       (cached (simple-letrec? idss rhss body))]
       [`(letrec* ([,ids ,rhss] ...) ,body)
-       (cached
-        (and (for/and ([rhs (in-list rhss)])
-               (simple? rhs 1))
-             (simple? body result-arity)))]
+       (cached (simple-letrec? (for/list ([id (in-list ids)]) (list id))
+                               rhss body))]
       [`(begin ,es ...)
        (simple-begin? es)]
       [`(begin-unsafe ,es ...)
@@ -180,6 +227,21 @@
                       (ok-to-call? proc v #f))))
              (for/and ([e (in-list es)])
                (simple? e 1))))]
+      [`((letrec-values ([(,idss ...) ,rhss] ...) ,rator) ,args ...)
+       #:guard (not pure?)
+       (cached
+        (let ([local-knowns (local-no-prompt-knowns idss rhss rator)]
+              [rator (unwrap rator)])
+          (and local-knowns
+               (symbol? rator)
+               (for/or ([ids (in-list idss)])
+                 (eq? rator (unwrap (car ids))))
+               (let ([v (hash-ref local-knowns rator #f)])
+                 (and (known-procedure/no-prompt? v)
+                      (bitwise-bit-set? (known-procedure-arity-mask v) (length args))))
+               (returns 1)
+               (for/and ([arg (in-list args)])
+                 (simple? arg 1)))))]
       [`(,proc . ,args)
        (cached
         (let ([proc (unwrap proc)])

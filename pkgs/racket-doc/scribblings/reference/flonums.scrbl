@@ -118,6 +118,61 @@ the range @racket[-1.0] to @racket[1.0] is given to @racket[flasin] or
 @racket[flacos], or when a negative number is given to @racket[fllog]
 or @racket[flsqrt].}
 
+@defproc[(flfma [a flonum?] [b flonum?] [c flonum?]) flonum?]{
+
+Computes @racket[(+ (* a b) c)] with a single rounding to a
+@tech{flonum}. The intermediate product is computed without rounding,
+overflow, or underflow. For example,
+@racket[(flfma 1.0000000000000002 0.9999999999999998 -1.0)]
+produces @racket[-4.930380657631324e-32], while separate
+@racket[fl*] and @racket[fl+] operations produce @racket[0.0].
+
+The result is @racket[+nan.0] when an infinity is multiplied by zero,
+or when an infinite product is added to an infinity of the opposite sign.
+Otherwise, a @racket[+nan.0] argument produces @racket[+nan.0].
+Signed zeros follow the rules for multiplication and addition.
+
+@history[#:added "9.3.0.11"]}
+
+@deftogether[(@defproc[(fllog1p [x flonum?]) flonum?]
+              @defproc[(flexpm1 [x flonum?]) flonum?])]{
+Compute the natural logarithm of one plus @racket[x] and @racket[(- (exp x) 1.0)],
+respectively, avoiding loss of accuracy near zero. Both preserve signed
+zero. @racket[fllog1p] returns @racket[-inf.0] for @racket[-1.0] and
+@racket[+nan.0] for smaller arguments. @racket[flexpm1] returns
+@racket[-1.0] for @racket[-inf.0].
+@history[#:added "9.3.0.11"]}
+
+@deftogether[(@defproc[(fllog2 [x flonum?]) flonum?]
+              @defproc[(flexp2 [x flonum?]) flonum?])]{
+Compute the base-2 logarithm of @racket[x] and two raised to @racket[x],
+respectively. @racket[fllog2] returns @racket[-inf.0] for either zero and
+@racket[+nan.0] for negative arguments. @racket[flexp2] returns
+@racket[0.0] for @racket[-inf.0].
+@history[#:added "9.3.0.11"]}
+
+@deftogether[(@defproc[(flsinh [x flonum?]) flonum?]
+              @defproc[(flcosh [x flonum?]) flonum?]
+              @defproc[(fltanh [x flonum?]) flonum?]
+              @defproc[(flasinh [x flonum?]) flonum?]
+              @defproc[(flacosh [x flonum?]) flonum?]
+              @defproc[(flatanh [x flonum?]) flonum?])]{
+Compute the hyperbolic sine, cosine, and tangent, and their inverses,
+respectively. The odd functions preserve signed zero.
+@racket[flacosh] returns @racket[+nan.0] for arguments below @racket[1.0].
+@racket[flatanh] returns the correspondingly signed infinity for
+@racket[1.0] or @racket[-1.0], and @racket[+nan.0] outside that interval.
+@history[#:added "9.3.0.11"]}
+
+@defproc[(flnextafter [x flonum?] [y flonum?]) flonum?]{
+Returns the next representable flonum after @racket[x] toward @racket[y].
+If the arguments are equal, returns @racket[y], including its sign when
+both arguments are zero. A NAN argument produces @racket[+nan.0].
+For example, @racket[(flnextafter 1.0 2.0)] produces
+@racket[1.0000000000000002], and @racket[(flnextafter 0.0 1.0)] produces
+@racket[5e-324].
+@history[#:added "9.3.0.11"]}
+
 @defproc[(flhypot [a flonum?] [b flonum?]) flonum?]{
 
 Computes the square root of the sum of the squares of @racket[a] and

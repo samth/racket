@@ -197,13 +197,34 @@ For @tech{flonums}: Unchecked version of @racket[flbit-field].
 @defproc[(unsafe-flhypot [a flonum?] [b flonum?]) flonum?]
 @defproc[(unsafe-flsqrt [a flonum?]) flonum?]
 @defproc[(unsafe-flexpt [a flonum?] [b flonum?]) flonum?]
+@defproc[(unsafe-fllog1p [x flonum?]) flonum?]
+@defproc[(unsafe-flexpm1 [x flonum?]) flonum?]
+@defproc[(unsafe-flsinh [x flonum?]) flonum?]
+@defproc[(unsafe-flcosh [x flonum?]) flonum?]
+@defproc[(unsafe-fltanh [x flonum?]) flonum?]
+@defproc[(unsafe-flasinh [x flonum?]) flonum?]
+@defproc[(unsafe-flacosh [x flonum?]) flonum?]
+@defproc[(unsafe-flatanh [x flonum?]) flonum?]
+@defproc[(unsafe-fllog2 [x flonum?]) flonum?]
+@defproc[(unsafe-flexp2 [x flonum?]) flonum?]
+@defproc[(unsafe-flnextafter [x flonum?] [y flonum?]) flonum?]
+@defproc[(unsafe-flfma [a flonum?] [b flonum?] [c flonum?]) flonum?]
 )]{
 
 For @tech{flonums}: Unchecked (potentially) versions of
 @racket[flsin], @racket[flcos], @racket[fltan], @racket[flasin],
 @racket[flacos], @racket[flatan], @racket[fllog], @racket[flexp],
-@racket[flhypot], @racket[flsqrt], and @racket[flexpt]. Currently, some of these
-bindings are simply aliases for the corresponding safe bindings.}
+@racket[flhypot], @racket[flsqrt], @racket[flexpt],
+@racket[fllog1p], @racket[flexpm1], @racket[flsinh], @racket[flcosh],
+@racket[fltanh], @racket[flasinh], @racket[flacosh], @racket[flatanh],
+@racket[fllog2], @racket[flexp2], @racket[flnextafter], and @racket[flfma]. Currently, some of these
+bindings are simply aliases for the corresponding safe bindings.
+
+@history[#:changed "9.3.0.11" @elem{Added @racket[unsafe-fllog1p],
+@racket[unsafe-flexpm1], @racket[unsafe-flsinh], @racket[unsafe-flcosh],
+@racket[unsafe-fltanh], @racket[unsafe-flasinh], @racket[unsafe-flacosh],
+@racket[unsafe-flatanh], @racket[unsafe-fllog2], @racket[unsafe-flexp2],
+@racket[unsafe-flnextafter], and @racket[unsafe-flfma].}]}
 
 
 @deftogether[(

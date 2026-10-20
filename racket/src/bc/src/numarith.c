@@ -42,6 +42,31 @@ static Scheme_Object *fl_mult (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_div (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_abs (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_sqrt (int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_log1p(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_log1p(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_expm1(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_expm1(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_sinh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_sinh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_cosh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_cosh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_tanh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_tanh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_asinh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_asinh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_acosh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_acosh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_atanh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_atanh(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_log2(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_log2(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_exp2(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_exp2(int argc, Scheme_Object *argv[]);
+static Scheme_Object *fl_nextafter(int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_nextafter(int argc, Scheme_Object *argv[]);
+
+static Scheme_Object *fl_fma (int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_fl_fma (int argc, Scheme_Object *argv[]);
 static Scheme_Object *fl_hypot (int argc, Scheme_Object *argv[]);
 
 static Scheme_Object *unsafe_fl_plus (int argc, Scheme_Object *argv[]);
@@ -293,6 +318,54 @@ void scheme_init_flfxnum_numarith(Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_WANTS_FLONUM_FIRST);
   scheme_addto_prim_instance("flsqrt", p, env);
 
+  p = scheme_make_folding_prim(fl_log1p, "fllog1p", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("fllog1p", p, env);
+
+  p = scheme_make_folding_prim(fl_expm1, "flexpm1", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flexpm1", p, env);
+
+  p = scheme_make_folding_prim(fl_sinh, "flsinh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flsinh", p, env);
+
+  p = scheme_make_folding_prim(fl_cosh, "flcosh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flcosh", p, env);
+
+  p = scheme_make_folding_prim(fl_tanh, "fltanh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("fltanh", p, env);
+
+  p = scheme_make_folding_prim(fl_asinh, "flasinh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flasinh", p, env);
+
+  p = scheme_make_folding_prim(fl_acosh, "flacosh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flacosh", p, env);
+
+  p = scheme_make_folding_prim(fl_atanh, "flatanh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flatanh", p, env);
+
+  p = scheme_make_folding_prim(fl_log2, "fllog2", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("fllog2", p, env);
+
+  p = scheme_make_folding_prim(fl_exp2, "flexp2", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flexp2", p, env);
+
+  p = scheme_make_folding_prim(fl_nextafter, "flnextafter", 2, 2, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flnextafter", p, env);
+
+  p = scheme_make_folding_prim(fl_fma, "flfma", 3, 3, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("flfma", p, env);
+
   p = scheme_make_folding_prim(fl_hypot, "flhypot", 2, 2, 1);
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
@@ -512,6 +585,55 @@ void scheme_init_unsafe_numarith(Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_PRODUCES_FLONUM
                                                             | SCHEME_PRIM_WANTS_FLONUM_FIRST);
   scheme_addto_prim_instance("unsafe-flsqrt", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_log1p, "unsafe-fllog1p", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-fllog1p", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_expm1, "unsafe-flexpm1", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flexpm1", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_sinh, "unsafe-flsinh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flsinh", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_cosh, "unsafe-flcosh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flcosh", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_tanh, "unsafe-fltanh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-fltanh", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_asinh, "unsafe-flasinh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flasinh", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_acosh, "unsafe-flacosh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flacosh", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_atanh, "unsafe-flatanh", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flatanh", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_log2, "unsafe-fllog2", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-fllog2", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_exp2, "unsafe-flexp2", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flexp2", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_nextafter, "unsafe-flnextafter", 2, 2, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flnextafter", p, env);
+
+  p = scheme_make_folding_prim(unsafe_fl_fma, "unsafe-flfma", 3, 3, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNSAFE_FUNCTIONAL
+                                                            | SCHEME_PRIM_PRODUCES_FLONUM);
+  scheme_addto_prim_instance("unsafe-flfma", p, env);
 
   p = scheme_make_folding_prim(fl_hypot, "unsafe-flhypot", 2, 2, 1);
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_SOMETIMES_INLINED
@@ -1485,6 +1607,92 @@ SAFE_FL(fl_div, "fl/", /, scheme_false, if (argc == 1) v = 1.0 / v;)
 
 SAFE_FL1(fl_abs, "flabs", fabs)
 SAFE_FL1(fl_sqrt, "flsqrt", sqrt)
+
+/* Match the platform libm corrections used by Chez Scheme. */
+#ifdef __MINGW32__
+static double fl_asinh_double(double x) { return x == 0.0 ? x : asinh(x); }
+static double fl_atanh_double(double x) { return x == 0.0 ? x : atanh(x); }
+#else
+# define fl_asinh_double asinh
+# define fl_atanh_double atanh
+#endif
+
+#if (defined(__FreeBSD__) && defined(__i386__)) || defined(__NetBSD__)
+static double fl_tanh_double(double x)
+{
+  if (x == 0.0) return x;
+# if defined(__FreeBSD__)
+  if (x == scheme_get_inf_val()) return 1.0;
+  if (x == -scheme_get_inf_val()) return -1.0;
+# endif
+  return tanh(x);
+}
+#else
+# define fl_tanh_double tanh
+#endif
+
+SAFE_FL1(fl_log1p, "fllog1p", log1p)
+UNSAFE_FL1(unsafe_fl_log1p, log1p, fl_log1p)
+
+SAFE_FL1(fl_expm1, "flexpm1", expm1)
+UNSAFE_FL1(unsafe_fl_expm1, expm1, fl_expm1)
+
+SAFE_FL1(fl_sinh, "flsinh", sinh)
+UNSAFE_FL1(unsafe_fl_sinh, sinh, fl_sinh)
+
+SAFE_FL1(fl_cosh, "flcosh", cosh)
+UNSAFE_FL1(unsafe_fl_cosh, cosh, fl_cosh)
+
+SAFE_FL1(fl_tanh, "fltanh", fl_tanh_double)
+UNSAFE_FL1(unsafe_fl_tanh, fl_tanh_double, fl_tanh)
+
+SAFE_FL1(fl_asinh, "flasinh", fl_asinh_double)
+UNSAFE_FL1(unsafe_fl_asinh, fl_asinh_double, fl_asinh)
+
+SAFE_FL1(fl_acosh, "flacosh", acosh)
+UNSAFE_FL1(unsafe_fl_acosh, acosh, fl_acosh)
+
+SAFE_FL1(fl_atanh, "flatanh", fl_atanh_double)
+UNSAFE_FL1(unsafe_fl_atanh, fl_atanh_double, fl_atanh)
+
+SAFE_FL1(fl_log2, "fllog2", log2)
+UNSAFE_FL1(unsafe_fl_log2, log2, fl_log2)
+
+SAFE_FL1(fl_exp2, "flexp2", exp2)
+UNSAFE_FL1(unsafe_fl_exp2, exp2, fl_exp2)
+
+static Scheme_Object *unsafe_fl_nextafter(int argc, Scheme_Object *argv[])
+{
+  if (scheme_current_thread->constant_folding) return fl_nextafter(argc, argv);
+  return scheme_make_double(nextafter(SCHEME_DBL_VAL(argv[0]), SCHEME_DBL_VAL(argv[1])));
+}
+
+static Scheme_Object *fl_nextafter(int argc, Scheme_Object *argv[])
+{
+  if (!SCHEME_DBLP(argv[0]))
+    scheme_wrong_contract("flnextafter", "flonum?", 0, argc, argv);
+  if (!SCHEME_DBLP(argv[1]))
+    scheme_wrong_contract("flnextafter", "flonum?", 1, argc, argv);
+  return scheme_make_double(nextafter(SCHEME_DBL_VAL(argv[0]), SCHEME_DBL_VAL(argv[1])));
+}
+
+static Scheme_Object *unsafe_fl_fma(int argc, Scheme_Object *argv[])
+{
+  return scheme_make_double(fma(SCHEME_DBL_VAL(argv[0]),
+                                SCHEME_DBL_VAL(argv[1]),
+                                SCHEME_DBL_VAL(argv[2])));
+}
+
+static Scheme_Object *fl_fma(int argc, Scheme_Object *argv[])
+{
+  if (!SCHEME_DBLP(argv[0]))
+    scheme_wrong_contract("flfma", "flonum?", 0, argc, argv);
+  if (!SCHEME_DBLP(argv[1]))
+    scheme_wrong_contract("flfma", "flonum?", 1, argc, argv);
+  if (!SCHEME_DBLP(argv[2]))
+    scheme_wrong_contract("flfma", "flonum?", 2, argc, argv);
+  return unsafe_fl_fma(argc, argv);
+}
 
 static Scheme_Object *fl_hypot(int argc, Scheme_Object *argv[])
 {

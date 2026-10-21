@@ -1672,5 +1672,49 @@
   (test (void) thread-wait posting-thread (lambda () #f)))
 
 ; --------------------
+;; Regression check that a custodian shutdown doesn't deadlock with a
+;; parallel thread that opens and closes files, which takes the rktio
+;; lock and then the custodian lock, and that a parallel thread
+;; terminated by the shutdown doesn't report seeing the shutdown
+
+(let ()
+  ;; with a path instead of a string, stopping the thread can take
+  ;; much longer, because it rarely reaches a point where it checks
+  ;; for a stop request
+  (define file (path->string (make-temporary-file)))
+  (define (open-and-close-file)
+    (call-with-input-file file read-byte))
+  (define o (open-output-bytes))
+  (parameterize ([current-error-port o])
+    ;; parallel thread is managed by the shut-down custodian
+    (for ([i (in-range 1000)])
+      (define c (make-custodian))
+      (define ready (make-semaphore))
+      (parameterize ([current-custodian c])
+        (thread #:pool 'own
+                (lambda ()
+                  (semaphore-post ready)
+                  (let loop ()
+                    (open-and-close-file)
+                    (loop)))))
+      (semaphore-wait ready)
+      (sleep 0.0001)
+      (custodian-shutdown-all c))
+    ;; parallel thread is not managed by the shut-down custodian
+    (define t (thread #:pool 'own
+                      (lambda ()
+                        (let loop ()
+                          (open-and-close-file)
+                          (loop)))))
+    (for ([i (in-range 3000)])
+      (define c (make-custodian))
+      (parameterize ([current-custodian c])
+        (open-input-file file))
+      (custodian-shutdown-all c))
+    (kill-thread t))
+  (test #"" get-output-bytes o)
+  (delete-file file))
+
+; --------------------
 
 (report-errs)

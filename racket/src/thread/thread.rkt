@@ -376,9 +376,10 @@
 ;; ----------------------------------------
 ;; Thread termination
 
-;; Called before `t` is scheduled when creating a parallel thread
-(define (thread-init-kill-callback! t cb)
-  (set-thread-kill-callbacks! t (vector null cb)))
+;; Called before `t` is scheduled when creating a parallel thread;
+;; `stop` stops the thread's future without terminating the thread
+(define (thread-init-kill-callback! t cb stop)
+  (set-thread-kill-callbacks! t (vector null cb stop)))
 
 ;; Called in atomic mode, unless callbacks as a vector, in which case called in any pthread
 (define (thread-push-kill-callback! cb)
@@ -511,6 +512,19 @@
                        (null? (thread-custodian-references t)))
                (thread-engine-block))
              (check-for-break-after-kill))))))
+
+;; Called in atomic mode with the custodian lock held: if `v` is a
+;; parallel thread that a shutdown of `c` will terminate or suspend,
+;; returns a procedure that stops the thread's future
+(void (set-thread-stopper-for-shutdown!
+       (lambda (v c)
+         (and (thread? v)
+              (not (is-thread-dead? v))
+              (let ([kcbs (thread-kill-callbacks v)])
+                (and (vector? kcbs)
+                     (for/and ([cr (in-list (thread-custodian-references v))])
+                       (custodian-manages-reference? c cr))
+                     (vector-ref kcbs 2)))))))
 
 ;; ----------------------------------------
 ;; Thread status events

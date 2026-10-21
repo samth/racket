@@ -42,6 +42,7 @@
          check-queued-custodian-shutdown
          set-place-custodian-procs!
          set-post-shutdown-action!
+         set-thread-stopper-for-shutdown!
          custodian-check-immediate-limit
          set-thread-engine-for-roots!)
 
@@ -246,6 +247,12 @@
 (define (set-post-shutdown-action! proc)
   (set! post-shutdown-action proc))
 
+;; Hook for stopping parallel threads, set in "thread.rkt"; returns
+;; a procedure to stop the given thread or #f
+(define thread-stopper-for-shutdown (lambda (v c) #f))
+(define (set-thread-stopper-for-shutdown! proc)
+  (set! thread-stopper-for-shutdown proc))
+
 (define/who (custodian-shutdown-all c)
   (check who custodian? c)
   (atomically/no-barrier-exit
@@ -328,42 +335,82 @@
 (define (custodian-this-place? c)
   (eq? (custodian-place c) current-place))
 
+;; In atomic mode. A parallel thread can be running in a different
+;; pthread, and it stops only at a safe point. Stop each parallel
+;; thread that a shutdown of `c` will terminate before `c` counts as
+;; shut down, so that the thread cannot observe the shutdown (e.g., as
+;; a failure to register a new port with `c`).
+(define (stop-parallel-threads-for-shutdown c)
+  (unless (zero? (hash-count (place-schedulers current-place)))
+    (lock-custodians)
+    (define stops
+      (let loop ([sub-c c] [stops null])
+        (cond
+          [(custodian-shut-down? sub-c) stops]
+          [else
+           (for/fold ([stops stops]) ([(child callback) (in-hash (custodian-children sub-c) #f)])
+             (cond
+               [(not child) stops]
+               [(custodian? child) (loop child stops)]
+               [(thread-stopper-for-shutdown child c)
+                => (lambda (stop) (cons stop stops))]
+               [else stops]))])))
+    (unlock-custodians)
+    (for ([stop (in-list stops)])
+      (stop))))
+
 ;; In atomic mode (as promised with `custodian-shut-down?`
 (define (do-custodian-shutdown-all c [only-at-exit? #f])
+  (unless only-at-exit?
+    (stop-parallel-threads-for-shutdown c))
   (lock-custodians)
-  (unless (custodian-shut-down? c)
-    (set-custodian-shut-down! c)
-    (when (custodian-sync-futures? c)
-      (futures-sync-for-custodian-shutdown))
-    (for ([(child callback) (in-hash (custodian-children c) #f)])
-      (when child
-        (cond
-          [(and only-at-exit?
-                (custodian? child))
-           ;; propagate `only-at-exit?`
-           (do-custodian-shutdown-all child #t)]
-          [(or (not only-at-exit?)
-               (at-exit-callback? callback))
-           (if (procedure-arity-includes? callback 2)
-               (callback child c)
-               (callback child))])))
-    (hash-clear! (custodian-children c))
-    (when (custodian-gc-roots c)
-      (hash-clear! (custodian-gc-roots c)))
-    (for ([proc (in-list (custodian-post-shutdown c))])
-      (proc))
-    (set-custodian-post-shutdown! c null)
-    (let ([sema (custodian-shutdown-sema c)])
-      (when sema
-        (semaphore-post-all sema)))
-    (define p-cref (custodian-parent-reference c))
-    (when p-cref
-      (unsafe-custodian-unregister c p-cref))
-    (host:disable-interrupts)
-    (remove-limit-custodian! c)
-    (set-custodian-memory-limits! c null)
-    (host:enable-interrupts))
-  (unlock-custodians))
+  (cond
+    [(custodian-shut-down? c)
+     (unlock-custodians)]
+    [else
+     (set-custodian-shut-down! c)
+     ;; Once `c` is shut down, nothing new can be registered with it,
+     ;; so take the children while holding the lock, but run callbacks
+     ;; after releasing it. A callback can take port and rktio locks,
+     ;; which are ordered before the custodian lock, or wait for a
+     ;; parallel thread that needs the custodian lock to make progress.
+     (define children+callbacks
+       (for/list ([(child callback) (in-hash (custodian-children c) #f)]
+                  #:when child)
+         (cons child callback)))
+     (hash-clear! (custodian-children c))
+     (when (custodian-gc-roots c)
+       (hash-clear! (custodian-gc-roots c)))
+     (define post-shutdown (custodian-post-shutdown c))
+     (set-custodian-post-shutdown! c null)
+     (unlock-custodians)
+     (when (custodian-sync-futures? c)
+       (futures-sync-for-custodian-shutdown))
+     (for ([child+callback (in-list children+callbacks)])
+       (define child (car child+callback))
+       (define callback (cdr child+callback))
+       (cond
+         [(and only-at-exit?
+               (custodian? child))
+          ;; propagate `only-at-exit?`
+          (do-custodian-shutdown-all child #t)]
+         [(or (not only-at-exit?)
+              (at-exit-callback? callback))
+          (if (procedure-arity-includes? callback 2)
+              (callback child c)
+              (callback child))]))
+     (for ([proc (in-list post-shutdown)])
+       (proc))
+     (let ([sema (custodian-shutdown-sema c)])
+       (when sema
+         (semaphore-post-all sema)))
+     (define p-cref (custodian-parent-reference c))
+     (when p-cref
+       (unsafe-custodian-unregister c p-cref))
+     (host:disable-interrupts)
+     (remove-limit-custodian! c)
+     (set-custodian-memory-limits! c null)
+     (host:enable-interrupts)]))
 
 (define (custodian-get-shutdown-sema c)
   (lock-custodians)

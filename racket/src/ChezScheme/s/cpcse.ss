@@ -66,7 +66,13 @@ LICM
 (begin
 (define enable-cse-licm
   ($make-thread-parameter
-    #t
+    ; for experiments: CHEZ_CSE_LICM=0 disables the pass, =reorder allows error reordering
+    (let ([e (getenv "CHEZ_CSE_LICM")])
+      (cond
+        [(not e) #t]
+        [(string=? e "0") #f]
+        [(string=? e "reorder") 'reorder-errors]
+        [else #t]))
     (lambda (x) (if (eq? x 'reorder-errors) x (and x #t)))))
 
 (define $cpcse

@@ -4547,20 +4547,20 @@
         [() `(immediate ,(fix 0))]
         [(e) (build-fxop? %+/ovfl 'overflow e `(quote 0) values (lambda (e1 e2) (build-libcall #t src sexpr + e1 e2)))]
         [(e1 e2) (build-fxop? %+/ovfl 'overflow e1 e2 values (lambda (e1 e2) (build-libcall #t src sexpr + e1 e2)))]
-        ; TODO: handle 3-operand case ala fx+, w/3-operand library +
-        [(e1 . e*) #f])
+        ; 3- and 4-operand cases as left-nested 2-operand cases
+        [(e1 . e*) (and (fx<= (length e*) 3) (reduce src sexpr moi e1 e*))])
       (define-inline 2 *
         [() `(immediate ,(fix 1))]
         [(e) (build-fxop? %*/ovfl 'multiply-overflow e `(quote 1) build-unfix (lambda (e1 e2) (build-libcall #t src sexpr * e1 e2)))]
         ; TODO: swap e1 & e2 if e1 is constant
         [(e1 e2) (build-fxop? %*/ovfl 'multiply-overflow e1 e2 build-unfix (lambda (e1 e2) (build-libcall #t src sexpr * e1 e2)))]
-        ; TODO: handle 3-operand case ala fx+, w/3-operand library *
-        [(e1 . e*) #f])
+        ; 3- and 4-operand cases as left-nested 2-operand cases
+        [(e1 . e*) (and (fx<= (length e*) 3) (reduce src sexpr moi e1 e*))])
       (define-inline 2 -
         [(e) (build-fxop? %-/ovfl 'overflow `(quote 0) e values (lambda (e1 e2) (build-libcall #t src sexpr - e1 e2)))]
         [(e1 e2) (build-fxop? %-/ovfl 'overflow e1 e2 values (lambda (e1 e2) (build-libcall #t src sexpr - e1 e2)))]
-        ; TODO: handle 3-operand case ala fx+, w/3-operand library -
-        [(e1 e2 . e*) #f]))
+        ; 3- and 4-operand cases as left-nested 2-operand cases
+        [(e1 e2 . e*) (and (fx<= (length e*) 2) (reduce src sexpr moi e1 (cons e2 e*)))]))
     (let ()
       (define build-fxop?
         (lambda (op e k)

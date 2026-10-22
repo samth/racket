@@ -576,6 +576,13 @@
   (lambda (f . args)
     (#2%apply f args)))
 
+;; Asserts that the application is a `car` or `cdr` of a pair that
+;; will not be mutated, except by a `set-car!` or `set-cdr!` visible in
+;; the same compilation unit
+(define $app/immutable
+  (lambda (f . args)
+    (#2%apply f args)))
+
 (define call-with-values
   (lambda (producer consumer)
     (unless (procedure? producer)

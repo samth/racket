@@ -97,6 +97,29 @@ LICM
                (not (memq name cse-excluded-prims))))))
 
     ; a call to pr has no side effects and, unless `reorder?`, cannot raise
+    ;; A car or cdr marked by `$app/immutable` reads a pair that is not
+    ;; mutated except by a set-car! or set-cdr! visible in the same unit.
+    ;; When the unit has no such mutation, the read can be treated like a
+    ;; pure primitive (it can still raise when not unchecked).
+    (define-threaded immutable-ok?)
+
+    (define immutable-read?
+      (lambda (preinfo pr)
+        (and immutable-ok?
+             (preinfo-call-immutable? preinfo)
+             (memq (primref-name pr) '(car cdr))
+             #t)))
+
+    (define mutates-pairs?
+      (lambda (e)
+        (call/cc
+          (lambda (k)
+            (define-pass find-mutation : Lsrc (ir) -> Lsrc ()
+              (Expr : Expr (ir) -> Expr ()
+                [,pr (when (memq (primref-name pr) '(set-car! set-cdr!)) (k #t)) ir]))
+            (find-mutation e)
+            #f))))
+
     (define transparent-prim?
       (lambda (pr reorder?)
         (let ([flags (primref-flags pr)])
@@ -147,10 +170,11 @@ LICM
           [(quote ,d) (and (simple-datum? d) (cons 'quote d))]
           [(ref ,maybe-src ,x) (and (not (prelex-assigned x)) x)]
           [(call ,preinfo ,pr ,e* ...)
-           (and (cse-prim? pr)
+           (and (or (cse-prim? pr) (immutable-read? preinfo pr))
                 (let loop ([e* e*] [rk* '()])
                   (if (null? e*)
-                      (cons* (primref-name pr) (primref-level pr) (reverse rk*))
+                      (cons* (primref-name pr) (primref-level pr)
+                             (preinfo-call-immutable? preinfo) (reverse rk*))
                       (let ([k (cand-key (car e*))])
                         (and k (loop (cdr e*) (cons k rk*)))))))]
           [(if ,e0 ,e1 ,e2)
@@ -568,7 +592,8 @@ LICM
     (lambda (x)
       (let ([mode (enable-cse-licm)])
         (if mode
-            (fluid-let ([binder-loops (make-eq-hashtable)])
+            (fluid-let ([binder-loops (make-eq-hashtable)]
+                        [immutable-ok? (not (mutates-pairs? x))])
               (cpcse x (eq? mode 'reorder-errors)))
             x)))))
 )

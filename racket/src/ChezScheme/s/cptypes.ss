@@ -1327,6 +1327,12 @@ Notes:
                                #f]))])
               (values (or ir `(call ,preinfo ,pr ,x* ...)) ret ntypes #f #f))])
 
+      (define-specialize 2 *
+        [(x y) (and (predicate-implies-fixnum? (get-type x))
+                    (predicate-implies-fixnum? (get-type y))
+                    (values `(call ,preinfo ,(lookup-primref 3 '$fxx*) ,x ,y)
+                            ret ntypes #f #f))])
+
       (define-specialize 2 -
         [(x) (values `(call ,preinfo ,pr ,x)
                      (predicate-close/plus (list `(quote 0)

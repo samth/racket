@@ -5643,3 +5643,13 @@
        (black-box (expt 2 to-power))
        (loop (sub1 i))))))
   )
+
+(mat fxx*
+  ; fixnum multiplication found by cptypes
+  (equal? (list 12 (* 2 (most-positive-fixnum)) (- (most-negative-fixnum)) -35)
+    ((compile '(lambda (x y z w)
+                 (if (and (fixnum? x) (fixnum? y) (fixnum? z) (fixnum? w))
+                     (list (* x 4) (* y 2) (* z -1) (* w 7))
+                     'no)))
+     3 (most-positive-fixnum) (most-negative-fixnum) -5))
+  )

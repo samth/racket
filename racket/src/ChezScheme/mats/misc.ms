@@ -5653,3 +5653,89 @@
                      'no)))
      3 (most-positive-fixnum) (most-negative-fixnum) -5))
   )
+
+(mat cpcse
+  ; loop-invariant code motion must not raise for a loop that never runs
+  (equal? 0.0
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (n s)
+                   (let loop ([i 0] [acc 0.0])
+                     (if (fx< i n) (loop (fx+ i 1) (fl+ acc (real->flonum s))) acc)))))
+     0 'bad))
+  (equal? 4.5
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (n s)
+                   (let loop ([i 0] [acc 0.0])
+                     (if (fx< i n) (loop (fx+ i 1) (fl+ acc (real->flonum s))) acc)))))
+     3 3/2))
+  (error? ; not a real
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (n s)
+                   (let loop ([i 0] [acc 0.0])
+                     (if (fx< i n) (loop (fx+ i 1) (fl+ acc (real->flonum s))) acc)))))
+     1 'bad))
+  ; an effect before the invariant expression happens first
+  (equal? "x"
+    (let-values ([(p get) (open-string-output-port)])
+      (guard (c [#t (get)])
+        (parameterize ([current-output-port p])
+          ((parameterize ([enable-cse-licm #t])
+             (compile '(lambda (n s)
+                         (let loop ([i 0] [acc 0.0])
+                           (if (fx< i n)
+                               (begin (display "x") (loop (fx+ i 1) (fl+ acc (real->flonum s))))
+                               acc)))))
+           3 'bad)))))
+  ; recursion in both branches of the test
+  (equal? 0.0
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (n s)
+                   (let loop ([i 0] [acc 0.0])
+                     (cond [(fx= i n) acc]
+                           [(fxeven? i) (loop (fx+ i 1) acc)]
+                           [else (loop (fx+ i 1) (fl+ acc (real->flonum s)))])))))
+     1 'bad))
+  ; invariant test
+  (equal? 0.0
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (n flag s)
+                   (let loop ([i 0] [acc 0.0])
+                     (if (fx< i n)
+                         (loop (fx+ i 1) (if flag (fl+ acc (real->flonum s)) acc))
+                         acc)))))
+     3 #f 'bad))
+  ; nested loops
+  (equal? '(24.0 0.0 0.0)
+    (let ([f (parameterize ([enable-cse-licm #t])
+               (compile '(lambda (h w s c)
+                           (let yl ([y 0] [acc 0.0])
+                             (if (fx< y h)
+                                 (yl (fx+ y 1)
+                                     (let xl ([x 0] [acc acc])
+                                       (if (fx< x w)
+                                           (xl (fx+ x 1) (fl+ acc (fl* (real->flonum s) (real->flonum (real-part c)))))
+                                           acc)))
+                                 acc)))))])
+      (list (f 3 4 2 1+1i) (f 3 0 'bad 'bad) (f 0 3 'bad 'bad))))
+  ; mutable state is not hoisted
+  (equal? 6
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (v n)
+                   (let loop ([i 0] [acc 0])
+                     (if (fx< i n)
+                         (begin (vector-set! v 0 i) (loop (fx+ i 1) (fx+ acc (vector-ref v 0))))
+                         acc)))))
+     (vector 0) 4))
+  ; non-tail recursion
+  (equal? '(3.0 0.0)
+    (let ([f (parameterize ([enable-cse-licm #t])
+               (compile '(lambda (n s)
+                           (letrec ([f (lambda (i) (if (fx< i n) (fl+ (real->flonum s) (f (fx+ i 1))) 0.0))])
+                             (f 0)))))])
+      (list (f 3 1) (f 0 'bad))))
+  ; common subexpressions
+  (equal? 12.0
+    ((parameterize ([enable-cse-licm #t])
+       (compile '(lambda (x y) (let ([a (fl* x y)]) (fl+ a (fl* x y))))))
+     2.0 3.0))
+)

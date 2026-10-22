@@ -222,10 +222,24 @@ LICM
       (lambda (x loops)
         (eq-hashtable-set! binder-loops x loops)))
 
+    ;; A let-bound variable whose right-hand side is a variable or a
+    ;; candidate is an alias for that right-hand side (e.g., the temporary
+    ;; that cp0 introduces when inlining `real->flonum`).  It is invariant
+    ;; in a loop when its right-hand side is, even if bound in the loop.
+    (define-threaded aliases)
+
     (define invariant-in?
       (lambda (x loop)
         (and (not (prelex-assigned x))
-             (not (memq loop (eq-hashtable-ref binder-loops x '()))))))
+             (or (not (memq loop (eq-hashtable-ref binder-loops x '())))
+                 (let ([a (eq-hashtable-ref aliases x #f)])
+                   (and a (cand-for-all a (lambda (y) (invariant-in? y loop)) (lambda (pr) #t))))))))
+
+    (define bound-in-loop-alias
+      ; the alias right-hand side to use for x outside `loop`, or #f
+      (lambda (x loop)
+        (and (memq loop (eq-hashtable-ref binder-loops x '()))
+             (eq-hashtable-ref aliases x #f))))
 
     (define references?
       ; does e reference x?
@@ -413,7 +427,7 @@ LICM
     (define copy-guard-test
       ; copy a guard's test, replacing hoisted nodes and, for a
       ; first-iteration guard, loop parameters by initial arguments
-      (lambda (e node-ht subst)
+      (lambda (e node-ht subst loop)
         (with-output-language (Lsrc Expr)
           (let f ([e e])
             (let ([x (eq-hashtable-ref node-ht e #f)])
@@ -421,6 +435,9 @@ LICM
                   (build-ref x)
                   (nanopass-case (Lsrc Expr) e
                     [(quote ,d) `(quote ,d)]
+                    [(ref ,maybe-src ,x)
+                     (guard (bound-in-loop-alias x loop))
+                     (f (bound-in-loop-alias x loop))]
                     [(ref ,maybe-src ,x)
                      (let ([a (assq x subst)])
                        (if a
@@ -487,7 +504,7 @@ LICM
                                       (fold-left
                                         (lambda (rhs g)
                                           (let ([test (copy-guard-test (hguard-test g) node-ht
-                                                        (if (hguard-first? g) subst '()))]
+                                                        (if (hguard-first? g) subst '()) f)]
                                                 ; keep a flonum binding known to be a flonum, so it can be unboxed
                                                 [dummy (with-output-language (Lsrc Expr)
                                                          (if (flonum-cand? node) `(quote 0.0) `(quote #f)))])
@@ -496,7 +513,7 @@ LICM
                                                   `(if ,test ,rhs ,dummy)
                                                   `(if ,test ,dummy ,rhs)))))
                                         ; the node's own references were already counted
-                                        (replace-hoisted-node node node-ht)
+                                        (replace-hoisted-node node node-ht f)
                                         (hoist-guards h))))
                                first-hoist*)])
                   (for-each (lambda (t) (when t (record-binder! t loops) (add-ref! t))) tmp*)
@@ -510,18 +527,28 @@ LICM
 
     (define replace-hoisted-node
       ; a hoisted node may contain earlier hoisted nodes (e.g., when a
-      ; guarded hoist's candidate contains an unguarded one)
-      (lambda (node node-ht)
-        (nanopass-case (Lsrc Expr) node
-          [(call ,preinfo ,pr ,e* ...)
-           (with-output-language (Lsrc Expr)
-             `(call ,preinfo ,pr ,(map (lambda (e) (replace-hoisted e node-ht '())) e*) ...))]
-          [(if ,e0 ,e1 ,e2)
-           (with-output-language (Lsrc Expr)
-             `(if ,(replace-hoisted e0 node-ht '())
-                  ,(replace-hoisted e1 node-ht '())
-                  ,(replace-hoisted e2 node-ht '())))]
-          [else node])))
+      ; guarded hoist's candidate contains an unguarded one), and aliases
+      ; bound inside the loop, which are replaced by their right-hand sides
+      (lambda (node node-ht loop)
+        (with-output-language (Lsrc Expr)
+          (let f ([e node] [top? #t] [copy? #f])
+            ; copy?: e is part of an alias's right-hand side, which stays
+            ; in the loop too, so its references are new
+            (let ([x (and (not top?) (eq-hashtable-ref node-ht e #f))])
+              (if x
+                  (build-ref x)
+                  (nanopass-case (Lsrc Expr) e
+                    [(ref ,maybe-src ,x1)
+                     (let ([a (bound-in-loop-alias x1 loop)])
+                       (cond
+                         [a (f a #f #t)]
+                         [copy? (build-ref x1)]
+                         [else e]))]
+                    [(call ,preinfo ,pr ,e* ...)
+                     `(call ,preinfo ,pr ,(map (lambda (e) (f e #f copy?)) e*) ...)]
+                    [(if ,e0 ,e1 ,e2)
+                     `(if ,(f e0 #f copy?) ,(f e1 #f copy?) ,(f e2 #f copy?))]
+                    [else e])))))))
 
     (define-pass cpcse : Lsrc (ir reorder?) -> Lsrc ()
       (definitions
@@ -554,6 +581,13 @@ LICM
          (guard (fx= interface (length e*)))
          (let ([e* (map (lambda (e) (Expr e avail loops)) e*)])
            (for-each (lambda (x) (record-binder! x loops)) x*)
+           (for-each (lambda (x e)
+                       (when (and (not (prelex-assigned x))
+                                  (nanopass-case (Lsrc Expr) e
+                                    [(ref ,maybe-src ,x1) (not (prelex-assigned x1))]
+                                    [else (and (compound? e) (cand-key e) #t)]))
+                         (eq-hashtable-set! aliases x e)))
+             x* e*)
            (let ([body-avail (fold-left
                                (lambda (avail x e)
                                  (if (and (not (prelex-assigned x)) (compound? e))
@@ -593,7 +627,8 @@ LICM
       (let ([mode (enable-cse-licm)])
         (if mode
             (fluid-let ([binder-loops (make-eq-hashtable)]
-                        [immutable-ok? (not (mutates-pairs? x))])
+                        [immutable-ok? (not (mutates-pairs? x))]
+                        [aliases (make-eq-hashtable)])
               (cpcse x (eq? mode 'reorder-errors)))
             x)))))
 )

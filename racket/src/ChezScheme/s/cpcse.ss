@@ -330,8 +330,17 @@ LICM
                   [(case-lambda ,preinfo ,cl* ...) #t]
                   [(profile ,src) #t]
                   [(pariah) #t]
-                  [(seq ,e0 ,e1) (and (walk e0 guards) (walk e1 guards))]
+                  [(seq ,e0 ,e1)
+                   ; a candidate whose value is unused is kept only for its
+                   ; possible error; leave it in place, as a benchmark may
+                   ; rely on it (see `black-box`)
+                   (and (if (invariant? e0) (transparent? e0) (walk e0 guards))
+                        (walk e1 guards))]
                   [(if ,e0 ,e1 ,e2) (walk-if e0 e1 e2 guards)]
+                  [(call ,preinfo ,pr ,e* ...)
+                   (guard (eq? (primref-name pr) 'black-box))
+                   ; black-box asks for its argument to be computed where it is
+                   #f]
                   [(call ,preinfo ,pr ,e* ...)
                    (and (walk* e* guards) (transparent-prim? pr reorder?))]
                   [(call ,preinfo0 (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,body)) ,e* ...)
@@ -360,6 +369,9 @@ LICM
                   (and (not (null? key-alist))
                        (avail-lookup ir key-alist)))))))
       (Expr : Expr (ir) -> Expr ()
+        [(call ,preinfo ,pr ,e1 ...)
+         (guard (eq? (primref-name pr) 'black-box))
+         ir]
         [(call ,preinfo ,e0 ,e1 ...)
          (or (lookup ir)
              `(call ,preinfo ,(Expr e0) ,(map Expr e1) ...))]
@@ -521,6 +533,10 @@ LICM
                                avail x* e*)])
              `(call ,preinfo0 (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,(Expr body body-avail loops)))
                 ,e* ...)))]
+        [(call ,preinfo ,pr ,e* ...)
+         (guard (eq? (primref-name pr) 'black-box))
+         ; no CSE for black-box's argument
+         `(call ,preinfo ,pr ,(map (lambda (e) (Expr e '() loops)) e*) ...)]
         [(call ,preinfo ,pr ,e* ...)
          (let ([e `(call ,preinfo ,pr ,(map (lambda (e) (Expr e avail loops)) e*) ...)])
            (or (avail-lookup e avail) e))]

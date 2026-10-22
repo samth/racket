@@ -22,7 +22,7 @@
     (define cat-names
       '#(flonum fixnum generic-arith predicate record-pred check-pred record-ref/imm record-ref/mut
          $record-ref/imm $record-ref/mut $record-ref/var-rtd $record-ref/no-test
-         pair-access length mutable-ref other-pure))
+         pair-access length mutable-ref $object-ref other-pure))
     (define ncat (vector-length cat-names))
     ;; counters per category
     (define cnt-names
@@ -41,7 +41,7 @@
           [(eq? (vector-ref cat-names i) name) i]
           [else (loop (fx+ i 1))])))
     (define mutable-cats '(record-ref/mut $record-ref/mut $record-ref/var-rtd $record-ref/no-test
-                           pair-access mutable-ref))
+                           pair-access mutable-ref $object-ref))
 
     (define global-counts-sym '$cse-census-counts)
     (define init-globals
@@ -53,6 +53,22 @@
       (let ([n (string-length p)])
         (and (fx<= n (string-length s))
              (string=? p (substring s 0 n)))))
+
+    (define (string-suffix? p s)
+      (let ([n (string-length p)] [m (string-length s)])
+        (and (fx<= n m)
+             (string=? p (substring s (fx- m n) m)))))
+
+    (define (split-colons s)
+      (let loop ([i 0] [start 0])
+        (cond
+          [(fx= i (string-length s))
+           (if (fx= start i) '() (list (substring s start i)))]
+          [(char=? (string-ref s i) #\:)
+           (if (fx= start i)
+               (loop (fx+ i 1) (fx+ i 1))
+               (cons (substring s start i) (loop (fx+ i 1) (fx+ i 1))))]
+          [else (loop (fx+ i 1) start)])))
 
     (define cxr-names '(car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr cadddr cddddr
                          $car $cdr))
@@ -68,6 +84,7 @@
              [mifold? (all-set? (prim-mask (or mifoldable discard)) flags)])
         (cond
           [(eq? name '$record-ref) '$record-ref]
+          [(eq? name '$object-ref) '$object-ref]
           [(not (or pure? mifold?)) #f]
           [(memq name cxr-names) 'pair-access]
           [(memq name length-names) 'length]
@@ -100,7 +117,17 @@
 
     (lambda (x)
       (let ([static-file (getenv "CHEZ_CSE_CENSUS")]
-            [dynamic? (let ([s (getenv "CHEZ_CSE_DYNAMIC")]) (and s (not (string=? s "")) (not (string=? s "0"))))])
+            [dynamic? (let ([s (getenv "CHEZ_CSE_DYNAMIC")])
+                        (and s (not (string=? s "")) (not (string=? s "0"))
+                             ;; CHEZ_CSE_DYNAMIC_SKIP=<name>:<name>... skips instrumenting
+                             ;; source files whose path ends with one of the names
+                             (let ([skip (getenv "CHEZ_CSE_DYNAMIC_SKIP")]
+                                   [path (let ([sfd ($sfd)]) (and sfd (source-file-descriptor-path sfd)))])
+                               (not (and skip path
+                                         (let loop ([names (split-colons skip)])
+                                           (and (pair? names)
+                                                (or (string-suffix? (car names) path)
+                                                    (loop (cdr names))))))))))])
         (if (not (or static-file dynamic?))
             x
             (let ([counts (make-fxvector (fx* ncat ncnt) 0)]
@@ -124,11 +151,15 @@
                 (if dynamic?
                     (with-output-language (Lsrc Expr)
                       (let ([vec `(call ,(pc) ,(lookup-primref 3 '$top-level-value) (quote ,global-counts-sym))])
+                        ;; the guard lets instrumented boot-file code run before
+                        ;; this file's initialization has bound the counters
                         `(seq
-                          (call ,(pc) ,(lookup-primref 3 'fxvector-set!) ,vec (quote ,i)
-                            (call ,(pc) ,(lookup-primref 3 'fx+)
-                              (call ,(pc) ,(lookup-primref 3 'fxvector-ref) ,vec (quote ,i))
-                              (quote 1)))
+                          (if (call ,(pc) ,(lookup-primref 3 '$top-level-bound?) (quote ,global-counts-sym))
+                              (call ,(pc) ,(lookup-primref 3 'fxvector-set!) ,vec (quote ,i)
+                                (call ,(pc) ,(lookup-primref 3 'fx+)
+                                  (call ,(pc) ,(lookup-primref 3 'fxvector-ref) ,vec (quote ,i))
+                                  (quote 1)))
+                              (quote ,(void)))
                           ,e)))
                     e))
               (define (table-set! tbl k v)

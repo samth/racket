@@ -546,6 +546,12 @@
         x1]
        [() 0]))
 
+   (set! $fxx*
+     (lambda (x1 x2)
+       (unless (fixnum? x1) (fxargerr '$fxx* x1))
+       (unless (fixnum? x2) (fxargerr '$fxx* x2))
+       (#3%$fxx* x1 x2)))
+
    (set! $fxx-
      (case-lambda
        [(x1 x2)

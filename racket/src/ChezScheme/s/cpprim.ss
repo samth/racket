@@ -1828,6 +1828,13 @@
                 ,(build-libcall #t src sexpr + e1 e2)
                 ,t)))]
       [e* #f])
+    (define-inline 3 $fxx*
+      [(e1 e2)
+       (bind #t (e1 e2)
+         (bind #f ([t (%inline */ovfl ,e1 ,(build-unfix e2))])
+           `(if (inline ,(make-info-condition-code 'multiply-overflow #f #t) ,%condition-code)
+                ,(build-libcall #t src sexpr * e1 e2)
+                ,t)))])
     (define-inline 3 $fxx-
       [(e)
        (bind #t (e)

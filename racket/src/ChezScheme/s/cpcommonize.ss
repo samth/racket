@@ -26,6 +26,7 @@
   (let ()
     (import (nanopass))
     (include "base-lang.ss")
+    (include "cse-census.ss")
 
     (define-record-type binding
       (nongenerative)
@@ -578,7 +579,7 @@
                      (loop rb* x* e*)))))]))
 
     (lambda (x)
-      (let ([level (commonization-level)])
+      (let ([x (cse-census x)] [level (commonization-level)])
         (if (fx= level 0)
             x
             (let ([worthwhile-size (expt 2 (fx- 10 level))])

@@ -589,6 +589,7 @@
                    (cat (map at-dir patch-names) path))]
 
        ,(include-dep "cptypes" (list "fxmap.ss" "cptypes-lattice.ss"))
+       ,(include-dep "cpcommonize" (list "cse-census.ss"))
        ,(include-dep "5_4" unicode-src-names)
        ,(include-dep "strip" (list "strip-types.ss"))
        ,(include-dep "vfasl" (list "strip-types.ss"))

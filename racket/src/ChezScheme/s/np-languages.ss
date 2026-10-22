@@ -472,16 +472,16 @@
     (Expr (e body)
       (- (moi))))
 
- ; removes assignable indefinite-extent variables from the language
+ ; boxes assignable indefinite-extent variables; an assigned variable that
+ ; no closure captures and that is not live across a possible continuation
+ ; capture stays a variable, so (set! x e) remains in the language
   (define-language L4 (extends L3)
-    (nongenerative-id #{L4 jczowy6yjfz400ntojb6av7y0-4})
-    (entry CaseLambdaExpr)
-    (Expr (e body)
-      (- (set! x e))))
+    (nongenerative-id #{L4 jczowy6yjfz400ntojb6av7y1-4})
+    (entry CaseLambdaExpr))
 
  ; introducing mvlet, and mvcall
   (define-language L4.5 (extends L4)
-    (nongenerative-id #{L4.5 jczowy6yjfz400ntojb6av7y0-4.5})
+    (nongenerative-id #{L4.5 jczowy6yjfz400ntojb6av7y1-4.5})
     (terminals
       (+ (maybe-label (mdcl))))
     (entry CaseLambdaExpr)
@@ -493,7 +493,7 @@
 
  ; removes foreign, adds foreign-call, updates fcallable
   (define-language L4.75 (extends L4.5)
-    (nongenerative-id #{L4.75 jczowy6yjfz400ntojb6av7y0-4.75})
+    (nongenerative-id #{L4.75 jczowy6yjfz400ntojb6av7y1-4.75})
     (entry CaseLambdaExpr)
     (terminals
       (+ (label (l))))
@@ -506,7 +506,7 @@
 
  ; adds loop form
   (define-language L4.875 (extends L4.75)
-    (nongenerative-id #{L4.875 jczowy6yjfz400ntojb6av7y0-4.875})
+    (nongenerative-id #{L4.875 jczowy6yjfz400ntojb6av7y1-4.875})
     (entry CaseLambdaExpr)
     (Expr (e body)
       (+ (loop x (x* ...) body) => (loop x body))))
@@ -521,7 +521,7 @@
 
  ; exposes continuation-attachment operations
   (define-language L4.9375 (extends L4.875)
-    (nongenerative-id #{L4.9375 jczowy6yjfz400ntojb6av7y0-4.9375})
+    (nongenerative-id #{L4.9375 jczowy6yjfz400ntojb6av7y1-4.9375})
     (terminals
      (+ (attachment-op (aop)))
      (+ (continuation-op (cop)))
@@ -536,14 +536,14 @@
 
  ; moves all case lambda expressions into rhs of letrec
   (define-language L5 (extends L4.9375)
-    (nongenerative-id #{L5 jczowy6yjfz400ntojb6av7y0-5})
+    (nongenerative-id #{L5 jczowy6yjfz400ntojb6av7y1-5})
     (entry CaseLambdaExpr)
     (Expr (e body)
       (- le)))
 
  ; replaces letrec with labels and closures forms
   (define-language L6 (extends L5)
-    (nongenerative-id #{L6 jczowy6yjfz400ntojb6av7y0-6})
+    (nongenerative-id #{L6 jczowy6yjfz400ntojb6av7y1-6})
     (terminals
       (+ (maybe-var (mcp))))
     (entry CaseLambdaExpr)
@@ -581,6 +581,7 @@
          (mref e1 e2 imm type)))
     (Expr (e body)
       (- x
+         (set! x e)
          (fcallable info)
          (closures ([x* (x** ...) le*] ...) body)
          (call info mdcl e0 e1 ...))

@@ -5668,12 +5668,13 @@
                    (let loop ([i 0] [acc 0.0])
                      (if (fx< i n) (loop (fx+ i 1) (fl+ acc (real->flonum s))) acc)))))
      3 3/2))
-  (error? ; not a real
+  (eq? 'raised ; not a real
+    (guard (c [#t 'raised])
     ((parameterize ([enable-cse-licm #t])
        (compile '(lambda (n s)
                    (let loop ([i 0] [acc 0.0])
                      (if (fx< i n) (loop (fx+ i 1) (fl+ acc (real->flonum s))) acc)))))
-     1 'bad))
+     1 'bad)))
   ; an effect before the invariant expression happens first
   (equal? "x"
     (let-values ([(p get) (open-string-output-port)])

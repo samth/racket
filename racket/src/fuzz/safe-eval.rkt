@@ -142,7 +142,14 @@
   (for ([l (in-list attached-libs)])
     (namespace-attach-module-declaration harness-ns l ns))
   (parameterize ([current-namespace ns])
-    (namespace-require 'racket/base))
+    (namespace-require 'racket/base)
+    ;; A major collection can take most of a second in a sanitized
+    ;; build, and fuel does not count time spent in the collector, so
+    ;; `collect-garbage` at the top level only requests a minor one
+    (namespace-set-variable-value! 'collect-garbage
+                                   (lambda ([request 'major])
+                                     (collect-garbage 'minor))
+                                   #t))
   ns)
 
 ;; A preloaded library resolves to the name it has in the harness. That

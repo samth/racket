@@ -109,6 +109,15 @@
 (when xpatch-path
   (load xpatch-path))
 
+;; Counters for coverage-guided fuzzing; the resulting code needs a
+;; runtime built with `RACKET_COVERAGE_COUNTERS`
+(when (getenv "PLT_CS_COVERAGE_COUNTERS")
+  ;; code that runs at compile time, such as macro transformers, also
+  ;; increments counters, so give this process its own counters
+  (unless (#%$top-level-bound? '$coverage-counters)
+    (#%$set-top-level-value! '$coverage-counters (make-bytevector (expt 2 20) 0)))
+  (generate-coverage-counters #t))
+
 ;; set these after xpatch is loaded, in case they're reset by the patch:
 (generate-wpo-files #t)
 (generate-inspector-information inspector-information?)

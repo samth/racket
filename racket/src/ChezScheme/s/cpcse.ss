@@ -166,7 +166,9 @@ LICM
              ,e))))
 
     ;; Structural key for a candidate, or #f.  Leaves are prelexes and
-    ;; (quote . datum); keys are compared with equal?.
+    ;; (quote . datum); keys are compared with equal?.  The key omits the
+    ;; primitive's level, since cptypes can make a later copy of a
+    ;; checked operation unchecked, and either computes the same value.
     (define cand-key
       (lambda (e)
         (nanopass-case (Lsrc Expr) e
@@ -176,7 +178,7 @@ LICM
            (and (or (cse-prim? pr) (immutable-read? pr))
                 (let loop ([e* e*] [rk* '()])
                   (if (null? e*)
-                      (cons* (primref-name pr) (primref-level pr) (reverse rk*))
+                      (cons (primref-name pr) (reverse rk*))
                       (let ([k (cand-key (car e*))])
                         (and k (loop (cdr e*) (cons k rk*)))))))]
           [(if ,e0 ,e1 ,e2)

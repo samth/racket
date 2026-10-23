@@ -176,8 +176,6 @@
                               (prim '$app/no-return a)]
                              [(preinfo-call-single-valued? preinfo)
                               (prim '$app/value a)]
-                             [(preinfo-call-immutable? preinfo)
-                              (prim '$app/immutable a)]
                              [(preinfo-call-can-inline? preinfo)
                               (prim #f a)]
                              [else

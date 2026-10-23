@@ -18,7 +18,7 @@
          sorry! make-preinfo preinfo? preinfo-lambda? preinfo-sexpr preinfo-sexpr-set! preinfo-src
          make-preinfo-lambda preinfo-lambda-name preinfo-lambda-flags preinfo-lambda-libspec
          make-preinfo-call preinfo-call? preinfo-call-flags preinfo-call-check?
-         preinfo-call-can-inline? preinfo-call-no-return? preinfo-call-single-valued? preinfo-call-immutable?
+         preinfo-call-can-inline? preinfo-call-no-return? preinfo-call-single-valued?
          prelex? make-prelex prelex-name prelex-name-set! prelex-flags prelex-flags-set!
          prelex-source prelex-operand prelex-operand-set! prelex-uname make-prelex*
          target-fixnum? target-fixnum-power-of-two target-bignum?)
@@ -187,9 +187,6 @@
 
   (define (preinfo-call-single-valued? preinfo)
     (all-set? (preinfo-call-mask single-valued) (preinfo-call-flags preinfo)))
-
-  (define (preinfo-call-immutable? preinfo)
-    (all-set? (preinfo-call-mask immutable) (preinfo-call-flags preinfo)))
 
   ; language of foreign types
   (define-language Ltype 

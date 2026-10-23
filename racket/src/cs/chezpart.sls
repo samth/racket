@@ -15,6 +15,7 @@
                            peek-char char-ready?
                            make-input-port make-output-port
                            close-input-port close-output-port
+                           car cdr ; Racket pairs are immutable: see "rumble.sls"
                            list? input-port? output-port?
                            open-input-file open-output-file abort
                            current-output-port current-input-port current-directory

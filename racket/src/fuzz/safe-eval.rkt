@@ -216,11 +216,17 @@
                                   (when (bug-exn? e) (set! result 1)))])
                  (set! result (thunk))))))))))
   ;; Watchdog: each `(sleep 0)` lets the other threads run for up to
-  ;; one quantum, so this loop bounds the work they can do.
+  ;; one quantum, so this loop bounds the work they can do. It also
+  ;; checks total memory use, which is cheap, since the custodian's
+  ;; limit is enforced only at a major collection, and allocation is
+  ;; fast enough to reach the fuzzer's RSS limit before then.
+  (define base-memory (current-memory-use))
   (let loop ([n 0])
     (cond
       [(thread-dead? th) (void)]
       [(>= n fuel-quanta) (note-exn "out of fuel")]
+      [(> (- (current-memory-use) base-memory) memory-limit)
+       (note-exn "out of memory")]
       [else (sleep 0) (loop (add1 n))]))
   (custodian-shutdown-all cust)
   result)

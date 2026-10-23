@@ -5,11 +5,21 @@
    every expected outcome and 1 for a bug, which becomes `abort()` here.
 
    Compile-time settings (all strings):
+     FUZZ_ENTRY     entry point name, such as "fuzz-eval"
+   and either
+     FUZZ_EMBEDDED  defined: boot files and modules come from
+                    "embed-data.S", and no files are needed at run time
+   or
+     FUZZ_MODULE    absolute path of "safe-eval.rkt"
      BOOT_DIR       directory holding petite.boot, scheme.boot, racket.boot
      COLLECTS_DIR   the "collects" directory
      CONFIG_DIR     the "etc" directory
-     FUZZ_MODULE    absolute path of "safe-eval.rkt"
-     FUZZ_ENTRY     entry point name, such as "fuzz-eval" */
+
+   With RACKET_COVERAGE_COUNTERS defined (and a Racket CS built with it
+   and with PLT_CS_COVERAGE_COUNTERS set), Scheme code also reports
+   coverage: the Chez Scheme counters are registered with libFuzzer
+   like clang's inline 8-bit counters, and code compiled while fuzzing
+   gets counters, too. */
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,24 +34,89 @@
 
 static ptr entry_proc;
 
+#ifdef FUZZ_EMBEDDED
+extern char fuzz_petite_boot[], fuzz_petite_boot_end[];
+extern char fuzz_scheme_boot[], fuzz_scheme_boot_end[];
+extern char fuzz_racket_boot[], fuzz_racket_boot_end[];
+extern char fuzz_modules[], fuzz_modules_end[];
+#endif
+
+#ifdef RACKET_COVERAGE_COUNTERS
+void __sanitizer_cov_8bit_counters_init(uint8_t *start, uint8_t *stop);
+void __sanitizer_cov_pcs_init(const uintptr_t *pcs_beg, const uintptr_t *pcs_end);
+
+/* libFuzzer wants a PC table entry, a (PC, flags) pair, for each
+   counter; the PCs only need to be distinct. */
+static void register_scheme_counters(void)
+{
+  iptr len;
+  uint8_t *counters = Scoverage_counters(&len);
+  uintptr_t *pcs;
+  iptr i;
+
+  if (!counters) return;
+
+  pcs = malloc(2 * len * sizeof(uintptr_t));
+  for (i = 0; i < len; i++) {
+    pcs[2 * i] = (uintptr_t)(counters + i);
+    pcs[2 * i + 1] = 0;
+  }
+
+  __sanitizer_cov_8bit_counters_init(counters, counters + len);
+  __sanitizer_cov_pcs_init(pcs, pcs + 2 * len);
+}
+#endif
+
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
   racket_boot_arguments_t ba;
 
   memset(&ba, 0, sizeof(ba));
+#ifdef FUZZ_EMBEDDED
+  ba.boot1_data = fuzz_petite_boot;
+  ba.boot1_len = fuzz_petite_boot_end - fuzz_petite_boot;
+  ba.boot2_data = fuzz_scheme_boot;
+  ba.boot2_len = fuzz_scheme_boot_end - fuzz_scheme_boot;
+  ba.boot3_data = fuzz_racket_boot;
+  ba.boot3_len = fuzz_racket_boot_end - fuzz_racket_boot;
+  ba.collects_dir = "";
+  ba.config_dir = NULL;
+#else
   ba.boot1_path = BOOT_DIR "/petite.boot";
   ba.boot2_path = BOOT_DIR "/scheme.boot";
   ba.boot3_path = BOOT_DIR "/racket.boot";
-  ba.exec_file = "racket-fuzz";
-  ba.collects_dir = COLLECTS_DIR;
+  /* A list of paths, each ending in NUL, with an extra NUL at the end;
+     `parse_coldirs` in "boot.c" reads past a single NUL. */
+  ba.collects_dir = COLLECTS_DIR "\0";
   ba.config_dir = CONFIG_DIR;
+#endif
+  ba.exec_file = "racket-fuzz";
   ba.exit_after = 0;
+
+#ifdef RACKET_COVERAGE_COUNTERS
+  /* so that "linklet.sls" compiles fuzzed code with counters */
+  setenv("PLT_CS_COVERAGE_COUNTERS", "1", 1);
+#endif
 
   racket_boot(&ba);
 
+#ifdef RACKET_COVERAGE_COUNTERS
+  register_scheme_counters();
+#endif
+
+#ifdef FUZZ_EMBEDDED
+  racket_embedded_load_bytes(fuzz_modules, fuzz_modules_end - fuzz_modules, 0);
+#endif
+
   {
+#ifdef FUZZ_EMBEDDED
+    /* "embed-modules.rkt" declares the module as 'fuzz:safe-eval */
+    ptr mod_path = Scons(Sstring_to_symbol("quote"),
+                         Scons(Sstring_to_symbol("fuzz:safe-eval"), Snil));
+#else
     ptr mod_path = Scons(Sstring_to_symbol("file"),
                          Scons(Sstring(FUZZ_MODULE), Snil));
+#endif
     ptr vals = racket_dynamic_require(mod_path, Sstring_to_symbol(FUZZ_ENTRY));
     entry_proc = Scar(vals);
     Slock_object(entry_proc);

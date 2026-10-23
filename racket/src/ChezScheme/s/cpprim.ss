@@ -4002,13 +4002,14 @@
       [(e) (nanopass-case (L7 Expr) e
              [(quote ,d)
               (guard (and (fixnum? d) (fx<= 0 d (fx- (constant coverage-counter-count) 1))))
-              (%seq
-                ,(%inline inc-profile-counter
-                   ,(%mref
-                      (literal ,(make-info-literal #t 'object '$coverage-counters (constant symbol-value-disp)))
-                      ,(fx+ (constant bytevector-data-disp) (fx* d 8)))
-                   (immediate 1))
-                ,(%constant svoid))]
+              (let ([offset (fx+ (constant bytevector-data-disp) d)])
+                (bind #t ([bv (Symref '$coverage-counters)])
+                  (%seq
+                    (inline ,(make-info-load 'unsigned-8 #f) ,%store ,bv ,%zero (immediate ,offset)
+                      ,(%inline +
+                         (inline ,(make-info-load 'unsigned-8 #f) ,%load ,bv ,%zero (immediate ,offset))
+                         (immediate 1)))
+                    ,(%constant svoid))))]
              [else #f])])
     (define-inline 2 $event-trap-check
       [() `(call ,(make-info-call src sexpr #f #f #f) ,(make-trap-check-label '$event-trap-check) #f)])

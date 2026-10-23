@@ -69,6 +69,14 @@
 
 (define (report-bug e)
   (fprintf bug-port "fuzz bug: ~a\n" (exn-message e))
+  (for ([c (in-list (continuation-mark-set->context
+                     (exn-continuation-marks e)))]
+        [i (in-range 20)])
+    (fprintf bug-port "  ~a~a\n"
+             (or (car c) "???")
+             (if (cdr c)
+                 (format " at ~a:~a" (srcloc-source (cdr c)) (srcloc-line (cdr c)))
+                 "")))
   (flush-output bug-port))
 
 ;; ----------------------------------------

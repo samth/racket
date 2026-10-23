@@ -23,6 +23,10 @@
    program's own code would reward new programs, not new behavior of
    Racket. */
 
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE /* for REG_RIP and dladdr */
+#endif
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,6 +57,72 @@ extern char fuzz_petite_boot[], fuzz_petite_boot_end[];
 extern char fuzz_scheme_boot[], fuzz_scheme_boot_end[];
 extern char fuzz_racket_boot[], fuzz_racket_boot_end[];
 extern char fuzz_modules[], fuzz_modules_end[];
+#endif
+
+/* Chez Scheme turns every memory fault into an "invalid memory
+   reference" exception, and every exception that the harness counts
+   as a bug ends in the same `abort()` below. For a fault in C code,
+   the sanitizer's report and stack trace say much more, so send those
+   faults to the handler that was in place before booting. A fault in
+   Scheme code, which is outside any shared object or the executable,
+   still goes to Chez Scheme, since the sanitizer cannot walk Scheme
+   frames; "safe-eval.rkt" then prints the Racket context. Racket does
+   not rely on these signals in normal operation. */
+static struct sigaction sanitizer_segv, sanitizer_bus, chez_segv, chez_bus;
+
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
+# include <dlfcn.h>
+# include <ucontext.h>
+
+static int fault_in_c_code(void *data)
+{
+  ucontext_t *uc = (ucontext_t *)data;
+  Dl_info info;
+# if defined(__x86_64__)
+  void *pc = (void *)uc->uc_mcontext.gregs[REG_RIP];
+# else
+  void *pc = (void *)uc->uc_mcontext.pc;
+# endif
+  return dladdr(pc, &info) != 0;
+}
+
+static void call_handler(struct sigaction *sa, int sig, siginfo_t *si, void *data)
+{
+  if (sa->sa_flags & SA_SIGINFO)
+    sa->sa_sigaction(sig, si, data);
+  else if ((sa->sa_handler != SIG_DFL) && (sa->sa_handler != SIG_IGN))
+    sa->sa_handler(sig);
+  else {
+    /* returning re-runs the faulting instruction, now with the
+       default action */
+    signal(sig, SIG_DFL);
+  }
+}
+
+static void handle_fault(int sig, siginfo_t *si, void *data)
+{
+  int is_segv = (sig == SIGSEGV);
+  if (fault_in_c_code(data))
+    call_handler(is_segv ? &sanitizer_segv : &sanitizer_bus, sig, si, data);
+  else
+    call_handler(is_segv ? &chez_segv : &chez_bus, sig, si, data);
+}
+
+static void split_fault_handlers(void)
+{
+  struct sigaction act;
+
+  sigaction(SIGSEGV, NULL, &chez_segv);
+  sigaction(SIGBUS, NULL, &chez_bus);
+
+  act = chez_segv;
+  act.sa_flags |= SA_SIGINFO | (sanitizer_segv.sa_flags & SA_ONSTACK);
+  act.sa_sigaction = handle_fault;
+  sigaction(SIGSEGV, &act, NULL);
+  sigaction(SIGBUS, &act, NULL);
+}
+#else
+static void split_fault_handlers(void) { }
 #endif
 
 #ifdef RACKET_COVERAGE_COUNTERS
@@ -113,7 +183,12 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
      Leaks from running an input are still reported. */
   FUZZ_LSAN_DISABLE();
 
+  sigaction(SIGSEGV, NULL, &sanitizer_segv);
+  sigaction(SIGBUS, NULL, &sanitizer_bus);
+
   racket_boot(&ba);
+
+  split_fault_handlers();
 
 #ifdef RACKET_COVERAGE_COUNTERS
   register_scheme_counters();

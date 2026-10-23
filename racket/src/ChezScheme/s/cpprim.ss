@@ -2967,6 +2967,20 @@
                   #,(f (cons #\a ad*))
                   #,(f (cons #\d ad*)))))))
       def-c..r*)
+    (let () ; immutable-car and immutable-cdr read like car and cdr
+      (define-syntax def-immutable
+        (syntax-rules ()
+          [(_ id plain builder)
+           (begin
+             (define-inline 2 id
+               [(e) (bind #t (e)
+                      `(if ,(build-pair? e)
+                           ,(builder e)
+                           ,(build-libcall #t src sexpr plain e)))])
+             (define-inline 3 id
+               [(e) (builder e)]))]))
+      (def-immutable immutable-car car build-car)
+      (def-immutable immutable-cdr cdr build-cdr))
     (let () ; level 3 car, cdr, caar, etc.
       (define-syntax def-c..r*
         (lambda (x)

@@ -3996,6 +3996,20 @@
       [(e) (build-libcall #f src sexpr call1cc e)])
     (define-inline 2 $event
       [() (build-libcall #f src sexpr event)])
+    (define-inline 3 $coverage-hit
+      ; increment counter `d` of the bytevector in `$coverage-counters`,
+      ; which `Senable_coverage_counters` allocates and locks
+      [(e) (nanopass-case (L7 Expr) e
+             [(quote ,d)
+              (guard (and (fixnum? d) (fx<= 0 d (fx- (constant coverage-counter-count) 1))))
+              (%seq
+                ,(%inline inc-profile-counter
+                   ,(%mref
+                      (literal ,(make-info-literal #t 'object '$coverage-counters (constant symbol-value-disp)))
+                      ,(fx+ (constant bytevector-data-disp) (fx* d 8)))
+                   (immediate 1))
+                ,(%constant svoid))]
+             [else #f])])
     (define-inline 2 $event-trap-check
       [() `(call ,(make-info-call src sexpr #f #f #f) ,(make-trap-check-label '$event-trap-check) #f)])
     (define-inline 3 eq-hashtable-ref

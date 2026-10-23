@@ -2404,6 +2404,19 @@
 
 (define ($fxaddress x) (#3%$fxaddress x))
 
+;; Out-of-line version of the counter increment that
+;; `generate-coverage-counters` inserts; the inline version in cpprim.ss
+;; handles the usual case of a constant index.
+(define ($coverage-hit i)
+  (let ([bv (#%$top-level-value '$coverage-counters)])
+    (when (and (bytevector? bv)
+               (fixnum? i)
+               (fx<= 0 i (fx- (constant coverage-counter-count) 1)))
+      (let ([k (fx* i 8)])
+        (bytevector-u64-native-set! bv k
+          (logand (+ (bytevector-u64-native-ref bv k) 1)
+                  #xffffffffffffffff))))))
+
 (define $logand
   (foreign-procedure __atomic __alloc "(cs)logand"
     (scheme-object scheme-object)

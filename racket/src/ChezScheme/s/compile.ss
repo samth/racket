@@ -632,6 +632,7 @@
                    [generate-procedure-source-information (generate-procedure-source-information)]
                    [$compile-profile ($compile-profile)]
                    [generate-interrupt-trap (generate-interrupt-trap)]
+                   [generate-coverage-counters (generate-coverage-counters)]
                    [$optimize-closures ($optimize-closures)]
                    [$lift-closures ($lift-closures)]
                    [enable-cross-library-optimization (enable-cross-library-optimization)]
@@ -838,6 +839,7 @@
                            [waste (check-prelex-flags x2b 'cpcheck)]
                            [x2b ($pass-time 'cpcommonize (lambda () (do-trace $cpcommonize x2b)))]
                            [waste (check-prelex-flags x2b 'cpcommonize)]
+                           [x2b ($pass-time 'cpcoverage (lambda () (do-trace $cpcoverage x2b)))]
                            [x7 (do-trace $np-compile x2b #t)]
                            [x8 ($c-make-closure x7)])
                       (loop chunk* (cons (f x2b) rx2b*) (cons (f x8) rfinal*) rlpinfo* rrcinfo*)))))
@@ -1813,7 +1815,8 @@
                           (if cpletrec-ran? x
                               ($pass-time 'cpletrec (lambda () ($cpletrec x))))))]
                  [x2b ($pass-time 'cpcheck (lambda () ($cpcheck x2a)))]
-                 [x2b ($pass-time 'cpcommonize (lambda () ($cpcommonize x2b)))])
+                 [x2b ($pass-time 'cpcommonize (lambda () ($cpcommonize x2b)))]
+                 [x2b ($pass-time 'cpcoverage (lambda () ($cpcoverage x2b)))])
             (when (and (expand/optimize-output) (not ($noexpand? x0)))
               (pretty-print ($uncprep x2b) (expand/optimize-output))
               (flush-output-port (expand/optimize-output)))

@@ -2114,6 +2114,10 @@
 (define-constant signal-interrupt-index 4)
 (define-constant maximum-interrupt-index 4)
 
+;; number of 8-byte counters in the `$coverage-counters` bytevector; see
+;; `generate-coverage-counters` and `Senable_coverage_counters`
+(define-constant coverage-counter-count (expt 2 18))
+
 (define-constant ignore-event-flag 0)
 
 (define-constant default-timer-ticks 1000)

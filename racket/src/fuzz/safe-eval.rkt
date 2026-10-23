@@ -62,6 +62,15 @@
          (or (string-contains? msg "invalid memory reference")
              (string-prefix? msg "internal error")))))
 
+;; A bug's message goes to the original error port, whatever untrusted
+;; code did to its own, so that a crash report says what went wrong;
+;; for a memory fault, Chez may say where.
+(define bug-port (current-error-port))
+
+(define (report-bug e)
+  (fprintf bug-port "fuzz bug: ~a\n" (exn-message e))
+  (flush-output bug-port))
+
 ;; ----------------------------------------
 ;; Security guard: read-only access to installed libraries
 
@@ -213,7 +222,9 @@
                (with-handlers ([(lambda (e) #t)
                                 (lambda (e)
                                   (note-exn e)
-                                  (when (bug-exn? e) (set! result 1)))])
+                                  (when (bug-exn? e)
+                                    (report-bug e)
+                                    (set! result 1)))])
                  (set! result (thunk))))))))))
   ;; Watchdog: each `(sleep 0)` lets the other threads run for up to
   ;; one quantum, so this loop bounds the work they can do. It also
@@ -235,7 +246,10 @@
 (define-syntax-rule (define-entry (name bstr) body ...)
   (define (name bstr)
     (with-handlers ([(lambda (e) #t)
-                     (lambda (e) (if (bug-exn? e) 1 0))])
+                     (lambda (e)
+                       (cond
+                         [(bug-exn? e) (report-bug e) 1]
+                         [else 0]))])
       body ...)))
 
 ;; ----------------------------------------

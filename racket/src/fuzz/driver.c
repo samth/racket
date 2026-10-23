@@ -30,6 +30,18 @@
 #include "chezscheme.h"
 #include "racketcs.h"
 
+#ifndef __has_feature
+# define __has_feature(x) 0
+#endif
+#if defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer)
+# include <sanitizer/lsan_interface.h>
+# define FUZZ_LSAN_DISABLE() __lsan_disable()
+# define FUZZ_LSAN_ENABLE() __lsan_enable()
+#else
+# define FUZZ_LSAN_DISABLE() (void)0
+# define FUZZ_LSAN_ENABLE() (void)0
+#endif
+
 #ifndef FUZZ_ENTRY
 # define FUZZ_ENTRY "fuzz-eval"
 #endif
@@ -95,6 +107,12 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
   ba.exec_file = "racket-fuzz";
   ba.exit_after = 0;
 
+  /* Racket keeps what it allocates while booting until the process
+     exits, often referenced only from the Scheme heap, which
+     LeakSanitizer does not scan; so don't report those as leaks.
+     Leaks from running an input are still reported. */
+  FUZZ_LSAN_DISABLE();
+
   racket_boot(&ba);
 
 #ifdef RACKET_COVERAGE_COUNTERS
@@ -118,6 +136,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
     entry_proc = Scar(vals);
     Slock_object(entry_proc);
   }
+
+  FUZZ_LSAN_ENABLE();
 
   return 0;
 }

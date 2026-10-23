@@ -54,6 +54,8 @@
          syntax-local-lift-require
          syntax-local-lift-provide
          syntax-local-lift-module-end-declaration
+         syntax-local-lift-body-expression
+         syntax-transforming-with-body-lifts?
          
          syntax-local-module-defined-identifiers
          syntax-local-module-required-identifiers
@@ -74,6 +76,14 @@
   (define ctx (get-current-expand-context #:fail-ok? #t))
   (and ctx
        (expand-context-lifts ctx)
+       #t))
+
+(define (syntax-transforming-with-body-lifts?)
+  (define ctx (get-current-expand-context #:fail-ok? #t))
+  (and ctx
+       (body-lift-context-target? (expand-context-body-lifts ctx)
+                                  (expand-context-context ctx)
+                                  (expand-context-phase ctx))
        #t))
 
 (define (syntax-transforming-module-expression?)
@@ -269,6 +279,19 @@
 
 (define/who (syntax-local-lift-values-expression n s)
   (do-lift-values-expression who n s))
+
+(define/who (syntax-local-lift-body-expression s)
+  (check who syntax? s)
+  (define ctx (get-current-expand-context who))
+  (define body-lifts (expand-context-body-lifts ctx))
+  (unless (body-lift-context-target? body-lifts
+                                     (expand-context-context ctx)
+                                     (expand-context-phase ctx))
+    (raise-arguments-error who "no lift target"))
+  (define added-s (flip-introduction-scopes s ctx))
+  ;; No log event yet, since the macro stepper's grammar would need to
+  ;; learn it; the lifted forms show up in the body's 'enter-list
+  (add-lifted-body-expression! body-lifts added-s))
 
 (define/who (syntax-local-lift-context)
   (define ctx (get-current-expand-context who))

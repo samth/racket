@@ -96,6 +96,32 @@ LICM
                (memq ($sgetprop name '*result-type* #f) cse-result-types)
                (not (memq name cse-excluded-prims))))))
 
+    ;; immutable-car and immutable-cdr promise that the pair is not mutated
+    ;; except where it could be replaced by a fresh pair with the new
+    ;; contents, which a mutation visible in the same unit stands for. When
+    ;; the unit has no set-car! or set-cdr!, their reads can be kept across
+    ;; calls and hoisted like pure primitives (they can still raise when
+    ;; not unchecked).  They are not speculated (see below): the guarded
+    ;; copy keeps an extra variable live across the calls in the loop,
+    ;; which costs more than the reads it saves.
+    (define-threaded immutable-ok?)
+
+    (define immutable-read?
+      (lambda (pr)
+        (and immutable-ok?
+             (memq (primref-name pr) '(immutable-car immutable-cdr))
+             #t)))
+
+    (define mutates-pairs?
+      (lambda (e)
+        (call/cc
+          (lambda (k)
+            (define-pass find-mutation : Lsrc (ir) -> Lsrc ()
+              (Expr : Expr (ir) -> Expr ()
+                [,pr (when (memq (primref-name pr) '(set-car! set-cdr! car-cas! cdr-cas!)) (k #t)) ir]))
+            (find-mutation e)
+            #f))))
+
     ; a call to pr has no side effects and, unless `reorder?`, cannot raise
     (define transparent-prim?
       (lambda (pr reorder?)
@@ -147,7 +173,7 @@ LICM
           [(quote ,d) (and (simple-datum? d) (cons 'quote d))]
           [(ref ,maybe-src ,x) (and (not (prelex-assigned x)) x)]
           [(call ,preinfo ,pr ,e* ...)
-           (and (cse-prim? pr)
+           (and (or (cse-prim? pr) (immutable-read? pr))
                 (let loop ([e* e*] [rk* '()])
                   (if (null? e*)
                       (cons* (primref-name pr) (primref-level pr) (reverse rk*))
@@ -739,6 +765,7 @@ LICM
       (let ([mode (enable-cse-licm)])
         (if mode
             (fluid-let ([binder-loops (make-eq-hashtable)]
+                        [immutable-ok? (not (mutates-pairs? x))]
                         [aliases (make-eq-hashtable)])
               (cpcse x (eq? mode 'reorder-errors)))
             x)))))

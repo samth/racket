@@ -5078,7 +5078,7 @@
                                                       (cdr ls*)) ...))))))))))
                     ctxt empty-env sc wd name moi)))])
 
-      (define-inline 2 car
+      (define-inline 2 (car immutable-car)
         [(?x)
          (nanopass-case (Lsrc Expr) (result-exp (value-visit-operand! ?x))
            [(immutable-list (,e* ...) ,e)
@@ -5101,7 +5101,7 @@
                 (cdr e*)))]
            [else #f])])
 
-      (define-inline 2 cdr
+      (define-inline 2 (cdr immutable-cdr)
         [(?x)
          (nanopass-case (Lsrc Expr) (result-exp (value-visit-operand! ?x))
            [(immutable-list (,e* ...) ,e)

@@ -1527,6 +1527,15 @@
    (lambda (p)
       (#2%cdr p)))
 
+;; named car and cdr, since they can stand in for car and cdr
+(define immutable-car
+   (let ([car (lambda (p) (#2%immutable-car p))])
+     car))
+
+(define immutable-cdr
+   (let ([cdr (lambda (p) (#2%immutable-cdr p))])
+     cdr))
+
 (define set-car!
    (lambda (p v)
       (#2%set-car! p v)))

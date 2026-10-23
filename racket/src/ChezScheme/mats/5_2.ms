@@ -42,6 +42,22 @@
     (error? (cdr 3))
  )   
 
+(mat immutable-car
+    (eq? (immutable-car '(a b c)) 'a)
+    (eq? (immutable-car (cons 'a 'b)) 'a)
+    (eq? (let ([f immutable-car]) (f '(a . b))) 'a)
+    (error? (immutable-car "hi"))
+    (error? (let ([f immutable-car]) (f "hi")))
+ )
+
+(mat immutable-cdr
+    (equal? (immutable-cdr '(a b c)) '(b c))
+    (eq? (immutable-cdr (cons 'a 'b)) 'b)
+    (eq? (let ([f immutable-cdr]) (f '(a . b))) 'b)
+    (error? (immutable-cdr 3))
+    (error? (let ([f immutable-cdr]) (f 3)))
+ )
+
 (mat set-car!
     (let ((x (list 'a 'b))) (set-car! x 3) (equal? x '(3 b)))
     (error? (set-car! 'a 'b))

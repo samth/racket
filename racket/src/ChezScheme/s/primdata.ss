@@ -1485,6 +1485,8 @@
   (inspect/object [sig [(ptr) -> (procedure)]] [flags unrestricted])
   (integer-length [sig [(sint) -> (uint)]] [flags arith-op mifoldable discard])
   (interactive? [sig [() -> (boolean)]] [flags unrestricted])
+  (immutable-car [sig [(pair) -> (ptr)]] [flags mifoldable discard cp02 safeongoodargs])
+  (immutable-cdr [sig [(pair) -> (ptr)]] [flags mifoldable discard cp02 safeongoodargs])
   (interpret [sig [(ptr) (ptr environment) -> (ptr ...)]] [flags])
   (iota [sig [(ufixnum) -> (list)]] [flags alloc])
   (isqrt [sig [(uinteger) -> (integer)]] [flags arith-op mifoldable discard])

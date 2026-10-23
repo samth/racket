@@ -1,0 +1,11 @@
+homepage: "https://racket-lang.org"
+language: c
+primary_contact: "TODO@example.org"
+main_repo: "https://github.com/racket/racket"
+sanitizers:
+  - address
+  - undefined
+fuzzing_engines:
+  - libfuzzer
+architectures:
+  - x86_64

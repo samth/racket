@@ -50,6 +50,16 @@
     [%fp4           %v19        #f 19 fp]
     [%fp5           %v20        #f 20 fp]
     [%fp6           %v21        #f 21 fp]
+    [%fp7           %v22        #f 22 fp]
+    [%fp8           %v23        #f 23 fp]
+    [%fp9           %v24        #f 24 fp]
+    [%fp10          %v25        #f 25 fp]
+    [%fp11          %v26        #f 26 fp]
+    [%fp12          %v27        #f 27 fp]
+    [%fp13          %v28        #f 28 fp]
+    [%fp14          %v29        #f 29 fp]
+    [%fp15          %v30        #f 30 fp]
+    [%fp16          %v31        #f 31 fp]
   )
   (machine-dependent
     [%jmptmp %argtmp            #f 10 uptr]

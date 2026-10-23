@@ -366,6 +366,8 @@
                  (append def-ctx-scopes
                          (expand-context-scopes ctx))]
                 [only-immediate? (not stop-ids)] ; def-ctx-scopes is set for the enclosing transformer call
+                [body-lifts (and (or (not intdefs) (null? intdefs))
+                                 (expand-context-body-lifts ctx))]
                 [to-parsed? (if to-parsed-ok?
                                 (expand-context-to-parsed? ctx)
                                 #f)]

@@ -5540,14 +5540,6 @@
                                                     (preinfo-call-mask no-inline no-return single-valued)))])
          (cp0 `(call ,preinfo ,e ,e* ...) ctxt env sc wd name moi))]
       [(call ,preinfo ,pr ,e ,e* ...)
-       (guard (eq? (primref-name pr) '$app/immutable))
-       (let ([preinfo (make-preinfo-call (preinfo-src preinfo) (preinfo-sexpr preinfo)
-                                         (set-flags (if (all-set? (prim-mask unsafe) (primref-flags pr))
-                                                        (preinfo-call-mask unchecked)
-                                                        (preinfo-call-mask))
-                                                    (preinfo-call-mask immutable)))])
-         (cp0 `(call ,preinfo ,e ,e* ...) ctxt env sc wd name moi))]
-      [(call ,preinfo ,pr ,e ,e* ...)
        (guard (eq? (primref-name pr) '$app/value))
        (let ([preinfo (make-preinfo-call (preinfo-src preinfo) (preinfo-sexpr preinfo)
                                          (set-flags (if (all-set? (prim-mask unsafe) (primref-flags pr))

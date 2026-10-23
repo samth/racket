@@ -1892,7 +1892,6 @@
   ($app/no-inline [flags])
   ($app/no-return [sig [(procedure ptr ...) -> (bottom)]] [flags abort-op])
   ($app/value [flags])
-  ($app/immutable [flags])
   ($apply [sig [(procedure exact-integer list) -> (ptr ...)]] [flags cptypes2x])
   ($assembly-output [flags single-valued])
   ($assert-continuation [sig [(ptr) -> (void)] [(ptr ptr) -> (void)]] [flags])

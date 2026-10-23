@@ -1941,7 +1941,6 @@
   (no-inline                    #b0010)
   (no-return                    #b0100)
   (single-valued                #b1000)
-  (immutable                    #b10000) ; a car/cdr of a pair that will not be mutated
   )
 
 (define-syntax define-flag-field

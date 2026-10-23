@@ -7923,5 +7923,19 @@
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; A `letrec` binding that refers to itself, or a cycle of them, in a
+;; procedure that is never referenced used to send schemify into a
+;; copy-propagation loop
+
+(test 5 'unreferenced-self-letrec
+      (let ([g (lambda () (letrec ([x x]) x))]) 5))
+(test 6 'unreferenced-cyclic-letrec
+      (let ([g (lambda () (letrec ([a b] [b a]) a))]) 6))
+(test 7 'unreferenced-cyclic-letrec-in-letrec
+      (letrec ([g (lambda () (letrec ([a b] [b a]) a))]) 7))
+(err/rt-test (let ([g (lambda () (letrec ([x x]) x))]) (g))
+             exn:fail:contract:variable?)
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)

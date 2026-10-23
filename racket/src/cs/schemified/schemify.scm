@@ -27177,6 +27177,73 @@
                  (for-loop_0 l_0))
                 (void)
                 (letrec*
+                 ((loop_0
+                   (|#%name|
+                    loop
+                    (lambda ()
+                      (let ((delayed_0
+                             (reverse$1
+                              (letrec*
+                               ((for-loop_0
+                                 (|#%name|
+                                  for-loop
+                                  (lambda (fold-var_0 i_0)
+                                    (if i_0
+                                      (call-with-values
+                                       (lambda ()
+                                         (hash-iterate-key+value
+                                          mutated_0
+                                          i_0))
+                                       (lambda (id_0 state_0)
+                                         (let ((fold-var_1
+                                                (if (procedure? state_0)
+                                                  (let ((fold-var_1
+                                                         (cons
+                                                          (cons id_0 state_0)
+                                                          fold-var_0)))
+                                                    (values fold-var_1))
+                                                  fold-var_0)))
+                                           (for-loop_0
+                                            fold-var_1
+                                            (hash-iterate-next
+                                             mutated_0
+                                             i_0)))))
+                                      fold-var_0)))))
+                               (for-loop_0
+                                null
+                                (hash-iterate-first mutated_0))))))
+                        (if (null? delayed_0)
+                          (void)
+                          (begin
+                            (letrec*
+                             ((for-loop_0
+                               (|#%name|
+                                for-loop
+                                (lambda (lst_0)
+                                  (if (pair? lst_0)
+                                    (let ((id+state_0 (unsafe-car lst_0)))
+                                      (let ((rest_0 (unsafe-cdr lst_0)))
+                                        (begin
+                                          (let ((id_0 (car id+state_0)))
+                                            (begin
+                                              (if (let ((app_0
+                                                         (hash-ref
+                                                          mutated_0
+                                                          id_0
+                                                          #f)))
+                                                    (eq?
+                                                     app_0
+                                                     (cdr id+state_0)))
+                                                (hash-remove! mutated_0 id_0)
+                                                (void))
+                                              (|#%app| (cdr id+state_0))))
+                                          (for-loop_0 rest_0))))
+                                    (values))))))
+                             (for-loop_0 delayed_0))
+                            (void)
+                            (loop_0))))))))
+                 (loop_0))
+                (letrec*
                  ((for-loop_0
                    (|#%name|
                     for-loop

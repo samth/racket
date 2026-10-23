@@ -150,6 +150,22 @@
              (hash-remove! mutated id)
              (state))))]
       [`,_ (void)]))
+  ;; A local binding that is still delayed is never referenced, but the
+  ;; bound procedure is still schemified, so analyze it; otherwise, it
+  ;; could have a `letrec` binding that is referenced too early but not
+  ;; recorded as such. Forcing can create more delays, so repeat.
+  (let loop ()
+    (define delayed
+      (for/list ([(id state) (in-hash mutated)]
+                 #:when (delayed-mutated-state? state))
+        (cons id state)))
+    (unless (null? delayed)
+      (for ([id+state (in-list delayed)])
+        (define id (car id+state))
+        (when (eq? (hash-ref mutated id #f) (cdr id+state))
+          (hash-remove! mutated id))
+        ((cdr id+state)))
+      (loop)))
   ;; If an `eventually-set!ed?` persist, it means that the `set!` is
   ;; unreachable after all
   (for ([(k v) (in-hash mutated)])

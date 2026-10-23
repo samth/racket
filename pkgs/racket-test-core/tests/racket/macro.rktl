@@ -3499,5 +3499,142 @@
 (test '(5 5 5) dynamic-require ''check-for-too-many-use-site-scopes 'result)
 
 ;; ----------------------------------------
+;; `syntax-local-lift-body-expression`
+
+(module lift-body-expression-test racket/base
+  (require (for-syntax racket/base))
+  (provide (all-defined-out))
+
+  (define-syntax (lift-body stx)
+    (syntax-case stx ()
+      [(_ e)
+       (begin
+         (syntax-local-lift-body-expression #'e)
+         #'(begin))]))
+
+  (define-syntax (lift-body/expr stx)
+    (syntax-case stx ()
+      [(_ e)
+       (begin
+         (syntax-local-lift-body-expression #'e)
+         #'(void))]))
+
+  (define-syntax (target-here stx)
+    #`(quote #,(syntax-transforming-with-body-lifts?)))
+
+  (define-syntax (define-target stx)
+    (syntax-case stx ()
+      [(_ id) #`(define id (quote #,(syntax-transforming-with-body-lifts?)))]))
+
+  (define-syntax (target-in-local-expand stx)
+    (syntax-case stx ()
+      [(_ intdef?)
+       (let ([intdef (and (syntax-e #'intdef?)
+                          (syntax-local-make-definition-context))])
+         (local-expand #'(target-here) (syntax-local-context) '() intdef))]))
+
+  ;; lifted expressions run after all definitions, before the remaining
+  ;; body expressions, and in lift order
+  (define order
+    (let ([l '()])
+      (define (note! v) (set! l (cons v l)))
+      (let ()
+        (note! 'expr1)
+        (define a (begin (note! 'a) 1))
+        (lift-body (note! 'lifted1))
+        (define b (begin (note! 'b) 2))
+        (lift-body (note! 'lifted2))
+        (note! 'body)
+        (void))
+      (reverse l)))
+
+  ;; a lifted expression can refer to definitions that follow it
+  (define forward
+    (let ([r #f])
+      (let ()
+        (lift-body (set! r x))
+        (define x 5)
+        (void))
+      r))
+
+  ;; a body with no definitions
+  (define no-definitions
+    (let ([l '()])
+      (let ()
+        (lift-body (set! l (cons 'lifted l)))
+        (set! l (cons 'body l)))
+      (reverse l)))
+
+  ;; a lift from a nested body goes to that body
+  (define nested
+    (let ([l '()])
+      (define (note! v) (set! l (cons v l)))
+      (let ()
+        (define x (let ()
+                    (lift-body (note! 'inner-lifted))
+                    (note! 'inner-body)
+                    1))
+        (lift-body (note! 'outer-lifted))
+        (note! 'outer-body))
+      (reverse l)))
+
+  ;; the last body form must still be an expression from the body
+  (define last-is-expression
+    (let ()
+      (define x 1)
+      (lift-body/expr (void))))
+
+  (define target-in-body (let () (define-target t) t))
+  (define target-in-rhs (let () (define t (target-here)) t))
+  (define-target target-at-module-level)
+  (define target-in-local-expand/no-intdef
+    (let () (target-in-local-expand #f)))
+  (define target-in-local-expand/intdef
+    (let () (target-in-local-expand #t))))
+
+(test '(expr1 a b lifted1 lifted2 body) dynamic-require ''lift-body-expression-test 'order)
+(test 5 dynamic-require ''lift-body-expression-test 'forward)
+(test '(lifted body) dynamic-require ''lift-body-expression-test 'no-definitions)
+(test '(inner-lifted inner-body outer-lifted outer-body) dynamic-require ''lift-body-expression-test 'nested)
+(test (void) dynamic-require ''lift-body-expression-test 'last-is-expression)
+(test #t dynamic-require ''lift-body-expression-test 'target-in-body)
+(test #f dynamic-require ''lift-body-expression-test 'target-in-rhs)
+(test #f dynamic-require ''lift-body-expression-test 'target-at-module-level)
+(test #t dynamic-require ''lift-body-expression-test 'target-in-local-expand/no-intdef)
+(test #f dynamic-require ''lift-body-expression-test 'target-in-local-expand/intdef)
+
+(err/rt-test (expand '(module m racket/base
+                        (require (for-syntax racket/base))
+                        (define-syntax (m stx)
+                          (syntax-local-lift-body-expression #'1)
+                          #'(void))
+                        (let () (define x (m)) x)))
+             exn:fail:contract?
+             #rx"no lift target")
+
+;; A lifted `quote-syntax #:local` does not prevent splitting the
+;; body's definitions into `let-values` forms
+(let ()
+  (define (contains? d sym)
+    (or (eq? d sym)
+        (and (pair? d) (or (contains? (car d) sym) (contains? (cdr d) sym)))))
+  (define e
+    (parameterize ([current-namespace (make-base-namespace)])
+      (expand '(module m racket/base
+                 (require (for-syntax racket/base))
+                 (define-syntax (declare stx)
+                   (syntax-case stx ()
+                     [(_ id)
+                      (begin
+                        (syntax-local-lift-body-expression #'(quote-syntax id #:local))
+                        #'(begin))]))
+                 (define (f n)
+                   (define a (+ n 1))
+                   (declare b)
+                   (define b (* a 2))
+                   (list a b))))))
+  (test #f contains? (syntax->datum e) 'letrec-values))
+
+;; ----------------------------------------
 
 (report-errs)

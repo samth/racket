@@ -970,6 +970,36 @@ within a @racket[module] form (see @racket[syntax-transforming-module-expression
 then the @exnraise[exn:fail:contract].}
 
 
+@defproc[(syntax-local-lift-body-expression [stx syntax?])
+         void?]{
+
+Cooperates with the expansion of an @tech{internal-definition context}
+to insert @racket[stx] as an expression in the body currently being
+expanded. The lifted expression is placed after all definitions in the
+body and before the body's remaining expressions, so it is evaluated
+after all of the body's definitions and before those expressions.
+Multiple lifted expressions are placed in the order that they are
+lifted. The result of a lifted expression is ignored, and it is never
+in tail position.
+
+A lifted expression is expanded after all of the body's definitions
+have been discovered, along with the body's remaining expressions.
+Since the lifted expression is not a definition, it does not affect
+how the body's definitions are converted to @racket[let-values] and
+@racket[letrec-values] forms.
+
+@transform-time[] A target for the lift is available only when the
+transformer is called directly by the expander while it is uncovering
+definitions in an internal-definition context (see
+@secref["intdef-body"]); in particular, there is no target in a
+context created by @racket[syntax-local-make-definition-context], in
+an expression context, or at a different @tech{phase level}. If no
+target is available (see @racket[syntax-transforming-with-body-lifts?]),
+then the @exnraise[exn:fail:contract].
+
+@history[#:added "9.4.0.4"]}
+
+
 @defproc[(syntax-local-lift-require [raw-require-spec any/c] [stx syntax?] [new-scope? any/c #t])
          syntax?]{
 
@@ -1166,6 +1196,15 @@ Currently, @racket[(syntax-transforming?)] implies
 @racket[(syntax-transforming-with-lifts?)].
 
 @history[#:added "6.3.0.9"]}
+
+
+@defproc[(syntax-transforming-with-body-lifts?) boolean?]{
+
+Returns @racket[#t] if @racket[(syntax-transforming?)] produces
+@racket[#t] and a target context is available for lifting expressions
+via @racket[syntax-local-lift-body-expression], @racket[#f] otherwise.
+
+@history[#:added "9.4.0.4"]}
 
 
 @defproc[(syntax-transforming-module-expression?) boolean?]{

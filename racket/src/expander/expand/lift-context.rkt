@@ -41,7 +41,12 @@
          get-and-clear-provide-lifts!
          add-lifted-to-module-provide!
          add-lifted-to-module-end!
-         to-module-lift-context-wrt-phase)
+         to-module-lift-context-wrt-phase
+
+         make-body-lift-context
+         body-lift-context-target?
+         add-lifted-body-expression!
+         get-body-lifts)
 
 ;; ----------------------------------------
 
@@ -229,3 +234,32 @@
 (define (add-lifted-to-module-end! to-module-lifts s phase)
   (box-cons! (to-module-lift-context-ends to-module-lifts)
              s))
+
+;; ----------------------------------------
+
+;; A `body-lift-context` collects expressions to be added to the
+;; start of an internal-definition body's expressions, after all
+;; definitions. Lifting is allowed only while a transformer runs
+;; directly in the partial expansion of the body, which is recognized
+;; by the `context` value that `expand-body` creates for that body
+;; (and the phase).
+(struct body-lift-context (context   ; the body's expand-context `context` value
+                           phase
+                           post-expansion ; inside-edge treatment for lifted forms
+                           lifts)    ; box of list of syntax, reversed
+  #:authentic)
+
+(define (make-body-lift-context context phase post-expansion)
+  (body-lift-context context phase post-expansion (box null)))
+
+(define (body-lift-context-target? body-lifts context phase)
+  (and body-lifts
+       (eq? (body-lift-context-context body-lifts) context)
+       (eqv? (body-lift-context-phase body-lifts) phase)))
+
+(define (add-lifted-body-expression! body-lifts s)
+  (box-cons! (body-lift-context-lifts body-lifts)
+             ((body-lift-context-post-expansion body-lifts) s)))
+
+(define (get-body-lifts body-lifts)
+  (reverse (unbox (body-lift-context-lifts body-lifts))))

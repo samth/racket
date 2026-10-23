@@ -65,6 +65,7 @@
           module-lifts    ; lifted `module`s
           require-lifts   ; lifted `require`s
           to-module-lifts ; lifted `provide` and end declarations
+          body-lifts ; #f or body-lift-context, for lifts to the start of a body's expressions
           requires+provides ; enclosing module's requires+provides during `provide`
           * name       ; #f or identifier to name the expression
           observer   ; logging observer (for the macro debugger)
@@ -116,6 +117,7 @@
                   #f   ; module-lifts
                   #f   ; require-lifts
                   #f   ; to-module-lifts
+                  #f   ; body-lifts
                   #f   ; requires+provides
                   #f   ; name
                   observer

@@ -139,6 +139,7 @@
                       
                       syntax-transforming?
                       syntax-transforming-with-lifts?
+                      syntax-transforming-with-body-lifts?
                       syntax-transforming-module-expression?
                       syntax-local-transforming-module-provides?
                       syntax-local-compiling-module?
@@ -166,6 +167,7 @@
                       syntax-local-lift-require
                       syntax-local-lift-provide
                       syntax-local-lift-module-end-declaration
+                      syntax-local-lift-body-expression
                       
                       syntax-local-module-defined-identifiers
                       syntax-local-module-required-identifiers

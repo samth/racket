@@ -19,6 +19,7 @@
          "reference-record.rkt"
          "prepare.rkt"
          "log.rkt"
+         "lift-context.rkt"
          "main.rkt")
 
 (provide expand-body
@@ -43,11 +44,17 @@
   (define phase (expand-context-phase ctx))
   (define frame-id (make-reference-record)) ; accumulates info on referenced variables
   (define def-ctx-scopes (box null))
+  ;; The `context` value identifies this body's partial expansion as a
+  ;; target for `syntax-local-lift-body-expression`
+  (define body-context (list (make-liberal-define-context)))
+  (define body-lifts (make-body-lift-context body-context phase
+                                             (lambda (s) (add-scope s inside-sc))))
   ;; Create an expansion context for expanding only immediate macros;
   ;; this partial-expansion phase uncovers macro- and variable
   ;; definitions in the definition context
   (define body-ctx (struct*-copy expand-context ctx
-                                 [context (list (make-liberal-define-context))]
+                                 [context body-context]
+                                 [body-lifts body-lifts]
                                  [name #f]
                                  [only-immediate? #t]
                                  [def-ctx-scopes def-ctx-scopes]
@@ -256,7 +263,7 @@
 ;; `letrec-values` form and continue expanding
 (define (finish-expanding-body body-ctx frame-id def-ctx-scopes
                                val-idss val-keyss val-rhss track-stxs
-                               stx-clauses done-bodys
+                               stx-clauses user-done-bodys
                                #:original-bodys init-bodys
                                #:source s
                                #:stratified? stratified?
@@ -264,16 +271,21 @@
                                #:name name
                                #:disappeared-transformer-bindings disappeared-transformer-bindings
                                #:disappeared-transformer-forms disappeared-transformer-forms)
-  (when (or (null? done-bodys)
+  (when (or (null? user-done-bodys)
             just-saw-define-syntaxes?)
     (raise-syntax-error (string->symbol "begin (possibly implicit)")
                         "the last form is not an expression"
                         (datum->syntax #f (cons 'begin init-bodys) s)
                         (if (null? init-bodys) #f (last init-bodys))))
+  ;; Expressions lifted by `syntax-local-lift-body-expression` go
+  ;; before the body's remaining expressions
+  (define done-bodys (append (get-body-lifts (expand-context-body-lifts body-ctx))
+                             user-done-bodys))
   ;; As we finish expanding, we're no longer in a definition context
   (define accum-ctx (accumulate-def-ctx-scopes body-ctx def-ctx-scopes))
   (define finish-ctx (struct*-copy expand-context accum-ctx
                                    [context 'expression]
+                                   [body-lifts #f]
                                    [use-site-scopes #:parent root-expand-context (box null)]
                                    [only-immediate? #f]
                                    [def-ctx-scopes #f]

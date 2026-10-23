@@ -18,8 +18,10 @@
    With RACKET_COVERAGE_COUNTERS defined (and a Racket CS built with it
    and with PLT_CS_COVERAGE_COUNTERS set), Scheme code also reports
    coverage: the Chez Scheme counters are registered with libFuzzer
-   like clang's inline 8-bit counters, and code compiled while fuzzing
-   gets counters, too. */
+   like clang's inline 8-bit counters. Code that a fuzzed program
+   compiles gets no counters, since counters placed by hashing the
+   program's own code would reward new programs, not new behavior of
+   Racket. */
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -92,11 +94,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 #endif
   ba.exec_file = "racket-fuzz";
   ba.exit_after = 0;
-
-#ifdef RACKET_COVERAGE_COUNTERS
-  /* so that "linklet.sls" compiles fuzzed code with counters */
-  setenv("PLT_CS_COVERAGE_COUNTERS", "1", 1);
-#endif
 
   racket_boot(&ba);
 

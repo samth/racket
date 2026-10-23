@@ -1161,7 +1161,7 @@ extern void Sregister_heap_file(UNUSED const char *path) {
 /* "equates.h" from older boot files, as used while bootstrapping,
    lacks the constant; keep this in sync with "cmacros.ss" */
 #ifndef coverage_counter_count
-# define coverage_counter_count (1 << 18)
+# define coverage_counter_count (1 << 20)
 #endif
 
 static IBOOL coverage_enabled = 0;
@@ -1185,8 +1185,8 @@ static void init_coverage_counters(void) {
 
   if (!coverage_enabled || (coverage_counters != (ptr)0)) return;
 
-  bv = S_bytevector(coverage_counter_count * 8);
-  memset(Sbytevector_data(bv), 0, coverage_counter_count * 8);
+  bv = S_bytevector(coverage_counter_count);
+  memset(Sbytevector_data(bv), 0, coverage_counter_count);
   Slock_object(bv);
   coverage_counters = bv;
   S_set_symbol_value(S_intern((const unsigned char *)"$coverage-counters"), bv);

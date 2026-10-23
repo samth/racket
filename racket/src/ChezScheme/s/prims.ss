@@ -2412,10 +2412,7 @@
     (when (and (bytevector? bv)
                (fixnum? i)
                (fx<= 0 i (fx- (constant coverage-counter-count) 1)))
-      (let ([k (fx* i 8)])
-        (bytevector-u64-native-set! bv k
-          (logand (+ (bytevector-u64-native-ref bv k) 1)
-                  #xffffffffffffffff))))))
+      (bytevector-u8-set! bv i (fxlogand (fx+ (bytevector-u8-ref bv i) 1) #xff)))))
 
 (define $logand
   (foreign-procedure __atomic __alloc "(cs)logand"

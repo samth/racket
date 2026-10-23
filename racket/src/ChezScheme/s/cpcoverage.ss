@@ -16,8 +16,9 @@
 ;;; cpcoverage inserts coverage counters for coverage-guided fuzzers
 ;;; such as libFuzzer when `generate-coverage-counters` is true. Each
 ;;; lambda clause body and each arm of an `if` gets a call
-;;; `($coverage-hit i)`, which cpprim inlines as an increment of counter
-;;; `i` in the bytevector that is the value of `$coverage-counters`.
+;;; `($coverage-hit i)`, which cpprim inlines as an increment of the
+;;; 8-bit counter `i` in the bytevector that is the value of
+;;; `$coverage-counters`, as with clang's `-fsanitize-coverage=inline-8bit-counters`.
 ;;; A program that runs such code must first call
 ;;; `Senable_coverage_counters`; the fuzzer registers the counters with
 ;;; `Scoverage_counters`.

@@ -4,8 +4,8 @@
  [#t (define-syntax-rule (unsafe-primitive id) #3%id)]
  [else (define-syntax-rule (unsafe-primitive id) id)])
 
-(define unsafe-car (unsafe-primitive car))
-(define unsafe-cdr (unsafe-primitive cdr))
+(define unsafe-car (unsafe-primitive immutable-car))
+(define unsafe-cdr (unsafe-primitive immutable-cdr))
 (define unsafe-list-tail (unsafe-primitive list-tail))
 (define unsafe-list-ref (unsafe-primitive list-ref))
 (define (unsafe-set-immutable-car! p a) ((unsafe-primitive set-car!) p a))

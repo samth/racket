@@ -5,6 +5,11 @@
 
           null eof void void?
 
+          ;; Racket pairs are immutable, so `car` and `cdr` reads can be
+          ;; reused and hoisted; rumble's own `car` and `cdr` are Chez's
+          (rename (immutable-car car)
+                  (immutable-cdr cdr))
+
           begin0
           $value
 
@@ -879,6 +884,7 @@
 	  (rename (only (chezscheme) sleep)
 		  [sleep chez:sleep])
 	  (only (chezscheme)
+                car cdr immutable-car immutable-cdr
                 thread?
                 threaded?
                 get-thread-id

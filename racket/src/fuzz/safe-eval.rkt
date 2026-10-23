@@ -17,6 +17,7 @@
 ;;  - bounded output and no exit.
 
 (require setup/dirs
+         "libs.rkt"
          racket/string
          racket/fasl
          racket/extflonum)
@@ -34,7 +35,7 @@
 ;; ----------------------------------------
 ;; Limits
 
-(define memory-limit (* 256 1024 1024))
+(define memory-limit (* 64 1024 1024))
 (define fuel-quanta 400)       ; scheduler quanta for untrusted code
 (define output-limit (* 64 1024))
 (define max-forms 256)
@@ -44,7 +45,9 @@
 
 ;; When a port, every exception caught from untrusted code is written
 ;; there; used to check the harness by hand, never while fuzzing.
-(define fuzz-debug-port (make-parameter #f))
+;; Setting PLT_FUZZ_DEBUG turns it on for the current error port.
+(define fuzz-debug-port
+  (make-parameter (and (getenv "PLT_FUZZ_DEBUG") (current-error-port))))
 
 (define (note-exn e)
   (define p (fuzz-debug-port))
@@ -118,14 +121,45 @@
 (define harness-ns (namespace-anchor->namespace anchor))
 (define orig-code-inspector (current-code-inspector))
 
+;; The libraries in `fuzz-libs` are loaded once, here, with the
+;; original inspector. Each fuzz namespace gets their declarations,
+;; but makes its own instances, so no state is shared between runs.
+(define attached-libs (append fuzz-libs fuzz-lazy-libs))
+(define preloaded-libs (cons 'racket/base attached-libs))
+(parameterize ([current-namespace harness-ns])
+  (for ([l (in-list attached-libs)])
+    (dynamic-require l (void))))
+(define preloaded-names
+  (parameterize ([current-namespace harness-ns])
+    (for/hash ([l (in-list preloaded-libs)])
+      (values l ((current-module-name-resolver) l #f #f #f)))))
+
 ;; Must be called with the weak code inspector installed, so that the
 ;; new namespace (and code compiled in it) is under that inspector.
 (define (make-fuzz-namespace)
   (define ns (make-empty-namespace))
   (namespace-attach-module harness-ns 'racket/base ns)
+  (for ([l (in-list attached-libs)])
+    (namespace-attach-module-declaration harness-ns l ns))
   (parameterize ([current-namespace ns])
     (namespace-require 'racket/base))
   ns)
+
+;; A preloaded library resolves to the name it has in the harness. That
+;; matters in a fuzz target with embedded modules, where only the
+;; harness's registry knows the embedded names. Other module paths,
+;; such as a module that the fuzzed program declares, are resolved as
+;; usual.
+(define (make-fuzz-resolver orig-resolver)
+  (case-lambda
+    [(r ns) (orig-resolver r ns)]
+    [(name rel-to stx load?)
+     (define r (hash-ref preloaded-names name #f))
+     ;; a namespace that the program makes, such as with
+     ;; `make-base-namespace`, may not have the declaration
+     (if (and r (module-declared? r #f))
+         r
+         (orig-resolver name rel-to stx load?))]))
 
 ;; Installed libraries are loaded with the original inspector, as
 ;; `racket/sandbox` does; nothing else may be loaded as compiled code.
@@ -154,6 +188,8 @@
                    [current-security-guard fuzz-guard]
                    [current-load/use-compiled
                     (make-load/use-compiled (current-load/use-compiled))]
+                   [current-module-name-resolver
+                    (make-fuzz-resolver (current-module-name-resolver))]
                    [current-environment-variables (make-environment-variables)]
                    [current-command-line-arguments (vector)]
                    [current-input-port (open-input-bytes #"")]

@@ -58,3 +58,18 @@ Seed corpora
 
 extracts expressions, strings, numbers, and regexps from the
 "racket-test-core" tests.
+
+OSS-Fuzz and OSS Verify
+-----------------------
+
+"oss-fuzz/" has draft project files for OSS-Fuzz; with them, the
+`address` and `undefined` builds pass OSS-Fuzz's build checks.
+"oss-verify/" has drafts for OSS Verify, which needs static riscv64
+binaries: Racket CS cross-builds for `riscv64-linux-musl` with
+`--disable-pthread --disable-curses`, and "standalone-main.c" runs a
+target built that way on input files, such as under qemu.
+
+Known limitation: in a target with embedded modules, expanding a use of
+`racket/match` fails with a "namespace mismatch" error for the `state`
+submodule of "syntax/parse/private/residual.rkt", so such inputs are
+less useful there than with installed collections.

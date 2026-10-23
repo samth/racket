@@ -1,0 +1,14 @@
+repo: "https://github.com/racket/racket"
+homepage: "https://racket-lang.org"
+primary_contact: "TODO@example.org"
+language: c
+sanitizers:
+  - address
+  - undefined
+fuzz_targets:
+  - racket_read_fuzzer
+  - racket_print-roundtrip_fuzzer
+  - racket_number_fuzzer
+  - racket_regexp_fuzzer
+  - racket_fasl_fuzzer
+  - racket_eval_fuzzer

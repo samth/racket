@@ -401,6 +401,138 @@ LICM
         (walk body '())
         (reverse rhoist*)))
 
+    ;; Speculation: the walk above stops at the first operation that may
+    ;; have an effect, such as a call to an inner loop, so invariant code
+    ;; after that point stays in the loop.  Generic arithmetic there can
+    ;; still be computed before the loop under a guard that checks its
+    ;; operands, so that the computation cannot raise, keeping the
+    ;; original as a fallback:
+    ;;   (let ([s (if (number? y) (#3%* x y) #f)])
+    ;;     (letrec ([f (lambda (i) ... (if s s (* x y)) ...)]) ...))
+    ;; If the guard fails, `s` is #f and the loop computes the original
+    ;; expression at its original point, so errors are unchanged.
+    ;; Generic `+`, `-`, and `*` need numbers; `$fxx+` and `$fxx*` need
+    ;; fixnums, so their operands must be variables or constants, since
+    ;; the result of a nested call may be a bignum.
+    (define spec-number-prims '(+ - *))
+    (define spec-fixnum-prims '($fxx+ $fxx*))
+
+    (define spec-leaves
+      ; an alist mapping each variable that the guard for `e` must check
+      ; to 'fixnum or 'number, or #f if `e` cannot be speculated
+      (lambda (e)
+        (let f ([e e] [need 'number] [vars '()])
+          (and vars
+               (nanopass-case (Lsrc Expr) e
+                 [(quote ,d) (and (if (eq? need 'fixnum) (fixnum? d) (number? d)) vars)]
+                 [(ref ,maybe-src ,x)
+                  (let ([a (assq x vars)])
+                    (cond
+                      [(not a) (cons (cons x need) vars)]
+                      [(and (eq? need 'fixnum) (eq? (cdr a) 'number))
+                       (cons (cons x 'fixnum) (remq a vars))]
+                      [else vars]))]
+                 [(call ,preinfo ,pr ,e* ...)
+                  (let ([name (primref-name pr)])
+                    (and (eq? need 'number)
+                         (pair? e*)
+                         (cond
+                           [(memq name spec-number-prims)
+                            (fold-left (lambda (vars e) (f e 'number vars)) vars e*)]
+                           [(memq name spec-fixnum-prims)
+                            (fold-left (lambda (vars e) (f e 'fixnum vars)) vars e*)]
+                           [else #f])))]
+                 [else #f])))))
+
+    (define collect-speculations
+      ; returns a list of (node . vars) for invariant generic arithmetic
+      ; in `body`, not looking inside closures or inner loops
+      (lambda (body loop)
+        (define found '())
+        (define outside?
+          (lambda (x)
+            (and (not (prelex-assigned x))
+                 (not (memq loop (eq-hashtable-ref binder-loops x '()))))))
+        (define spec-vars
+          (lambda (e)
+            (nanopass-case (Lsrc Expr) e
+              [(call ,preinfo ,pr ,e* ...)
+               (let ([vars (spec-leaves e)])
+                 (and vars (andmap (lambda (a) (outside? (car a))) vars) vars))]
+              [else #f])))
+        (let walk ([e body])
+          (let ([vars (spec-vars e)])
+            (if vars
+                (set! found (cons (cons e vars) found))
+                (nanopass-case (Lsrc Expr) e
+                  [(call ,preinfo ,pr ,e* ...)
+                   (guard (eq? (primref-name pr) 'black-box))
+                   (void)]
+                  [(call ,preinfo0 (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,body)) ,e* ...)
+                   (guard (fx= interface (length e*)))
+                   (for-each walk e*)
+                   (walk body)]
+                  [(call ,preinfo ,e0 ,e* ...) (walk e0) (for-each walk e*)]
+                  [(if ,e0 ,e1 ,e2) (walk e0) (walk e1) (walk e2)]
+                  [(seq ,e0 ,e1) (walk e0) (walk e1)]
+                  [(set! ,maybe-src ,x ,e) (walk e)]
+                  [(letrec ([,x* ,e*] ...) ,body) (for-each walk e*) (walk body)]
+                  [(letrec* ([,x* ,e*] ...) ,body) (for-each walk e*) (walk body)]
+                  [else (void)]))))
+        (reverse found)))
+
+    (define build-speculation
+      ; the guarded, unchecked copy of `node` to compute before the loop
+      (lambda (node vars)
+        (with-output-language (Lsrc Expr)
+          (let ([rhs (let f ([e node])
+                       (nanopass-case (Lsrc Expr) e
+                         [(quote ,d) `(quote ,d)]
+                         [(ref ,maybe-src ,x) (build-ref x)]
+                         [(call ,preinfo ,pr ,e* ...)
+                          `(call ,(make-preinfo-call) ,($sgetprop (primref-name pr) '*prim3* #f)
+                             ,(map f e*) ...)]
+                         [else (sorry! 'cpcse "unexpected speculation ~s" e)]))])
+            (fold-left
+              (lambda (rhs a)
+                (let ([pred (if (eq? (cdr a) 'fixnum) 'fixnum? 'number?)])
+                  `(if (call ,(make-preinfo-call) ,($sgetprop pred '*prim3* #f) ,(build-ref (car a)))
+                       ,rhs
+                       (quote #f))))
+              rhs vars)))))
+
+    (define-pass replace-speculated : Lsrc (ir node-ht) -> Lsrc ()
+      (Expr : Expr (ir) -> Expr ()
+        [(call ,preinfo ,e0 ,e1 ...)
+         (let ([s (eq-hashtable-ref node-ht ir #f)])
+           (if s
+               `(if ,(build-ref s) ,(build-ref s) ,ir)
+               `(call ,preinfo ,(Expr e0) ,(map Expr e1) ...)))])
+      (Expr ir))
+
+    (define speculate
+      ; returns the speculation bindings for the loop `f`, as a list of
+      ; (var . rhs), and the body with speculated nodes replaced
+      (lambda (body f loops)
+        (let ([found (collect-speculations body f)])
+          (if (null? found)
+              (values '() body)
+              (let ([node-ht (make-eq-hashtable)])
+                (let loop ([found found] [seen '()] [rbind* '()])
+                  (if (null? found)
+                      (values (reverse rbind*) (replace-speculated body node-ht))
+                      (let* ([node (caar found)] [k (cand-key node)] [a (and k (assoc k seen))])
+                        (if a
+                            (begin
+                              (eq-hashtable-set! node-ht node (cdr a))
+                              (loop (cdr found) seen rbind*))
+                            (let ([s (make-prelex* 'spec)])
+                              (record-binder! s loops)
+                              (eq-hashtable-set! node-ht node s)
+                              (loop (cdr found)
+                                    (if k (cons (cons k s) seen) seen)
+                                    (cons (cons s (build-speculation node (cdar found))) rbind*))))))))))))
+
     ;; Replace hoisted nodes (by identity) and, for hoists with no guards,
     ;; any candidate with the same key.
     (define-pass replace-hoisted : Lsrc (ir node-ht key-alist) -> Lsrc ()
@@ -465,9 +597,13 @@ LICM
       (lambda (f preinfo1 x* interface body preinfo2 maybe-src e* loops reorder?)
         (define rebuild
           (lambda (body e*)
-            (with-output-language (Lsrc Expr)
-              `(letrec ([,f (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,body))])
-                 (call ,preinfo2 (ref ,maybe-src ,f) ,e* ...)))))
+            (let-values ([(bind* body) (speculate body f loops)])
+              (fold-right
+                (lambda (b e) (build-let (car b) (cdr b) e))
+                (with-output-language (Lsrc Expr)
+                  `(letrec ([,f (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,body))])
+                     (call ,preinfo2 (ref ,maybe-src ,f) ,e* ...)))
+                bind*))))
         (let ([hoist* (collect-hoists body f x* reorder?)])
           (if (null? hoist*)
               (rebuild body e*)

@@ -389,6 +389,12 @@
  )
 
 (mat fl*
+    ; (fl* 2.0 x) is computed as (fl+ x x)
+    (let ([f (lambda (x) (fl* 2.0 x))] [g (lambda (x) (fl* x 2.0))])
+      (and (eqv? (f 1.5) 3.0) (eqv? (g 1.5) 3.0)
+           (eqv? (f -0.0) -0.0) (eqv? (g +inf.0) +inf.0)
+           (nan? (f +nan.0))))
+    (or (= (optimize-level) 3) (guard (c [#t #t]) (let ([f (lambda (x) (fl* 2.0 x))]) (f 3)) #f))
    (eqv? (fl*) 1.0)
    (eqv? (fl* -3.0) -3.0)
    (eqv? (fl* -3.0 4.0) -12.0)

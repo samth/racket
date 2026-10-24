@@ -430,6 +430,19 @@
       (syntax-rules ()
         [(_ multiple-ref? (b ...) e)
          ($bind dirty-store-binder multiple-ref? ptr (b ...) e)]))
+    (define doubled-operand
+      ; the other operand when one of `e1` and `e2` is 2.0
+      (lambda (e1 e2)
+        (define two?
+          (lambda (e)
+            (nanopass-case (L7 Expr) e
+              [(quote ,d) (eqv? d 2.0)]
+              [else #f])))
+        (cond
+          [(two? e1) e2]
+          [(two? e2) e1]
+          [else #f])))
+
     (define-syntax bind-type-object-type ; NB: caller must bind expr
       (syntax-rules ()
         [(_ ([id expr]) body)
@@ -5014,7 +5027,12 @@
       (define-inline 3 fl*
         [() `(quote 1.0)]
         [(e) (ensure-single-valued e)]
-        [(e1 e2) (build-fp-op-2 %fp* e1 e2)]
+        [(e1 e2)
+         (let ([e (doubled-operand e1 e2)])
+           (if e
+               ; (fl* 2.0 e) is (fl+ e e), which avoids loading the constant
+               (bind #t fp (e) (build-fp-op-2 %fp+ e e))
+               (build-fp-op-2 %fp* e1 e2)))]
         [(e1 . e*) (reduce-fp src sexpr 3 'fl* e1 e*)])
 
       (define-inline 3 fl-
@@ -5375,9 +5393,16 @@
           [(e) (build-checked-fp-op e
                  (lambda (e)
                    (build-libcall #t src sexpr fl* e `(quote 1.0))))]
-          [(e1 e2) (build-checked-fp-op e1 e2 %fp*
+          [(e1 e2)
+           (let ([e (doubled-operand e1 e2)])
+             (if e
+                 (bind #t (e)
+                   (build-checked-fp-op e e %fp+
                      (lambda (e1 e2)
-                       (build-libcall #t src sexpr fl* e1 e2)))]
+                       (build-libcall #t src sexpr fl* e `(quote 2.0)))))
+                 (build-checked-fp-op e1 e2 %fp*
+                   (lambda (e1 e2)
+                     (build-libcall #t src sexpr fl* e1 e2)))))]
           [(e1 . e*) (reduce-fp src sexpr 2 'fl* e1 e*)])
 
         (define-inline 2 fl-

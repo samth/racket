@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -155,9 +156,23 @@ static void register_scheme_counters(void)
 }
 #endif
 
+static int initialized = 0;
+
+/* An error while booting or loading the harness ends the process with
+   `exit`, often with status 0, which would look like a passing run. */
+static void check_initialized(void)
+{
+  if (!initialized) {
+    fprintf(stderr, "racket-fuzz: initialization failed\n");
+    abort();
+  }
+}
+
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
   racket_boot_arguments_t ba;
+
+  atexit(check_initialized);
 
   memset(&ba, 0, sizeof(ba));
 #ifdef FUZZ_EMBEDDED
@@ -217,6 +232,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
   }
 
   FUZZ_LSAN_ENABLE();
+
+  initialized = 1;
 
   return 0;
 }

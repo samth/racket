@@ -2,7 +2,8 @@
 
    Boots Racket CS once, loads "safe-eval.rkt", and calls one of its
    `fuzz-*` entry points on each input. An entry point returns 0 for
-   every expected outcome and 1 for a bug, which becomes `abort()` here.
+   every expected outcome, and for a bug either 1 or a description,
+   which becomes a failed assertion here.
 
    Compile-time settings (all strings):
      FUZZ_ENTRY     entry point name, such as "fuzz-eval"
@@ -26,6 +27,7 @@
 #ifndef _GNU_SOURCE
 # define _GNU_SOURCE /* for REG_RIP and dladdr */
 #endif
+#include <assert.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -61,12 +63,14 @@ extern char fuzz_modules[], fuzz_modules_end[];
 
 /* Chez Scheme turns every memory fault into an "invalid memory
    reference" exception, and every exception that the harness counts
-   as a bug ends in the same `abort()` below. For a fault in C code,
+   as a bug ends in `report_bug` below, with no C stack trace of its
+   own. For a fault in C code,
    the sanitizer's report and stack trace say much more, so send those
    faults to the handler that was in place before booting. A fault in
    Scheme code, which is outside any shared object or the executable,
    still goes to Chez Scheme, since the sanitizer cannot walk Scheme
-   frames; "safe-eval.rkt" then prints the Racket context. Racket does
+   frames; "safe-eval.rkt" then prints the Racket context and describes
+   the bug by where in Racket it happened. Racket does
    not rely on these signals in normal operation. */
 static struct sigaction sanitizer_segv, sanitizer_bus, chez_segv, chez_bus;
 
@@ -217,16 +221,39 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
   return 0;
 }
 
+/* Reports a bug found by "safe-eval.rkt" as a failed assertion, which
+   prints the description and aborts. A fuzzing service groups crashes
+   by an assertion's message, so bugs with different descriptions are
+   reported separately, although they all end here. */
+static void report_bug(const char *what)
+{
+  __assert_fail(what, "safe-eval.rkt", 0, FUZZ_ENTRY);
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
   ptr bstr = Smake_bytevector(size, 0);
-  ptr vals;
+  ptr vals, r;
 
   memcpy(Sbytevector_data(bstr), data, size);
   vals = racket_apply(entry_proc, Scons(bstr, Snil));
 
-  if (!Spairp(vals) || !Sfixnump(Scar(vals)) || Sfixnum_value(Scar(vals)) != 0)
-    abort();
+  if (!Spairp(vals))
+    report_bug("no result");
+  r = Scar(vals);
+  if (Sstringp(r)) {
+    char buf[256];
+    iptr i, len = Sstring_length(r);
+    if (len > (iptr)sizeof(buf) - 1)
+      len = sizeof(buf) - 1;
+    for (i = 0; i < len; i++) {
+      string_char c = Sstring_ref(r, i);
+      buf[i] = ((c >= 32) && (c < 127)) ? (char)c : '?';
+    }
+    buf[len] = 0;
+    report_bug(buf);
+  } else if (!Sfixnump(r) || (Sfixnum_value(r) != 0))
+    report_bug("wrong result");
 
   return 0;
 }

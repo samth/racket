@@ -2,7 +2,8 @@
 ;; Fuzz entry points for Racket CS.
 ;;
 ;; Each `fuzz-*` function takes the fuzzer's input as a byte string
-;; and returns 0 for every expected outcome or 1 for a bug. It never
+;; and returns 0 for every expected outcome, or for a bug either 1 or
+;; a string that describes it (see `bug-signature`). It never
 ;; raises: the C driver calls it through `racket_apply`, which has no
 ;; exception handling.
 ;;
@@ -68,16 +69,47 @@
 (define bug-port (current-error-port))
 
 (define (report-bug e)
+  (define ctx (continuation-mark-set->context (exn-continuation-marks e)))
   (fprintf bug-port "fuzz bug: ~a\n" (exn-message e))
-  (for ([c (in-list (continuation-mark-set->context
-                     (exn-continuation-marks e)))]
+  (for ([c (in-list ctx)]
         [i (in-range 20)])
     (fprintf bug-port "  ~a~a\n"
              (or (car c) "???")
              (if (cdr c)
                  (format " at ~a:~a" (srcloc-source (cdr c)) (srcloc-line (cdr c)))
                  "")))
-  (flush-output bug-port))
+  (flush-output bug-port)
+  (bug-signature e ctx))
+
+;; A short description of a bug that is the same for every input that
+;; triggers it, which the driver reports as a failed assertion, so
+;; that a fuzzing service, which groups crashes by the assertion
+;; message and the stack, can tell bugs apart even though they all
+;; end in the same C function. It names the kind of error and the
+;; innermost few procedures of Racket and Chez Scheme where it
+;; happened, leaving out the fuzzed program's own procedures and
+;; anything that can vary between runs, such as addresses.
+(define (bug-signature e ctx)
+  (define msg (exn-message e))
+  (define kind
+    (if (string-contains? msg "invalid memory reference")
+        "invalid memory reference"
+        (let* ([s (car (string-split (string-append msg "\n") "\n" #:trim? #f))]
+               [s (regexp-replace* #rx"0x[0-9a-fA-F]+|[0-9]+" s "N")])
+          (if (> (string-length s) 80) (substring s 0 80) s))))
+  (define names
+    (for/list ([c (in-list ctx)]
+               #:when (car c)
+               #:unless (and (cdr c) (eq? (srcloc-source (cdr c)) 'fuzz)))
+      (symbol->string (car c))))
+  (define where
+    (let loop ([names names] [n 3])
+      (if (or (null? names) (zero? n))
+          '()
+          (cons (car names) (loop (cdr names) (sub1 n))))))
+  (if (null? where)
+      kind
+      (string-append kind " in " (string-join where " < "))))
 
 ;; ----------------------------------------
 ;; Security guard: read-only access to installed libraries
@@ -219,7 +251,8 @@
 ;; Running untrusted work
 
 ;; Runs `thunk` (a procedure of no arguments that returns 0 or 1) under
-;; the limits described at the top. Returns 0 or 1.
+;; the limits described at the top. Returns what `thunk` returns, or
+;; a bug's description.
 (define (run-limited thunk)
   (define cust (make-custodian))
   (custodian-limit-memory cust memory-limit cust)
@@ -251,8 +284,7 @@
                                 (lambda (e)
                                   (note-exn e)
                                   (when (bug-exn? e)
-                                    (report-bug e)
-                                    (set! result 1)))])
+                                    (set! result (report-bug e))))])
                  (set! result (thunk))))))))))
   ;; Watchdog: each `(sleep 0)` lets the other threads run for up to
   ;; one quantum, so this loop bounds the work they can do. It also
@@ -276,7 +308,7 @@
     (with-handlers ([(lambda (e) #t)
                      (lambda (e)
                        (cond
-                         [(bug-exn? e) (report-bug e) 1]
+                         [(bug-exn? e) (report-bug e)]
                          [else 0]))])
       body ...)))
 

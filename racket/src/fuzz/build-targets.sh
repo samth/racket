@@ -17,6 +17,8 @@
 #                          RACKET_COVERAGE_COUNTERS and
 #                          PLT_CS_COVERAGE_COUNTERS
 #   TARGETS                entry points to build (default: all)
+#   TARGET_PREFIX          start of each target's name (default: racket);
+#                          targets are named <prefix>_<entry>_fuzzer
 
 set -e
 
@@ -28,6 +30,7 @@ SRC=`cd \`dirname "$0"\` && pwd`
 CC=${CC:-clang}
 ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 TARGETS=${TARGETS:-"eval read print-roundtrip number regexp fasl"}
+PREFIX=${TARGET_PREFIX:-racket}
 
 if [ "$COVERAGE_COUNTERS" = 1 ] ; then
   EXTRA=-DRACKET_COVERAGE_COUNTERS
@@ -54,7 +57,7 @@ for t in $TARGETS ; do
   $CC $CFLAGS $EXTRA -I"$R/include/racket" -DFUZZ_EMBEDDED \
     -DFUZZ_ENTRY="\"fuzz-$t\"" -c "$SRC/driver.c" -o "$OUT/driver-$t.o"
   $CC $CFLAGS $LDFLAGS $ENGINE "$OUT/driver-$t.o" "$OUT/embed-data.o" "$LIB" \
-    -lz -lm -ldl -lpthread -lncurses -o "$OUT/racket_${t}_fuzzer"
+    -lz -lm -ldl -lpthread -lncurses -o "$OUT/${PREFIX}_${t}_fuzzer"
   rm "$OUT/driver-$t.o"
 done
 

@@ -21,7 +21,8 @@
          "libs.rkt"
          racket/string
          racket/fasl
-         racket/extflonum)
+         racket/extflonum
+         (only-in ffi/unsafe/vm vm-eval))
 
 (provide fuzz-read
          fuzz-eval
@@ -29,6 +30,7 @@
          fuzz-number
          fuzz-regexp
          fuzz-fasl
+         fuzz-heap-eval
          run-limited
          bug-exn?
          fuzz-debug-port)
@@ -341,6 +343,30 @@
        (with-handlers ([(lambda (e) (not (bug-exn? e))) note-exn])
          (eval (namespace-syntax-introduce form))))
      0)))
+
+;; Like `fuzz-eval`, then has Chez Scheme check the whole heap for
+;; consistency during a collection, which catches corruption that does
+;; not happen to cause a fault. That takes a few hundred milliseconds,
+;; so it is a separate target.
+(define enable-check-heap (vm-eval '($primitive $enable-check-heap)))
+(define check-heap-errors (vm-eval '($primitive $check-heap-errors)))
+
+(define-entry (fuzz-heap-eval bstr)
+  (define r (fuzz-eval bstr))
+  (cond
+    [(eqv? r 0)
+     (define before (check-heap-errors))
+     (enable-check-heap #t)
+     (collect-garbage 'minor)
+     (enable-check-heap #f)
+     (define n (- (check-heap-errors) before))
+     (if (zero? n)
+         0
+         (begin
+           (fprintf bug-port "fuzz bug: heap check found ~a errors\n" n)
+           (flush-output bug-port)
+           "heap check failed"))]
+    [else r]))
 
 ;; Readable data must read back as itself after `write`.
 (define-entry (fuzz-print-roundtrip bstr)

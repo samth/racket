@@ -5790,4 +5790,13 @@
     (equal? (f 3 2 (most-positive-fixnum))
             (list 0 1 (most-positive-fixnum) (+ (most-positive-fixnum) 1)
                   (* 2 (most-positive-fixnum)) (+ (* 2 (most-positive-fixnum)) 1))))
+  ; flonum constants in a loop are bound before the loop
+  (equal? '(4.5 0.0)
+    (let ([f (parameterize ([enable-cse-licm #t])
+               (compile '(lambda (n x)
+                           (let loop ([i 0] [acc 0.0])
+                             (if (fx< i n)
+                                 (loop (fx+ i 1) (fl+ acc (fl* 1.5 x) (fl* 2.0 x) -2.0))
+                                 acc)))))])
+      (list (f 3 1.0) (f 0 1.0))))
 )

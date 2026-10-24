@@ -686,6 +686,42 @@ LICM
                      `(if ,(f e0 #f copy?) ,(f e1 #f copy?) ,(f e2 #f copy?))]
                     [else e])))))))
 
+;; Flonum constants used by flonum operations in a loop are bound
+    ;; before the loop, so that the loop can keep them in registers
+    ;; instead of loading each one on every iteration.
+    (define flonum-op?
+      (lambda (pr)
+        (memq (primref-name pr) '(fl+ fl- fl* fl/ fl= fl< fl> fl<= fl>= flmin flmax))))
+
+    (define name-flonum-constants
+      ; returns `body` with each such constant replaced and an alist of
+      ; the constants and their variables
+      (lambda (body)
+        (define consts '())
+        (define-pass name : Lsrc (ir) -> Lsrc ()
+          (Expr : Expr (ir) -> Expr ()
+            [(case-lambda ,preinfo ,cl* ...) ir]
+            [(call ,preinfo ,pr ,e* ...)
+             (guard (flonum-op? pr))
+             `(call ,preinfo ,pr
+                ,(map (lambda (e)
+                        (nanopass-case (Lsrc Expr) e
+                          [(quote ,d)
+                           ; cpprim turns (fl* 2.0 e) into (fl+ e e)
+                           (guard (flonum? d) (not (and (eqv? d 2.0) (eq? (primref-name pr) 'fl*))))
+                           (let ([a (assp (lambda (d0) (eqv? d0 d)) consts)])
+                             (build-ref
+                               (if a
+                                   (cdr a)
+                                   (let ([k (make-prelex* 'flconst)])
+                                     (set! consts (cons (cons d k) consts))
+                                     k))))]
+                          [else (Expr e)]))
+                      e*)
+                ...)]))
+        (let ([body (name body)])
+          (values body consts))))
+
     (define-pass cpcse : Lsrc (ir reorder?) -> Lsrc ()
       (definitions
         (define loop?
@@ -700,8 +736,12 @@ LICM
               (let ([inner (cons x1 loops)])
                 (record-binder! x1 loops)
                 (for-each (lambda (x) (record-binder! x inner)) x*)
-                (let ([body (Expr body avail inner)])
-                  (licm x1 preinfo1 x* interface body preinfo2 maybe-src e* loops reorder?)))))))
+                (let-values ([(body consts) (name-flonum-constants (Expr body avail inner))])
+                  (for-each (lambda (a) (record-binder! (cdr a) loops)) consts)
+                  (fold-left
+                    (lambda (e a) (build-let (cdr a) (with-output-language (Lsrc Expr) `(quote ,(car a))) e))
+                    (licm x1 preinfo1 x* interface body preinfo2 maybe-src e* loops reorder?)
+                    consts)))))))
       (Expr : Expr (ir avail loops) -> Expr ()
         [(letrec ([,x1 (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,body))])
            (call ,preinfo2 (ref ,maybe-src ,x2) ,e* ...))

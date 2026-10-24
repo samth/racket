@@ -13,7 +13,20 @@
 ;;; See the License for the specific language governing permissions and
 ;;; limitations under the License.
 
-(if (or (windows?) (haiku?) (equal? (getenv "USER") "root") (embedded?))
+;; file permissions don't stop root (or another user with
+;; CAP_DAC_OVERRIDE), so check whether they work by trying to read an
+;; unreadable file, rather than relying on $USER
+(define (permissions-ignored?)
+  (let ([fn "testfile-perm.ss"])
+    (delete-file fn #f)
+    (with-output-to-file fn void '(mode #o000))
+    (let ([ignored? (guard (c [#t #f])
+                      (close-port (open-input-file fn))
+                      #t)])
+      (delete-file fn #f)
+      ignored?)))
+
+(if (or (windows?) (haiku?) (embedded?) (permissions-ignored?))
     (mat unix-file-io
       (error? (errorf 'open-output-file "failed for testfile.ss: file exists"))
       (error? (errorf 'open-output-file "failed for testfile.ss: file exists"))
@@ -177,7 +190,7 @@
     )
 )
 
-(if (or (windows?) (haiku?) (equal? (getenv "USER") "root") (embedded?))
+(if (or (windows?) (haiku?) (embedded?) (permissions-ignored?))
     (mat file-operations
       (error? (errorf 'delete-directory "failed for ~a: ~a" "testlink1" "not a directory"))
       (error? (errorf 'delete-directory "failed for ~a: ~a" "testlink2" "not a directory"))

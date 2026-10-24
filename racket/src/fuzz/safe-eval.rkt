@@ -143,7 +143,18 @@
 ;; but makes its own instances, so no state is shared between runs.
 (define attached-libs (append fuzz-libs fuzz-lazy-libs))
 (define preloaded-libs (cons 'racket/base attached-libs))
-(parameterize ([current-namespace harness-ns])
+;; Names that the module name resolver produced while preloading;
+;; see `make-fuzz-namespace`.
+(define preload-resolved-names (make-hash))
+(parameterize ([current-namespace harness-ns]
+               [current-module-name-resolver
+                (let ([orig (current-module-name-resolver)])
+                  (case-lambda
+                    [(r ns) (orig r ns)]
+                    [(name rel-to stx load?)
+                     (define r (orig name rel-to stx load?))
+                     (hash-set! preload-resolved-names r #t)
+                     r]))])
   (for ([l (in-list attached-libs)])
     (dynamic-require l (void))))
 (define preloaded-names
@@ -159,6 +170,15 @@
   (for ([l (in-list attached-libs)])
     (namespace-attach-module-declaration harness-ns l ns))
   (parameterize ([current-namespace ns])
+    ;; In a target with embedded modules, the resolver knows how to
+    ;; resolve relative paths from an embedded module only in a
+    ;; registry that it has been told about, and attaching tells it
+    ;; about only some modules, not including the submodules that
+    ;; `lazy-require` creates; then a relative path from one of those
+    ;; resolves against the current directory. So tell it about every
+    ;; module that the harness resolved.
+    (for ([r (in-hash-keys preload-resolved-names)])
+      ((current-module-name-resolver) r harness-ns))
     (namespace-require 'racket/base)
     ;; A major collection can take most of a second in a sanitized
     ;; build, and fuel does not count time spent in the collector, so

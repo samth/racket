@@ -16,4 +16,5 @@
 ;; Modules that those libraries load lazily, which an embedding process
 ;; would not find as dependencies
 (define fuzz-lazy-libs
-  '(racket/match/gen-match racket/runtime-config))
+  '(racket/match/gen-match racket/match/parse racket/match/patterns
+    racket/runtime-config))

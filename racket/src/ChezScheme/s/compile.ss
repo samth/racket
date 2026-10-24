@@ -616,7 +616,42 @@
         ($pass-time 'cptypes (lambda () ($cptypes x)))
         x)))
 
+; When SOURCE_DATE_EPOCH is set, a build is meant to be reproducible, so
+; gensyms whose unique names are generated while compiling a file get a
+; session key derived from the source file's name, length, and checksum
+; instead of a random one. `generate-unique-name` skips a name that is
+; already in use, as when the same file is compiled again.
+(define call-with-deterministic-session-key
+  (lambda (name n thunk)
+    (if (getenv "SOURCE_DATE_EPOCH")
+        (let* ([h (let loop ([i 0] [h #xcbf29ce484222325])
+                    ; 64-bit FNV-1a over the name
+                    (if (fx= i (string-length name))
+                        h
+                        (loop (fx+ i 1)
+                              (bitwise-and (* (bitwise-xor h (char->integer (string-ref name i)))
+                                              #x100000001b3)
+                                           #xffffffffffffffff))))]
+               [key (string-append "r" (string-downcase (number->string (+ (bitwise-arithmetic-shift-left h 56) n) 36)) "-")]
+               [saved-key $session-key])
+          (dynamic-wind
+            (lambda () (set! $session-key key))
+            thunk
+            (lambda () (set! $session-key saved-key))))
+        (thunk))))
+
 (define compile-file-help
+  (lambda (op hostop wpoop source-table machine sfd do-read outfn external?-pred omit-rtds?)
+    (define (go) (compile-file-help0 op hostop wpoop source-table machine sfd do-read outfn external?-pred omit-rtds?))
+    (if sfd
+        (call-with-deterministic-session-key
+          (path-last (source-file-descriptor-path sfd))
+          (+ (bitwise-arithmetic-shift-left (source-file-descriptor-length sfd) 16)
+             (source-file-descriptor-checksum sfd))
+          go)
+        (go))))
+
+(define compile-file-help0
   (lambda (op hostop wpoop source-table machine sfd do-read outfn external?-pred omit-rtds?)
     (parameterize ([$target-machine machine]
                    [$sfd sfd]
@@ -1836,9 +1871,11 @@
       (emit-header op (constant scheme-version) (constant machine-type) (map path-root (map path-last bootfiles)))
       (when (null? bootfiles)
         (parameterize ([$target-machine machine] [$sfd #f])
-          (c-print-fasl ($np-boot-code 'error-invoke) op (constant fasl-type-visit-revisit) #f #f)
-          (c-print-fasl ($np-boot-code 'invoke) op (constant fasl-type-visit-revisit) #f #f)
-          ($fasl-base-rtd #!base-rtd op)))))
+          (call-with-deterministic-session-key "boot header" 0
+            (lambda ()
+              (c-print-fasl ($np-boot-code 'error-invoke) op (constant fasl-type-visit-revisit) #f #f)
+              (c-print-fasl ($np-boot-code 'invoke) op (constant fasl-type-visit-revisit) #f #f)
+              ($fasl-base-rtd #!base-rtd op)))))))
 
   (define do-make-boot-file
     (lambda (who outfn machine bootfile* infn*)

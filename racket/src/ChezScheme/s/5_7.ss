@@ -107,7 +107,8 @@
             (set! $session-key k)
             (set! suffix -1)
             k)))
-      (lambda ()
+      (define uname-interned? (foreign-procedure "(cs)gensym_uname_interned" (scheme-object) scheme-object))
+      (define (next-unique-name)
         (define alphabet "0123456789")
         (define b (string-length alphabet))
         (define digit->char (lambda (n) (string-ref alphabet n)))
@@ -126,7 +127,13 @@
                         s)))
                 (let ([s (f (fx+ i 1))])
                   (string-set! s i (string-ref k i))
-                  s)))))))
+                  s)))))
+      ; a session key that is not random, such as one that `compile-file`
+      ; picks for a reproducible build, can produce names already in use
+      (lambda ()
+        (let loop ()
+          (let ([s (next-unique-name)])
+            (if (uname-interned? s) (loop) s))))))
   (define generate-pretty-name
     (lambda ()
       (let ([count (let ([n count]) (set! count (+ n 1)) n)]

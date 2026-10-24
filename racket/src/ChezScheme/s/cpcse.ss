@@ -704,6 +704,11 @@ LICM
         (define consts '())
         (define-pass name : Lsrc (ir) -> Lsrc ()
           (Expr : Expr (ir) -> Expr ()
+            [(call ,preinfo0 (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,body)) ,e* ...)
+             (guard (fx= interface (length e*)))
+             ; a `let`, which is part of the loop body
+             `(call ,preinfo0 (case-lambda ,preinfo1 (clause (,x* ...) ,interface ,(Expr body)))
+                ,(map Expr e*) ...)]
             [(case-lambda ,preinfo ,cl* ...) ir]
             [(call ,preinfo ,pr ,e* ...)
              (guard (flonum-op? pr))

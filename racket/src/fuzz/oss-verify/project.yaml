@@ -1,10 +1,10 @@
-repo: "https://github.com/racket/racket"
-homepage: "https://racket-lang.org"
-primary_contact: "TODO@example.org"
+# Draft for theorem-labs/oss-verify projects/racket/project.yaml.
+repo: https://github.com/racket/racket
+primary_contact: TODO
+homepage: https://racket-lang.org
 language: c
-sanitizers:
-  - address
-  - undefined
+dockerfile: racket/src/fuzz/oss-verify/Dockerfile
+sanitizers: [address, undefined]
 fuzz_targets:
   - racket_read_fuzzer
   - racket_print-roundtrip_fuzzer

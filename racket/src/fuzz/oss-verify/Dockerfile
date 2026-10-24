@@ -1,10 +1,13 @@
-# Draft: the base image and the riscv64 toolchain are whatever OSS Verify
-# provides; this assumes $CC targets static riscv64 musl, and that a native
-# C compiler (`cc`) and qemu-user are also available.
-FROM TODO-oss-verify-base-builder
-RUN git clone --depth 1 https://github.com/racket/racket racket
+# OSS Verify build for Racket CS. project.yaml names this file with
+# `dockerfile:`, so the build context is the Racket repository at the
+# commit that OSS Verify builds.
+ARG BASE_BUILDER=oss-verify-base-builder
+FROM ${BASE_BUILDER}
+ARG REPO
+ARG COMMIT
+COPY . $SRC/racket
 # portable-bytecode boot files, so that Chez Scheme builds without an
-# existing Racket or Chez Scheme
-RUN make -C racket pb-fetch
+# existing Racket or Chez Scheme; the Makefile pins their version
+RUN make -C $SRC/racket pb-fetch
+COPY racket/src/fuzz/oss-verify/build.sh $SRC/
 WORKDIR $SRC/racket
-COPY build.sh $SRC/

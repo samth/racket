@@ -1,5 +1,5 @@
 #!/bin/bash -eu
-# Draft OSS Verify build script for Racket CS: static riscv64 musl, no
+# OSS Verify build script for Racket CS: static riscv64 musl, no
 # threads, boot files and modules embedded in each target.
 #
 # Racket CS cross-builds with a Racket and a Chez Scheme for the build
@@ -32,11 +32,17 @@ make -j$(nproc)
 make install PLT_SETUP_OPTIONS="-j 1"
 R=$WORK/target-racket
 
-# 3. The module bundle must hold riscv64 machine code. For now this runs
-# the riscv64 Racket under qemu (about 30 seconds); TODO: produce it
-# with the host Racket in cross mode instead, if OSS Verify does not
-# allow running target programs during the build.
-qemu-riscv64 $R/bin/racket $FUZZ/embed-modules.rkt $WORK/fuzz-modules.bin
+# 3. The module bundle must hold riscv64 machine code. The host Racket
+# makes it in cross mode, as `make install` does for the collections, so
+# that no riscv64 program runs during the build: first compile the
+# harness modules for riscv64, then write the bundle.
+CROSS_RACKET="$HOST_RACKET -MCR $WORK/target/cs/c/compiled: \
+  --cross-compiler rv64le $WORK/target/cs/c \
+  -X $R/share/racket/collects -G $R/etc/racket"
+$CROSS_RACKET -l racket/base -l compiler/cm \
+  -e '(for ([f (vector->list (current-command-line-arguments))]) (managed-compile-zo (path->complete-path f)))' \
+  $FUZZ/embed-modules.rkt $FUZZ/safe-eval.rkt
+$CROSS_RACKET $FUZZ/embed-modules.rkt $WORK/fuzz-modules.bin
 
 $CC -c -Ulinux -Uunix $FUZZ/embed-data.S -o $WORK/embed-data.o \
   -DPETITE_BOOT=$R/lib/racket/petite.boot \

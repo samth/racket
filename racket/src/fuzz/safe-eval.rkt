@@ -346,15 +346,23 @@
 
 ;; Like `fuzz-eval`, then has Chez Scheme check the whole heap for
 ;; consistency during a collection, which catches corruption that does
-;; not happen to cause a fault. That takes a few hundred milliseconds,
-;; so it is a separate target.
+;; not happen to cause a fault. It is a separate target because of the
+;; cost of the check.
 (define enable-check-heap (vm-eval '($primitive $enable-check-heap)))
 (define check-heap-errors (vm-eval '($primitive $check-heap-errors)))
 
+;; A heap check takes up to a second, so check after the first input,
+;; which is the only one when a crash is reproduced, and then after
+;; every `heap-check-interval`th input
+(define heap-check-interval 32)
+(define heap-eval-count 0)
+
 (define-entry (fuzz-heap-eval bstr)
   (define r (fuzz-eval bstr))
+  (set! heap-eval-count (add1 heap-eval-count))
   (cond
-    [(eqv? r 0)
+    [(and (eqv? r 0)
+          (eqv? 1 (modulo heap-eval-count heap-check-interval)))
      (define before (check-heap-errors))
      (enable-check-heap #t)
      (collect-garbage 'minor)

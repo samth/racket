@@ -836,9 +836,8 @@
       ; assigned variable once closures are expanded.  A continuation
       ; captured while the variable is live and then invoked more than once
       ; would otherwise see the variable's value as of the capture instead
-      ; of the latest assignment.  Primitives with the discard flag, a few
-      ; mutators, and calls to letrec-bound procedures whose bodies have no
-      ; such points are assumed not to capture.  This ignores continuations
+      ; of the latest assignment.  Only calls to primitives with the discard
+      ; flag are assumed not to capture.  This ignores continuations
       ; captured by exception handlers for non-continuable errors, by
       ; interrupt and event handlers, and by user procedures called from
       ; discardable primitives (such as custom equality or hash procedures),
@@ -854,21 +853,14 @@
                       ,(lookup-primref 3 'prim)
                       arg ...))])))
         (define unbound-object ($unbound-object))
-        (define noncapturing-mutators
-          '(set-car! set-cdr! vector-set! vector-set-fixnum! fxvector-set! flvector-set!
-            string-set! set-box! bytevector-u8-set! bytevector-s8-set!
-            bytevector-ieee-double-native-set! $object-set!))
         (define find-local-boxes!
           ; One backward walk computes, at each point, the assigned variables
           ; of the enclosing procedure body that are live, and clears
-          ; local-box for those live after a possible capture point.  Walks
-          ; return the live variables and a summary of e's capture points:
-          ; #t, or a list of the procedures called from e whose letrec group
-          ; is still being examined.  A group is non-capturing when its
-          ; bodies call only procedures of the group.
+          ; local-box for those live after a call that is not to a discard
+          ; primitive.  Each walk returns the live variables and whether e
+          ; contains such a call.
           (lambda (ir)
             (define home (make-eq-hashtable)) ; assigned x -> body binding it
-            (define status (make-eq-hashtable)) ; letrec x -> pending or #f
             (define unsafe! (lambda (x) (uvar-local-box! x #f)))
             (define bind!
               (lambda (x* lam)
@@ -881,93 +873,69 @@
             (define union
               (lambda (x* y*)
                 (fold-left (lambda (y* x) (if (memq x y*) y* (cons x y*))) y* x*)))
-            (define combine
-              (lambda (c1 c2)
-                (if (or (eq? c1 #t) (eq? c2 #t)) #t (union c1 c2))))
-            (define capture
-              (lambda (e0)
-                (nanopass-case (L3 Expr) e0
-                  [,pr (if (or (all-set? (prim-mask discard) (primref-flags pr))
-                               (memq (primref-name pr) noncapturing-mutators))
-                           '()
-                           #t)]
-                  [,x (case (eq-hashtable-ref status x #t)
-                        [(pending) (list x)]
-                        [(#f) '()]
-                        [else #t])]
-                  [else #t])))
             (define CaseLambdaExpr
               (lambda (le)
                 (nanopass-case (L3 CaseLambdaExpr) le
                   [(case-lambda ,info ,cl* ...)
-                   (fold-left
-                     (lambda (c cl)
+                   (for-each
+                     (lambda (cl)
                        (nanopass-case (L3 CaseLambdaClause) cl
                          [(clause (,x* ...) ,interface ,body)
                           (let ([lam (list body)])
                             (bind! x* lam)
-                            (let-values ([(in c1) (Expr body '() lam)])
-                              (combine c c1)))]))
-                     '() cl*)])))
-            ; e* are evaluated in an unspecified order, so a capture point in
-            ; one is followed by the variables live into the others
+                            (Expr body '() lam))]))
+                     cl*)])))
+            ; e* are evaluated in an unspecified order, so a call in one is
+            ; followed by the variables live into the others
             (define Expr*
               (lambda (e* out lam)
                 (let ([in+c* (map (lambda (e) (let-values ([(in c) (Expr e out lam)]) (cons in c))) e*)])
                   (for-each
                     (lambda (in+c)
-                      (unless (null? (cdr in+c))
+                      (when (cdr in+c)
                         (for-each
                           (lambda (other) (unless (eq? other in+c) (for-each unsafe! (car other))))
                           in+c*)))
                     in+c*)
-                  (values (fold-left union out (map car in+c*))
-                    (fold-left combine '() (map cdr in+c*))))))
+                  (values (fold-left union out (map car in+c*)) (ormap cdr in+c*)))))
             (define Expr
               (lambda (e out lam)
                 (define here? (lambda (x) (eq? (eq-hashtable-ref home x #f) lam)))
                 (nanopass-case (L3 Expr) e
                   [,x (cond
-                        [(not (uvar-assigned? x)) (values out '())]
-                        [(here? x) (values (union (list x) out) '())]
-                        [else (unsafe! x) (values out '())])]
+                        [(not (uvar-assigned? x)) (values out #f)]
+                        [(here? x) (values (union (list x) out) #f)]
+                        [else (unsafe! x) (values out #f)])]
                   [(set! ,x ,e)
                    (unless (here? x) (unsafe! x))
                    (Expr e (remq x out) lam)]
                   [(call ,info ,e0 ,e* ...)
-                   (let ([c (capture e0)])
-                     (unless (null? c) (for-each unsafe! out))
+                   (let ([c (nanopass-case (L3 Expr) e0
+                              [,pr (not (all-set? (prim-mask discard) (primref-flags pr)))]
+                              [else #t])])
+                     (when c (for-each unsafe! out))
                      (let-values ([(in c*) (Expr* (cons e0 e*) out lam)])
-                       (values in (combine c c*))))]
+                       (values in (or c c*))))]
                   [(if ,e0 ,e1 ,e2)
                    (let-values ([(in1 c1) (Expr e1 out lam)] [(in2 c2) (Expr e2 out lam)])
                      (let-values ([(in0 c0) (Expr e0 (union in1 in2) lam)])
-                       (values in0 (combine c0 (combine c1 c2)))))]
+                       (values in0 (or c0 c1 c2))))]
                   [(seq ,e0 ,e1)
                    (let-values ([(in1 c1) (Expr e1 out lam)])
                      (let-values ([(in0 c0) (Expr e0 in1 lam)])
-                       (values in0 (combine c0 c1))))]
+                       (values in0 (or c0 c1))))]
                   [(let ([,x* ,e*] ...) ,body)
                    (bind! x* lam)
                    (let-values ([(in c) (Expr body out lam)])
                      (let-values ([(in c*) (Expr* e* (filter (lambda (x) (not (memq x x*))) in) lam)])
-                       (values in (combine c c*))))]
+                       (values in (or c c*))))]
                   [(letrec ([,x* ,le*] ...) ,body)
-                   (for-each (lambda (x) (unless (uvar-assigned? x) (eq-hashtable-set! status x 'pending))) x*)
-                   (let ([c (fold-left (lambda (c le) (combine c (CaseLambdaExpr le))) '() le*)])
-                     (let ([nocapture? (and (not (eq? c #t)) (andmap (lambda (y) (memq y x*)) c))])
-                       (for-each
-                         (lambda (x)
-                           (when (eq-hashtable-ref status x #f)
-                             (if nocapture?
-                                 (eq-hashtable-set! status x #f)
-                                 (eq-hashtable-delete! status x))))
-                         x*)))
+                   (for-each CaseLambdaExpr le*)
                    (Expr body out lam)]
-                  [(case-lambda ,info ,cl* ...) (CaseLambdaExpr e) (values out '())]
+                  [(case-lambda ,info ,cl* ...) (CaseLambdaExpr e) (values out #f)]
                   [(foreign ,info ,e) (Expr e out lam)]
                   [(fcallable ,info ,e) (Expr e out lam)]
-                  [else (values out '())])))
+                  [else (values out #f)])))
             (CaseLambdaExpr ir)))
         (define partition-assigned
           (lambda (x*)

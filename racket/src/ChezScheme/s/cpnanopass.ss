@@ -3286,18 +3286,126 @@
 
 
     (define-pass np-finalize-loops : L9.5 (ir) -> L9.75 ()
+      ;; A loop body starts by binding each loop variable to the
+      ;; temporary that its back edges assign.  When a variable's last use
+      ;; comes before the assignment on every back edge, the two never
+      ;; overlap and the variable is replaced by its temporary, so that the
+      ;; register allocator does not need to move the value at the top of
+      ;; each iteration.  Back-edge assignments are ordered to make that
+      ;; possible where they can be.
+      (definitions
+        (define-pass rename : (L9.5 Expr) (ir alist found!) -> (L9.5 Expr) ()
+          (Lvalue : Lvalue (ir) -> Lvalue ()
+            [,x (let ([a (assq x alist)]) (if a (begin (found!) (cdr a)) x))]))
+        (define references?
+          (lambda (e x)
+            (call/cc (lambda (k) (rename e (list (cons x x)) (lambda () (k #t))) #f))))
+        (define-pass collect-calls : (L9.5 Expr) (ir lx add!) -> (L9.5 Expr) ()
+          (Expr : Expr (ir) -> Expr ()
+            [(call ,info ,mdcl ,x ,e* ...)
+             (guard (eq? x lx))
+             (add! e*)
+             ir]))
+        (define simple?
+          ; can be evaluated in any order relative to the other assignments
+          (lambda (e)
+            (nanopass-case (L9.5 Expr) e
+              [(mref ,e1 ,e2 ,imm ,type) (and (simple? e1) (simple? e2))]
+              [,lvalue #t]
+              [(immediate ,imm) #t]
+              [(literal ,info) #t]
+              [(label-ref ,l ,offset) #t]
+              [(inline ,info ,prim ,e* ...) (andmap simple? e*)]
+              [(let ([,x* ,e*] ...) ,body) (and (andmap simple? e*) (simple? body))]
+              [(if ,e0 ,e1 ,e2) (and (simple? e0) (simple? e1) (simple? e2))]
+              [else #f])))
+        (define order
+          ; orders the (t . e) pairs so that every e that refers to the
+          ; variable for t in `var*` (an alist from t to that variable)
+          ; comes before the assignment of t, or returns #f
+          (lambda (pair* var*)
+            (let ([before* (map (lambda (pair)
+                                  (let ([a (assq (car pair) var*)])
+                                    (if a
+                                        (filter (lambda (other)
+                                                  (and (not (eq? other pair))
+                                                       (references? (cdr other) (cdr a))))
+                                          pair*)
+                                        '())))
+                             pair*)])
+              (let loop ([todo* pair*] [rdone* '()])
+                (if (null? todo*)
+                    (reverse rdone*)
+                    (let ([next (find (lambda (pair)
+                                        (andmap (lambda (other) (memq other rdone*))
+                                          (cdr (assq pair (map cons pair* before*)))))
+                                  todo*)])
+                      (and next (loop (remq next todo*) (cons next rdone*)))))))))
+        (define coalesce
+          ; returns the loop body with each loop variable that can share its
+          ; temporary replaced by it
+          (lambda (lx t* body)
+            (let peel ([body body] [rebuild (lambda (e) e)])
+              (nanopass-case (L9.5 Expr) body
+                [(trap-check ,ioc ,e)
+                 (peel e (lambda (e) (rebuild (with-output-language (L9.5 Expr) `(trap-check ,ioc ,e)))))]
+                [(let ([,x1* ,e*] ...) ,body1)
+                 (guard (andmap (lambda (e)
+                                  (nanopass-case (L9.5 Expr) e
+                                    [,lvalue (and (uvar? lvalue) (memq lvalue t*) #t)]
+                                    [else #f]))
+                          e*))
+                 (let* ([site* (let ([site* '()])
+                                 (collect-calls body1 lx (lambda (e*) (set! site* (cons e* site*))))
+                                 site*)]
+                        [var* (let ([var* (fold-left
+                                            (lambda (var* y e)
+                                              (if (and (eq? (uvar-type y) (uvar-type e))
+                                                       (not (assq e var*)))
+                                                  (cons (cons e y) var*)
+                                                  var*))
+                                            '() x1* e*)])
+                                (if (andmap (lambda (e*) (andmap simple? e*)) site*)
+                                    ; drop variables until every back edge can be ordered
+                                    (let loop ([var* var*])
+                                      (define ok?
+                                        (lambda (var*)
+                                          (andmap (lambda (e*) (order (map cons t* e*) var*)) site*)))
+                                      (cond
+                                        [(ok? var*) var*]
+                                        ; prefer dropping one variable that breaks the cycle
+                                        [(find (lambda (var) (ok? (remq var var*))) var*) =>
+                                         (lambda (var) (remq var var*))]
+                                        [else (loop (cdr var*))]))
+                                    '()))])
+                   (if (null? var*)
+                       (rebuild body)
+                       (let ([keep* (remp (lambda (y.e) (assq (cdr y.e) var*)) (map cons x1* e*))])
+                         (let ([body1 (rename body1 (map (lambda (a) (cons (cdr a) (car a))) var*) void)])
+                           (rebuild
+                             (if (null? keep*)
+                                 body1
+                                 (with-output-language (L9.5 Expr)
+                                   `(let ([,(map car keep*) ,(map cdr keep*)] ...) ,body1))))))))]
+                [else (rebuild body)])))))
       (Expr : Expr (ir) -> Expr ()
         [(loop ,x (,x* ...) ,body)
          (let ([Ltop (make-local-label (uvar-name x))])
            (uvar-location-set! x (cons Ltop x*))
-           (let ([body (Expr body)])
+           (let ([body (Expr (coalesce x x* body))])
              (uvar-location-set! x #f)
              `(label ,Ltop ,body)))]
-        [(call ,info ,mdcl ,x ,[e*] ...)
+        [(call ,info ,mdcl ,x ,e* ...)
          (guard (uvar-location x))
-         (let ([Ltop.x* (uvar-location x)])
-           (fold-left (lambda (body x e) `(seq (set! ,x ,e) ,body))
-             `(goto ,(car Ltop.x*)) (cdr Ltop.x*) e*))]))
+         (let* ([Ltop.x* (uvar-location x)]
+                [pair* (map cons (cdr Ltop.x*) e*)]
+                [pair* (if (andmap simple? e*)
+                           (or (order pair* (map (lambda (t) (cons t t)) (cdr Ltop.x*)))
+                               (sorry! who "cannot order loop assignments"))
+                           ; keep the original order
+                           (reverse pair*))])
+           (fold-right (lambda (pair body) `(seq (set! ,(car pair) ,(Expr (cdr pair))) ,body))
+             `(goto ,(car Ltop.x*)) pair*))]))
 
     (define-pass np-optimize-pred-in-value : L9.75 (ir) -> L9.75 ()
       (definitions

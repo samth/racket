@@ -854,138 +854,121 @@
                       ,(lookup-primref 3 'prim)
                       arg ...))])))
         (define unbound-object ($unbound-object))
-        (define nocapture (make-eq-hashtable))
         (define noncapturing-mutators
           '(set-car! set-cdr! vector-set! vector-set-fixnum! fxvector-set! flvector-set!
             string-set! set-box! bytevector-u8-set! bytevector-s8-set!
             bytevector-ieee-double-native-set! $object-set!))
-        (define may-capture?
-          (lambda (e)
-            (nanopass-case (L3 Expr) e
-              [,pr (not (or (all-set? (prim-mask discard) (primref-flags pr))
-                            (memq (primref-name pr) noncapturing-mutators)))]
-              [,x (not (eq-hashtable-ref nocapture x #f))]
-              [else #t])))
-        ; does e have a possible capture point outside of any nested lambda?
-        (define captures?
-          (lambda (e)
-            (let f ([e e])
-              (nanopass-case (L3 Expr) e
-                [(call ,info ,e0 ,e* ...) (or (may-capture? e0) (f e0) (ormap f e*))]
-                [(if ,e0 ,e1 ,e2) (or (f e0) (f e1) (f e2))]
-                [(seq ,e0 ,e1) (or (f e0) (f e1))]
-                [(set! ,x ,e) (f e)]
-                [(let ([,x* ,e*] ...) ,body) (or (ormap f e*) (f body))]
-                [(letrec ([,x* ,le*] ...) ,body) (f body)]
-                [(foreign ,info ,e) (f e)]
-                [(fcallable ,info ,e) (f e)]
-                [else #f]))))
-        ; records the letrec-bound procedures that do not capture, assuming
-        ; calls among each letrec group's procedures do not capture
-        (define find-nocapture!
+        (define find-local-boxes!
+          ; One backward walk computes, at each point, the assigned variables
+          ; of the enclosing procedure body that are live, and clears
+          ; local-box for those live after a possible capture point.  Walks
+          ; return the live variables and a summary of e's capture points:
+          ; #t, or a list of the procedures called from e whose letrec group
+          ; is still being examined.  A group is non-capturing when its
+          ; bodies call only procedures of the group.
           (lambda (ir)
+            (define home (make-eq-hashtable)) ; assigned x -> body binding it
+            (define status (make-eq-hashtable)) ; letrec x -> pending or #f
+            (define unsafe! (lambda (x) (uvar-local-box! x #f)))
+            (define bind!
+              (lambda (x* lam)
+                (for-each
+                  (lambda (x)
+                    (when (uvar-assigned? x)
+                      (eq-hashtable-set! home x lam)
+                      (uvar-local-box! x #t)))
+                  x*)))
+            (define union
+              (lambda (x* y*)
+                (fold-left (lambda (y* x) (if (memq x y*) y* (cons x y*))) y* x*)))
+            (define combine
+              (lambda (c1 c2)
+                (if (or (eq? c1 #t) (eq? c2 #t)) #t (union c1 c2))))
+            (define capture
+              (lambda (e0)
+                (nanopass-case (L3 Expr) e0
+                  [,pr (if (or (all-set? (prim-mask discard) (primref-flags pr))
+                               (memq (primref-name pr) noncapturing-mutators))
+                           '()
+                           #t)]
+                  [,x (case (eq-hashtable-ref status x #t)
+                        [(pending) (list x)]
+                        [(#f) '()]
+                        [else #t])]
+                  [else #t])))
             (define CaseLambdaExpr
               (lambda (le)
                 (nanopass-case (L3 CaseLambdaExpr) le
                   [(case-lambda ,info ,cl* ...)
-                   (for-each
-                     (lambda (cl)
+                   (fold-left
+                     (lambda (c cl)
                        (nanopass-case (L3 CaseLambdaClause) cl
-                         [(clause (,x* ...) ,interface ,body) (Expr body)]))
-                     cl*)])))
-            (define body-captures?
-              (lambda (le)
-                (nanopass-case (L3 CaseLambdaExpr) le
-                  [(case-lambda ,info ,cl* ...)
-                   (ormap
-                     (lambda (cl)
-                       (nanopass-case (L3 CaseLambdaClause) cl
-                         [(clause (,x* ...) ,interface ,body) (captures? body)]))
-                     cl*)])))
+                         [(clause (,x* ...) ,interface ,body)
+                          (let ([lam (list body)])
+                            (bind! x* lam)
+                            (let-values ([(in c1) (Expr body '() lam)])
+                              (combine c c1)))]))
+                     '() cl*)])))
+            ; e* are evaluated in an unspecified order, so a capture point in
+            ; one is followed by the variables live into the others
+            (define Expr*
+              (lambda (e* out lam)
+                (let ([in+c* (map (lambda (e) (let-values ([(in c) (Expr e out lam)]) (cons in c))) e*)])
+                  (for-each
+                    (lambda (in+c)
+                      (unless (null? (cdr in+c))
+                        (for-each
+                          (lambda (other) (unless (eq? other in+c) (for-each unsafe! (car other))))
+                          in+c*)))
+                    in+c*)
+                  (values (fold-left union out (map car in+c*))
+                    (fold-left combine '() (map cdr in+c*))))))
             (define Expr
-              (lambda (e)
+              (lambda (e out lam)
+                (define here? (lambda (x) (eq? (eq-hashtable-ref home x #f) lam)))
                 (nanopass-case (L3 Expr) e
-                  [(call ,info ,e0 ,e* ...) (Expr e0) (for-each Expr e*)]
-                  [(if ,e0 ,e1 ,e2) (Expr e0) (Expr e1) (Expr e2)]
-                  [(seq ,e0 ,e1) (Expr e0) (Expr e1)]
-                  [(set! ,x ,e) (Expr e)]
-                  [(let ([,x* ,e*] ...) ,body) (for-each Expr e*) (Expr body)]
+                  [,x (cond
+                        [(not (uvar-assigned? x)) (values out '())]
+                        [(here? x) (values (union (list x) out) '())]
+                        [else (unsafe! x) (values out '())])]
+                  [(set! ,x ,e)
+                   (unless (here? x) (unsafe! x))
+                   (Expr e (remq x out) lam)]
+                  [(call ,info ,e0 ,e* ...)
+                   (let ([c (capture e0)])
+                     (unless (null? c) (for-each unsafe! out))
+                     (let-values ([(in c*) (Expr* (cons e0 e*) out lam)])
+                       (values in (combine c c*))))]
+                  [(if ,e0 ,e1 ,e2)
+                   (let-values ([(in1 c1) (Expr e1 out lam)] [(in2 c2) (Expr e2 out lam)])
+                     (let-values ([(in0 c0) (Expr e0 (union in1 in2) lam)])
+                       (values in0 (combine c0 (combine c1 c2)))))]
+                  [(seq ,e0 ,e1)
+                   (let-values ([(in1 c1) (Expr e1 out lam)])
+                     (let-values ([(in0 c0) (Expr e0 in1 lam)])
+                       (values in0 (combine c0 c1))))]
+                  [(let ([,x* ,e*] ...) ,body)
+                   (bind! x* lam)
+                   (let-values ([(in c) (Expr body out lam)])
+                     (let-values ([(in c*) (Expr* e* (filter (lambda (x) (not (memq x x*))) in) lam)])
+                       (values in (combine c c*))))]
                   [(letrec ([,x* ,le*] ...) ,body)
-                   (for-each CaseLambdaExpr le*)
-                   (for-each (lambda (x) (unless (uvar-assigned? x) (eq-hashtable-set! nocapture x #t))) x*)
-                   (let loop ()
-                     (when (ormap
-                             (lambda (x le)
-                               (and (eq-hashtable-ref nocapture x #f)
-                                    (body-captures? le)
-                                    (begin (eq-hashtable-delete! nocapture x) #t)))
-                             x* le*)
-                       (loop)))
-                   (Expr body)]
-                  [(case-lambda ,info ,cl* ...) (CaseLambdaExpr e)]
-                  [(foreign ,info ,e) (Expr e)]
-                  [(fcallable ,info ,e) (Expr e)]
-                  [else (void)])))
+                   (for-each (lambda (x) (unless (uvar-assigned? x) (eq-hashtable-set! status x 'pending))) x*)
+                   (let ([c (fold-left (lambda (c le) (combine c (CaseLambdaExpr le))) '() le*)])
+                     (let ([nocapture? (and (not (eq? c #t)) (andmap (lambda (y) (memq y x*)) c))])
+                       (for-each
+                         (lambda (x)
+                           (when (eq-hashtable-ref status x #f)
+                             (if nocapture?
+                                 (eq-hashtable-set! status x #f)
+                                 (eq-hashtable-delete! status x))))
+                         x*)))
+                   (Expr body out lam)]
+                  [(case-lambda ,info ,cl* ...) (CaseLambdaExpr e) (values out '())]
+                  [(foreign ,info ,e) (Expr e out lam)]
+                  [(fcallable ,info ,e) (Expr e out lam)]
+                  [else (values out '())])))
             (CaseLambdaExpr ir)))
-        ; can v stay in its frame within body, its scope?
-        (define frame-ok?
-          (lambda (v body)
-            (call/1cc
-              (lambda (fail)
-                (define occurs?
-                  (lambda (e)
-                    (let f ([e e])
-                      (nanopass-case (L3 Expr) e
-                        [,x (eq? x v)]
-                        [(call ,info ,e0 ,e* ...) (or (f e0) (ormap f e*))]
-                        [(if ,e0 ,e1 ,e2) (or (f e0) (f e1) (f e2))]
-                        [(seq ,e0 ,e1) (or (f e0) (f e1))]
-                        [(set! ,x ,e) (or (eq? x v) (f e))]
-                        [(let ([,x* ,e*] ...) ,body) (or (ormap f e*) (f body))]
-                        [(letrec ([,x* ,le*] ...) ,body) (or (ormap f le*) (f body))]
-                        [(case-lambda ,info ,cl* ...)
-                         (ormap
-                           (lambda (cl)
-                             (nanopass-case (L3 CaseLambdaClause) cl
-                               [(clause (,x* ...) ,interface ,body) (f body)]))
-                           cl*)]
-                        [(foreign ,info ,e) (f e)]
-                        [(fcallable ,info ,e) (f e)]
-                        [else #f]))))
-                ; returns whether v is live before e, given whether it is live after
-                (define live
-                  (lambda (e out)
-                    (define live*
-                      (lambda (e* out)
-                        (let ([out (or out (ormap occurs? e*))])
-                          (fold-left (lambda (in e) (or (live e out) in)) out e*))))
-                    (nanopass-case (L3 Expr) e
-                      [,x (or (eq? x v) out)]
-                      [(call ,info ,e0 ,e* ...)
-                       (when (and out (may-capture? e0)) (fail #f))
-                       (live* (cons e0 e*) out)]
-                      [(if ,e0 ,e1 ,e2) (live e0 (or (live e1 out) (live e2 out)))]
-                      [(seq ,e0 ,e1) (live e0 (live e1 out))]
-                      [(set! ,x ,e) (live e (and (not (eq? x v)) out))]
-                      [(let ([,x* ,e*] ...) ,body) (live* e* (live body out))]
-                      [(letrec ([,x* ,le*] ...) ,body)
-                       (when (ormap occurs? le*) (fail #f))
-                       (live body out)]
-                      [(case-lambda ,info ,cl* ...)
-                       (when (occurs? e) (fail #f))
-                       out]
-                      [(foreign ,info ,e) (live e out)]
-                      [(fcallable ,info ,e) (live e out)]
-                      [else out])))
-                (live body #f)
-                #t))))
-        (define decide!
-          (lambda (x* body)
-            (for-each
-              (lambda (x)
-                (when (and (uvar-assigned? x) (frame-ok? x body))
-                  (uvar-local-box! x #t)))
-              x*)))
         (define partition-assigned
           (lambda (x*)
             (if (null? x*)
@@ -1008,22 +991,18 @@
       (Expr : Expr (ir) -> Expr ()
         [,x (if (uvar-assigned? x) (%primcall #f #f car ,x) x)]
         [(set! ,x ,[e]) (%primcall #f #f set-car! ,x ,e)]
-        [(let ([,x* ,e*] ...) ,body)
-         (decide! x* body)
-         (let ([e* (map Expr e*)] [body (Expr body)])
-           (handle-assigned x* body
-             (lambda (x* body)
-               `(let ([,x* ,e*] ...) ,body))))])
+        [(let ([,x* ,[e*]] ...) ,[body])
+         (handle-assigned x* body
+           (lambda (x* body)
+             `(let ([,x* ,e*] ...) ,body)))])
       (CaseLambdaClause : CaseLambdaClause (ir) -> CaseLambdaClause ()
-        [(clause (,x* ...) ,interface ,body)
-         (decide! x* body)
-         (let ([body (Expr body)])
-           (handle-assigned x* body
-             (lambda (x* body)
-               `(clause (,x* ...) ,interface ,body))))])
+        [(clause (,x* ...) ,interface ,[body])
+         (handle-assigned x* body
+           (lambda (x* body)
+             `(clause (,x* ...) ,interface ,body)))])
       (CaseLambdaExpr : CaseLambdaExpr (ir) -> CaseLambdaExpr ())
       (begin
-        (find-nocapture! ir)
+        (find-local-boxes! ir)
         (CaseLambdaExpr ir)))
 
     (define-pass np-sanitize-bindings : L4 (ir) -> L4 ()

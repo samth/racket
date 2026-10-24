@@ -5657,6 +5657,15 @@
                 (loop (fx+ i 1) (fx+ acc it))))))
       (f 100)))
   (equal? 11 ((lambda (a) (set! a (* a 2)) (set! a (+ a 1)) a) 5))
+  ; a closure in a branch not taken still captures the variable
+  (begin
+    (define ($uav-branch b)
+      (let ([x 1])
+        (let ([f (if b x (lambda () x))])
+          (set! x 2)
+          (if (procedure? f) (f) f))))
+    #t)
+  (equal? 2 ($uav-branch #f))
   ; a closure that captures the variable sees later assignments
   (equal? 2 (let ([x 1]) (let ([f (lambda () x)]) (set! x 2) (f))))
   ; a continuation captured while the variable is live and resumed more

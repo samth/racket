@@ -829,6 +829,19 @@
       (CaseLambdaClause : CaseLambdaClause (ir name moi) -> CaseLambdaClause ()))
 
     (define-pass np-convert-assignments : L3 (ir) -> L4 ()
+      ; Every assigned variable is boxed here, but a box is marked local-box
+      ; when the variable could stay in its frame: no closure captures it,
+      ; and it is not live after any point where a continuation might be
+      ; captured.  np-unbox-local-boxes turns such a box back into an
+      ; assigned variable once closures are expanded.  A continuation
+      ; captured while the variable is live and then invoked more than once
+      ; would otherwise see the variable's value as of the capture instead
+      ; of the latest assignment.  Only calls to primitives with the discard
+      ; flag are assumed not to capture.  This ignores continuations
+      ; captured by exception handlers for non-continuable errors, by
+      ; interrupt and event handlers, and by user procedures called from
+      ; discardable primitives (such as custom equality or hash procedures),
+      ; when such a continuation is later invoked more than once.
       (definitions
         (define-syntax %primcall
           (lambda (x)
@@ -840,6 +853,90 @@
                       ,(lookup-primref 3 'prim)
                       arg ...))])))
         (define unbound-object ($unbound-object))
+        (define find-local-boxes!
+          ; One backward walk computes, at each point, the assigned variables
+          ; of the enclosing procedure body that are live, and clears
+          ; local-box for those live after a call that is not to a discard
+          ; primitive.  Each walk returns the live variables and whether e
+          ; contains such a call.
+          (lambda (ir)
+            (define home (make-eq-hashtable)) ; assigned x -> body binding it
+            (define unsafe! (lambda (x) (uvar-local-box! x #f)))
+            (define bind!
+              (lambda (x* lam)
+                (for-each
+                  (lambda (x)
+                    (when (uvar-assigned? x)
+                      (eq-hashtable-set! home x lam)
+                      (uvar-local-box! x #t)))
+                  x*)))
+            (define union
+              (lambda (x* y*)
+                (fold-left (lambda (y* x) (if (memq x y*) y* (cons x y*))) y* x*)))
+            (define CaseLambdaExpr
+              (lambda (le)
+                (nanopass-case (L3 CaseLambdaExpr) le
+                  [(case-lambda ,info ,cl* ...)
+                   (for-each
+                     (lambda (cl)
+                       (nanopass-case (L3 CaseLambdaClause) cl
+                         [(clause (,x* ...) ,interface ,body)
+                          (let ([lam (list body)])
+                            (bind! x* lam)
+                            (Expr body '() lam))]))
+                     cl*)])))
+            ; e* are evaluated in an unspecified order, so a call in one is
+            ; followed by the variables live into the others
+            (define Expr*
+              (lambda (e* out lam)
+                (let ([in+c* (map (lambda (e) (let-values ([(in c) (Expr e out lam)]) (cons in c))) e*)])
+                  (for-each
+                    (lambda (in+c)
+                      (when (cdr in+c)
+                        (for-each
+                          (lambda (other) (unless (eq? other in+c) (for-each unsafe! (car other))))
+                          in+c*)))
+                    in+c*)
+                  (values (fold-left union out (map car in+c*)) (ormap cdr in+c*)))))
+            (define Expr
+              (lambda (e out lam)
+                (define here? (lambda (x) (eq? (eq-hashtable-ref home x #f) lam)))
+                (nanopass-case (L3 Expr) e
+                  [,x (cond
+                        [(not (uvar-assigned? x)) (values out #f)]
+                        [(here? x) (values (union (list x) out) #f)]
+                        [else (unsafe! x) (values out #f)])]
+                  [(set! ,x ,e)
+                   (unless (here? x) (unsafe! x))
+                   (Expr e (remq x out) lam)]
+                  [(call ,info ,e0 ,e* ...)
+                   (let ([c (nanopass-case (L3 Expr) e0
+                              [,pr (not (all-set? (prim-mask discard) (primref-flags pr)))]
+                              [else #t])])
+                     (when c (for-each unsafe! out))
+                     (let-values ([(in c*) (Expr* (cons e0 e*) out lam)])
+                       (values in (or c c*))))]
+                  [(if ,e0 ,e1 ,e2)
+                   (let-values ([(in1 c1) (Expr e1 out lam)] [(in2 c2) (Expr e2 out lam)])
+                     (let-values ([(in0 c0) (Expr e0 (union in1 in2) lam)])
+                       (values in0 (or c0 c1 c2))))]
+                  [(seq ,e0 ,e1)
+                   (let-values ([(in1 c1) (Expr e1 out lam)])
+                     (let-values ([(in0 c0) (Expr e0 in1 lam)])
+                       (values in0 (or c0 c1))))]
+                  [(let ([,x* ,e*] ...) ,body)
+                   (bind! x* lam)
+                   (let-values ([(in c) (Expr body out lam)])
+                     (let-values ([(in c*) (Expr* e* (filter (lambda (x) (not (memq x x*))) in) lam)])
+                       (values in (or c c*))))]
+                  [(letrec ([,x* ,le*] ...) ,body)
+                   (for-each CaseLambdaExpr le*)
+                   (Expr body out lam)]
+                  [(case-lambda ,info ,cl* ...) (CaseLambdaExpr e) (values out #f)]
+                  [(foreign ,info ,e) (Expr e out lam)]
+                  [(fcallable ,info ,e) (Expr e out lam)]
+                  [else (values out #f)])))
+            (CaseLambdaExpr ir)))
         (define partition-assigned
           (lambda (x*)
             (if (null? x*)
@@ -870,7 +967,11 @@
         [(clause (,x* ...) ,interface ,[body])
          (handle-assigned x* body
            (lambda (x* body)
-             `(clause (,x* ...) ,interface ,body)))]))
+             `(clause (,x* ...) ,interface ,body)))])
+      (CaseLambdaExpr : CaseLambdaExpr (ir) -> CaseLambdaExpr ())
+      (begin
+        (find-local-boxes! ir)
+        (CaseLambdaExpr ir)))
 
     (define-pass np-sanitize-bindings : L4 (ir) -> L4 ()
       ; must come before suppress-procedure-checks and recognize-mrvs
@@ -2563,6 +2664,39 @@
            (let ([l (make-local-label 'main)])
              (let-values ([(gl* gle*) (sort-bindings gl* gle*)])
                `(labels ([,gl* ,gle*] ... [,l (case-lambda ,info ,cl ...)]) ,l)))])))
+
+    (define-pass np-unbox-local-boxes : L7 (ir) -> L7 ()
+      ; replaces each box marked local-box by np-convert-assignments with an
+      ; assigned variable: the box's binding becomes the initial value, car
+      ; becomes a reference, and set-car! becomes an assignment
+      (definitions
+        (define local-box?
+          (lambda (x)
+            (and (uvar? x) (uvar-local-box? x))))
+        (define prim?
+          (lambda (pr name)
+            (eq? (primref-name pr) name))))
+      (Lvalue : Lvalue (ir) -> Lvalue ()
+        [,x (when (local-box? x) (sorry! who "unexpected reference to ~s" x)) x])
+      (Expr : Expr (ir) -> Expr ()
+        [(let ([,x* ,e*] ...) ,[body])
+         (let ([e* (map (lambda (x e)
+                          (if (local-box? x)
+                              (nanopass-case (L7 Expr) e
+                                [(call ,info ,mdcl ,pr ,e1 ,e2)
+                                 (guard (prim? pr 'cons))
+                                 (uvar-assigned! x #t)
+                                 (Expr e1)]
+                                [else (sorry! who "unexpected binding for ~s" x)])
+                              (Expr e)))
+                        x* e*)])
+           `(let ([,x* ,e*] ...) ,body))]
+        [(call ,info ,mdcl ,pr ,x)
+         (guard (prim? pr 'car) (local-box? x))
+         x]
+        [(call ,info ,mdcl ,pr ,x ,[e])
+         (guard (prim? pr 'set-car!) (local-box? x))
+         `(set! ,x ,e)]))
 
     (define-pass np-simplify-if : L7 (ir) -> L7 ()
       (definitions
@@ -10934,6 +11068,7 @@
               (if ($optimize-closures)
                   (pass np-expand/optimize-closures unparse-L7)
                   (pass np-expand-closures unparse-L7))
+              (pass np-unbox-local-boxes unparse-L7)
               (lambda (ir)
                 (if (fxzero? ($loop-unroll-limit))
                     ir

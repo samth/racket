@@ -7921,6 +7921,117 @@
 (err/rt-test/once (dynamic-require ''struct-accessor-mutated-in-constructor #f)
                   exn:fail:contract:variable?)
 
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; regression tests to make sure compilation is not confused by
+;; an unreachable reference cycle
+
+(module allow-unreachable-self-reference-1 racket/base
+  (let-values (((g2)
+                (lambda () (letrec-values (((x) x))
+                             x))))
+    5))
+
+(module allow-unreachable-self-reference-2 racket/base
+  (letrec-values (((g2)
+                   (lambda () (letrec-values (((x) x))
+                                x))))
+    5))
+
+(module allow-unreachable-self-reference-1 racket/base
+  (let-values (((g2)
+                (lambda () (letrec-values (((x) y)
+                                           ((y) x))
+                             x))))
+    5))
+
+(module allow-unreachable-self-reference-2 racket/base
+  (letrec-values (((g2)
+                   (lambda () (letrec-values (((x) y)
+                                              ((y) x))
+                                x))))
+    5))
+
+(module allow-unreachable-self-reference-1a racket/base
+  (let-values (((g2)
+                (lambda () (letrec-values (((x) y)
+                                           ((y) x))
+                             x)))
+               [(h) 10])
+    5))
+
+(module allow-unreachable-self-reference-2a racket/base
+  (letrec-values (((g2)
+                   (lambda () (letrec-values (((x) y)
+                                              ((y) x))
+                                x)))
+                  [(h) 10])
+    5))
+
+(module allow-unreachable-self-reference-3 racket/base
+  (let-values (((g2 h2)
+                (lambda () (letrec-values (((x) y)
+                                           ((y) x))
+                             x))))
+    5))
+(module allow-unreachable-self-reference-4 racket/base
+  (letrec-values (((g2 h2)
+                   (lambda () (letrec-values (((x) y)
+                                              ((y) x))
+                                x))))
+    5))
+
+(module allow-unreachable-self-reference-5 racket/base
+  (let-values (((g2)
+                (list (lambda () (letrec-values (((x) y)
+                                                 ((y) x))
+                                   x)))))
+    5))
+
+(module allow-unreachable-self-reference-6 racket/base
+  (letrec-values (((g2)
+                   (list (lambda () (letrec-values (((x) y)
+                                                    ((y) x))
+                                      x)))))
+    5))
+
+(module allow-unreachable-self-reference-7 racket/base
+  (let-values (((g2 h2)
+                (list (lambda () (letrec-values (((x) y)
+                                                 ((y) x))
+                                   x)))))
+    5))
+(module allow-unreachable-self-reference-8 racket/base
+  (letrec-values (((g2 h2)
+                   (list (lambda () (letrec-values (((x) y)
+                                                    ((y) x))
+                                      x)))))
+    5))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; regression test
+
+(let ([o (open-output-bytes)])
+  (parameterize ([current-output-port o])
+    (eval '(module m racket/base
+             (require (for-syntax racket/base))
+             (begin-for-syntax
+               (struct a-struct (x))
+               (define (f) 1)
+               (define a
+                 (let-values
+                     ([(a b)
+                       (let-values
+                           ([(a b)
+                             (let-values ()
+                               (values
+                                0
+                                (begin (a-struct
+                                        (begin (f) 2))
+                                       3)))])
+                         (values a b))])
+                   a))
+               (displayln a)))))
+  (test #"0\n" get-output-bytes o))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

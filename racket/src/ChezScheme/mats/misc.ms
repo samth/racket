@@ -5823,3 +5823,55 @@
                      (list a (immutable-car p))))))
      (cons 1 2)))
 )
+
+(mat unboxed-assigned-variables
+  ; assigned variables that stay in the frame
+  (equal? 1000
+    (let ()
+      (define (f n)
+        (let loop ([i 0] [acc 0])
+          (if (fx= i n)
+              acc
+              (let ([it 'undef])
+                (set! it (let inner ([j 0]) (if (fx= j 10) j (inner (fx+ j 1)))))
+                (loop (fx+ i 1) (fx+ acc it))))))
+      (f 100)))
+  (equal? 11 ((lambda (a) (set! a (* a 2)) (set! a (+ a 1)) a) 5))
+  ; a closure in a branch not taken still captures the variable
+  (begin
+    (define ($uav-branch b)
+      (let ([x 1])
+        (let ([f (if b x (lambda () x))])
+          (set! x 2)
+          (if (procedure? f) (f) f))))
+    #t)
+  (equal? 2 ($uav-branch #f))
+  ; a closure that captures the variable sees later assignments
+  (equal? 2 (let ([x 1]) (let ([f (lambda () x)]) (set! x 2) (f))))
+  ; a continuation captured while the variable is live and resumed more
+  ; than once sees the latest assignment
+  (equal? '(3 3)
+    (let ([g (lambda ()
+               (let ([x 0] [k #f] [n 0])
+                 (call/cc (lambda (c) (set! k c)))
+                 (set! x (+ x 1))
+                 (set! n (+ n 1))
+                 (if (< n 3) (k #f) (list x n))))])
+      (g)))
+  (equal? '(2 5)
+    (let ([x 0])
+      (let ([r (call/cc (lambda (c) c))])
+        (set! x (+ x 1))
+        (if (procedure? r) (r 5) (list x r)))))
+  (equal? '(3 3)
+    (let ([h (lambda (get)
+               (let ([x 0] [n 0])
+                 (get)
+                 (set! x (+ x 1))
+                 (set! n (+ n 1))
+                 (list x n)))]
+          [k #f] [r '()])
+      (let ([v (h (lambda () (call/cc (lambda (c) (set! k c)))))])
+        (set! r (cons v r))
+        (if (< (length r) 3) (k #f) (car r)))))
+  )

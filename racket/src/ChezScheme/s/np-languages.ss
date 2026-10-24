@@ -23,7 +23,7 @@
     uvar-unspillable? uvar-spilled? uvar-spilled! uvar-local-save? uvar-local-save!
     uvar-seen? uvar-seen! uvar-loop? uvar-loop! uvar-poison? uvar-poison!
     uvar-maybe-loop-entry? uvar-maybe-loop-entry! uvar-applied-once? uvar-applied-once!
-    uvar-in-prefix? uvar-in-prefix!
+    uvar-in-prefix? uvar-in-prefix! uvar-local-box? uvar-local-box!
     uvar-location uvar-location-set!
     uvar-move* uvar-move*-set!
     uvar-conflict*
@@ -250,6 +250,7 @@
     (poison             #b0001000000000)
     (maybe-loop-entry   #b0010000000000) ; during loop detection
     (applied-once       #b0100000000000) ; during loop detection
+    (local-box          #b1000000000000) ; box from convert-assignments that can be a variable
   )
 
   (define-record-type (uvar $make-uvar uvar?)

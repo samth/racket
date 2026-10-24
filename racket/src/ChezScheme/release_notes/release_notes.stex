@@ -122,6 +122,35 @@ Online versions of both books can be found at
 %-----------------------------------------------------------------------------
 \section{Functionality Changes}\label{section:functionality}
 
+\subsection{Additional flonum procedures (10.5.0)}
+
+The new \scheme{flhypot}, \scheme{flfma}, \scheme{fllog1p},
+\scheme{flexpm1}, \scheme{flsinh}, \scheme{flcosh}, \scheme{fltanh},
+\scheme{flasinh}, \scheme{flacosh}, \scheme{flatanh}, \scheme{fllog2},
+\scheme{flexp2}, and \scheme{flnextafter} procedures
+correspond to the C mathematics library (commonly called libm) exports
+\scheme{hypot}, \scheme{fma}, \scheme{log1p}, \scheme{expm1},
+\scheme{sinh}, \scheme{cosh}, \scheme{tanh}, \scheme{asinh},
+\scheme{acosh}, \scheme{atanh}, \scheme{log2}, \scheme{exp2}, and
+\scheme{nextafter}, respectively.
+
+Chez Scheme now uses these C mathematics-library functions unconditionally,
+since they are required by C99 for hosted implementations. Existing
+corrections for platform library bugs are retained.
+
+\subsection{Fault signals not raised by Scheme code go to the previous handler (10.5.0)}
+
+A SIGSEGV, SIGBUS, SIGFPE, or SIGILL that arrives on a thread with no Scheme
+thread context, or whose context is deactivated (for example, during a
+\scheme{__collect_safe} foreign call or after \scheme{Sdeactivate_thread}),
+now goes to the handler that was installed for that signal before
+\scheme{Sscheme_init}, if there was one. A program that embeds Chez Scheme
+and handles these signals itself, as .NET and Java runtimes do to turn a null
+dereference into an exception, therefore keeps that handling.
+\scheme{Sscheme_deinit} reinstalls those handlers. When there was
+no such handler, or the fault happens while running Scheme code, the behavior
+is unchanged.
+
 \subsection{Anonymous fields in struct and union ftypes (10.5.0)}
 
 Struct and union ftypes now support anonymous fields, which mirror anonymous
@@ -3036,6 +3065,15 @@ in fasl files does not generally make sense.
 %-----------------------------------------------------------------------------
 \section{Bug Fixes}\label{section:bugfixes}
 
+\subsection{Repair \scheme{configure} on FreeBSD powerpc64 and powerpc64le (10.5.0)}
+
+On FreeBSD, \scheme{uname -m} reports \scheme{powerpc} for 32-bit and
+64-bit PowerPC systems alike, so \scheme{configure --pbarch} selected the
+32-bit, big-endian \scheme{tpb32b} machine type on powerpc64 and
+powerpc64le.  The \scheme{configure} script now also consults
+\scheme{uname -p}, which distinguishes \scheme{powerpc64} and
+\scheme{powerpc64le} there.
+
 \subsection{Error message fixes (10.5.0)}
 
 A bug in the error produced by \scheme{bytevector-ieee-double-native-set!} when the last
@@ -3181,6 +3219,9 @@ A bug that incorrectly determined the type of \scheme{(- x)} has been fixed.
 The compiler avoids transforming an expression like \scheme{(+ -inf.0 x)}, where
 \scheme{x} is known to be real, into \scheme{(fl+ -inf.0 (real->flonum x))}
 in case \scheme{x} is a bignum that would be converted into \scheme{+inf.0}.
+
+A bug that incorrectly determined the return type of \scheme{eq-hashtable-ref-cell}
+to be non-false has been fixed.
 
 \subsection{Fix 32-bit ARM floating-point dereference offset (10.4.0)}
 

@@ -622,7 +622,8 @@
 ; When SOURCE_DATE_EPOCH is set, a build is meant to be reproducible, so
 ; gensyms whose unique names are generated while compiling a file get a
 ; session key derived from the source file's name, length, and checksum
-; instead of a random one. `generate-unique-name` skips a name that is
+; (or, for whole-program and whole-library compilation, the input file's
+; name) instead of a random one. `generate-unique-name` skips a name that is
 ; already in use, as when the same file is compiled again.
 (define call-with-deterministic-session-key
   (lambda (name n thunk)
@@ -1707,6 +1708,11 @@
                   `(revisit-only ,(build-combined-library-ir cluster*))))))))))
 
   (define finish-compile
+    (lambda (who msg ifn ofn hash-bang-line x1)
+      (call-with-deterministic-session-key (path-last ifn) 0
+        (lambda () (finish-compile0 who msg ifn ofn hash-bang-line x1)))))
+
+  (define finish-compile0
     (lambda (who msg ifn ofn hash-bang-line x1)
       (with-object-file who ofn
         (lambda (op)

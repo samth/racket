@@ -9,12 +9,16 @@
 SRCDIR=$SRC/racket/racket/src
 FUZZ=$SRCDIR/fuzz
 
-# 1. Native Racket for the build machine
+# 1. Native Racket for the build machine. The builder exports CC and
+# CFLAGS for riscv64, and make passes them on to sub-builds such as
+# zuo's, so the whole step runs with the native compiler's settings.
 mkdir -p $WORK/host && cd $WORK/host
-CC=cc CFLAGS=-O2 LDFLAGS= $SRCDIR/configure \
-  --enable-cs --disable-pthread --prefix=$WORK/host-racket
-make -j$(nproc)
-make install
+(
+  export CC=cc CXX=c++ CFLAGS=-O2 CXXFLAGS=-O2 CPPFLAGS= LDFLAGS= LIBS=
+  $SRCDIR/configure --enable-cs --disable-pthread --prefix=$WORK/host-racket
+  make -j$(nproc)
+  make install
+)
 HOST_RACKET=$WORK/host-racket/bin/racket
 
 # 2. Cross-build for riscv64; `--disable-curses` avoids needing a

@@ -22,11 +22,15 @@ mkdir -p $WORK/host && cd $WORK/host
 HOST_RACKET=$WORK/host-racket/bin/racket
 
 # 2. Cross-build for riscv64; `--disable-curses` avoids needing a
-# riscv64 ncurses, and zlib and LZ4 come from the Chez Scheme sources;
+# riscv64 ncurses, and zlib and LZ4 come from the Chez Scheme sources
+# (`--disable-libz` and `--disable-liblz4`, because the builder's sysroot
+# has a libz that would otherwise be linked by -lz instead of being part
+# of libracketcs.a);
 # tools such as zuo that run during the build need the native compiler
 mkdir -p $WORK/target && cd $WORK/target
 $SRCDIR/configure --host=riscv64-linux-musl \
   --enable-cs --disable-pthread --disable-curses --enable-libs \
+  --disable-libz --disable-liblz4 \
   --enable-racket=$HOST_RACKET --enable-scheme=$WORK/host/cs/c \
   --prefix=$WORK/target-racket \
   CC="$CC" CFLAGS="$CFLAGS" LDFLAGS="-static" CC_FOR_BUILD="cc -O2"

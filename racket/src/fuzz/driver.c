@@ -130,6 +130,25 @@ static void split_fault_handlers(void)
 static void split_fault_handlers(void) { }
 #endif
 
+#ifdef FUZZ_DEFAULT_SIGNALS
+/* For a service that wants a target to install no signal handlers,
+   put back the default action for every signal that Chez Scheme or
+   rktio handles, so that a memory fault ends the process with the
+   signal. Ignored signals stay ignored. */
+static void reset_signal_handlers(void)
+{
+  int sig;
+
+  for (sig = 1; sig < NSIG; sig++) {
+    struct sigaction sa;
+    if ((sigaction(sig, NULL, &sa) == 0)
+        && ((sa.sa_flags & SA_SIGINFO)
+            || ((sa.sa_handler != SIG_DFL) && (sa.sa_handler != SIG_IGN))))
+      signal(sig, SIG_DFL);
+  }
+}
+#endif
+
 #ifdef RACKET_COVERAGE_COUNTERS
 void __sanitizer_cov_8bit_counters_init(uint8_t *start, uint8_t *stop);
 void __sanitizer_cov_pcs_init(const uintptr_t *pcs_beg, const uintptr_t *pcs_end);
@@ -195,6 +214,16 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 #endif
   ba.exec_file = "racket-fuzz";
   ba.exit_after = 0;
+#ifdef FUZZ_ADDON_DIR
+  /* Naming the addon directory keeps Racket from finding it through
+     the home directory, which looks in "/etc/passwd" when HOME is not
+     set; "-n" is what a NULL `argv` would mean */
+  {
+    static char *args[] = { "-A", FUZZ_ADDON_DIR, "-n", NULL };
+    ba.argc = 3;
+    ba.argv = args;
+  }
+#endif
 
   /* Racket keeps what it allocates while booting until the process
      exits, often referenced only from the Scheme heap, which
@@ -207,7 +236,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
   racket_boot(&ba);
 
+#ifdef FUZZ_DEFAULT_SIGNALS
+  reset_signal_handlers();
+#else
   split_fault_handlers();
+#endif
 
 #ifdef RACKET_COVERAGE_COUNTERS
   register_scheme_counters();

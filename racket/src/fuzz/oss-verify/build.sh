@@ -58,8 +58,12 @@ $CC -c -Ulinux -Uunix $FUZZ/embed-data.S -o $WORK/embed-data.o \
   -DRACKET_BOOT=$R/lib/racket/racket.boot \
   -DFUZZ_MODULES=$WORK/fuzz-modules.bin
 
+# OSS Verify wants no signal handlers and no files read except the
+# input, so reset the handlers after booting and name an addon
+# directory, which would otherwise be found through "/etc/passwd"
 for t in eval read print-roundtrip number regexp fasl ; do
   $CC $CFLAGS -static -I$R/include/racket -DFUZZ_EMBEDDED \
+    -DFUZZ_DEFAULT_SIGNALS -DFUZZ_ADDON_DIR='"/nonexistent/racket-addon"' \
     -DFUZZ_ENTRY="\"fuzz-$t\"" $FUZZ/driver.c $WORK/embed-data.o \
     $R/lib/libracketcs.a $LIB_FUZZING_ENGINE -lm \
     -o $OUT/racket_${t}_fuzzer

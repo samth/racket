@@ -46,6 +46,16 @@
 ;; ----------------------------------------
 ;; Oracles
 
+;; An entry point returns 0 when every property holds, and otherwise
+;; the number of the property that failed; "driver.c" has a check for
+;; each number, so keep the two in sync
+(define failed-print-roundtrip 1)
+(define failed-exact-number-roundtrip 2)
+(define failed-inexact-number-roundtrip 3)
+(define failed-regexp-match-positions 4)
+(define failed-fasl-roundtrip 5)
+(define failed-fasl-raise 6)
+
 ;; When a port, every exception caught from untrusted code is written
 ;; there; used to check the harness by hand, never while fuzzing.
 ;; Setting PLT_FUZZ_DEBUG turns it on for the current error port.
@@ -392,7 +402,7 @@
        (define v2 (syntax->datum (read-syntax 'fuzz (open-input-bytes s))))
        (if (or (equal? v v2) (has-unreadable? v))
            r
-           1)))))
+           failed-print-roundtrip)))))
 
 ;; Values whose printed form is not expected to read back as `equal?`.
 (define (has-unreadable? v)
@@ -420,10 +430,10 @@
      (cond
        [(and n (exact? n))
         (define s2 (number->string n))
-        (if (equal? (string->number s2) n) 0 1)]
+        (if (equal? (string->number s2) n) 0 failed-exact-number-roundtrip)]
        [(and n (real? n) (= n n))
         (define s2 (number->string n))
-        (if (eqv? (string->number s2) n) 0 1)]
+        (if (eqv? (string->number s2) n) 0 failed-inexact-number-roundtrip)]
        [else 0]))))
 
 ;; The input is a pattern and a subject separated by the first NUL byte.
@@ -450,7 +460,7 @@
                       (and pos (equal? s (subbytes subject (car pos) (cdr pos))))
                       (not pos))))
            0]
-          [else 1])]
+          [else failed-regexp-match-positions])]
        [else 0]))))
 
 ;; `racket/fasl` is implemented in Racket; decoding must not fail
@@ -467,7 +477,7 @@
                  (fasl->s-exp bstr #:datum-intern? #f)))
      (cond
        [(void? v) 0]
-       [(eq? v bad-raise) 1]
+       [(eq? v bad-raise) failed-fasl-raise]
        [else
         (define v2 (fasl->s-exp (s-exp->fasl v)))
-        (if (or (equal? v v2) (has-unreadable? v)) 0 1)]))))
+        (if (or (equal? v v2) (has-unreadable? v)) 0 failed-fasl-roundtrip)]))))

@@ -15,6 +15,11 @@
      BOOT_DIR       directory holding petite.boot, scheme.boot, racket.boot
      COLLECTS_DIR   the "collects" directory
      CONFIG_DIR     the "etc" directory
+   and optionally
+     FUZZ_OSS_VERIFY  defined: no signal handlers, and a property that
+                    fails calls `abort` from its own check
+     FUZZ_ADDON_DIR   the addon directory, so that Racket does not look
+                    for the home directory
 
    With RACKET_COVERAGE_COUNTERS defined (and a Racket CS built with it
    and with PLT_CS_COVERAGE_COUNTERS set), Scheme code also reports
@@ -130,7 +135,7 @@ static void split_fault_handlers(void)
 static void split_fault_handlers(void) { }
 #endif
 
-#ifdef FUZZ_DEFAULT_SIGNALS
+#ifdef FUZZ_OSS_VERIFY
 /* For a service that wants a target to install no signal handlers,
    put back the default action for every signal that Chez Scheme or
    rktio handles, so that a memory fault ends the process with the
@@ -181,6 +186,7 @@ static int initialized = 0;
    `exit`, often with status 0, which would look like a passing run. */
 static void check_initialized(void)
 {
+  /* not a property: Racket failed to boot or to load the harness */
   if (!initialized) {
     fprintf(stderr, "racket-fuzz: initialization failed\n");
     abort();
@@ -236,7 +242,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
   racket_boot(&ba);
 
-#ifdef FUZZ_DEFAULT_SIGNALS
+#ifdef FUZZ_OSS_VERIFY
   reset_signal_handlers();
 #else
   split_fault_handlers();
@@ -271,6 +277,76 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
   return 0;
 }
 
+#ifdef FUZZ_OSS_VERIFY
+/* OSS Verify reads each property as a call of `abort` and its guard,
+   and each comment records a one-line change, a mutant, that makes the
+   check fail on an input of the target's seed corpus. An entry point of
+   "safe-eval.rkt" returns 0, the number of a property that failed, or
+   a string that describes an error that Racket must not raise. Paths
+   are from the top of the Racket repository. Racket CS builds from the
+   generated "racket/src/cs/schemified" files, so a mutant of Racket's
+   core changes those. */
+static void check_result(ptr vals)
+{
+  ptr r;
+
+  /* not a property: `racket_apply` returns the list of results */
+  if (!Spairp(vals))
+    abort();
+  r = Scar(vals);
+
+  /* Racket reports no internal error.
+     mutant: racket/src/fuzz/safe-eval.rkt:76 `(string-prefix? msg "internal error")` -> `#t`
+     input: eval-error */
+  if (Sstringp(r))
+    abort();
+
+  /* not a property: an entry point returns a fixnum or a string */
+  if (!Sfixnump(r))
+    abort();
+
+  switch (Sfixnum_value(r)) {
+  case 0:
+    break;
+  case 1:
+    /* `write` prints readable data so that `read` gives an equal value.
+       mutant: racket/src/cs/schemified/io.scm:20979 `"#\\tab"` -> `"#\\page"`
+       input: print-tab-char */
+    abort();
+  case 2:
+    /* An exact number that `string->number` reads prints with
+       `number->string` as text that reads back as the same number.
+       mutant: racket/src/cs/schemified/expander.scm:64571 `(/ n_0 d_0)` -> `(/ n_0 (+ d_0 1))`
+       input: number-fraction */
+    abort();
+  case 3:
+    /* The same for an inexact real number, other than +nan.0.
+       mutant: racket/src/cs/schemified/expander.scm:64679 `(fx- 0 exp_1)` -> `(fx- 1 exp_1)`
+       input: number-small-flonum */
+    abort();
+  case 4:
+    /* `regexp-match` and `regexp-match-positions` agree on whether and
+       where a regexp matches.
+       mutant: racket/src/cs/schemified/regexp.scm:6882 `ms-pos_0 me-pos_0)` -> `ms-pos_0 ms-pos_0)`
+       input: regexp-match */
+    abort();
+  case 5:
+    /* A value that `fasl->s-exp` decodes encodes with `s-exp->fasl` to
+       bytes that decode to an equal value.
+       mutant: racket/collects/racket/fasl.rkt:278 `fasl-keyword-type` -> `fasl-symbol-type`
+       input: fasl-keyword */
+    abort();
+  case 6:
+    /* `fasl->s-exp` fails only by raising `exn:fail`.
+       mutant: racket/collects/racket/fasl.rkt:433 `(read-error "unrecognized prefix")` -> `(raise "unrecognized prefix")`
+       input: fasl-bad-prefix */
+    abort();
+  default:
+    /* not a property: "safe-eval.rkt" has no property with this number */
+    abort();
+  }
+}
+#else
 /* Reports a bug found by "safe-eval.rkt" as a failed assertion, which
    prints the description and aborts. A fuzzing service groups crashes
    by an assertion's message, so bugs with different descriptions are
@@ -280,13 +356,9 @@ static void report_bug(const char *what)
   __assert_fail(what, "safe-eval.rkt", 0, FUZZ_ENTRY);
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+static void check_result(ptr vals)
 {
-  ptr bstr = Smake_bytevector(size, 0);
-  ptr vals, r;
-
-  memcpy(Sbytevector_data(bstr), data, size);
-  vals = racket_apply(entry_proc, Scons(bstr, Snil));
+  ptr r;
 
   if (!Spairp(vals))
     report_bug("no result");
@@ -302,8 +374,31 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
     buf[len] = 0;
     report_bug(buf);
-  } else if (!Sfixnump(r) || (Sfixnum_value(r) != 0))
-    report_bug("wrong result");
+  } else if (!Sfixnump(r) || (Sfixnum_value(r) != 0)) {
+    static const char *properties[] = {
+      NULL,
+      "print round trip failed",
+      "exact number round trip failed",
+      "inexact number round trip failed",
+      "regexp-match and regexp-match-positions disagree",
+      "fasl round trip failed",
+      "fasl->s-exp raised a value that is not exn:fail"
+    };
+    iptr n = Sfixnump(r) ? Sfixnum_value(r) : 0;
+    if ((n > 0) && (n < (iptr)(sizeof(properties) / sizeof(properties[0]))))
+      report_bug(properties[n]);
+    else
+      report_bug("wrong result");
+  }
+}
+#endif
+
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+  ptr bstr = Smake_bytevector(size, 0);
+
+  memcpy(Sbytevector_data(bstr), data, size);
+  check_result(racket_apply(entry_proc, Scons(bstr, Snil)));
 
   return 0;
 }

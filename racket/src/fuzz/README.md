@@ -64,10 +64,16 @@ OSS-Fuzz and OSS Verify
 
 "oss-fuzz/" has draft project files for OSS-Fuzz; with them, the
 `address` and `undefined` builds pass OSS-Fuzz's build checks.
-"oss-verify/" has drafts for OSS Verify, which needs static riscv64
-binaries: Racket CS cross-builds for `riscv64-linux-musl` with
-`--disable-pthread --disable-curses`, and "standalone-main.c" runs a
-target built that way on input files, such as under qemu.
+OSS Verify needs static riscv64 binaries: Racket CS cross-builds for
+`riscv64-linux-musl` with `--disable-pthread --disable-curses`. Its
+project files, with the build script and seed corpora, are in
+"projects/racket" of https://github.com/samth/oss-verify (branch
+`racket`). With `FUZZ_OSS_VERIFY`, "driver.c" installs no signal
+handlers and calls `abort` from a check for each property, as OSS Verify
+wants; each check's comment gives a one-line change to Racket that makes
+it fail on an input of the seed corpus. "oss-verify/standalone-main.c"
+runs a target built without libFuzzer on input files, such as under
+qemu.
 
 Known limitation: in a target with embedded modules, expanding a use of
 `racket/match` fails with a "namespace mismatch" error for the `state`

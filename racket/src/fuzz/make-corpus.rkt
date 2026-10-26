@@ -4,12 +4,13 @@
 ;;   racket make-corpus.rkt <tests-dir> <out-dir>
 ;;
 ;; <tests-dir> is "pkgs/racket-test-core/tests/racket". Writes
-;; <out-dir>/{eval,read,number,regexp}/, one input per file.
+;; <out-dir>/{eval,read,number,regexp,fasl}/, one input per file.
 
 (require racket/cmdline
          racket/file
          racket/list
          racket/path
+         racket/fasl
          file/sha1)
 
 (define-values (tests-dir out-dir)
@@ -68,6 +69,8 @@
       (define bstr (form->bytes v))
       (when (<= (bytes-length bstr) max-form-bytes)
         (write-input! "read" bstr) (count! "read")
+        (with-handlers ([exn:fail? void])
+          (write-input! "fasl" (s-exp->fasl v)) (count! "fasl"))
         (when (useful-form? v)
           (write-input! "eval" bstr) (count! "eval")))
       (walk v (lambda (x)

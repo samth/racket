@@ -88,13 +88,29 @@
    ; a-z must come first in alphabet.  separator must not be in alphabet.
     (let ([suffix 0])
       (define unique-id (foreign-procedure "(cs)unique_id" () scheme-object))
+      ; When SOURCE_DATE_EPOCH is set, a build is meant to be reproducible,
+      ; so the key is derived from the command line instead of being random;
+      ; `compile-file` installs its own key while it compiles, but a gensym
+      ; can get its name before then, such as when its hash is needed
+      (define (command-line-hash)
+        (let loop ([s* (command-line)] [h #xcbf29ce484222325])
+          ; 64-bit FNV-1a over the arguments, each followed by a NUL
+          (if (null? s*)
+              h
+              (let ([s (car s*)])
+                (let char-loop ([i 0] [h h])
+                  (let ([step (lambda (h c)
+                                (bitwise-and (* (bitwise-xor h c) #x100000001b3) #xffffffffffffffff))])
+                    (if (fx= i (string-length s))
+                        (loop (cdr s*) (step h 0))
+                        (char-loop (fx+ i 1) (step h (char->integer (string-ref s i)))))))))))
       (define (make-session-key)
         (define alphabet "abcdefghijklmnopqrstuvwxyz0123456789")
         (define separator #\-)
         (define b (string-length alphabet))
         (define digit->char (lambda (n) (string-ref alphabet n)))
         (list->string
-          (let loop ([n (unique-id)] [a (list separator)])
+          (let loop ([n (if (getenv "SOURCE_DATE_EPOCH") (command-line-hash) (unique-id))] [a (list separator)])
             (if (< n b)
                ; ensure name starts with letter.  assumes a-z first in alphabet.
                 (if (< n 26)

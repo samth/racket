@@ -271,6 +271,9 @@
                     (make-fuzz-resolver (current-module-name-resolver))]
                    [current-environment-variables (make-environment-variables)]
                    [current-command-line-arguments (vector)]
+                   ;; the initial generator is seeded from the clock
+                   [current-pseudo-random-generator
+                    (vector->pseudo-random-generator '#(1 2 3 4 5 6))]
                    [current-input-port (open-input-bytes #"")]
                    [current-output-port out]
                    [current-error-port out]
@@ -430,7 +433,8 @@
      (define parts (regexp-split #rx#"\0" bstr))
      (define pat (car parts))
      (define subject (if (null? (cdr parts)) #"" (cadr parts)))
-     (define rx (with-handlers ([exn:fail? (lambda (e) #f)])
+     (define rx (with-handlers ([bug-exn? raise]
+                                [exn:fail? (lambda (e) #f)])
                   (byte-pregexp pat)))
      (cond
        [rx
@@ -452,13 +456,18 @@
 ;; `racket/fasl` is implemented in Racket; decoding must not fail
 ;; except with `exn:fail`, and a decoded value must re-encode to an
 ;; equal value.
+(define bad-raise (string->uninterned-symbol "bad-raise"))
+
 (define-entry (fuzz-fasl bstr)
   (run-limited
    (lambda ()
-     (define v (with-handlers ([exn:fail? (lambda (e) (void))])
+     (define v (with-handlers ([bug-exn? raise]
+                               [exn:fail? (lambda (e) (void))]
+                               [(lambda (e) #t) (lambda (e) (note-exn e) bad-raise)])
                  (fasl->s-exp bstr #:datum-intern? #f)))
      (cond
        [(void? v) 0]
+       [(eq? v bad-raise) 1]
        [else
         (define v2 (fasl->s-exp (s-exp->fasl v)))
         (if (or (equal? v v2) (has-unreadable? v)) 0 1)]))))

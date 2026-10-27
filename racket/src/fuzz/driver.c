@@ -296,7 +296,7 @@ static void check_result(ptr vals)
   r = Scar(vals);
 
   /* Racket reports no internal error.
-     mutant: racket/src/fuzz/safe-eval.rkt:76 `(string-prefix? msg "internal error")` -> `#t`
+     mutant: racket/src/fuzz/safe-eval.rkt:77 `(string-prefix? msg "internal error")` -> `#t`
      input: eval-error */
   if (Sstringp(r))
     abort();

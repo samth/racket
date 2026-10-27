@@ -412,7 +412,9 @@
       [(pair? v) (or (loop (car v)) (loop (cdr v)))]
       [(vector? v) (for/or ([x (in-vector v)]) (loop x))]
       [(box? v) (loop (unbox v))]
-      [(hash? v) (for/or ([(k x) (in-hash v)]) (or (loop k) (loop x)))]
+      [(hash? v) (or (and (not (hash-equal? v))
+                          (for/or ([k (in-hash-keys v)]) (not (eq-preserved? k))))
+                     (for/or ([(k x) (in-hash v)]) (or (loop k) (loop x))))]
       [(prefab-struct-key v) (for/or ([x (in-vector (struct->vector v))]) (loop x))]
       [(symbol? v) (not (symbol-interned? v))]
       ;; +nan.0 is not `equal?` to itself in every representation
@@ -421,6 +423,12 @@
       ;; as fresh, non-`equal?` values
       [(extflonum? v) #t]
       [else #f])))
+
+;; Values that read back as themselves by `eq?`; other keys of an `eq?`,
+;; `eqv?` or `equal-always?` table read back as fresh, different keys
+(define (eq-preserved? v)
+  (or (fixnum? v) (char? v) (boolean? v) (null? v) (void? v) (eof-object? v)
+      (keyword? v) (and (symbol? v) (symbol-interned? v))))
 
 ;; A numeric literal must survive number->string and string->number.
 (define-entry (fuzz-number bstr)
@@ -480,5 +488,7 @@
        [(void? v) 0]
        [(eq? v bad-raise) failed-fasl-raise]
        [else
-        (define v2 (fasl->s-exp (s-exp->fasl v)))
+        ;; mutable values stay mutable, since a mutable hash table is
+        ;; not `equal?` to an immutable one
+        (define v2 (fasl->s-exp (s-exp->fasl v #:keep-mutable? #t) #:datum-intern? #f))
         (if (or (equal? v v2) (has-unreadable? v)) 0 failed-fasl-roundtrip)]))))

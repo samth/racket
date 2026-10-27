@@ -55,6 +55,7 @@
 (define failed-regexp-match-positions 4)
 (define failed-fasl-roundtrip 5)
 (define failed-fasl-raise 6)
+(define failed-heap-check 7)
 
 ;; When a port, every exception caught from untrusted code is written
 ;; there; used to check the harness by hand, never while fuzzing.
@@ -386,7 +387,7 @@
          (begin
            (fprintf bug-port "fuzz bug: heap check found ~a errors\n" n)
            (flush-output bug-port)
-           "heap check failed"))]
+           failed-heap-check))]
     [else r]))
 
 ;; Readable data must read back as itself after `write`.

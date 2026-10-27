@@ -341,6 +341,12 @@ static void check_result(ptr vals)
        mutant: racket/collects/racket/fasl.rkt:433 `(read-error "unrecognized prefix")` -> `(raise "unrecognized prefix")`
        input: fasl-bad-prefix */
     abort();
+  case 7:
+    /* After a program runs, Chez Scheme's check of the whole heap during
+       a collection finds no error.
+       mutant: racket/src/fuzz/safe-eval.rkt:384 `(define n (- (check-heap-errors) before))` -> `(define n (- (check-heap-errors) before -1))`
+       input: heap-eval-witness */
+    abort();
   default:
     /* not a property: "safe-eval.rkt" has no property with this number */
     abort();
@@ -382,7 +388,8 @@ static void check_result(ptr vals)
       "inexact number round trip failed",
       "regexp-match and regexp-match-positions disagree",
       "fasl round trip failed",
-      "fasl->s-exp raised a value that is not exn:fail"
+      "fasl->s-exp raised a value that is not exn:fail",
+      "heap check failed"
     };
     iptr n = Sfixnump(r) ? Sfixnum_value(r) : 0;
     if ((n > 0) && (n < (iptr)(sizeof(properties) / sizeof(properties[0]))))

@@ -327,7 +327,7 @@ static void check_result(ptr vals)
   case 4:
     /* `regexp-match` and `regexp-match-positions` agree on whether and
        where a regexp matches.
-       mutant: racket/src/cs/schemified/regexp.scm:6882 `ms-pos_0 me-pos_0)` -> `ms-pos_0 ms-pos_0)`
+       mutant: racket/src/cs/schemified/regexp.scm:6915 `ms-pos_0 me-pos_0)` -> `ms-pos_0 ms-pos_0)`
        input: regexp-match */
     abort();
   case 5:

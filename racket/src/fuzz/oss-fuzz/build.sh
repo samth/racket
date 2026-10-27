@@ -45,7 +45,7 @@ fi
 # Seed corpora from the core tests
 $WORK/racket/bin/racket $FUZZ/make-corpus.rkt \
   $SRC/racket/pkgs/racket-test-core/tests/racket $WORK/corpus
-for t in eval read number regexp ; do
+for t in eval read number regexp fasl ; do
   (cd $WORK/corpus/$t && zip -q -r $OUT/racket_${t}_fuzzer_seed_corpus.zip .)
 done
 cp $OUT/racket_read_fuzzer_seed_corpus.zip $OUT/racket_print-roundtrip_fuzzer_seed_corpus.zip

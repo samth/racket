@@ -166,6 +166,15 @@
   (define root-logger (|#%app| current-logger))
 
   (define omit-debugging? (not (getenv "PLT_CS_DEBUG")))
+
+  ;; Counters for coverage-guided fuzzing, only when the runtime has
+  ;; allocated them (see `RACKET_COVERAGE_COUNTERS` in "c/boot.c")
+  (define coverage-counters?
+    (and (getenv "PLT_CS_COVERAGE_COUNTERS")
+         (#%$top-level-bound? '$coverage-counters)
+         (begin
+           (generate-coverage-counters #t)
+           #t)))
   (define measure-performance? (getenv "PLT_LINKLET_TIMES"))
 
   ;; The difference between this and `PLT_CS_INTERP` is that

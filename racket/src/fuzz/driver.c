@@ -296,8 +296,8 @@ static void check_result(ptr vals)
   r = Scar(vals);
 
   /* Racket reports no internal error.
-     mutant: racket/src/fuzz/safe-eval.rkt:77 `(string-prefix? msg "internal error")` -> `#t`
-     input: eval-error */
+     breakage: racket/src/fuzz/mutants/internal-error.patch,
+     caught by the seed input eval-error */
   if (Sstringp(r))
     abort();
 
@@ -310,42 +310,42 @@ static void check_result(ptr vals)
     break;
   case 1:
     /* `write` prints readable data so that `read` gives an equal value.
-       mutant: racket/src/cs/schemified/io.scm:20979 `"#\\tab"` -> `"#\\page"`
-       input: print-tab-char */
+       breakage: racket/src/fuzz/mutants/print-roundtrip.patch,
+       caught by the seed input print-tab-char */
     abort();
   case 2:
     /* An exact number that `string->number` reads prints with
        `number->string` as text that reads back as the same number.
-       mutant: racket/src/cs/schemified/expander.scm:64571 `(/ n_0 d_0)` -> `(/ n_0 (+ d_0 1))`
-       input: number-fraction */
+       breakage: racket/src/fuzz/mutants/exact-number.patch,
+       caught by the seed input number-fraction */
     abort();
   case 3:
     /* The same for an inexact real number, other than +nan.0.
-       mutant: racket/src/cs/schemified/expander.scm:64679 `(fx- 0 exp_1)` -> `(fx- 1 exp_1)`
-       input: number-small-flonum */
+       breakage: racket/src/fuzz/mutants/inexact-number.patch,
+       caught by the seed input number-small-flonum */
     abort();
   case 4:
     /* `regexp-match` and `regexp-match-positions` agree on whether and
        where a regexp matches.
-       mutant: racket/src/cs/schemified/regexp.scm:6915 `ms-pos_0 me-pos_0)` -> `ms-pos_0 ms-pos_0)`
-       input: regexp-match */
+       breakage: racket/src/fuzz/mutants/regexp-positions.patch,
+       caught by the seed input regexp-match */
     abort();
   case 5:
     /* A value that `fasl->s-exp` decodes encodes with `s-exp->fasl` to
        bytes that decode to an equal value.
-       mutant: racket/collects/racket/fasl.rkt:278 `fasl-keyword-type` -> `fasl-symbol-type`
-       input: fasl-keyword */
+       breakage: racket/src/fuzz/mutants/fasl-roundtrip.patch,
+       caught by the seed input fasl-keyword */
     abort();
   case 6:
     /* `fasl->s-exp` fails only by raising `exn:fail`.
-       mutant: racket/collects/racket/fasl.rkt:433 `(read-error "unrecognized prefix")` -> `(raise "unrecognized prefix")`
-       input: fasl-bad-prefix */
+       breakage: racket/src/fuzz/mutants/fasl-raise.patch,
+       caught by the seed input fasl-bad-prefix */
     abort();
   case 7:
     /* After a program runs, Chez Scheme's check of the whole heap during
        a collection finds no error.
-       mutant: racket/src/fuzz/safe-eval.rkt:384 `(define n (- (check-heap-errors) before))` -> `(define n (- (check-heap-errors) before -1))`
-       input: heap-eval-witness */
+       breakage: racket/src/fuzz/mutants/heap-check.patch,
+       caught by the seed input heap-eval-witness */
     abort();
   default:
     /* not a property: "safe-eval.rkt" has no property with this number */

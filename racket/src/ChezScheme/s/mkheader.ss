@@ -481,6 +481,8 @@
         (export "void" "Ssave_heap" "(const char *, int)")
         (export "void" "Sbuild_heap" "(const char *, void (*)(void))")
         (export "void" "Senable_expeditor" "(const char *)")
+        (export "void" "Senable_coverage_counters" "(void)")
+        (export "void *" "Scoverage_counters" "(iptr *)")
         (export "int"  "Sscheme_start" "(int, const char *[])")
         (export "int"  "Sscheme_script" "(const char *, int, const char *[])")
         (export "int"  "Sscheme_program" "(const char *, int, const char *[])")

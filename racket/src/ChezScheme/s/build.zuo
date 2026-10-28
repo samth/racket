@@ -310,6 +310,14 @@
   ;; Script to compile the version of a file used to compile the final versions
   (define (make-compiler-compile-script src dest mode)
     `((reset-handler abort)
+      ;; For a reproducible build, give gensyms in the compiler's own
+      ;; compiled files a session key from the file name instead of a
+      ;; random one; this script may run on an older Chez Scheme (such as
+      ;; the pb bootstrap) whose `compile-file` does not do that itself
+      ,@(if (assoc "SOURCE_DATE_EPOCH" (hash-ref (runtime-env) (quote env)))
+            `((,(string->symbol "#%$set-top-level-value!") '$session-key
+                                       ,(~a "x" (substring (string-sha256 (file-name-from-path src)) 0 24) "-")))
+            '())
       (base-exception-handler (lambda (c) (fresh-line) (display-condition c) (newline) (reset)))
       (keyboard-interrupt-handler (lambda () (display "interrupted---aborting\n") (reset)))
       (optimize-level ,(ccopt 'o 'integer))

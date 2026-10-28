@@ -1806,6 +1806,7 @@ void S_prim5_init(void) {
     Sforeign_symbol("(cs)asctime", (void *)S_asctime);
     Sforeign_symbol("(cs)mktime", (void *)S_mktime);
     Sforeign_symbol("(cs)unique_id", (void *)S_unique_id);
+    Sforeign_symbol("(cs)gensym_uname_interned", (void *)S_gensym_uname_interned);
     Sforeign_symbol("(cs)file_existsp", (void *)S_file_existsp);
     Sforeign_symbol("(cs)file_regularp", (void *)S_file_regularp);
     Sforeign_symbol("(cs)file_directoryp", (void *)S_file_directoryp);

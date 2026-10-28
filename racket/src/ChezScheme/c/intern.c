@@ -268,6 +268,39 @@ ptr S_intern3(const string_char *pname, iptr plen, const string_char *uname, ipt
   return sym;
 }
 
+/* reports whether a gensym with the given unique name is interned */
+ptr S_gensym_uname_interned(ptr uname_str) {
+  const string_char *uname = &STRIT(uname_str, 0);
+  iptr ulen = Sstring_length(uname_str);
+  iptr hc = hash_uname(uname, ulen);
+  iptr idx = OBINDEX(hc, S_G.oblist_length);
+  bucket *b;
+
+  tc_mutex_acquire();
+
+  b = S_G.oblist[idx];
+  while (b != NULL) {
+    ptr x = b->sym;
+    if (GENSYMP(x)) {
+       ptr str = Scar(SYMNAME(x));
+       if (Sstring_length(str) == ulen) {
+          iptr i;
+          for (i = 0; ; i += 1) {
+            if (i == ulen) {
+               tc_mutex_release();
+               return Strue;
+            }
+            if (STRIT(str, i) != uname[i]) break;
+          }
+       }
+    }
+    b = b->next;
+  }
+
+  tc_mutex_release();
+  return Sfalse;
+}
+
 void S_intern_gensym(ptr sym, ptr sym_name) {
   ptr uname_str = Scar(sym_name);
   const string_char *uname = &STRIT(uname_str, 0);

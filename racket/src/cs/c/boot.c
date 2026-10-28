@@ -159,6 +159,12 @@ void racket_boot(racket_boot_arguments_t *ba)
 
   Sscheme_init(NULL);
 
+#ifdef RACKET_COVERAGE_COUNTERS
+  /* for code compiled with `generate-coverage-counters`, as in a build
+     for coverage-guided fuzzing */
+  Senable_coverage_counters();
+#endif
+
 #ifdef PBCHUNK_REGISTER
   register_pbchunks();
 #endif

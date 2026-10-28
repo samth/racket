@@ -436,6 +436,7 @@
                       "cpcheck.ss"
                       "cpletrec.ss"
                       "cpcommonize.ss"
+                      "cpcoverage.ss"
                       "cpnanopass.ss"
                       "cpprim.ss"
                       "compile.ss"

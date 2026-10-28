@@ -111,6 +111,16 @@ int main(int argc, const char *argv[]) {
 
   Sscheme_init(ABNORMAL_EXIT);
 
+  /* for boot files compiled with `generate-coverage-counters`, as in a
+     Racket CS build for coverage-guided fuzzing */
+  {
+    char *cov = GETENV("PLT_CS_COVERAGE_COUNTERS");
+    if (cov) {
+      Senable_coverage_counters();
+      GETENV_FREE(cov);
+    }
+  }
+
   if (strcmp(path_last(execpath), SCHEME_SCRIPT) == 0) {
     if (argc < 2) {
       (void) fprintf(stderr,"%s requires program-path argument\n", execpath);

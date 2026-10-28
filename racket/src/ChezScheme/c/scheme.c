@@ -1159,6 +1159,45 @@ extern void Sregister_heap_file(UNUSED const char *path) {
   S_abnormal_exit();
 }
 
+/* Coverage counters for code compiled with `generate-coverage-counters`.
+   An embedding program calls `Senable_coverage_counters` before
+   `Sbuild_heap`; the counters are a locked bytevector, so they do not
+   move, and a fuzzer can register them through `Scoverage_counters`. */
+
+/* "equates.h" from older boot files, as used while bootstrapping,
+   lacks the constant; keep this in sync with "cmacros.ss" */
+#ifndef coverage_counter_count
+# define coverage_counter_count (1 << 20)
+#endif
+
+static IBOOL coverage_enabled = 0;
+static ptr coverage_counters = (ptr)0;
+
+extern void Senable_coverage_counters(void) {
+  coverage_enabled = 1;
+}
+
+extern void *Scoverage_counters(iptr *len) {
+  if (coverage_counters == (ptr)0) {
+    if (len) *len = 0;
+    return NULL;
+  }
+  if (len) *len = Sbytevector_length(coverage_counters);
+  return Sbytevector_data(coverage_counters);
+}
+
+static void init_coverage_counters(void) {
+  ptr bv;
+
+  if (!coverage_enabled || (coverage_counters != (ptr)0)) return;
+
+  bv = S_bytevector(coverage_counter_count);
+  memset(Sbytevector_data(bv), 0, coverage_counter_count);
+  Slock_object(bv);
+  coverage_counters = bv;
+  S_set_symbol_value(S_intern((const unsigned char *)"$coverage-counters"), bv);
+}
+
 extern void Sbuild_heap(const char *execpath, void (*custom_init)(void)) {
   ptr tc = Svoid; /* initialize to make gcc happy */
   ptr p;
@@ -1239,6 +1278,9 @@ extern void Sbuild_heap(const char *execpath, void (*custom_init)(void)) {
     DISABLECOUNT(tc) = Sfixnum(1);
     COMPRESSFORMAT(tc) = FIX(COMPRESS_LZ4);
     COMPRESSLEVEL(tc) = FIX(COMPRESS_MEDIUM);
+
+    /* before the base boot file, since its code may have counters */
+    init_coverage_counters();
 
     load(tc, boots, 1);
     S_boot_time = 0;

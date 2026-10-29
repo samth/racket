@@ -109,6 +109,24 @@
 (when xpatch-path
   (load xpatch-path))
 
+;; For a reproducible build, configure with `--enable-sessionkey=<key>`;
+;; then gensyms get unique names from a session key derived from <key>
+;; and the destination's name instead of a random one, the way Chez
+;; Scheme's own build derives keys with `--sessionkey`
+(let ([base (getenv "PLT_CS_SESSION_KEY")])
+  (when (and base (not (equal? base "")))
+    (let* ([s (string-append base "\x0;" (path-last dest))]
+           [h (let loop ([i 0] [h #xcbf29ce484222325])
+                ;; 64-bit FNV-1a
+                (if (fx= i (string-length s))
+                    h
+                    (loop (fx+ i 1)
+                          (bitwise-and (* (bitwise-xor h (char->integer (string-ref s i)))
+                                          #x100000001b3)
+                                       #xffffffffffffffff))))])
+      (#%$set-top-level-value! '$session-key
+                               (string-append "r" (number->string h 36) "-")))))
+
 ;; set these after xpatch is loaded, in case they're reset by the patch:
 (generate-wpo-files #t)
 (generate-inspector-information inspector-information?)

@@ -88,6 +88,7 @@ CONFIG_PATH = @CONFIG_PATH@
 # Communicate certain configuration choices to ".so" compilation via
 # environment variables:
 CONFIGURE_RACKET_SO_COMPILE = @CONFIGURE_RACKET_SO_COMPILE@
+SESSION_KEY = @SESSION_KEY@
 
 # Configuration about how boot files are generated:
 BOOT_COMPRESS_COMP = @BOOT_COMPRESS_COMP@

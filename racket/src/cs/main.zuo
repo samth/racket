@@ -1,5 +1,7 @@
 #lang zuo
 (require "../lib.zuo"
+         (only-in "../ChezScheme/makefiles/lib.zuo"
+                  session-key-for)
          (only-in "../expander/main.zuo"
                   expander-target
                   [targets-at expander-targets-at])
@@ -28,12 +30,13 @@
   (define wpo? (not (equal? (lookup 'DISABLE_WPO) "t")))
   (define schemify? (not (equal? (lookup 'schemify) "f")))
   (define slsp-suffix (lookup 'PLT_CS_SLSP_SUFFIX))
+  (define session-key-base (lookup 'SESSION_KEY))
 
   (define cso (or (lookup 'cso) ".so"))
   
   (define compile-file-deps
     (append
-     (list (input-data-target 'compile-config (list unsafe? debug? compress? slsp-suffix)))
+     (list (input-data-target 'compile-config (list unsafe? debug? compress? slsp-suffix session-key-base)))
      extra-compile-file-deps
      (map at-source '("compile-file.ss" "include.ss" "place-register.ss"))))
 
@@ -233,6 +236,10 @@
                          (if whole-program?
                              (list "--whole-program")
                              '())
+                         (let ([key (session-key-for session-key-base "racket" (file-name-from-path dest))])
+                           (if key
+                               (list "--session-key" key)
+                               '()))
                          (list "--src"
                                (at-source ".")
                                "--dest"

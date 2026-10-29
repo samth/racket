@@ -87,6 +87,7 @@
                                                            'scheme-args scheme-args
                                                            'schemify "f"
                                                            'CONFIGURE_RACKET_SO_COMPILE (lookup 'CONFIGURE_RACKET_SO_COMPILE)
+                                                           'SESSION_KEY (lookup 'SESSION_KEY)
                                                            'COMPRESS_COMP (lookup 'COMPRESS_COMP)
                                                            'DISABLE_WPO (lookup 'DISABLE_WPO "f")
                                                            'UNSAFE_COMP (or (hash-ref vars 'UNSAFE_COMP #f)
@@ -118,11 +119,12 @@
                'exePostStep (lookup 'POST_LINKER)))
 
   (define (add-scheme-boot-config config)
-    (if (equal? (lookup 'ENABLE_EXTRA_CHECKS "no") "yes")
-        (hash-set* config
-                   'o "2"
-                   'd "1")
-        config))
+    (let ([config (hash-set config 'sessionKey (lookup 'SESSION_KEY ""))])
+      (if (equal? (lookup 'ENABLE_EXTRA_CHECKS "no") "yes")
+          (hash-set* config
+                     'o "2"
+                     'd "1")
+          config)))
 
   (define (add-windows-config config)
     (hash-set* config

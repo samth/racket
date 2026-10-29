@@ -49,6 +49,7 @@
 (define source-dir "")
 (define build-dir "")
 (define xpatch-path #f)
+(define session-key #f)
 
 (define-values (src dest deps)
   (let loop ([args (command-line-arguments)])
@@ -92,6 +93,10 @@
       => (lambda (args)
            (set! xpatch-path (car args))
            (loop (cdr args)))]
+     [(get-opt args "--session-key" 1)
+      => (lambda (args)
+           (set! session-key (car args))
+           (loop (cdr args)))]
      [(get-opt args "--show-cp0" 0)
       => (lambda (args)
            (run-cp0 (lambda (cp0 x)
@@ -108,6 +113,11 @@
 
 (when xpatch-path
   (load xpatch-path))
+
+;; For a reproducible build; see `session-key-for` in
+;; "ChezScheme/makefiles/lib.zuo"
+(when session-key
+  (#%$set-top-level-value! '$session-key session-key))
 
 ;; set these after xpatch is loaded, in case they're reset by the patch:
 (generate-wpo-files #t)

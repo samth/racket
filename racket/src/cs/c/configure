@@ -644,6 +644,7 @@ FRAMEWORK_REL_INSTALL
 FRAMEWORK_INSTALL_DIR
 BOOT_COMPRESS_COMP
 COMPRESS_COMP
+SESSION_KEY
 CONFIGURE_RACKET_SO_COMPILE
 DISABLE_CURSES
 DISABLE_ICONV
@@ -794,6 +795,7 @@ enable_target
 enable_pb
 enable_pbchunk
 enable_check
+enable_sessionkey
 enable_portable
 enable_natipkg
 enable_sdk
@@ -1485,6 +1487,7 @@ Optional Features:
   --enable-pb             build for platform without native-code backend
   --enable-pbchunk        enable C chunks for pb boot (enabled by default)
   --enable-check          enable extra safety checks for testing
+  --enable-sessionkey=<k> derive gensym names from <k> for a reproducible build
   --enable-portable       prefer portable to host-specific
   --enable-natipkg        use "natipkg" as shared-object convention
   --enable-nonatipkg      use "nonatipkg" as shared-object convention
@@ -2685,6 +2688,11 @@ fi
 # Check whether --enable-check was given.
 if test "${enable_check+set}" = set; then :
   enableval=$enable_check;
+fi
+
+# Check whether --enable-sessionkey was given.
+if test "${enable_sessionkey+set}" = set; then :
+  enableval=$enable_sessionkey;
 fi
 
 
@@ -6377,6 +6385,19 @@ done
 
 
 RKTIO_CONFIGURE_ARGS="${keep_configure_args} ${SUB_CONFIGURE_EXTRAS}"
+
+
+############## session key
+
+# The key's base for Chez Scheme's build, and through
+# CONFIGURE_RACKET_SO_COMPILE, for compiling the Racket core layers;
+# it must not contain spaces
+SESSION_KEY=""
+if test "${enable_sessionkey}" != "" -a "${enable_sessionkey}" != "no" ; then
+  SESSION_KEY="${enable_sessionkey}"
+  CONFIGURE_RACKET_SO_COMPILE="${CONFIGURE_RACKET_SO_COMPILE} PLT_CS_SESSION_KEY=${enable_sessionkey}"
+fi
+
 
 
 

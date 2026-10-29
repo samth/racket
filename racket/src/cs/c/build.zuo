@@ -118,11 +118,12 @@
                'exePostStep (lookup 'POST_LINKER)))
 
   (define (add-scheme-boot-config config)
-    (if (equal? (lookup 'ENABLE_EXTRA_CHECKS "no") "yes")
-        (hash-set* config
-                   'o "2"
-                   'd "1")
-        config))
+    (let ([config (hash-set config 'sessionKey (lookup 'SESSION_KEY ""))])
+      (if (equal? (lookup 'ENABLE_EXTRA_CHECKS "no") "yes")
+          (hash-set* config
+                     'o "2"
+                     'd "1")
+          config)))
 
   (define (add-windows-config config)
     (hash-set* config

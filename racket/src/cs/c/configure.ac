@@ -28,6 +28,7 @@ AC_ARG_ENABLE(target,     [  --enable-target=<mach>  cross-build for Chez Scheme
 AC_ARG_ENABLE(pb,         [  --enable-pb             build for platform without native-code backend])
 AC_ARG_ENABLE(pbchunk,    [  --enable-pbchunk        enable C chunks for pb boot (enabled by default)])
 AC_ARG_ENABLE(check,      [  --enable-check          enable extra safety checks for testing])
+AC_ARG_ENABLE(sessionkey, [  --enable-sessionkey=<k> derive gensym names from <k> for a reproducible build])
 m4_include(../ac/portable_arg.m4)
 m4_include(../ac/natipkg_arg.m4)
 m4_include(../ac/sdk_arg.m4)
@@ -898,6 +899,18 @@ m4_include(../ac/rktio_keep.m4)
 
 RKTIO_CONFIGURE_ARGS="${keep_configure_args} ${SUB_CONFIGURE_EXTRAS}"
 
+
+############## session key
+
+# The key's base for Chez Scheme's build, and through
+# CONFIGURE_RACKET_SO_COMPILE, for compiling the Racket core layers;
+# it must not contain spaces
+SESSION_KEY=""
+if test "${enable_sessionkey}" != "" -a "${enable_sessionkey}" != "no" ; then
+  SESSION_KEY="${enable_sessionkey}"
+  CONFIGURE_RACKET_SO_COMPILE="${CONFIGURE_RACKET_SO_COMPILE} PLT_CS_SESSION_KEY=${enable_sessionkey}"
+fi
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
@@ -935,6 +948,7 @@ AC_SUBST(LZ4_LIB)
 AC_SUBST(DISABLE_ICONV)
 AC_SUBST(DISABLE_CURSES)
 AC_SUBST(CONFIGURE_RACKET_SO_COMPILE)
+AC_SUBST(SESSION_KEY)
 AC_SUBST(COMPRESS_COMP)
 AC_SUBST(BOOT_COMPRESS_COMP)
 AC_SUBST(FRAMEWORK_INSTALL_DIR)

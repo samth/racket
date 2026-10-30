@@ -1,0 +1,80 @@
+[
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/binarytrees-output.txt",
+    "file": "fixtures/binarytrees-output.txt",
+    "bytes": 223,
+    "sha256": "b7f92c56b5d8aeb0a4d698842d1d87a57b4909865c3c84e5e10313e16663c3cb"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/fannkuchredux-output.txt",
+    "file": "fixtures/fannkuchredux-output.txt",
+    "bytes": 24,
+    "sha256": "2dc0a3cd4a547ba69389f97f3b447bd4d487fe6216c3cacd2f9bf8c908dc127f"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/fasta-output.txt",
+    "file": "fixtures/fasta-output.txt",
+    "bytes": 10245,
+    "sha256": "62d1e8d0df7938d2aefda9a37887e0389231ea72c099c29a51afb6edca1bdc73"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/knucleotide-input.txt",
+    "file": "fixtures/knucleotide-input.txt",
+    "bytes": 10245,
+    "sha256": "62d1e8d0df7938d2aefda9a37887e0389231ea72c099c29a51afb6edca1bdc73"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/knucleotide-output.txt",
+    "file": "fixtures/knucleotide-output.txt",
+    "bytes": 242,
+    "sha256": "baa63c46addb89c63e68ea0055952847fbccf450e89997b2b62234c90e66f500"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/mandelbrot-output.txt",
+    "file": "fixtures/mandelbrot-output.txt",
+    "bytes": 5011,
+    "sha256": "97610473750700638fc63d13cfa49d339b67c18e7f26b3f9c9acb61e746472d5"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/nbody-output.txt",
+    "file": "fixtures/nbody-output.txt",
+    "bytes": 26,
+    "sha256": "76de83d6d51a74f82828547423f516e7815cfe8cfea6290a2831aa173f806de7"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/pidigits-output.txt",
+    "file": "fixtures/pidigits-output.txt",
+    "bytes": 45,
+    "sha256": "dbf95cc20ad23ff1a385d30436f0c63b5ae7f41bb1003cf204f5e4888b74a39c"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/regexredux-input.txt",
+    "file": "fixtures/regexredux-input.txt",
+    "bytes": 10245,
+    "sha256": "62d1e8d0df7938d2aefda9a37887e0389231ea72c099c29a51afb6edca1bdc73"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/regexredux-output.txt",
+    "file": "fixtures/regexredux-output.txt",
+    "bytes": 262,
+    "sha256": "9f417691b946e86f2a86df4340c17f8b5c7bd5f977df525072c66c89b8a656f1"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/revcomp-input.txt",
+    "file": "fixtures/revcomp-input.txt",
+    "bytes": 10245,
+    "sha256": "62d1e8d0df7938d2aefda9a37887e0389231ea72c099c29a51afb6edca1bdc73"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/revcomp-output.txt",
+    "file": "fixtures/revcomp-output.txt",
+    "bytes": 10245,
+    "sha256": "549dcdcc7df2685145e6cbdfd682469bd9c12ff1beec93c270f8ba447acd4855"
+  },
+  {
+    "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/spectralnorm-output.txt",
+    "file": "fixtures/spectralnorm-output.txt",
+    "bytes": 12,
+    "sha256": "a95e11fa07f7b196ef488e73f67afbbbc16cf6a2c6de5f8d54ea49821fe604e6"
+  }
+]

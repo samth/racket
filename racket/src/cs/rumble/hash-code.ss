@@ -40,6 +40,12 @@
     (symbol-hash x)]
    [(number? x) (number-hash x)]
    [(char? x) (char->integer x)]
+   [(and (#%$record? x)
+         ;; PROTOTYPE: expander scopes carry a fixnum id in field 0
+         (let ([n (record-type-name (#%$record-type-descriptor x))])
+           (or (eq? n 'scope) (eq? n 'representative-scope) (eq? n 'interned-scope)))
+         (fixnum? (#%$record-ref x 0)))
+    (fxand (#%$record-ref x 0) (most-positive-fixnum))]
    [else
     (let ([p (eq-hashtable-try-atomic-cell codes x counter)])
       (cond

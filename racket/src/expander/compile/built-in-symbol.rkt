@@ -81,6 +81,7 @@
                apply-bytes-append
                call-with-module-prompt
                make-pthread-parameter
+               pthreads-started?
                engine-block
                make-mutex
                make-condition

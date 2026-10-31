@@ -851,6 +851,7 @@
           make-pthread-parameter
           fork-pthread
           pthread?
+          pthreads-started?
           get-thread-id
           get-initial-pthread
           make-condition

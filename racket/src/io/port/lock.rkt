@@ -63,19 +63,35 @@
 (define-syntax-rule (core-port-lock-cas! p old-v new-v)
   (unsafe-struct*-cas! p 2 old-v new-v))
 
+;; Until the place has a second OS thread (see `pthreads-started?`),
+;; the uninterruptible mode alone excludes other port users, so the
+;; fast path can use plain reads and writes instead of a CAS. Both
+;; ways produce the same lock states, and a place never goes back
+;; to having one OS thread, so the two can be mixed.
+
 (define-syntax-rule (port-lock p-expr)
   (let ([p p-expr])
     (start-uninterruptible)
     (assert-push-lock-level! 'port)
-    (unless (core-port-lock-cas! p #f #t)
-      (port-lock-slow p))
-    (memory-order-acquire)))
+    (cond
+      [(and (not (pthreads-started?))
+            (not (core-port-lock p)))
+       (set-core-port-lock! p #t)]
+      [else
+       (unless (core-port-lock-cas! p #f #t)
+         (port-lock-slow p))
+       (memory-order-acquire)])))
 
 (define-syntax-rule (port-unlock p-expr)
   (let ([p p-expr])
-    (memory-order-release)
-    (unless (core-port-lock-cas! p #t #f)
-      (port-unlock-slow p))
+    (cond
+      [(and (not (pthreads-started?))
+            (eq? #t (core-port-lock p)))
+       (set-core-port-lock! p #f)]
+      [else
+       (memory-order-release)
+       (unless (core-port-lock-cas! p #t #f)
+         (port-unlock-slow p))])
     (assert-pop-lock-level! 'port)
     ;; The intent of ending uninterruptible mode with
     ;; `end-atomic` is to include a future barrier exit, in

@@ -2480,6 +2480,7 @@
 (define 1/condition-signal condition-signal)
 (define 1/assert-push-lock-level! assert-push-lock-level!)
 (define 1/assert-pop-lock-level! assert-pop-lock-level!)
+(define 1/pthreads-started? pthreads-started?)
 (define finish_1970
   (make-struct-type-install-properties
    '(sandman)
@@ -4443,7 +4444,7 @@
              (if who3_0
                (raise-argument-error who3_0 "input-port?" v4_0)
                default_0))))))))
-(define finish_2218
+(define finish_2396
   (make-struct-type-install-properties
    '(core-input-port)
    2
@@ -4472,10 +4473,15 @@
                             (begin
                               (unsafe-start-uninterruptible)
                               (assert-push-lock-level! 'port)
-                              (if (unsafe-struct*-cas! i_1 2 #f #t)
-                                (void)
-                                (port-lock-slow i_1))
-                              (memory-order-acquire))
+                              (if (if (not (pthreads-started?))
+                                    (not (core-port-lock i_1))
+                                    #f)
+                                (set-core-port-lock! i_1 #t)
+                                (begin
+                                  (if (unsafe-struct*-cas! i_1 2 #f #t)
+                                    (void)
+                                    (port-lock-slow i_1))
+                                  (memory-order-acquire))))
                             (begin0
                               (|#%app|
                                byte-ready_0
@@ -4485,10 +4491,15 @@
                                   schedule-info-did-work!
                                   (|#%app| poll-ctx-sched-info poll-ctx_0))))
                               (begin
-                                (memory-order-release)
-                                (if (unsafe-struct*-cas! i_1 2 #t #f)
-                                  (void)
-                                  (port-unlock-slow i_1))
+                                (if (if (not (pthreads-started?))
+                                      (eq? #t (core-port-lock i_1))
+                                      #f)
+                                  (set-core-port-lock! i_1 #f)
+                                  (begin
+                                    (memory-order-release)
+                                    (if (unsafe-struct*-cas! i_1 2 #t #f)
+                                      (void)
+                                      (port-unlock-slow i_1))))
                                 (assert-pop-lock-level! 'port)
                                 (unsafe-end-atomic))))))
                      (if (evt? v_0)
@@ -4511,11 +4522,11 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2218 'proc)
-   (finish_2218 'arity)
+   (finish_2396 'proc)
+   (finish_2396 'arity)
    #f
    |#%system-inspector|))
-(define effect_2528 (finish_2218 struct:core-input-port))
+(define effect_2528 (finish_2396 struct:core-input-port))
 (define create-core-input-port
   (|#%name|
    create-core-input-port
@@ -4780,7 +4791,7 @@
              (if who3_0
                (raise-argument-error who3_0 "output-port?" v4_0)
                default_0))))))))
-(define finish_3032
+(define finish_2548
   (make-struct-type-install-properties
    '(core-output-port)
    4
@@ -4804,17 +4815,27 @@
                            (begin
                              (unsafe-start-uninterruptible)
                              (assert-push-lock-level! 'port)
-                             (if (unsafe-struct*-cas! o_1 2 #f #t)
-                               (void)
-                               (port-lock-slow o_1))
-                             (memory-order-acquire))
+                             (if (if (not (pthreads-started?))
+                                   (not (core-port-lock o_1))
+                                   #f)
+                               (set-core-port-lock! o_1 #t)
+                               (begin
+                                 (if (unsafe-struct*-cas! o_1 2 #f #t)
+                                   (void)
+                                   (port-lock-slow o_1))
+                                 (memory-order-acquire))))
                            (begin0
                              (core-port-closed? o_1)
                              (begin
-                               (memory-order-release)
-                               (if (unsafe-struct*-cas! o_1 2 #t #f)
-                                 (void)
-                                 (port-unlock-slow o_1))
+                               (if (if (not (pthreads-started?))
+                                     (eq? #t (core-port-lock o_1))
+                                     #f)
+                                 (set-core-port-lock! o_1 #f)
+                                 (begin
+                                   (memory-order-release)
+                                   (if (unsafe-struct*-cas! o_1 2 #t #f)
+                                     (void)
+                                     (port-unlock-slow o_1))))
                                (assert-pop-lock-level! 'port)
                                (unsafe-end-atomic))))
                        (values '(#t) #f)
@@ -4835,11 +4856,11 @@
    #f
    '(4 . 15)
    'make-struct-type
-   (finish_3032 'proc)
-   (finish_3032 'arity)
+   (finish_2548 'proc)
+   (finish_2548 'arity)
    #f
    |#%system-inspector|))
-(define effect_2808 (finish_3032 struct:core-output-port))
+(define effect_2808 (finish_2548 struct:core-output-port))
 (define create-core-output-port
   (|#%name|
    create-core-output-port
@@ -5030,10 +5051,13 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! out_0 2 #f #t)
-               (void)
-               (port-lock-slow out_0))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?)) (not (core-port-lock out_0)) #f)
+               (set-core-port-lock! out_0 #t)
+               (begin
+                 (if (unsafe-struct*-cas! out_0 2 #f #t)
+                   (void)
+                   (port-lock-slow out_0))
+                 (memory-order-acquire))))
            (let ((v_0
                   (|#%app|
                    (core-output-port-methods-write-out.1
@@ -5056,10 +5080,15 @@
                   src-start_0)
                  (void))
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! out_0 2 #t #f)
-                   (void)
-                   (port-unlock-slow out_0))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock out_0))
+                       #f)
+                   (set-core-port-lock! out_0 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! out_0 2 #t #f)
+                       (void)
+                       (port-unlock-slow out_0))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))
                (if (evt? v_0)
@@ -7376,17 +7405,27 @@
               (begin
                 (unsafe-start-uninterruptible)
                 (assert-push-lock-level! 'port)
-                (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                  (void)
-                  (port-lock-slow this-id_0))
-                (memory-order-acquire))
+                (if (if (not (pthreads-started?))
+                      (not (core-port-lock this-id_0))
+                      #f)
+                  (set-core-port-lock! this-id_0 #t)
+                  (begin
+                    (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                      (void)
+                      (port-lock-slow this-id_0))
+                    (memory-order-acquire))))
               (begin0
                 (begin (temp5.1$2 this-id_0) (temp4.1 this-id_0))
                 (begin
-                  (memory-order-release)
-                  (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                    (void)
-                    (port-unlock-slow this-id_0))
+                  (if (if (not (pthreads-started?))
+                        (eq? #t (core-port-lock this-id_0))
+                        #f)
+                    (set-core-port-lock! this-id_0 #f)
+                    (begin
+                      (memory-order-release)
+                      (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                        (void)
+                        (port-unlock-slow this-id_0))))
                   (assert-pop-lock-level! 'port)
                   (unsafe-end-atomic))))))
          (|#%name|
@@ -7407,10 +7446,15 @@
                    (begin
                      (unsafe-start-uninterruptible)
                      (assert-push-lock-level! 'port)
-                     (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                       (void)
-                       (port-lock-slow this-id_0))
-                     (memory-order-acquire))
+                     (if (if (not (pthreads-started?))
+                           (not (core-port-lock this-id_0))
+                           #f)
+                       (set-core-port-lock! this-id_0 #t)
+                       (begin
+                         (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                           (void)
+                           (port-lock-slow this-id_0))
+                         (memory-order-acquire))))
                    (begin0
                      (let ((amt_0
                             (fxmin
@@ -7446,10 +7490,15 @@
                              (temp1.1 this-id_0)
                              (|#%app| finish280_0 dest-bstr_0)))))
                      (begin
-                       (memory-order-release)
-                       (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                         (void)
-                         (port-unlock-slow this-id_0))
+                       (if (if (not (pthreads-started?))
+                             (eq? #t (core-port-lock this-id_0))
+                             #f)
+                         (set-core-port-lock! this-id_0 #f)
+                         (begin
+                           (memory-order-release)
+                           (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                             (void)
+                             (port-unlock-slow this-id_0))))
                        (assert-pop-lock-level! 'port)
                        (unsafe-end-atomic)))))))))
          (commit-input-port-methods-no-more-atomic-for-progress.1
@@ -7729,15 +7778,25 @@
          (begin
            (unsafe-start-uninterruptible)
            (assert-push-lock-level! 'port)
-           (if (unsafe-struct*-cas! p_1 2 #f #t) (void) (port-lock-slow p_1))
-           (memory-order-acquire))
+           (if (if (not (pthreads-started?)) (not (core-port-lock p_1)) #f)
+             (set-core-port-lock! p_1 #t)
+             (begin
+               (if (unsafe-struct*-cas! p_1 2 #f #t)
+                 (void)
+                 (port-lock-slow p_1))
+               (memory-order-acquire))))
          (begin0
            (core-port-closed? p_1)
            (begin
-             (memory-order-release)
-             (if (unsafe-struct*-cas! p_1 2 #t #f)
-               (void)
-               (port-unlock-slow p_1))
+             (if (if (not (pthreads-started?))
+                   (eq? #t (core-port-lock p_1))
+                   #f)
+               (set-core-port-lock! p_1 #f)
+               (begin
+                 (memory-order-release)
+                 (if (unsafe-struct*-cas! p_1 2 #t #f)
+                   (void)
+                   (port-unlock-slow p_1))))
              (assert-pop-lock-level! 'port)
              (unsafe-end-atomic))))))))
 (define close-port
@@ -7746,8 +7805,11 @@
       (begin
         (unsafe-start-uninterruptible)
         (assert-push-lock-level! 'port)
-        (if (unsafe-struct*-cas! p_0 2 #f #t) (void) (port-lock-slow p_0))
-        (memory-order-acquire))
+        (if (if (not (pthreads-started?)) (not (core-port-lock p_0)) #f)
+          (set-core-port-lock! p_0 #t)
+          (begin
+            (if (unsafe-struct*-cas! p_0 2 #f #t) (void) (port-lock-slow p_0))
+            (memory-order-acquire))))
       (begin0
         (if (core-port-closed? p_0)
           (void)
@@ -7755,8 +7817,13 @@
             (|#%app| (core-port-methods-close.1 (core-port-vtable p_0)) p_0)
             (set-closed-state! p_0)))
         (begin
-          (memory-order-release)
-          (if (unsafe-struct*-cas! p_0 2 #t #f) (void) (port-unlock-slow p_0))
+          (if (if (not (pthreads-started?)) (eq? #t (core-port-lock p_0)) #f)
+            (set-core-port-lock! p_0 #f)
+            (begin
+              (memory-order-release)
+              (if (unsafe-struct*-cas! p_0 2 #t #f)
+                (void)
+                (port-unlock-slow p_0))))
           (assert-pop-lock-level! 'port)
           (unsafe-end-atomic))))))
 (define set-closed-state!
@@ -7800,10 +7867,15 @@
                 (begin
                   (unsafe-start-uninterruptible)
                   (assert-push-lock-level! 'port)
-                  (if (unsafe-struct*-cas! p_1 2 #f #t)
-                    (void)
-                    (port-lock-slow p_1))
-                  (memory-order-acquire))
+                  (if (if (not (pthreads-started?))
+                        (not (core-port-lock p_1))
+                        #f)
+                    (set-core-port-lock! p_1 #t)
+                    (begin
+                      (if (unsafe-struct*-cas! p_1 2 #f #t)
+                        (void)
+                        (port-lock-slow p_1))
+                      (memory-order-acquire))))
                 (begin0
                   (let ((or-part_0 (core-port-closed-sema p_1)))
                     (if or-part_0
@@ -7817,10 +7889,15 @@
                             (void))
                           s_0))))
                   (begin
-                    (memory-order-release)
-                    (if (unsafe-struct*-cas! p_1 2 #t #f)
-                      (void)
-                      (port-unlock-slow p_1))
+                    (if (if (not (pthreads-started?))
+                          (eq? #t (core-port-lock p_1))
+                          #f)
+                      (set-core-port-lock! p_1 #f)
+                      (begin
+                        (memory-order-release)
+                        (if (unsafe-struct*-cas! p_1 2 #t #f)
+                          (void)
+                          (port-unlock-slow p_1))))
                     (assert-pop-lock-level! 'port)
                     (unsafe-end-atomic))))))
          (let ((self_0 #f))
@@ -7837,10 +7914,15 @@
          (if unlock1_0
            (|#%app| unlock1_0)
            (begin
-             (memory-order-release)
-             (if (unsafe-struct*-cas! cp4_0 2 #t #f)
-               (void)
-               (port-unlock-slow cp4_0))
+             (if (if (not (pthreads-started?))
+                   (eq? #t (core-port-lock cp4_0))
+                   #f)
+               (set-core-port-lock! cp4_0 #f)
+               (begin
+                 (memory-order-release)
+                 (if (unsafe-struct*-cas! cp4_0 2 #t #f)
+                   (void)
+                   (port-unlock-slow cp4_0))))
              (assert-pop-lock-level! 'port)
              (unsafe-end-atomic)))
          (let ((input?_0 (core-input-port? cp4_0)))
@@ -7885,18 +7967,28 @@
          (begin
            (unsafe-start-uninterruptible)
            (assert-push-lock-level! 'port)
-           (if (unsafe-struct*-cas! p_0 2 #f #t) (void) (port-lock-slow p_0))
-           (memory-order-acquire))
+           (if (if (not (pthreads-started?)) (not (core-port-lock p_0)) #f)
+             (set-core-port-lock! p_0 #t)
+             (begin
+               (if (unsafe-struct*-cas! p_0 2 #f #t)
+                 (void)
+                 (port-lock-slow p_0))
+               (memory-order-acquire))))
          (begin0
            (begin
              (check-not-closed.1 #f 'file-truncate p_0)
              (let ((p_1 (->core-output-port.1 unsafe-undefined p_0 #f)))
                (|#%app| (file-truncate-ref p_1) p_1 pos_0)))
            (begin
-             (memory-order-release)
-             (if (unsafe-struct*-cas! p_0 2 #t #f)
-               (void)
-               (port-unlock-slow p_0))
+             (if (if (not (pthreads-started?))
+                   (eq? #t (core-port-lock p_0))
+                   #f)
+               (set-core-port-lock! p_0 #f)
+               (begin
+                 (memory-order-release)
+                 (if (unsafe-struct*-cas! p_0 2 #t #f)
+                   (void)
+                   (port-unlock-slow p_0))))
              (assert-pop-lock-level! 'port)
              (unsafe-end-atomic))))))))
 (define 1/file-stream-buffer-mode
@@ -7916,17 +8008,27 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! p_1 2 #f #t) (void) (port-lock-slow p_1))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?)) (not (core-port-lock p_1)) #f)
+               (set-core-port-lock! p_1 #t)
+               (begin
+                 (if (unsafe-struct*-cas! p_1 2 #f #t)
+                   (void)
+                   (port-lock-slow p_1))
+                 (memory-order-acquire))))
            (begin0
              (begin
                (check-not-closed.1 #f 'file-stream-buffer-mode p_1)
                (if buffer-mode_0 (|#%app| buffer-mode_0 p_1) #f))
              (begin
-               (memory-order-release)
-               (if (unsafe-struct*-cas! p_1 2 #t #f)
-                 (void)
-                 (port-unlock-slow p_1))
+               (if (if (not (pthreads-started?))
+                     (eq? #t (core-port-lock p_1))
+                     #f)
+                 (set-core-port-lock! p_1 #f)
+                 (begin
+                   (memory-order-release)
+                   (if (unsafe-struct*-cas! p_1 2 #t #f)
+                     (void)
+                     (port-unlock-slow p_1))))
                (assert-pop-lock-level! 'port)
                (unsafe-end-atomic)))))))
     ((p_0 mode_0)
@@ -7962,10 +8064,15 @@
                        (begin
                          (unsafe-start-uninterruptible)
                          (assert-push-lock-level! 'port)
-                         (if (unsafe-struct*-cas! p_1 2 #f #t)
-                           (void)
-                           (port-lock-slow p_1))
-                         (memory-order-acquire))
+                         (if (if (not (pthreads-started?))
+                               (not (core-port-lock p_1))
+                               #f)
+                           (set-core-port-lock! p_1 #t)
+                           (begin
+                             (if (unsafe-struct*-cas! p_1 2 #f #t)
+                               (void)
+                               (port-lock-slow p_1))
+                             (memory-order-acquire))))
                        (begin0
                          (begin
                            (check-not-closed.1 #f 'file-stream-buffer-mode p_1)
@@ -7976,10 +8083,15 @@
                                (begin (|#%app| buffer-mode_0 p_1 mode_0) #t)
                                #f)))
                          (begin
-                           (memory-order-release)
-                           (if (unsafe-struct*-cas! p_1 2 #t #f)
-                             (void)
-                             (port-unlock-slow p_1))
+                           (if (if (not (pthreads-started?))
+                                 (eq? #t (core-port-lock p_1))
+                                 #f)
+                             (set-core-port-lock! p_1 #f)
+                             (begin
+                               (memory-order-release)
+                               (if (unsafe-struct*-cas! p_1 2 #t #f)
+                                 (void)
+                                 (port-unlock-slow p_1))))
                            (assert-pop-lock-level! 'port)
                            (unsafe-end-atomic))))))))
              (begin
@@ -8059,19 +8171,29 @@
                (begin
                  (unsafe-start-uninterruptible)
                  (assert-push-lock-level! 'port)
-                 (if (unsafe-struct*-cas! cp_0 2 #f #t)
-                   (void)
-                   (port-lock-slow cp_0))
-                 (memory-order-acquire))
+                 (if (if (not (pthreads-started?))
+                       (not (core-port-lock cp_0))
+                       #f)
+                   (set-core-port-lock! cp_0 #t)
+                   (begin
+                     (if (unsafe-struct*-cas! cp_0 2 #f #t)
+                       (void)
+                       (port-lock-slow cp_0))
+                     (memory-order-acquire))))
                (begin0
                  (begin
                    (check-not-closed.1 #f 'file-position cp_0)
                    (|#%app| file-position_0 cp_0 pos_0))
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! cp_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow cp_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock cp_0))
+                         #f)
+                     (set-core-port-lock! cp_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! cp_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow cp_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))))
              (raise-arguments-error
@@ -8098,8 +8220,13 @@
         (begin
           (unsafe-start-uninterruptible)
           (assert-push-lock-level! 'port)
-          (if (unsafe-struct*-cas! p_0 2 #f #t) (void) (port-lock-slow p_0))
-          (memory-order-acquire))
+          (if (if (not (pthreads-started?)) (not (core-port-lock p_0)) #f)
+            (set-core-port-lock! p_0 #t)
+            (begin
+              (if (unsafe-struct*-cas! p_0 2 #f #t)
+                (void)
+                (port-lock-slow p_0))
+              (memory-order-acquire))))
         (begin
           (check-not-closed.1 #f who_0 p_0)
           (let ((file-position_0
@@ -8108,10 +8235,15 @@
                   (if or-part_0 or-part_0 (1/output-port? file-position_0)))
               (begin
                 (begin
-                  (memory-order-release)
-                  (if (unsafe-struct*-cas! p_0 2 #t #f)
-                    (void)
-                    (port-unlock-slow p_0))
+                  (if (if (not (pthreads-started?))
+                        (eq? #t (core-port-lock p_0))
+                        #f)
+                    (set-core-port-lock! p_0 #f)
+                    (begin
+                      (memory-order-release)
+                      (if (unsafe-struct*-cas! p_0 2 #t #f)
+                        (void)
+                        (port-unlock-slow p_0))))
                   (assert-pop-lock-level! 'port)
                   (unsafe-end-atomic))
                 (do-simple-file-position who_0 file-position_0 fail-k_0))
@@ -8123,10 +8255,15 @@
                        (if or-part_0 or-part_0 (get-core-port-offset p_0)))))
                 (begin
                   (begin
-                    (memory-order-release)
-                    (if (unsafe-struct*-cas! p_0 2 #t #f)
-                      (void)
-                      (port-unlock-slow p_0))
+                    (if (if (not (pthreads-started?))
+                          (eq? #t (core-port-lock p_0))
+                          #f)
+                      (set-core-port-lock! p_0 #f)
+                      (begin
+                        (memory-order-release)
+                        (if (unsafe-struct*-cas! p_0 2 #t #f)
+                          (void)
+                          (port-unlock-slow p_0))))
                     (assert-pop-lock-level! 'port)
                     (unsafe-end-atomic))
                   (if pos_0 pos_0 (|#%app| fail-k_0)))))))))))
@@ -8155,8 +8292,13 @@
          (begin
            (unsafe-start-uninterruptible)
            (assert-push-lock-level! 'port)
-           (if (unsafe-struct*-cas! p_1 2 #f #t) (void) (port-lock-slow p_1))
-           (memory-order-acquire))
+           (if (if (not (pthreads-started?)) (not (core-port-lock p_1)) #f)
+             (set-core-port-lock! p_1 #t)
+             (begin
+               (if (unsafe-struct*-cas! p_1 2 #f #t)
+                 (void)
+                 (port-lock-slow p_1))
+               (memory-order-acquire))))
          (begin0
            (begin
              (check-not-closed.1 #f 'port-count-lines! p_1)
@@ -8178,10 +8320,15 @@
                          (core-port-vtable p_1))))
                    (if count-lines!_0 (|#%app| count-lines!_0 p_1) (void))))))
            (begin
-             (memory-order-release)
-             (if (unsafe-struct*-cas! p_1 2 #t #f)
-               (void)
-               (port-unlock-slow p_1))
+             (if (if (not (pthreads-started?))
+                   (eq? #t (core-port-lock p_1))
+                   #f)
+               (set-core-port-lock! p_1 #f)
+               (begin
+                 (memory-order-release)
+                 (if (unsafe-struct*-cas! p_1 2 #t #f)
+                   (void)
+                   (port-unlock-slow p_1))))
              (assert-pop-lock-level! 'port)
              (unsafe-end-atomic))))))))
 (define 1/port-counts-lines?
@@ -8212,10 +8359,13 @@
              (begin
                (unsafe-start-uninterruptible)
                (assert-push-lock-level! 'port)
-               (if (unsafe-struct*-cas! p_1 2 #f #t)
-                 (void)
-                 (port-lock-slow p_1))
-               (memory-order-acquire))
+               (if (if (not (pthreads-started?)) (not (core-port-lock p_1)) #f)
+                 (set-core-port-lock! p_1 #t)
+                 (begin
+                   (if (unsafe-struct*-cas! p_1 2 #f #t)
+                     (void)
+                     (port-lock-slow p_1))
+                   (memory-order-acquire))))
              (begin0
                (begin
                  (check-not-closed.1 #f 'port-next-location p_1)
@@ -8228,10 +8378,15 @@
                        (let ((app_1 (location-column loc_0)))
                          (values app_0 app_1 (location-position loc_0)))))))
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! p_1 2 #t #f)
-                   (void)
-                   (port-unlock-slow p_1))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock p_1))
+                       #f)
+                   (set-core-port-lock! p_1 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! p_1 2 #t #f)
+                       (void)
+                       (port-unlock-slow p_1))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))))
            (if (core-port-methods-file-position.1 (core-port-vtable p_1))
@@ -8246,17 +8401,27 @@
                       (begin
                         (unsafe-start-uninterruptible)
                         (assert-push-lock-level! 'port)
-                        (if (unsafe-struct*-cas! p_1 2 #f #t)
-                          (void)
-                          (port-lock-slow p_1))
-                        (memory-order-acquire))
+                        (if (if (not (pthreads-started?))
+                              (not (core-port-lock p_1))
+                              #f)
+                          (set-core-port-lock! p_1 #t)
+                          (begin
+                            (if (unsafe-struct*-cas! p_1 2 #f #t)
+                              (void)
+                              (port-lock-slow p_1))
+                            (memory-order-acquire))))
                       (begin0
                         (get-core-port-offset p_1)
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! p_1 2 #t #f)
-                            (void)
-                            (port-unlock-slow p_1))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock p_1))
+                                #f)
+                            (set-core-port-lock! p_1 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! p_1 2 #t #f)
+                                (void)
+                                (port-unlock-slow p_1))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic))))))
                (values #f #f (if offset_0 (add1 offset_0) #f))))))))))
@@ -8298,8 +8463,13 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! p_1 2 #f #t) (void) (port-lock-slow p_1))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?)) (not (core-port-lock p_1)) #f)
+               (set-core-port-lock! p_1 #t)
+               (begin
+                 (if (unsafe-struct*-cas! p_1 2 #f #t)
+                   (void)
+                   (port-lock-slow p_1))
+                 (memory-order-acquire))))
            (begin0
              (let ((loc_0 (core-port-count p_1)))
                (if (if loc_0
@@ -8313,10 +8483,15 @@
                    (set-location-position! loc_0 pos_0))
                  (void)))
              (begin
-               (memory-order-release)
-               (if (unsafe-struct*-cas! p_1 2 #t #f)
-                 (void)
-                 (port-unlock-slow p_1))
+               (if (if (not (pthreads-started?))
+                     (eq? #t (core-port-lock p_1))
+                     #f)
+                 (set-core-port-lock! p_1 #f)
+                 (begin
+                   (memory-order-release)
+                   (if (unsafe-struct*-cas! p_1 2 #t #f)
+                     (void)
+                     (port-unlock-slow p_1))))
                (assert-pop-lock-level! 'port)
                (unsafe-end-atomic)))))))))
 (define port-count!
@@ -8602,10 +8777,15 @@
                  (end-rktio-sleep-relevant)
                  (end-rktio)
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! p5_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow p5_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock p5_0))
+                         #f)
+                     (set-core-port-lock! p5_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! p5_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow p5_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))
                  (let ((base-msg_0 "error closing stream port"))
@@ -8935,10 +9115,15 @@
                           (if (vector? n_0)
                             (begin
                               (begin
-                                (memory-order-release)
-                                (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                                  (void)
-                                  (port-unlock-slow this-id_0))
+                                (if (if (not (pthreads-started?))
+                                      (eq? #t (core-port-lock this-id_0))
+                                      #f)
+                                  (set-core-port-lock! this-id_0 #f)
+                                  (begin
+                                    (memory-order-release)
+                                    (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                                      (void)
+                                      (port-unlock-slow this-id_0))))
                                 (assert-pop-lock-level! 'port)
                                 (unsafe-end-atomic))
                               (|#%app|
@@ -9055,7 +9240,7 @@
               p19_0
               (register-fd-close cust_0 fd_0 fd-refcount_0 #f p19_0))
              (finish-port/count p19_0))))))))
-(define finish_2420
+(define finish_2672
   (make-struct-type-install-properties
    '(fd-output-port)
    8
@@ -9085,10 +9270,15 @@
            (if (vector? result_0)
              (begin
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! p_0 2 #t #f)
-                   (void)
-                   (port-unlock-slow p_0))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock p_0))
+                       #f)
+                   (set-core-port-lock! p_0 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! p_0 2 #t #f)
+                       (void)
+                       (port-unlock-slow p_0))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))
                (let ((base-msg_0 "error setting file size"))
@@ -9123,11 +9313,11 @@
    #f
    '(8 . 255)
    'make-struct-type
-   (finish_2420 'proc)
-   (finish_2420 'arity)
+   (finish_2672 'proc)
+   (finish_2672 'arity)
    #f
    |#%system-inspector|))
-(define effect_2896 (finish_2420 struct:fd-output-port))
+(define effect_2896 (finish_2672 struct:fd-output-port))
 (define create-fd-output-port
   (|#%name|
    create-fd-output-port
@@ -9437,10 +9627,15 @@
                                n_0))
                             (begin
                               (begin
-                                (memory-order-release)
-                                (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                                  (void)
-                                  (port-unlock-slow this-id_0))
+                                (if (if (not (pthreads-started?))
+                                      (eq? #t (core-port-lock this-id_0))
+                                      #f)
+                                  (set-core-port-lock! this-id_0 #f)
+                                  (begin
+                                    (memory-order-release)
+                                    (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                                      (void)
+                                      (port-unlock-slow this-id_0))))
                                 (assert-pop-lock-level! 'port)
                                 (unsafe-end-atomic))
                               (|#%app|
@@ -9553,10 +9748,15 @@
                     n_0))
                  (begin
                    (begin
-                     (memory-order-release)
-                     (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                       (void)
-                       (port-unlock-slow this-id_0))
+                     (if (if (not (pthreads-started?))
+                           (eq? #t (core-port-lock this-id_0))
+                           #f)
+                       (set-core-port-lock! this-id_0 #f)
+                       (begin
+                         (memory-order-release)
+                         (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                           (void)
+                           (port-unlock-slow this-id_0))))
                      (assert-pop-lock-level! 'port)
                      (unsafe-end-atomic))
                    (|#%app|
@@ -9590,10 +9790,15 @@
              (void)
              (begin
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                   (void)
-                   (port-unlock-slow this-id_0))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock this-id_0))
+                       #f)
+                   (set-core-port-lock! this-id_0 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                       (void)
+                       (port-unlock-slow this-id_0))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))
                (if enable-break?757_0
@@ -9602,10 +9807,15 @@
                (begin
                  (unsafe-start-uninterruptible)
                  (assert-push-lock-level! 'port)
-                 (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                   (void)
-                   (port-lock-slow this-id_0))
-                 (memory-order-acquire))
+                 (if (if (not (pthreads-started?))
+                       (not (core-port-lock this-id_0))
+                       #f)
+                   (set-core-port-lock! this-id_0 #t)
+                   (begin
+                     (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                       (void)
+                       (port-lock-slow this-id_0))
+                     (memory-order-acquire))))
                (if (fd-output-port-bstr this-id_0) (loop_0) (void))))))))
       (loop_0)))))
 (define temp23.1
@@ -9656,20 +9866,30 @@
        (void)
        (begin
          (begin
-           (memory-order-release)
-           (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-             (void)
-             (port-unlock-slow this-id_0))
+           (if (if (not (pthreads-started?))
+                 (eq? #t (core-port-lock this-id_0))
+                 #f)
+             (set-core-port-lock! this-id_0 #f)
+             (begin
+               (memory-order-release)
+               (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                 (void)
+                 (port-unlock-slow this-id_0))))
            (assert-pop-lock-level! 'port)
            (unsafe-end-atomic))
          (sync (rktio-fd-flushed-evt50.1 this-id_0))
          (begin
            (unsafe-start-uninterruptible)
            (assert-push-lock-level! 'port)
-           (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-             (void)
-             (port-lock-slow this-id_0))
-           (memory-order-acquire))
+           (if (if (not (pthreads-started?))
+                 (not (core-port-lock this-id_0))
+                 #f)
+             (set-core-port-lock! this-id_0 #t)
+             (begin
+               (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                 (void)
+                 (port-lock-slow this-id_0))
+               (memory-order-acquire))))
          (temp24.1 this-id_0))))))
 (define open-output-fd.1
   (|#%name|
@@ -9743,17 +9963,27 @@
                              (begin
                                (unsafe-start-uninterruptible)
                                (assert-push-lock-level! 'port)
-                               (if (unsafe-struct*-cas! p47_0 2 #f #t)
-                                 (void)
-                                 (port-lock-slow p47_0))
-                               (memory-order-acquire))
+                               (if (if (not (pthreads-started?))
+                                     (not (core-port-lock p47_0))
+                                     #f)
+                                 (set-core-port-lock! p47_0 #t)
+                                 (begin
+                                   (if (unsafe-struct*-cas! p47_0 2 #f #t)
+                                     (void)
+                                     (port-lock-slow p47_0))
+                                   (memory-order-acquire))))
                              (begin0
                                (temp22.1 p47_0 #f)
                                (begin
-                                 (memory-order-release)
-                                 (if (unsafe-struct*-cas! p47_0 2 #t #f)
-                                   (void)
-                                   (port-unlock-slow p47_0))
+                                 (if (if (not (pthreads-started?))
+                                       (eq? #t (core-port-lock p47_0))
+                                       #f)
+                                   (set-core-port-lock! p47_0 #f)
+                                   (begin
+                                     (memory-order-release)
+                                     (if (unsafe-struct*-cas! p47_0 2 #t #f)
+                                       (void)
+                                       (port-unlock-slow p47_0))))
                                  (assert-pop-lock-level! 'port)
                                  (unsafe-end-atomic))))))
                         #f)))
@@ -9784,10 +10014,13 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! cp_0 2 #f #t)
-               (void)
-               (port-lock-slow cp_0))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?)) (not (core-port-lock cp_0)) #f)
+               (set-core-port-lock! cp_0 #t)
+               (begin
+                 (if (unsafe-struct*-cas! cp_0 2 #f #t)
+                   (void)
+                   (port-lock-slow cp_0))
+                 (memory-order-acquire))))
            (begin0
              (let ((fd_0 (fd-port-fd cp_0)))
                (if fd_0
@@ -9797,10 +10030,15 @@
                   fd_0)
                  #f))
              (begin
-               (memory-order-release)
-               (if (unsafe-struct*-cas! cp_0 2 #t #f)
-                 (void)
-                 (port-unlock-slow cp_0))
+               (if (if (not (pthreads-started?))
+                     (eq? #t (core-port-lock cp_0))
+                     #f)
+                 (set-core-port-lock! cp_0 #f)
+                 (begin
+                   (memory-order-release)
+                   (if (unsafe-struct*-cas! cp_0 2 #t #f)
+                     (void)
+                     (port-unlock-slow cp_0))))
                (assert-pop-lock-level! 'port)
                (unsafe-end-atomic)))))))))
 (define fd-port-fd
@@ -9819,10 +10057,15 @@
              (begin
                (unsafe-start-uninterruptible)
                (assert-push-lock-level! 'port)
-               (if (unsafe-struct*-cas! cp_0 2 #f #t)
-                 (void)
-                 (port-lock-slow cp_0))
-               (memory-order-acquire))
+               (if (if (not (pthreads-started?))
+                     (not (core-port-lock cp_0))
+                     #f)
+                 (set-core-port-lock! cp_0 #t)
+                 (begin
+                   (if (unsafe-struct*-cas! cp_0 2 #f #t)
+                     (void)
+                     (port-lock-slow cp_0))
+                   (memory-order-acquire))))
              (begin0
                (if (core-port-closed? cp_0)
                  #f
@@ -9836,10 +10079,15 @@
                         fd_0)
                        (end-rktio)))))
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! cp_0 2 #t #f)
-                   (void)
-                   (port-unlock-slow cp_0))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock cp_0))
+                       #f)
+                   (set-core-port-lock! cp_0 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! cp_0 2 #t #f)
+                       (void)
+                       (port-unlock-slow cp_0))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))))
            #f)
@@ -9877,10 +10125,13 @@
       (if (vector? r_0)
         (begin
           (begin
-            (memory-order-release)
-            (if (unsafe-struct*-cas! p_0 2 #t #f)
-              (void)
-              (port-unlock-slow p_0))
+            (if (if (not (pthreads-started?)) (eq? #t (core-port-lock p_0)) #f)
+              (set-core-port-lock! p_0 #f)
+              (begin
+                (memory-order-release)
+                (if (unsafe-struct*-cas! p_0 2 #t #f)
+                  (void)
+                  (port-unlock-slow p_0))))
             (assert-pop-lock-level! 'port)
             (unsafe-end-atomic))
           (let ((base-msg_0 "error setting stream position"))
@@ -10053,7 +10304,7 @@
 (define fd-evt-woke?
   (lambda (fde_0)
     (let ((b_0 (fd-evt-wake-box fde_0))) (if b_0 (unbox b_0) #f))))
-(define finish_2435
+(define finish_2728
   (make-struct-type-install-properties
    '(rktio-fd-flushed-evt)
    1
@@ -10070,17 +10321,27 @@
                 (begin
                   (unsafe-start-uninterruptible)
                   (assert-push-lock-level! 'port)
-                  (if (unsafe-struct*-cas! p_0 2 #f #t)
-                    (void)
-                    (port-lock-slow p_0))
-                  (memory-order-acquire))
+                  (if (if (not (pthreads-started?))
+                        (not (core-port-lock p_0))
+                        #f)
+                    (set-core-port-lock! p_0 #t)
+                    (begin
+                      (if (unsafe-struct*-cas! p_0 2 #f #t)
+                        (void)
+                        (port-lock-slow p_0))
+                      (memory-order-acquire))))
                 (begin0
                   (temp28.1 p_0)
                   (begin
-                    (memory-order-release)
-                    (if (unsafe-struct*-cas! p_0 2 #t #f)
-                      (void)
-                      (port-unlock-slow p_0))
+                    (if (if (not (pthreads-started?))
+                          (eq? #t (core-port-lock p_0))
+                          #f)
+                      (set-core-port-lock! p_0 #f)
+                      (begin
+                        (memory-order-release)
+                        (if (unsafe-struct*-cas! p_0 2 #t #f)
+                          (void)
+                          (port-unlock-slow p_0))))
                     (assert-pop-lock-level! 'port)
                     (unsafe-end-atomic))))
             (values '(#t) #f)
@@ -10092,10 +10353,15 @@
                    (begin
                      (unsafe-start-uninterruptible)
                      (assert-push-lock-level! 'port)
-                     (if (unsafe-struct*-cas! p_0 2 #f #t)
-                       (void)
-                       (port-lock-slow p_0))
-                     (memory-order-acquire))
+                     (if (if (not (pthreads-started?))
+                           (not (core-port-lock p_0))
+                           #f)
+                       (set-core-port-lock! p_0 #t)
+                       (begin
+                         (if (unsafe-struct*-cas! p_0 2 #f #t)
+                           (void)
+                           (port-lock-slow p_0))
+                         (memory-order-acquire))))
                    (begin0
                      (if (temp28.1 p_0)
                        (|#%app|
@@ -10110,10 +10376,15 @@
                           ps_0
                           8)))
                      (begin
-                       (memory-order-release)
-                       (if (unsafe-struct*-cas! p_0 2 #t #f)
-                         (void)
-                         (port-unlock-slow p_0))
+                       (if (if (not (pthreads-started?))
+                             (eq? #t (core-port-lock p_0))
+                             #f)
+                         (set-core-port-lock! p_0 #f)
+                         (begin
+                           (memory-order-release)
+                           (if (unsafe-struct*-cas! p_0 2 #t #f)
+                             (void)
+                             (port-unlock-slow p_0))))
                        (assert-pop-lock-level! 'port)
                        (unsafe-end-atomic))))))
               (values #f (list ffe_0)))))))))
@@ -10132,11 +10403,11 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2435 'proc)
-   (finish_2435 'arity)
+   (finish_2728 'proc)
+   (finish_2728 'arity)
    #f
    |#%system-inspector|))
-(define effect_2170 (finish_2435 struct:rktio-fd-flushed-evt))
+(define effect_2170 (finish_2728 struct:rktio-fd-flushed-evt))
 (define rktio-fd-flushed-evt50.1
   (|#%name|
    rktio-fd-flushed-evt
@@ -10188,10 +10459,15 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! port_1 2 #f #t)
-               (void)
-               (port-lock-slow port_1))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?))
+                   (not (core-port-lock port_1))
+                   #f)
+               (set-core-port-lock! port_1 #t)
+               (begin
+                 (if (unsafe-struct*-cas! port_1 2 #f #t)
+                   (void)
+                   (port-lock-slow port_1))
+                 (memory-order-acquire))))
            (begin0
              (begin
                (start-rktio)
@@ -10212,10 +10488,15 @@
                    (end-rktio-sleep-relevant))
                  (end-rktio)))
              (begin
-               (memory-order-release)
-               (if (unsafe-struct*-cas! port_1 2 #t #f)
-                 (void)
-                 (port-unlock-slow port_1))
+               (if (if (not (pthreads-started?))
+                     (eq? #t (core-port-lock port_1))
+                     #f)
+                 (set-core-port-lock! port_1 #f)
+                 (begin
+                   (memory-order-release)
+                   (if (unsafe-struct*-cas! port_1 2 #t #f)
+                     (void)
+                     (port-unlock-slow port_1))))
                (assert-pop-lock-level! 'port)
                (unsafe-end-atomic))))))
      #f
@@ -10231,17 +10512,25 @@
       (begin
         (unsafe-start-uninterruptible)
         (assert-push-lock-level! 'port)
-        (if (unsafe-struct*-cas! port_0 2 #f #t)
-          (void)
-          (port-lock-slow port_0))
-        (memory-order-acquire))
+        (if (if (not (pthreads-started?)) (not (core-port-lock port_0)) #f)
+          (set-core-port-lock! port_0 #t)
+          (begin
+            (if (unsafe-struct*-cas! port_0 2 #f #t)
+              (void)
+              (port-lock-slow port_0))
+            (memory-order-acquire))))
       (if (core-port-closed? port_0)
         (begin
           (begin
-            (memory-order-release)
-            (if (unsafe-struct*-cas! port_0 2 #t #f)
-              (void)
-              (port-unlock-slow port_0))
+            (if (if (not (pthreads-started?))
+                  (eq? #t (core-port-lock port_0))
+                  #f)
+              (set-core-port-lock! port_0 #f)
+              (begin
+                (memory-order-release)
+                (if (unsafe-struct*-cas! port_0 2 #t #f)
+                  (void)
+                  (port-unlock-slow port_0))))
             (assert-pop-lock-level! 'port)
             (unsafe-end-atomic))
           #f)
@@ -10280,10 +10569,15 @@
                                  name_1))))))))
                   (begin
                     (begin
-                      (memory-order-release)
-                      (if (unsafe-struct*-cas! port_0 2 #t #f)
-                        (void)
-                        (port-unlock-slow port_0))
+                      (if (if (not (pthreads-started?))
+                            (eq? #t (core-port-lock port_0))
+                            #f)
+                        (set-core-port-lock! port_0 #f)
+                        (begin
+                          (memory-order-release)
+                          (if (unsafe-struct*-cas! port_0 2 #t #f)
+                            (void)
+                            (port-unlock-slow port_0))))
                       (assert-pop-lock-level! 'port)
                       (unsafe-end-atomic))
                     (lambda ()
@@ -10305,10 +10599,15 @@
               (begin
                 (end-rktio)
                 (begin
-                  (memory-order-release)
-                  (if (unsafe-struct*-cas! port_0 2 #t #f)
-                    (void)
-                    (port-unlock-slow port_0))
+                  (if (if (not (pthreads-started?))
+                        (eq? #t (core-port-lock port_0))
+                        #f)
+                    (set-core-port-lock! port_0 #f)
+                    (begin
+                      (memory-order-release)
+                      (if (unsafe-struct*-cas! port_0 2 #t #f)
+                        (void)
+                        (port-unlock-slow port_0))))
                   (assert-pop-lock-level! 'port)
                   (unsafe-end-atomic))
                 (let ((base-msg_0 "error during dup of file descriptor"))
@@ -10651,10 +10950,15 @@
                     (begin
                       (unsafe-start-uninterruptible)
                       (assert-push-lock-level! 'port)
-                      (if (unsafe-struct*-cas! in_1 2 #f #t)
-                        (void)
-                        (port-lock-slow in_1))
-                      (memory-order-acquire))
+                      (if (if (not (pthreads-started?))
+                            (not (core-port-lock in_1))
+                            #f)
+                        (set-core-port-lock! in_1 #t)
+                        (begin
+                          (if (unsafe-struct*-cas! in_1 2 #f #t)
+                            (void)
+                            (port-lock-slow in_1))
+                          (memory-order-acquire))))
                     (begin0
                       (let ((app_0
                              (core-input-port-methods-commit.1
@@ -10672,10 +10976,15 @@
                             bstr_0
                             0))))
                       (begin
-                        (memory-order-release)
-                        (if (unsafe-struct*-cas! in_1 2 #t #f)
-                          (void)
-                          (port-unlock-slow in_1))
+                        (if (if (not (pthreads-started?))
+                              (eq? #t (core-port-lock in_1))
+                              #f)
+                          (set-core-port-lock! in_1 #f)
+                          (begin
+                            (memory-order-release)
+                            (if (unsafe-struct*-cas! in_1 2 #t #f)
+                              (void)
+                              (port-unlock-slow in_1))))
                         (assert-pop-lock-level! 'port)
                         (unsafe-end-atomic)))))))))))
     (|#%name|
@@ -10722,18 +11031,28 @@
              (begin
                (unsafe-start-uninterruptible)
                (assert-push-lock-level! 'port)
-               (if (unsafe-struct*-cas! in_0 2 #f #t)
-                 (void)
-                 (port-lock-slow in_0))
-               (memory-order-acquire))
+               (if (if (not (pthreads-started?))
+                     (not (core-port-lock in_0))
+                     #f)
+                 (set-core-port-lock! in_0 #t)
+                 (begin
+                   (if (unsafe-struct*-cas! in_0 2 #f #t)
+                     (void)
+                     (port-lock-slow in_0))
+                   (memory-order-acquire))))
              (prepare-change in_0)
              (if (fx= start16_0 end17_0)
                (begin
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! in_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow in_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock in_0))
+                         #f)
+                     (set-core-port-lock! in_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! in_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow in_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))
                  0)
@@ -10745,10 +11064,15 @@
                        (void)
                        (set-core-input-port-pending-eof?! in_0 #f))
                      (begin
-                       (memory-order-release)
-                       (if (unsafe-struct*-cas! in_0 2 #t #f)
-                         (void)
-                         (port-unlock-slow in_0))
+                       (if (if (not (pthreads-started?))
+                             (eq? #t (core-port-lock in_0))
+                             #f)
+                         (set-core-port-lock! in_0 #f)
+                         (begin
+                           (memory-order-release)
+                           (if (unsafe-struct*-cas! in_0 2 #t #f)
+                             (void)
+                             (port-unlock-slow in_0))))
                        (assert-pop-lock-level! 'port)
                        (unsafe-end-atomic))
                      eof)
@@ -10781,10 +11105,15 @@
                                     start16_0)
                                    (void))
                                  (begin
-                                   (memory-order-release)
-                                   (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                     (void)
-                                     (port-unlock-slow in_0))
+                                   (if (if (not (pthreads-started?))
+                                         (eq? #t (core-port-lock in_0))
+                                         #f)
+                                     (set-core-port-lock! in_0 #f)
+                                     (begin
+                                       (memory-order-release)
+                                       (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                         (void)
+                                         (port-unlock-slow in_0))))
                                    (assert-pop-lock-level! 'port)
                                    (unsafe-end-atomic))
                                  v_0)))
@@ -10822,14 +11151,19 @@
                                               #f)
                                              (void)))
                                          (begin
-                                           (memory-order-release)
-                                           (if (unsafe-struct*-cas!
-                                                in_0
-                                                2
-                                                #t
-                                                #f)
-                                             (void)
-                                             (port-unlock-slow in_0))
+                                           (if (if (not (pthreads-started?))
+                                                 (eq? #t (core-port-lock in_0))
+                                                 #f)
+                                             (set-core-port-lock! in_0 #f)
+                                             (begin
+                                               (memory-order-release)
+                                               (if (unsafe-struct*-cas!
+                                                    in_0
+                                                    2
+                                                    #t
+                                                    #f)
+                                                 (void)
+                                                 (port-unlock-slow in_0))))
                                            (assert-pop-lock-level! 'port)
                                            (unsafe-end-atomic))
                                          (if (exact-nonnegative-integer? v_1)
@@ -10887,15 +11221,25 @@
                                                            (unsafe-start-uninterruptible)
                                                            (assert-push-lock-level!
                                                             'port)
-                                                           (if (unsafe-struct*-cas!
-                                                                in_0
-                                                                2
-                                                                #f
-                                                                #t)
-                                                             (void)
-                                                             (port-lock-slow
-                                                              in_0))
-                                                           (memory-order-acquire))
+                                                           (if (if (not
+                                                                    (pthreads-started?))
+                                                                 (not
+                                                                  (core-port-lock
+                                                                   in_0))
+                                                                 #f)
+                                                             (set-core-port-lock!
+                                                              in_0
+                                                              #t)
+                                                             (begin
+                                                               (if (unsafe-struct*-cas!
+                                                                    in_0
+                                                                    2
+                                                                    #f
+                                                                    #t)
+                                                                 (void)
+                                                                 (port-lock-slow
+                                                                  in_0))
+                                                               (memory-order-acquire))))
                                                          (result-loop_0
                                                           next-v_0)))))
                                                  (if (procedure? v_1)
@@ -10924,10 +11268,15 @@
                                   (result-loop_0 v_0)))
                                (begin
                                  (begin
-                                   (memory-order-release)
-                                   (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                     (void)
-                                     (port-unlock-slow in_0))
+                                   (if (if (not (pthreads-started?))
+                                         (eq? #t (core-port-lock in_0))
+                                         #f)
+                                     (set-core-port-lock! in_0 #f)
+                                     (begin
+                                       (memory-order-release)
+                                       (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                         (void)
+                                         (port-unlock-slow in_0))))
                                    (assert-pop-lock-level! 'port)
                                    (unsafe-end-atomic))
                                  (let ((app_0
@@ -10965,28 +11314,43 @@
              (begin
                (unsafe-start-uninterruptible)
                (assert-push-lock-level! 'port)
-               (if (unsafe-struct*-cas! in_0 2 #f #t)
-                 (void)
-                 (port-lock-slow in_0))
-               (memory-order-acquire))
+               (if (if (not (pthreads-started?))
+                     (not (core-port-lock in_0))
+                     #f)
+                 (set-core-port-lock! in_0 #t)
+                 (begin
+                   (if (unsafe-struct*-cas! in_0 2 #f #t)
+                     (void)
+                     (port-lock-slow in_0))
+                   (memory-order-acquire))))
              (prepare-change in_0)
              (if (= start34_0 end35_0)
                (begin
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! in_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow in_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock in_0))
+                         #f)
+                     (set-core-port-lock! in_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! in_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow in_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))
                  0)
                (if (if progress-evt19_0 (sync/timeout 0 progress-evt19_0) #f)
                  (begin
                    (begin
-                     (memory-order-release)
-                     (if (unsafe-struct*-cas! in_0 2 #t #f)
-                       (void)
-                       (port-unlock-slow in_0))
+                     (if (if (not (pthreads-started?))
+                           (eq? #t (core-port-lock in_0))
+                           #f)
+                       (set-core-port-lock! in_0 #f)
+                       (begin
+                         (memory-order-release)
+                         (if (unsafe-struct*-cas! in_0 2 #t #f)
+                           (void)
+                           (port-unlock-slow in_0))))
                      (assert-pop-lock-level! 'port)
                      (unsafe-end-atomic))
                    0)
@@ -10995,10 +11359,15 @@
                    (if (core-input-port-pending-eof? in_0)
                      (begin
                        (begin
-                         (memory-order-release)
-                         (if (unsafe-struct*-cas! in_0 2 #t #f)
-                           (void)
-                           (port-unlock-slow in_0))
+                         (if (if (not (pthreads-started?))
+                               (eq? #t (core-port-lock in_0))
+                               #f)
+                           (set-core-port-lock! in_0 #f)
+                           (begin
+                             (memory-order-release)
+                             (if (unsafe-struct*-cas! in_0 2 #t #f)
+                               (void)
+                               (port-unlock-slow in_0))))
                          (assert-pop-lock-level! 'port)
                          (unsafe-end-atomic))
                        eof)
@@ -11018,10 +11387,15 @@
                                     buf-pos_0
                                     (fx+ buf-pos_0 v_0)))
                                  (begin
-                                   (memory-order-release)
-                                   (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                     (void)
-                                     (port-unlock-slow in_0))
+                                   (if (if (not (pthreads-started?))
+                                         (eq? #t (core-port-lock in_0))
+                                         #f)
+                                     (set-core-port-lock! in_0 #f)
+                                     (begin
+                                       (memory-order-release)
+                                       (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                         (void)
+                                         (port-unlock-slow in_0))))
                                    (assert-pop-lock-level! 'port)
                                    (unsafe-end-atomic))
                                  v_0))
@@ -11041,10 +11415,19 @@
                                          copy-bstr?22_0)))
                                    (begin
                                      (begin
-                                       (memory-order-release)
-                                       (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                         (void)
-                                         (port-unlock-slow in_0))
+                                       (if (if (not (pthreads-started?))
+                                             (eq? #t (core-port-lock in_0))
+                                             #f)
+                                         (set-core-port-lock! in_0 #f)
+                                         (begin
+                                           (memory-order-release)
+                                           (if (unsafe-struct*-cas!
+                                                in_0
+                                                2
+                                                #t
+                                                #f)
+                                             (void)
+                                             (port-unlock-slow in_0))))
                                        (assert-pop-lock-level! 'port)
                                        (unsafe-end-atomic))
                                      (letrec*
@@ -11143,10 +11526,15 @@
                                       (result-loop_0 v_0))))
                                  (begin
                                    (begin
-                                     (memory-order-release)
-                                     (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                       (void)
-                                       (port-unlock-slow in_0))
+                                     (if (if (not (pthreads-started?))
+                                           (eq? #t (core-port-lock in_0))
+                                           #f)
+                                       (set-core-port-lock! in_0 #f)
+                                       (begin
+                                         (memory-order-release)
+                                         (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                           (void)
+                                           (port-unlock-slow in_0))))
                                      (assert-pop-lock-level! 'port)
                                      (unsafe-end-atomic))
                                    (loop_0
@@ -11163,10 +11551,13 @@
        (begin
          (unsafe-start-uninterruptible)
          (assert-push-lock-level! 'port)
-         (if (unsafe-struct*-cas! in41_0 2 #f #t)
-           (void)
-           (port-lock-slow in41_0))
-         (memory-order-acquire))
+         (if (if (not (pthreads-started?)) (not (core-port-lock in41_0)) #f)
+           (set-core-port-lock! in41_0 #t)
+           (begin
+             (if (unsafe-struct*-cas! in41_0 2 #f #t)
+               (void)
+               (port-lock-slow in41_0))
+             (memory-order-acquire))))
        (let ((buffer_0 (core-port-buffer in41_0)))
          (let ((pos_0 (direct-pos buffer_0)))
            (if (fx< pos_0 (direct-end buffer_0))
@@ -11177,19 +11568,29 @@
                    (port-count-byte! in41_0 b_0)
                    (void))
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! in41_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow in41_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock in41_0))
+                         #f)
+                     (set-core-port-lock! in41_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! in41_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow in41_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))
                  b_0))
              (begin
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! in41_0 2 #t #f)
-                   (void)
-                   (port-unlock-slow in41_0))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock in41_0))
+                       #f)
+                   (set-core-port-lock! in41_0 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! in41_0 2 #t #f)
+                       (void)
+                       (port-unlock-slow in41_0))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))
                (read-byte-via-bytes.1 special-ok?38_0 who40_0 in41_0)))))))))
@@ -11220,29 +11621,42 @@
        (begin
          (unsafe-start-uninterruptible)
          (assert-push-lock-level! 'port)
-         (if (unsafe-struct*-cas! in51_0 2 #f #t)
-           (void)
-           (port-lock-slow in51_0))
-         (memory-order-acquire))
+         (if (if (not (pthreads-started?)) (not (core-port-lock in51_0)) #f)
+           (set-core-port-lock! in51_0 #t)
+           (begin
+             (if (unsafe-struct*-cas! in51_0 2 #f #t)
+               (void)
+               (port-lock-slow in51_0))
+             (memory-order-acquire))))
        (let ((buffer_0 (core-port-buffer in51_0)))
          (let ((pos_0 (+ (direct-pos buffer_0) skip-k52_0)))
            (if (< pos_0 (direct-end buffer_0))
              (let ((b_0 (unsafe-bytes-ref (direct-bstr buffer_0) pos_0)))
                (begin
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! in51_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow in51_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock in51_0))
+                         #f)
+                     (set-core-port-lock! in51_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! in51_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow in51_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))
                  b_0))
              (begin
                (begin
-                 (memory-order-release)
-                 (if (unsafe-struct*-cas! in51_0 2 #t #f)
-                   (void)
-                   (port-unlock-slow in51_0))
+                 (if (if (not (pthreads-started?))
+                       (eq? #t (core-port-lock in51_0))
+                       #f)
+                   (set-core-port-lock! in51_0 #f)
+                   (begin
+                     (memory-order-release)
+                     (if (unsafe-struct*-cas! in51_0 2 #t #f)
+                       (void)
+                       (port-unlock-slow in51_0))))
                  (assert-pop-lock-level! 'port)
                  (unsafe-end-atomic))
                (peek-byte-via-bytes.1
@@ -11277,8 +11691,13 @@
       (begin
         (unsafe-start-uninterruptible)
         (assert-push-lock-level! 'port)
-        (if (unsafe-struct*-cas! in_0 2 #f #t) (void) (port-lock-slow in_0))
-        (memory-order-acquire))
+        (if (if (not (pthreads-started?)) (not (core-port-lock in_0)) #f)
+          (set-core-port-lock! in_0 #t)
+          (begin
+            (if (unsafe-struct*-cas! in_0 2 #f #t)
+              (void)
+              (port-lock-slow in_0))
+            (memory-order-acquire))))
       (let ((buffer_0 (core-port-buffer in_0)))
         (let ((bstr_0 (direct-bstr buffer_0)))
           (let ((pos_0 (direct-pos buffer_0)))
@@ -11310,10 +11729,15 @@
                                      (subbytes bstr_0 pos_0 end_1))))
                               (begin
                                 (begin
-                                  (memory-order-release)
-                                  (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                    (void)
-                                    (port-unlock-slow in_0))
+                                  (if (if (not (pthreads-started?))
+                                        (eq? #t (core-port-lock in_0))
+                                        #f)
+                                    (set-core-port-lock! in_0 #f)
+                                    (begin
+                                      (memory-order-release)
+                                      (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                        (void)
+                                        (port-unlock-slow in_0))))
                                   (assert-pop-lock-level! 'port)
                                   (unsafe-end-atomic))
                                 result_0))))))))
@@ -11325,10 +11749,15 @@
                       (if (fx= i_0 end_0)
                         (begin
                           (begin
-                            (memory-order-release)
-                            (if (unsafe-struct*-cas! in_0 2 #t #f)
-                              (void)
-                              (port-unlock-slow in_0))
+                            (if (if (not (pthreads-started?))
+                                  (eq? #t (core-port-lock in_0))
+                                  #f)
+                              (set-core-port-lock! in_0 #f)
+                              (begin
+                                (memory-order-release)
+                                (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                  (void)
+                                  (port-unlock-slow in_0))))
                             (assert-pop-lock-level! 'port)
                             (unsafe-end-atomic))
                           #f)
@@ -11348,10 +11777,19 @@
                                   (if (if crlf?_0 (fx= (fx+ i_0 1) end_0) #f)
                                     (begin
                                       (begin
-                                        (memory-order-release)
-                                        (if (unsafe-struct*-cas! in_0 2 #t #f)
-                                          (void)
-                                          (port-unlock-slow in_0))
+                                        (if (if (not (pthreads-started?))
+                                              (eq? #t (core-port-lock in_0))
+                                              #f)
+                                          (set-core-port-lock! in_0 #f)
+                                          (begin
+                                            (memory-order-release)
+                                            (if (unsafe-struct*-cas!
+                                                 in_0
+                                                 2
+                                                 #t
+                                                 #f)
+                                              (void)
+                                              (port-unlock-slow in_0))))
                                         (assert-pop-lock-level! 'port)
                                         (unsafe-end-atomic))
                                       #f)
@@ -11405,15 +11843,25 @@
          (begin
            (unsafe-start-uninterruptible)
            (assert-push-lock-level! 'port)
-           (if (unsafe-struct*-cas! p_0 2 #f #t) (void) (port-lock-slow p_0))
-           (memory-order-acquire))
+           (if (if (not (pthreads-started?)) (not (core-port-lock p_0)) #f)
+             (set-core-port-lock! p_0 #t)
+             (begin
+               (if (unsafe-struct*-cas! p_0 2 #f #t)
+                 (void)
+                 (port-lock-slow p_0))
+               (memory-order-acquire))))
          (begin0
            (begin (temp3.1$2 d_0) (temp4.1$1 d_0))
            (begin
-             (memory-order-release)
-             (if (unsafe-struct*-cas! p_0 2 #t #f)
-               (void)
-               (port-unlock-slow p_0))
+             (if (if (not (pthreads-started?))
+                   (eq? #t (core-port-lock p_0))
+                   #f)
+               (set-core-port-lock! p_0 #f)
+               (begin
+                 (memory-order-release)
+                 (if (unsafe-struct*-cas! p_0 2 #t #f)
+                   (void)
+                   (port-unlock-slow p_0))))
              (assert-pop-lock-level! 'port)
              (unsafe-end-atomic))))))))
 (define finish_2207
@@ -11926,20 +12374,30 @@
             (begin
               (unsafe-start-uninterruptible)
               (assert-push-lock-level! 'port)
-              (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                (void)
-                (port-lock-slow this-id_0))
-              (memory-order-acquire))
+              (if (if (not (pthreads-started?))
+                    (not (core-port-lock this-id_0))
+                    #f)
+                (set-core-port-lock! this-id_0 #t)
+                (begin
+                  (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                    (void)
+                    (port-lock-slow this-id_0))
+                  (memory-order-acquire))))
             (begin0
               (let ((o_0 (pipe-input-port-d this-id_0)))
                 (if (not (pipe-data-input-ref o_0))
                   always-evt
                   (begin (temp12.1 this-id_0) (temp4.1 this-id_0))))
               (begin
-                (memory-order-release)
-                (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                  (void)
-                  (port-unlock-slow this-id_0))
+                (if (if (not (pthreads-started?))
+                      (eq? #t (core-port-lock this-id_0))
+                      #f)
+                  (set-core-port-lock! this-id_0 #f)
+                  (begin
+                    (memory-order-release)
+                    (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                      (void)
+                      (port-unlock-slow this-id_0))))
                 (assert-pop-lock-level! 'port)
                 (unsafe-end-atomic))))))
        (|#%name|
@@ -11956,10 +12414,15 @@
                  (begin
                    (unsafe-start-uninterruptible)
                    (assert-push-lock-level! 'port)
-                   (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                     (void)
-                     (port-lock-slow this-id_0))
-                   (memory-order-acquire))
+                   (if (if (not (pthreads-started?))
+                         (not (core-port-lock this-id_0))
+                         #f)
+                     (set-core-port-lock! this-id_0 #t)
+                     (begin
+                       (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                         (void)
+                         (port-lock-slow this-id_0))
+                       (memory-order-acquire))))
                  (begin0
                    (let ((o_0 (pipe-input-port-d this-id_0)))
                      (begin
@@ -12008,10 +12471,15 @@
                                    (temp11.1 this-id_0 amt_0)
                                    (|#%app| finish580_0 dest-bstr_0)))))))))
                    (begin
-                     (memory-order-release)
-                     (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                       (void)
-                       (port-unlock-slow this-id_0))
+                     (if (if (not (pthreads-started?))
+                           (eq? #t (core-port-lock this-id_0))
+                           #f)
+                       (set-core-port-lock! this-id_0 #f)
+                       (begin
+                         (memory-order-release)
+                         (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                           (void)
+                           (port-unlock-slow this-id_0))))
                      (assert-pop-lock-level! 'port)
                      (unsafe-end-atomic)))))))))
        (|#%name| no-more-atomic-for-progress (lambda (this-id_0) (void)))))))
@@ -12645,7 +13113,7 @@
        (make-pipe_0 limit_0 input-name_0 output-name26_0))
       ((limit_0 input-name25_0) (make-pipe_0 limit_0 input-name25_0 'pipe))
       ((limit24_0) (make-pipe_0 limit24_0 'pipe 'pipe))))))
-(define finish_2436
+(define finish_2388
   (make-struct-type-install-properties
    '(pipe-write-poller)
    1
@@ -12681,16 +13149,26 @@
                         (begin
                           (unsafe-start-uninterruptible)
                           (assert-push-lock-level! 'port)
-                          (if (unsafe-struct*-cas! in_0 2 #f #t)
-                            (void)
-                            (port-lock-slow in_0))
-                          (memory-order-acquire))
+                          (if (if (not (pthreads-started?))
+                                (not (core-port-lock in_0))
+                                #f)
+                            (set-core-port-lock! in_0 #t)
+                            (begin
+                              (if (unsafe-struct*-cas! in_0 2 #f #t)
+                                (void)
+                                (port-lock-slow in_0))
+                              (memory-order-acquire))))
                         (temp12.1 in_0)
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! in_0 2 #t #f)
-                            (void)
-                            (port-unlock-slow in_0))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock in_0))
+                                #f)
+                            (set-core-port-lock! in_0 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! in_0 2 #t #f)
+                                (void)
+                                (port-unlock-slow in_0))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic)))
                       (void))
@@ -12714,11 +13192,11 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2436 'proc)
-   (finish_2436 'arity)
+   (finish_2388 'proc)
+   (finish_2388 'arity)
    #f
    |#%system-inspector|))
-(define effect_2599 (finish_2436 struct:pipe-write-poller))
+(define effect_2599 (finish_2388 struct:pipe-write-poller))
 (define pipe-write-poller27.1
   (|#%name|
    pipe-write-poller
@@ -12751,7 +13229,7 @@
          0
          s
          'd))))))
-(define finish_2170
+(define finish_2890
   (make-struct-type-install-properties
    '(pipe-read-poller)
    1
@@ -12787,16 +13265,26 @@
                         (begin
                           (unsafe-start-uninterruptible)
                           (assert-push-lock-level! 'port)
-                          (if (unsafe-struct*-cas! out_0 2 #f #t)
-                            (void)
-                            (port-lock-slow out_0))
-                          (memory-order-acquire))
+                          (if (if (not (pthreads-started?))
+                                (not (core-port-lock out_0))
+                                #f)
+                            (set-core-port-lock! out_0 #t)
+                            (begin
+                              (if (unsafe-struct*-cas! out_0 2 #f #t)
+                                (void)
+                                (port-lock-slow out_0))
+                              (memory-order-acquire))))
                         (temp17.1 out_0)
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! out_0 2 #t #f)
-                            (void)
-                            (port-unlock-slow out_0))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock out_0))
+                                #f)
+                            (set-core-port-lock! out_0 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! out_0 2 #t #f)
+                                (void)
+                                (port-unlock-slow out_0))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic)))
                       (void))
@@ -12820,11 +13308,11 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2170 'proc)
-   (finish_2170 'arity)
+   (finish_2890 'proc)
+   (finish_2890 'arity)
    #f
    |#%system-inspector|))
-(define effect_2907 (finish_2170 struct:pipe-read-poller))
+(define effect_2907 (finish_2890 struct:pipe-read-poller))
 (define pipe-read-poller28.1
   (|#%name|
    pipe-read-poller
@@ -12890,10 +13378,19 @@
                                     (begin
                                       (unsafe-start-uninterruptible)
                                       (assert-push-lock-level! 'port)
-                                      (if (unsafe-struct*-cas! out_0 2 #f #t)
-                                        (void)
-                                        (port-lock-slow out_0))
-                                      (memory-order-acquire))
+                                      (if (if (not (pthreads-started?))
+                                            (not (core-port-lock out_0))
+                                            #f)
+                                        (set-core-port-lock! out_0 #t)
+                                        (begin
+                                          (if (unsafe-struct*-cas!
+                                               out_0
+                                               2
+                                               #f
+                                               #t)
+                                            (void)
+                                            (port-lock-slow out_0))
+                                          (memory-order-acquire))))
                                     (begin
                                       (check-not-closed.1
                                        #f
@@ -12912,14 +13409,21 @@
                                               #f)))
                                         (begin
                                           (begin
-                                            (memory-order-release)
-                                            (if (unsafe-struct*-cas!
-                                                 out_0
-                                                 2
-                                                 #t
-                                                 #f)
-                                              (void)
-                                              (port-unlock-slow out_0))
+                                            (if (if (not (pthreads-started?))
+                                                  (eq?
+                                                   #t
+                                                   (core-port-lock out_0))
+                                                  #f)
+                                              (set-core-port-lock! out_0 #f)
+                                              (begin
+                                                (memory-order-release)
+                                                (if (unsafe-struct*-cas!
+                                                     out_0
+                                                     2
+                                                     #t
+                                                     #f)
+                                                  (void)
+                                                  (port-unlock-slow out_0))))
                                             (assert-pop-lock-level! 'port)
                                             (unsafe-end-atomic))
                                           (letrec*
@@ -12943,17 +13447,27 @@
                                 (begin
                                   (unsafe-start-uninterruptible)
                                   (assert-push-lock-level! 'port)
-                                  (if (unsafe-struct*-cas! out_0 2 #f #t)
-                                    (void)
-                                    (port-lock-slow out_0))
-                                  (memory-order-acquire))
+                                  (if (if (not (pthreads-started?))
+                                        (not (core-port-lock out_0))
+                                        #f)
+                                    (set-core-port-lock! out_0 #t)
+                                    (begin
+                                      (if (unsafe-struct*-cas! out_0 2 #f #t)
+                                        (void)
+                                        (port-lock-slow out_0))
+                                      (memory-order-acquire))))
                                 (begin0
                                   (check-not-closed.1 #f 'flush-output out_0)
                                   (begin
-                                    (memory-order-release)
-                                    (if (unsafe-struct*-cas! out_0 2 #t #f)
-                                      (void)
-                                      (port-unlock-slow out_0))
+                                    (if (if (not (pthreads-started?))
+                                          (eq? #t (core-port-lock out_0))
+                                          #f)
+                                      (set-core-port-lock! out_0 #f)
+                                      (begin
+                                        (memory-order-release)
+                                        (if (unsafe-struct*-cas! out_0 2 #t #f)
+                                          (void)
+                                          (port-unlock-slow out_0))))
                                     (assert-pop-lock-level! 'port)
                                     (unsafe-end-atomic))))
                               (wo-loop_0 write-out_0)))))))))
@@ -14668,18 +15182,28 @@
              (begin
                (unsafe-start-uninterruptible)
                (assert-push-lock-level! 'port)
-               (if (unsafe-struct*-cas! out_0 2 #f #t)
-                 (void)
-                 (port-lock-slow out_0))
-               (memory-order-acquire))
+               (if (if (not (pthreads-started?))
+                     (not (core-port-lock out_0))
+                     #f)
+                 (set-core-port-lock! out_0 #t)
+                 (begin
+                   (if (unsafe-struct*-cas! out_0 2 #f #t)
+                     (void)
+                     (port-lock-slow out_0))
+                   (memory-order-acquire))))
              (if (fx= start12_0 end13_0)
                (begin
                  (check-not-closed.1 #f who9_0 out_0)
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! out_0 2 #t #f)
-                     (void)
-                     (port-unlock-slow out_0))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock out_0))
+                         #f)
+                     (set-core-port-lock! out_0 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! out_0 2 #t #f)
+                         (void)
+                         (port-unlock-slow out_0))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))
                  0)
@@ -14711,10 +15235,15 @@
                               start12_0)
                              (void))
                            (begin
-                             (memory-order-release)
-                             (if (unsafe-struct*-cas! out_0 2 #t #f)
-                               (void)
-                               (port-unlock-slow out_0))
+                             (if (if (not (pthreads-started?))
+                                   (eq? #t (core-port-lock out_0))
+                                   #f)
+                               (set-core-port-lock! out_0 #f)
+                               (begin
+                                 (memory-order-release)
+                                 (if (unsafe-struct*-cas! out_0 2 #t #f)
+                                   (void)
+                                   (port-unlock-slow out_0))))
                              (assert-pop-lock-level! 'port)
                              (unsafe-end-atomic))
                            v_0))
@@ -14743,14 +15272,21 @@
                                      (if (not v_1)
                                        (begin
                                          (begin
-                                           (memory-order-release)
-                                           (if (unsafe-struct*-cas!
-                                                out_0
-                                                2
-                                                #t
-                                                #f)
-                                             (void)
-                                             (port-unlock-slow out_0))
+                                           (if (if (not (pthreads-started?))
+                                                 (eq?
+                                                  #t
+                                                  (core-port-lock out_0))
+                                                 #f)
+                                             (set-core-port-lock! out_0 #f)
+                                             (begin
+                                               (memory-order-release)
+                                               (if (unsafe-struct*-cas!
+                                                    out_0
+                                                    2
+                                                    #t
+                                                    #f)
+                                                 (void)
+                                                 (port-unlock-slow out_0))))
                                            (assert-pop-lock-level! 'port)
                                            (unsafe-end-atomic))
                                          (if zero-ok?3_0
@@ -14767,28 +15303,44 @@
                                             bstr11_0
                                             start12_0)
                                            (begin
-                                             (memory-order-release)
-                                             (if (unsafe-struct*-cas!
-                                                  out_0
-                                                  2
-                                                  #t
-                                                  #f)
-                                               (void)
-                                               (port-unlock-slow out_0))
+                                             (if (if (not (pthreads-started?))
+                                                   (eq?
+                                                    #t
+                                                    (core-port-lock out_0))
+                                                   #f)
+                                               (set-core-port-lock! out_0 #f)
+                                               (begin
+                                                 (memory-order-release)
+                                                 (if (unsafe-struct*-cas!
+                                                      out_0
+                                                      2
+                                                      #t
+                                                      #f)
+                                                   (void)
+                                                   (port-unlock-slow out_0))))
                                              (assert-pop-lock-level! 'port)
                                              (unsafe-end-atomic))
                                            v_1)
                                          (if (evt? v_1)
                                            (begin
                                              (begin
-                                               (memory-order-release)
-                                               (if (unsafe-struct*-cas!
-                                                    out_0
-                                                    2
-                                                    #t
-                                                    #f)
-                                                 (void)
-                                                 (port-unlock-slow out_0))
+                                               (if (if (not
+                                                        (pthreads-started?))
+                                                     (eq?
+                                                      #t
+                                                      (core-port-lock out_0))
+                                                     #f)
+                                                 (set-core-port-lock! out_0 #f)
+                                                 (begin
+                                                   (memory-order-release)
+                                                   (if (unsafe-struct*-cas!
+                                                        out_0
+                                                        2
+                                                        #t
+                                                        #f)
+                                                     (void)
+                                                     (port-unlock-slow
+                                                      out_0))))
                                                (assert-pop-lock-level! 'port)
                                                (unsafe-end-atomic))
                                              (if zero-ok?3_0
@@ -14802,25 +15354,45 @@
                                                      (unsafe-start-uninterruptible)
                                                      (assert-push-lock-level!
                                                       'port)
-                                                     (if (unsafe-struct*-cas!
-                                                          out_0
-                                                          2
-                                                          #f
-                                                          #t)
-                                                       (void)
-                                                       (port-lock-slow out_0))
-                                                     (memory-order-acquire))
+                                                     (if (if (not
+                                                              (pthreads-started?))
+                                                           (not
+                                                            (core-port-lock
+                                                             out_0))
+                                                           #f)
+                                                       (set-core-port-lock!
+                                                        out_0
+                                                        #t)
+                                                       (begin
+                                                         (if (unsafe-struct*-cas!
+                                                              out_0
+                                                              2
+                                                              #f
+                                                              #t)
+                                                           (void)
+                                                           (port-lock-slow
+                                                            out_0))
+                                                         (memory-order-acquire))))
                                                    (result-loop_0 new-v_0)))))
                                            (begin
                                              (begin
-                                               (memory-order-release)
-                                               (if (unsafe-struct*-cas!
-                                                    out_0
-                                                    2
-                                                    #t
-                                                    #f)
-                                                 (void)
-                                                 (port-unlock-slow out_0))
+                                               (if (if (not
+                                                        (pthreads-started?))
+                                                     (eq?
+                                                      #t
+                                                      (core-port-lock out_0))
+                                                     #f)
+                                                 (set-core-port-lock! out_0 #f)
+                                                 (begin
+                                                   (memory-order-release)
+                                                   (if (unsafe-struct*-cas!
+                                                        out_0
+                                                        2
+                                                        #t
+                                                        #f)
+                                                     (void)
+                                                     (port-unlock-slow
+                                                      out_0))))
                                                (assert-pop-lock-level! 'port)
                                                (unsafe-end-atomic))
                                              (internal-error
@@ -14834,10 +15406,15 @@
                                 (result-loop_0 v_0)))
                              (begin
                                (begin
-                                 (memory-order-release)
-                                 (if (unsafe-struct*-cas! out_0 2 #t #f)
-                                   (void)
-                                   (port-unlock-slow out_0))
+                                 (if (if (not (pthreads-started?))
+                                       (eq? #t (core-port-lock out_0))
+                                       #f)
+                                   (set-core-port-lock! out_0 #f)
+                                   (begin
+                                     (memory-order-release)
+                                     (if (unsafe-struct*-cas! out_0 2 #t #f)
+                                       (void)
+                                       (port-unlock-slow out_0))))
                                  (assert-pop-lock-level! 'port)
                                  (unsafe-end-atomic))
                                (let ((app_0
@@ -14881,8 +15458,13 @@
       (begin
         (unsafe-start-uninterruptible)
         (assert-push-lock-level! 'port)
-        (if (unsafe-struct*-cas! out_0 2 #f #t) (void) (port-lock-slow out_0))
-        (memory-order-acquire))
+        (if (if (not (pthreads-started?)) (not (core-port-lock out_0)) #f)
+          (set-core-port-lock! out_0 #t)
+          (begin
+            (if (unsafe-struct*-cas! out_0 2 #f #t)
+              (void)
+              (port-lock-slow out_0))
+            (memory-order-acquire))))
       (let ((buffer_0 (core-port-buffer out_0)))
         (let ((pos_0 (direct-pos buffer_0)))
           (begin
@@ -14894,18 +15476,28 @@
                   (port-count-byte! out_0 b_0)
                   (void))
                 (begin
-                  (memory-order-release)
-                  (if (unsafe-struct*-cas! out_0 2 #t #f)
-                    (void)
-                    (port-unlock-slow out_0))
+                  (if (if (not (pthreads-started?))
+                        (eq? #t (core-port-lock out_0))
+                        #f)
+                    (set-core-port-lock! out_0 #f)
+                    (begin
+                      (memory-order-release)
+                      (if (unsafe-struct*-cas! out_0 2 #t #f)
+                        (void)
+                        (port-unlock-slow out_0))))
                   (assert-pop-lock-level! 'port)
                   (unsafe-end-atomic)))
               (begin
                 (begin
-                  (memory-order-release)
-                  (if (unsafe-struct*-cas! out_0 2 #t #f)
-                    (void)
-                    (port-unlock-slow out_0))
+                  (if (if (not (pthreads-started?))
+                        (eq? #t (core-port-lock out_0))
+                        #f)
+                    (set-core-port-lock! out_0 #f)
+                    (begin
+                      (memory-order-release)
+                      (if (unsafe-struct*-cas! out_0 2 #t #f)
+                        (void)
+                        (port-unlock-slow out_0))))
                   (assert-pop-lock-level! 'port)
                   (unsafe-end-atomic))
                 (let ((temp34_0 (bytes b_0)))
@@ -15218,10 +15810,15 @@
                       (begin
                         (unsafe-start-uninterruptible)
                         (assert-push-lock-level! 'port)
-                        (if (unsafe-struct*-cas! out_1 2 #f #t)
-                          (void)
-                          (port-lock-slow out_1))
-                        (memory-order-acquire))
+                        (if (if (not (pthreads-started?))
+                              (not (core-port-lock out_1))
+                              #f)
+                          (set-core-port-lock! out_1 #t)
+                          (begin
+                            (if (unsafe-struct*-cas! out_1 2 #f #t)
+                              (void)
+                              (port-lock-slow out_1))
+                            (memory-order-acquire))))
                       (begin0
                         (begin
                           (check-not-closed.1 #f 'write-bytes-avail-evt out_1)
@@ -15233,10 +15830,15 @@
                                 (void)
                                 (begin
                                   (begin
-                                    (memory-order-release)
-                                    (if (unsafe-struct*-cas! out_1 2 #t #f)
-                                      (void)
-                                      (port-unlock-slow out_1))
+                                    (if (if (not (pthreads-started?))
+                                          (eq? #t (core-port-lock out_1))
+                                          #f)
+                                      (set-core-port-lock! out_1 #f)
+                                      (begin
+                                        (memory-order-release)
+                                        (if (unsafe-struct*-cas! out_1 2 #t #f)
+                                          (void)
+                                          (port-unlock-slow out_1))))
                                     (assert-pop-lock-level! 'port)
                                     (unsafe-end-atomic))
                                   (raise-arguments-error
@@ -15251,10 +15853,15 @@
                                start-pos26_0
                                end-pos_0))))
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! out_1 2 #t #f)
-                            (void)
-                            (port-unlock-slow out_1))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock out_1))
+                                #f)
+                            (set-core-port-lock! out_1 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! out_1 2 #t #f)
+                                (void)
+                                (port-unlock-slow out_1))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic))))))))))))
     (|#%name|
@@ -15281,18 +15888,28 @@
                (begin
                  (unsafe-start-uninterruptible)
                  (assert-push-lock-level! 'port)
-                 (if (unsafe-struct*-cas! out_1 2 #f #t)
-                   (void)
-                   (port-lock-slow out_1))
-                 (memory-order-acquire))
+                 (if (if (not (pthreads-started?))
+                       (not (core-port-lock out_1))
+                       #f)
+                   (set-core-port-lock! out_1 #t)
+                   (begin
+                     (if (unsafe-struct*-cas! out_1 2 #f #t)
+                       (void)
+                       (port-lock-slow out_1))
+                     (memory-order-acquire))))
                (begin0
                  (core-output-port-methods-get-write-evt.1
                   (core-port-vtable out_1))
                  (begin
-                   (memory-order-release)
-                   (if (unsafe-struct*-cas! out_1 2 #t #f)
-                     (void)
-                     (port-unlock-slow out_1))
+                   (if (if (not (pthreads-started?))
+                         (eq? #t (core-port-lock out_1))
+                         #f)
+                     (set-core-port-lock! out_1 #f)
+                     (begin
+                       (memory-order-release)
+                       (if (unsafe-struct*-cas! out_1 2 #t #f)
+                         (void)
+                         (port-unlock-slow out_1))))
                    (assert-pop-lock-level! 'port)
                    (unsafe-end-atomic))))
            #t
@@ -15452,10 +16069,15 @@
                              (begin
                                (unsafe-start-uninterruptible)
                                (assert-push-lock-level! 'port)
-                               (if (unsafe-struct*-cas! o_1 2 #f #t)
-                                 (void)
-                                 (port-lock-slow o_1))
-                               (memory-order-acquire))
+                               (if (if (not (pthreads-started?))
+                                     (not (core-port-lock o_1))
+                                     #f)
+                                 (set-core-port-lock! o_1 #t)
+                                 (begin
+                                   (if (unsafe-struct*-cas! o_1 2 #f #t)
+                                     (void)
+                                     (port-lock-slow o_1))
+                                   (memory-order-acquire))))
                              (let ((r_0
                                     (|#%app|
                                      write-out-special_0
@@ -15471,28 +16093,40 @@
                                      (if (not r_1)
                                        (begin
                                          (begin
-                                           (memory-order-release)
-                                           (if (unsafe-struct*-cas!
-                                                o_1
-                                                2
-                                                #t
-                                                #f)
-                                             (void)
-                                             (port-unlock-slow o_1))
+                                           (if (if (not (pthreads-started?))
+                                                 (eq? #t (core-port-lock o_1))
+                                                 #f)
+                                             (set-core-port-lock! o_1 #f)
+                                             (begin
+                                               (memory-order-release)
+                                               (if (unsafe-struct*-cas!
+                                                    o_1
+                                                    2
+                                                    #t
+                                                    #f)
+                                                 (void)
+                                                 (port-unlock-slow o_1))))
                                            (assert-pop-lock-level! 'port)
                                            (unsafe-end-atomic))
                                          (if retry?1_0 (loop_0) #f))
                                        (if (evt? r_1)
                                          (begin
                                            (begin
-                                             (memory-order-release)
-                                             (if (unsafe-struct*-cas!
-                                                  o_1
-                                                  2
-                                                  #t
-                                                  #f)
-                                               (void)
-                                               (port-unlock-slow o_1))
+                                             (if (if (not (pthreads-started?))
+                                                   (eq?
+                                                    #t
+                                                    (core-port-lock o_1))
+                                                   #f)
+                                               (set-core-port-lock! o_1 #f)
+                                               (begin
+                                                 (memory-order-release)
+                                                 (if (unsafe-struct*-cas!
+                                                      o_1
+                                                      2
+                                                      #t
+                                                      #f)
+                                                   (void)
+                                                   (port-unlock-slow o_1))))
                                              (assert-pop-lock-level! 'port)
                                              (unsafe-end-atomic))
                                            (if retry?1_0
@@ -15506,14 +16140,21 @@
                                             #vu8(120)
                                             0)
                                            (begin
-                                             (memory-order-release)
-                                             (if (unsafe-struct*-cas!
-                                                  o_1
-                                                  2
-                                                  #t
-                                                  #f)
-                                               (void)
-                                               (port-unlock-slow o_1))
+                                             (if (if (not (pthreads-started?))
+                                                   (eq?
+                                                    #t
+                                                    (core-port-lock o_1))
+                                                   #f)
+                                               (set-core-port-lock! o_1 #f)
+                                               (begin
+                                                 (memory-order-release)
+                                                 (if (unsafe-struct*-cas!
+                                                      o_1
+                                                      2
+                                                      #t
+                                                      #f)
+                                                   (void)
+                                                   (port-unlock-slow o_1))))
                                              (assert-pop-lock-level! 'port)
                                              (unsafe-end-atomic))
                                            #t)))))))
@@ -19434,10 +20075,15 @@
               (begin
                 (unsafe-start-uninterruptible)
                 (assert-push-lock-level! 'port)
-                (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                  (void)
-                  (port-lock-slow this-id_0))
-                (memory-order-acquire))
+                (if (if (not (pthreads-started?))
+                      (not (core-port-lock this-id_0))
+                      #f)
+                  (set-core-port-lock! this-id_0 #t)
+                  (begin
+                    (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                      (void)
+                      (port-lock-slow this-id_0))
+                    (memory-order-acquire))))
               (begin0
                 (begin
                   (if (commit-input-port-progress-sema this-id_0)
@@ -19453,10 +20099,15 @@
                         (void))))
                   (temp4.1 this-id_0))
                 (begin
-                  (memory-order-release)
-                  (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                    (void)
-                    (port-unlock-slow this-id_0))
+                  (if (if (not (pthreads-started?))
+                        (eq? #t (core-port-lock this-id_0))
+                        #f)
+                    (set-core-port-lock! this-id_0 #f)
+                    (begin
+                      (memory-order-release)
+                      (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                        (void)
+                        (port-unlock-slow this-id_0))))
                   (assert-pop-lock-level! 'port)
                   (unsafe-end-atomic))))))
          (|#%name|
@@ -19475,10 +20126,15 @@
                  (begin
                    (unsafe-start-uninterruptible)
                    (assert-push-lock-level! 'port)
-                   (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                     (void)
-                     (port-lock-slow this-id_0))
-                   (memory-order-acquire))
+                   (if (if (not (pthreads-started?))
+                         (not (core-port-lock this-id_0))
+                         #f)
+                     (set-core-port-lock! this-id_0 #t)
+                     (begin
+                       (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                         (void)
+                         (port-lock-slow this-id_0))
+                       (memory-order-acquire))))
                  (begin0
                    (let ((b_0 (core-port-buffer this-id_0)))
                      (let ((len_0 (direct-end b_0)))
@@ -19501,10 +20157,15 @@
                                (temp1.1 this-id_0)
                                (|#%app| finish204_0 dest-bstr_0)))))))
                    (begin
-                     (memory-order-release)
-                     (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                       (void)
-                       (port-unlock-slow this-id_0))
+                     (if (if (not (pthreads-started?))
+                           (eq? #t (core-port-lock this-id_0))
+                           #f)
+                       (set-core-port-lock! this-id_0 #f)
+                       (begin
+                         (memory-order-release)
+                         (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                           (void)
+                           (port-unlock-slow this-id_0))))
                      (assert-pop-lock-level! 'port)
                      (unsafe-end-atomic))))))))
          (commit-input-port-methods-no-more-atomic-for-progress.1
@@ -19720,10 +20381,19 @@
                             (if (>= new-pos251_0 281474976710656)
                               (begin
                                 (begin
-                                  (memory-order-release)
-                                  (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                                    (void)
-                                    (port-unlock-slow this-id_0))
+                                  (if (if (not (pthreads-started?))
+                                        (eq? #t (core-port-lock this-id_0))
+                                        #f)
+                                    (set-core-port-lock! this-id_0 #f)
+                                    (begin
+                                      (memory-order-release)
+                                      (if (unsafe-struct*-cas!
+                                           this-id_0
+                                           2
+                                           #t
+                                           #f)
+                                        (void)
+                                        (port-unlock-slow this-id_0))))
                                   (assert-pop-lock-level! 'port)
                                   (unsafe-end-atomic))
                                 (raise-arguments-error
@@ -19918,10 +20588,15 @@
                   (begin
                     (unsafe-start-uninterruptible)
                     (assert-push-lock-level! 'port)
-                    (if (unsafe-struct*-cas! o_0 2 #f #t)
-                      (void)
-                      (port-lock-slow o_0))
-                    (memory-order-acquire))
+                    (if (if (not (pthreads-started?))
+                          (not (core-port-lock o_0))
+                          #f)
+                      (set-core-port-lock! o_0 #t)
+                      (begin
+                        (if (unsafe-struct*-cas! o_0 2 #f #t)
+                          (void)
+                          (port-lock-slow o_0))
+                        (memory-order-acquire))))
                   (let ((len_0
                          (|#%app|
                           (bytes-output-port-methods-get-length.1
@@ -19931,10 +20606,15 @@
                       (if (> start-pos11_0 len_0)
                         (begin
                           (begin
-                            (memory-order-release)
-                            (if (unsafe-struct*-cas! o_0 2 #t #f)
-                              (void)
-                              (port-unlock-slow o_0))
+                            (if (if (not (pthreads-started?))
+                                  (eq? #t (core-port-lock o_0))
+                                  #f)
+                              (set-core-port-lock! o_0 #f)
+                              (begin
+                                (memory-order-release)
+                                (if (unsafe-struct*-cas! o_0 2 #t #f)
+                                  (void)
+                                  (port-unlock-slow o_0))))
                             (assert-pop-lock-level! 'port)
                             (unsafe-end-atomic))
                           (raise-range-error
@@ -19953,10 +20633,15 @@
                             (void)
                             (begin
                               (begin
-                                (memory-order-release)
-                                (if (unsafe-struct*-cas! o_0 2 #t #f)
-                                  (void)
-                                  (port-unlock-slow o_0))
+                                (if (if (not (pthreads-started?))
+                                      (eq? #t (core-port-lock o_0))
+                                      #f)
+                                  (set-core-port-lock! o_0 #f)
+                                  (begin
+                                    (memory-order-release)
+                                    (if (unsafe-struct*-cas! o_0 2 #t #f)
+                                      (void)
+                                      (port-unlock-slow o_0))))
                                 (assert-pop-lock-level! 'port)
                                 (unsafe-end-atomic))
                               (raise-range-error
@@ -19983,10 +20668,15 @@
                                start-pos11_0
                                reset?10_0)
                               (begin
-                                (memory-order-release)
-                                (if (unsafe-struct*-cas! o_0 2 #t #f)
-                                  (void)
-                                  (port-unlock-slow o_0))
+                                (if (if (not (pthreads-started?))
+                                      (eq? #t (core-port-lock o_0))
+                                      #f)
+                                  (set-core-port-lock! o_0 #f)
+                                  (begin
+                                    (memory-order-release)
+                                    (if (unsafe-struct*-cas! o_0 2 #t #f)
+                                      (void)
+                                      (port-unlock-slow o_0))))
                                 (assert-pop-lock-level! 'port)
                                 (unsafe-end-atomic))
                               bstr_0)))))))))))))
@@ -20208,10 +20898,19 @@
                                     (max-output-port-max-length this-id_0))))
                               (begin
                                 (begin
-                                  (memory-order-release)
-                                  (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                                    (void)
-                                    (port-unlock-slow this-id_0))
+                                  (if (if (not (pthreads-started?))
+                                        (eq? #t (core-port-lock this-id_0))
+                                        #f)
+                                    (set-core-port-lock! this-id_0 #f)
+                                    (begin
+                                      (memory-order-release)
+                                      (if (unsafe-struct*-cas!
+                                           this-id_0
+                                           2
+                                           #t
+                                           #f)
+                                        (void)
+                                        (port-unlock-slow this-id_0))))
                                   (assert-pop-lock-level! 'port)
                                   (unsafe-end-atomic))
                                 (let ((wrote-len_0
@@ -20226,14 +20925,19 @@
                                     (begin
                                       (unsafe-start-uninterruptible)
                                       (assert-push-lock-level! 'port)
-                                      (if (unsafe-struct*-cas!
-                                           this-id_0
-                                           2
-                                           #f
-                                           #t)
-                                        (void)
-                                        (port-lock-slow this-id_0))
-                                      (memory-order-acquire))
+                                      (if (if (not (pthreads-started?))
+                                            (not (core-port-lock this-id_0))
+                                            #f)
+                                        (set-core-port-lock! this-id_0 #t)
+                                        (begin
+                                          (if (unsafe-struct*-cas!
+                                               this-id_0
+                                               2
+                                               #f
+                                               #t)
+                                            (void)
+                                            (port-lock-slow this-id_0))
+                                          (memory-order-acquire))))
                                     (if (=
                                          (max-output-port-max-length this-id_0)
                                          wrote-len_0)
@@ -20259,10 +20963,15 @@
                                         wrote-len_0)))))))))
                       (begin
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! this-id_0 2 #t #f)
-                            (void)
-                            (port-unlock-slow this-id_0))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock this-id_0))
+                                #f)
+                            (set-core-port-lock! this-id_0 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! this-id_0 2 #t #f)
+                                (void)
+                                (port-unlock-slow this-id_0))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic))
                         (let ((len_0
@@ -20275,10 +20984,15 @@
                             (begin
                               (unsafe-start-uninterruptible)
                               (assert-push-lock-level! 'port)
-                              (if (unsafe-struct*-cas! this-id_0 2 #f #t)
-                                (void)
-                                (port-lock-slow this-id_0))
-                              (memory-order-acquire))
+                              (if (if (not (pthreads-started?))
+                                    (not (core-port-lock this-id_0))
+                                    #f)
+                                (set-core-port-lock! this-id_0 #t)
+                                (begin
+                                  (if (unsafe-struct*-cas! this-id_0 2 #f #t)
+                                    (void)
+                                    (port-lock-slow this-id_0))
+                                  (memory-order-acquire))))
                             len_0))))))
                  app_5
                  app_6
@@ -27360,20 +28074,28 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! cp_0 2 #f #t)
-               (void)
-               (port-lock-slow cp_0))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?)) (not (core-port-lock cp_0)) #f)
+               (set-core-port-lock! cp_0 #t)
+               (begin
+                 (if (unsafe-struct*-cas! cp_0 2 #f #t)
+                   (void)
+                   (port-lock-slow cp_0))
+                 (memory-order-acquire))))
            (begin
              (check-not-closed.1 #f 'port-file-identity cp_0)
              (let ((fd_0 (|#%app| (file-stream-ref cp_0) cp_0)))
                (let ((temp7_0
                       (lambda ()
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! cp_0 2 #t #f)
-                            (void)
-                            (port-unlock-slow cp_0))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock cp_0))
+                                #f)
+                            (set-core-port-lock! cp_0 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! cp_0 2 #t #f)
+                                (void)
+                                (port-unlock-slow cp_0))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic)))))
                  (path-or-fd-identity.1
@@ -27534,20 +28256,28 @@
            (begin
              (unsafe-start-uninterruptible)
              (assert-push-lock-level! 'port)
-             (if (unsafe-struct*-cas! cp_0 2 #f #t)
-               (void)
-               (port-lock-slow cp_0))
-             (memory-order-acquire))
+             (if (if (not (pthreads-started?)) (not (core-port-lock cp_0)) #f)
+               (set-core-port-lock! cp_0 #t)
+               (begin
+                 (if (unsafe-struct*-cas! cp_0 2 #f #t)
+                   (void)
+                   (port-lock-slow cp_0))
+                 (memory-order-acquire))))
            (begin
              (check-not-closed.1 #f 'port-file-stat cp_0)
              (let ((fd_0 (|#%app| (file-stream-ref cp_0) cp_0)))
                (let ((temp7_0
                       (lambda ()
                         (begin
-                          (memory-order-release)
-                          (if (unsafe-struct*-cas! cp_0 2 #t #f)
-                            (void)
-                            (port-unlock-slow cp_0))
+                          (if (if (not (pthreads-started?))
+                                (eq? #t (core-port-lock cp_0))
+                                #f)
+                            (set-core-port-lock! cp_0 #f)
+                            (begin
+                              (memory-order-release)
+                              (if (unsafe-struct*-cas! cp_0 2 #t #f)
+                                (void)
+                                (port-unlock-slow cp_0))))
                           (assert-pop-lock-level! 'port)
                           (unsafe-end-atomic)))))
                  (path-or-fd-stat.1
@@ -27681,10 +28411,15 @@
     (lambda (self_0)
       (begin
         (begin
-          (memory-order-release)
-          (if (unsafe-struct*-cas! self_0 2 #t #f)
-            (void)
-            (port-unlock-slow self_0))
+          (if (if (not (pthreads-started?))
+                (eq? #t (core-port-lock self_0))
+                #f)
+            (set-core-port-lock! self_0 #f)
+            (begin
+              (memory-order-release)
+              (if (unsafe-struct*-cas! self_0 2 #t #f)
+                (void)
+                (port-unlock-slow self_0))))
           (assert-pop-lock-level! 'port)
           (unsafe-end-atomic))
         (call-with-values
@@ -27716,10 +28451,15 @@
              (begin
                (unsafe-start-uninterruptible)
                (assert-push-lock-level! 'port)
-               (if (unsafe-struct*-cas! self_0 2 #f #t)
-                 (void)
-                 (port-lock-slow self_0))
-               (memory-order-acquire))
+               (if (if (not (pthreads-started?))
+                     (not (core-port-lock self_0))
+                     #f)
+                 (set-core-port-lock! self_0 #t)
+                 (begin
+                   (if (unsafe-struct*-cas! self_0 2 #f #t)
+                     (void)
+                     (port-lock-slow self_0))
+                   (memory-order-acquire))))
              (values line_0 col_0 pos_0)))
           (args_0
            (apply
@@ -27812,10 +28552,15 @@
       ((self_0)
        (begin
          (begin
-           (memory-order-release)
-           (if (unsafe-struct*-cas! self_0 2 #t #f)
-             (void)
-             (port-unlock-slow self_0))
+           (if (if (not (pthreads-started?))
+                 (eq? #t (core-port-lock self_0))
+                 #f)
+             (set-core-port-lock! self_0 #f)
+             (begin
+               (memory-order-release)
+               (if (unsafe-struct*-cas! self_0 2 #t #f)
+                 (void)
+                 (port-unlock-slow self_0))))
            (assert-pop-lock-level! 'port)
            (unsafe-end-atomic))
          (let ((m_0 (|#%app| user-buffer-mode3_0)))
@@ -27833,10 +28578,15 @@
                (begin
                  (unsafe-start-uninterruptible)
                  (assert-push-lock-level! 'port)
-                 (if (unsafe-struct*-cas! self_0 2 #f #t)
-                   (void)
-                   (port-lock-slow self_0))
-                 (memory-order-acquire))
+                 (if (if (not (pthreads-started?))
+                       (not (core-port-lock self_0))
+                       #f)
+                   (set-core-port-lock! self_0 #t)
+                   (begin
+                     (if (unsafe-struct*-cas! self_0 2 #f #t)
+                       (void)
+                       (port-lock-slow self_0))
+                     (memory-order-acquire))))
                m_0)
              (raise-result-error
               '|user port buffer-mode|
@@ -27847,20 +28597,28 @@
       ((self_0 m_0)
        (begin
          (begin
-           (memory-order-release)
-           (if (unsafe-struct*-cas! self_0 2 #t #f)
-             (void)
-             (port-unlock-slow self_0))
+           (if (if (not (pthreads-started?))
+                 (eq? #t (core-port-lock self_0))
+                 #f)
+             (set-core-port-lock! self_0 #f)
+             (begin
+               (memory-order-release)
+               (if (unsafe-struct*-cas! self_0 2 #t #f)
+                 (void)
+                 (port-unlock-slow self_0))))
            (assert-pop-lock-level! 'port)
            (unsafe-end-atomic))
          (|#%app| user-buffer-mode3_0 m_0)
          (begin
            (unsafe-start-uninterruptible)
            (assert-push-lock-level! 'port)
-           (if (unsafe-struct*-cas! self_0 2 #f #t)
-             (void)
-             (port-lock-slow self_0))
-           (memory-order-acquire))))))))
+           (if (if (not (pthreads-started?)) (not (core-port-lock self_0)) #f)
+             (set-core-port-lock! self_0 #t)
+             (begin
+               (if (unsafe-struct*-cas! self_0 2 #f #t)
+                 (void)
+                 (port-lock-slow self_0))
+               (memory-order-acquire))))))))))
 (define 1/make-input-port
   (let ((make-input-port_0
          (|#%name|
@@ -28103,15 +28861,26 @@
                                                         (void)
                                                         (begin
                                                           (begin
-                                                            (memory-order-release)
-                                                            (if (unsafe-struct*-cas!
-                                                                 self18_0
-                                                                 2
-                                                                 #t
-                                                                 #f)
-                                                              (void)
-                                                              (port-unlock-slow
-                                                               self18_0))
+                                                            (if (if (not
+                                                                     (pthreads-started?))
+                                                                  (eq?
+                                                                   #t
+                                                                   (core-port-lock
+                                                                    self18_0))
+                                                                  #f)
+                                                              (set-core-port-lock!
+                                                               self18_0
+                                                               #f)
+                                                              (begin
+                                                                (memory-order-release)
+                                                                (if (unsafe-struct*-cas!
+                                                                     self18_0
+                                                                     2
+                                                                     #t
+                                                                     #f)
+                                                                  (void)
+                                                                  (port-unlock-slow
+                                                                   self18_0))))
                                                             (assert-pop-lock-level!
                                                              'port)
                                                             (unsafe-end-atomic))
@@ -28136,15 +28905,26 @@
                                                             (void)
                                                             (begin
                                                               (begin
-                                                                (memory-order-release)
-                                                                (if (unsafe-struct*-cas!
-                                                                     self18_0
-                                                                     2
-                                                                     #t
-                                                                     #f)
-                                                                  (void)
-                                                                  (port-unlock-slow
-                                                                   self18_0))
+                                                                (if (if (not
+                                                                         (pthreads-started?))
+                                                                      (eq?
+                                                                       #t
+                                                                       (core-port-lock
+                                                                        self18_0))
+                                                                      #f)
+                                                                  (set-core-port-lock!
+                                                                   self18_0
+                                                                   #f)
+                                                                  (begin
+                                                                    (memory-order-release)
+                                                                    (if (unsafe-struct*-cas!
+                                                                         self18_0
+                                                                         2
+                                                                         #t
+                                                                         #f)
+                                                                      (void)
+                                                                      (port-unlock-slow
+                                                                       self18_0))))
                                                                 (assert-pop-lock-level!
                                                                  'port)
                                                                 (unsafe-end-atomic))
@@ -28167,15 +28947,26 @@
                                                                    self18_0)
                                                                 (begin
                                                                   (begin
-                                                                    (memory-order-release)
-                                                                    (if (unsafe-struct*-cas!
-                                                                         self18_0
-                                                                         2
-                                                                         #t
-                                                                         #f)
-                                                                      (void)
-                                                                      (port-unlock-slow
-                                                                       self18_0))
+                                                                    (if (if (not
+                                                                             (pthreads-started?))
+                                                                          (eq?
+                                                                           #t
+                                                                           (core-port-lock
+                                                                            self18_0))
+                                                                          #f)
+                                                                      (set-core-port-lock!
+                                                                       self18_0
+                                                                       #f)
+                                                                      (begin
+                                                                        (memory-order-release)
+                                                                        (if (unsafe-struct*-cas!
+                                                                             self18_0
+                                                                             2
+                                                                             #t
+                                                                             #f)
+                                                                          (void)
+                                                                          (port-unlock-slow
+                                                                           self18_0))))
                                                                     (assert-pop-lock-level!
                                                                      'port)
                                                                     (unsafe-end-atomic))
@@ -28183,15 +28974,25 @@
                                                                     (unsafe-start-uninterruptible)
                                                                     (assert-push-lock-level!
                                                                      'port)
-                                                                    (if (unsafe-struct*-cas!
-                                                                         self18_0
-                                                                         2
-                                                                         #f
-                                                                         #t)
-                                                                      (void)
-                                                                      (port-lock-slow
-                                                                       self18_0))
-                                                                    (memory-order-acquire)))
+                                                                    (if (if (not
+                                                                             (pthreads-started?))
+                                                                          (not
+                                                                           (core-port-lock
+                                                                            self18_0))
+                                                                          #f)
+                                                                      (set-core-port-lock!
+                                                                       self18_0
+                                                                       #t)
+                                                                      (begin
+                                                                        (if (unsafe-struct*-cas!
+                                                                             self18_0
+                                                                             2
+                                                                             #f
+                                                                             #t)
+                                                                          (void)
+                                                                          (port-lock-slow
+                                                                           self18_0))
+                                                                        (memory-order-acquire)))))
                                                                 (void)))
                                                             (if (evt? r17_0)
                                                               r17_0
@@ -28202,15 +29003,26 @@
                                                                   (void)
                                                                   (begin
                                                                     (begin
-                                                                      (memory-order-release)
-                                                                      (if (unsafe-struct*-cas!
-                                                                           self18_0
-                                                                           2
-                                                                           #t
-                                                                           #f)
-                                                                        (void)
-                                                                        (port-unlock-slow
-                                                                         self18_0))
+                                                                      (if (if (not
+                                                                               (pthreads-started?))
+                                                                            (eq?
+                                                                             #t
+                                                                             (core-port-lock
+                                                                              self18_0))
+                                                                            #f)
+                                                                        (set-core-port-lock!
+                                                                         self18_0
+                                                                         #f)
+                                                                        (begin
+                                                                          (memory-order-release)
+                                                                          (if (unsafe-struct*-cas!
+                                                                               self18_0
+                                                                               2
+                                                                               #t
+                                                                               #f)
+                                                                            (void)
+                                                                            (port-unlock-slow
+                                                                             self18_0))))
                                                                       (assert-pop-lock-level!
                                                                        'port)
                                                                       (unsafe-end-atomic))
@@ -28219,15 +29031,26 @@
                                                                      "returned #f when no progress evt was supplied")))
                                                                 (begin
                                                                   (begin
-                                                                    (memory-order-release)
-                                                                    (if (unsafe-struct*-cas!
-                                                                         self18_0
-                                                                         2
-                                                                         #t
-                                                                         #f)
-                                                                      (void)
-                                                                      (port-unlock-slow
-                                                                       self18_0))
+                                                                    (if (if (not
+                                                                             (pthreads-started?))
+                                                                          (eq?
+                                                                           #t
+                                                                           (core-port-lock
+                                                                            self18_0))
+                                                                          #f)
+                                                                      (set-core-port-lock!
+                                                                       self18_0
+                                                                       #f)
+                                                                      (begin
+                                                                        (memory-order-release)
+                                                                        (if (unsafe-struct*-cas!
+                                                                             self18_0
+                                                                             2
+                                                                             #t
+                                                                             #f)
+                                                                          (void)
+                                                                          (port-unlock-slow
+                                                                           self18_0))))
                                                                     (assert-pop-lock-level!
                                                                      'port)
                                                                     (unsafe-end-atomic))
@@ -28264,15 +29087,25 @@
                                                          (unsafe-start-uninterruptible)
                                                          (assert-push-lock-level!
                                                           'port)
-                                                         (if (unsafe-struct*-cas!
-                                                              self_0
-                                                              2
-                                                              #f
-                                                              #t)
-                                                           (void)
-                                                           (port-lock-slow
-                                                            self_0))
-                                                         (memory-order-acquire))
+                                                         (if (if (not
+                                                                  (pthreads-started?))
+                                                               (not
+                                                                (core-port-lock
+                                                                 self_0))
+                                                               #f)
+                                                           (set-core-port-lock!
+                                                            self_0
+                                                            #t)
+                                                           (begin
+                                                             (if (unsafe-struct*-cas!
+                                                                  self_0
+                                                                  2
+                                                                  #f
+                                                                  #t)
+                                                               (void)
+                                                               (port-lock-slow
+                                                                self_0))
+                                                             (memory-order-acquire))))
                                                        (check-read-result_0
                                                         ok-false?_0
                                                         peek?_0
@@ -28282,15 +29115,26 @@
                                                         dest-start_0
                                                         dest-end_0)
                                                        (begin
-                                                         (memory-order-release)
-                                                         (if (unsafe-struct*-cas!
-                                                              self_0
-                                                              2
-                                                              #t
-                                                              #f)
-                                                           (void)
-                                                           (port-unlock-slow
-                                                            self_0))
+                                                         (if (if (not
+                                                                  (pthreads-started?))
+                                                               (eq?
+                                                                #t
+                                                                (core-port-lock
+                                                                 self_0))
+                                                               #f)
+                                                           (set-core-port-lock!
+                                                            self_0
+                                                            #f)
+                                                           (begin
+                                                             (memory-order-release)
+                                                             (if (unsafe-struct*-cas!
+                                                                  self_0
+                                                                  2
+                                                                  #t
+                                                                  #f)
+                                                               (void)
+                                                               (port-unlock-slow
+                                                                self_0))))
                                                          (assert-pop-lock-level!
                                                           'port)
                                                          (unsafe-end-atomic))
@@ -28437,15 +29281,26 @@
                                                                  (check-for-break)
                                                                  (begin
                                                                    (begin
-                                                                     (memory-order-release)
-                                                                     (if (unsafe-struct*-cas!
-                                                                          self_0
-                                                                          2
-                                                                          #t
-                                                                          #f)
-                                                                       (void)
-                                                                       (port-unlock-slow
-                                                                        self_0))
+                                                                     (if (if (not
+                                                                              (pthreads-started?))
+                                                                           (eq?
+                                                                            #t
+                                                                            (core-port-lock
+                                                                             self_0))
+                                                                           #f)
+                                                                       (set-core-port-lock!
+                                                                        self_0
+                                                                        #f)
+                                                                       (begin
+                                                                         (memory-order-release)
+                                                                         (if (unsafe-struct*-cas!
+                                                                              self_0
+                                                                              2
+                                                                              #t
+                                                                              #f)
+                                                                           (void)
+                                                                           (port-unlock-slow
+                                                                            self_0))))
                                                                      (assert-pop-lock-level!
                                                                       'port)
                                                                      (unsafe-end-atomic))
@@ -28460,15 +29315,25 @@
                                                                        (unsafe-start-uninterruptible)
                                                                        (assert-push-lock-level!
                                                                         'port)
-                                                                       (if (unsafe-struct*-cas!
-                                                                            self_0
-                                                                            2
-                                                                            #f
-                                                                            #t)
-                                                                         (void)
-                                                                         (port-lock-slow
-                                                                          self_0))
-                                                                       (memory-order-acquire))))))))
+                                                                       (if (if (not
+                                                                                (pthreads-started?))
+                                                                             (not
+                                                                              (core-port-lock
+                                                                               self_0))
+                                                                             #f)
+                                                                         (set-core-port-lock!
+                                                                          self_0
+                                                                          #t)
+                                                                         (begin
+                                                                           (if (unsafe-struct*-cas!
+                                                                                self_0
+                                                                                2
+                                                                                #f
+                                                                                #t)
+                                                                             (void)
+                                                                             (port-lock-slow
+                                                                              self_0))
+                                                                           (memory-order-acquire))))))))))
                                                          (begin
                                                            (check-read-result_0
                                                             #f
@@ -28565,15 +29430,26 @@
                                                                     (check-for-break)
                                                                     (begin
                                                                       (begin
-                                                                        (memory-order-release)
-                                                                        (if (unsafe-struct*-cas!
-                                                                             self_0
-                                                                             2
-                                                                             #t
-                                                                             #f)
-                                                                          (void)
-                                                                          (port-unlock-slow
-                                                                           self_0))
+                                                                        (if (if (not
+                                                                                 (pthreads-started?))
+                                                                              (eq?
+                                                                               #t
+                                                                               (core-port-lock
+                                                                                self_0))
+                                                                              #f)
+                                                                          (set-core-port-lock!
+                                                                           self_0
+                                                                           #f)
+                                                                          (begin
+                                                                            (memory-order-release)
+                                                                            (if (unsafe-struct*-cas!
+                                                                                 self_0
+                                                                                 2
+                                                                                 #t
+                                                                                 #f)
+                                                                              (void)
+                                                                              (port-unlock-slow
+                                                                               self_0))))
                                                                         (assert-pop-lock-level!
                                                                          'port)
                                                                         (unsafe-end-atomic))
@@ -28593,15 +29469,25 @@
                                                                           (unsafe-start-uninterruptible)
                                                                           (assert-push-lock-level!
                                                                            'port)
-                                                                          (if (unsafe-struct*-cas!
-                                                                               self_0
-                                                                               2
-                                                                               #f
-                                                                               #t)
-                                                                            (void)
-                                                                            (port-lock-slow
-                                                                             self_0))
-                                                                          (memory-order-acquire))))))))
+                                                                          (if (if (not
+                                                                                   (pthreads-started?))
+                                                                                (not
+                                                                                 (core-port-lock
+                                                                                  self_0))
+                                                                                #f)
+                                                                            (set-core-port-lock!
+                                                                             self_0
+                                                                             #t)
+                                                                            (begin
+                                                                              (if (unsafe-struct*-cas!
+                                                                                   self_0
+                                                                                   2
+                                                                                   #f
+                                                                                   #t)
+                                                                                (void)
+                                                                                (port-lock-slow
+                                                                                 self_0))
+                                                                              (memory-order-acquire))))))))))
                                                             (begin
                                                               (check-read-result_0
                                                                progress-evt_0
@@ -28674,15 +29560,26 @@
                                                              (lambda (self_0)
                                                                (begin
                                                                  (begin
-                                                                   (memory-order-release)
-                                                                   (if (unsafe-struct*-cas!
-                                                                        self_0
-                                                                        2
-                                                                        #t
-                                                                        #f)
-                                                                     (void)
-                                                                     (port-unlock-slow
-                                                                      self_0))
+                                                                   (if (if (not
+                                                                            (pthreads-started?))
+                                                                         (eq?
+                                                                          #t
+                                                                          (core-port-lock
+                                                                           self_0))
+                                                                         #f)
+                                                                     (set-core-port-lock!
+                                                                      self_0
+                                                                      #f)
+                                                                     (begin
+                                                                       (memory-order-release)
+                                                                       (if (unsafe-struct*-cas!
+                                                                            self_0
+                                                                            2
+                                                                            #t
+                                                                            #f)
+                                                                         (void)
+                                                                         (port-unlock-slow
+                                                                          self_0))))
                                                                    (assert-pop-lock-level!
                                                                     'port)
                                                                    (unsafe-end-atomic))
@@ -28692,15 +29589,25 @@
                                                                    (unsafe-start-uninterruptible)
                                                                    (assert-push-lock-level!
                                                                     'port)
-                                                                   (if (unsafe-struct*-cas!
-                                                                        self_0
-                                                                        2
-                                                                        #f
-                                                                        #t)
-                                                                     (void)
-                                                                     (port-lock-slow
-                                                                      self_0))
-                                                                   (memory-order-acquire)))))))
+                                                                   (if (if (not
+                                                                            (pthreads-started?))
+                                                                         (not
+                                                                          (core-port-lock
+                                                                           self_0))
+                                                                         #f)
+                                                                     (set-core-port-lock!
+                                                                      self_0
+                                                                      #t)
+                                                                     (begin
+                                                                       (if (unsafe-struct*-cas!
+                                                                            self_0
+                                                                            2
+                                                                            #f
+                                                                            #t)
+                                                                         (void)
+                                                                         (port-lock-slow
+                                                                          self_0))
+                                                                       (memory-order-acquire)))))))))
                                                        (let ((get-progress-evt_0
                                                               (|#%name|
                                                                get-progress-evt
@@ -28735,15 +29642,26 @@
                                                                              (check-for-break)
                                                                              (begin
                                                                                (begin
-                                                                                 (memory-order-release)
-                                                                                 (if (unsafe-struct*-cas!
-                                                                                      self_0
-                                                                                      2
-                                                                                      #t
-                                                                                      #f)
-                                                                                   (void)
-                                                                                   (port-unlock-slow
-                                                                                    self_0))
+                                                                                 (if (if (not
+                                                                                          (pthreads-started?))
+                                                                                       (eq?
+                                                                                        #t
+                                                                                        (core-port-lock
+                                                                                         self_0))
+                                                                                       #f)
+                                                                                   (set-core-port-lock!
+                                                                                    self_0
+                                                                                    #f)
+                                                                                   (begin
+                                                                                     (memory-order-release)
+                                                                                     (if (unsafe-struct*-cas!
+                                                                                          self_0
+                                                                                          2
+                                                                                          #t
+                                                                                          #f)
+                                                                                       (void)
+                                                                                       (port-unlock-slow
+                                                                                        self_0))))
                                                                                  (assert-pop-lock-level!
                                                                                   'port)
                                                                                  (unsafe-end-atomic))
@@ -28757,15 +29675,25 @@
                                                                                    (unsafe-start-uninterruptible)
                                                                                    (assert-push-lock-level!
                                                                                     'port)
-                                                                                   (if (unsafe-struct*-cas!
-                                                                                        self_0
-                                                                                        2
-                                                                                        #f
-                                                                                        #t)
-                                                                                     (void)
-                                                                                     (port-lock-slow
-                                                                                      self_0))
-                                                                                   (memory-order-acquire))))))))
+                                                                                   (if (if (not
+                                                                                            (pthreads-started?))
+                                                                                         (not
+                                                                                          (core-port-lock
+                                                                                           self_0))
+                                                                                         #f)
+                                                                                     (set-core-port-lock!
+                                                                                      self_0
+                                                                                      #t)
+                                                                                     (begin
+                                                                                       (if (unsafe-struct*-cas!
+                                                                                            self_0
+                                                                                            2
+                                                                                            #f
+                                                                                            #t)
+                                                                                         (void)
+                                                                                         (port-lock-slow
+                                                                                          self_0))
+                                                                                       (memory-order-acquire))))))))))
                                                                      (if (not
                                                                           r_0)
                                                                        #f
@@ -28795,15 +29723,26 @@
                                                                        (lambda (self_0)
                                                                          (begin
                                                                            (begin
-                                                                             (memory-order-release)
-                                                                             (if (unsafe-struct*-cas!
-                                                                                  self_0
-                                                                                  2
-                                                                                  #t
-                                                                                  #f)
-                                                                               (void)
-                                                                               (port-unlock-slow
-                                                                                self_0))
+                                                                             (if (if (not
+                                                                                      (pthreads-started?))
+                                                                                   (eq?
+                                                                                    #t
+                                                                                    (core-port-lock
+                                                                                     self_0))
+                                                                                   #f)
+                                                                               (set-core-port-lock!
+                                                                                self_0
+                                                                                #f)
+                                                                               (begin
+                                                                                 (memory-order-release)
+                                                                                 (if (unsafe-struct*-cas!
+                                                                                      self_0
+                                                                                      2
+                                                                                      #t
+                                                                                      #f)
+                                                                                   (void)
+                                                                                   (port-unlock-slow
+                                                                                    self_0))))
                                                                              (assert-pop-lock-level!
                                                                               'port)
                                                                              (unsafe-end-atomic))
@@ -28813,15 +29752,25 @@
                                                                              (unsafe-start-uninterruptible)
                                                                              (assert-push-lock-level!
                                                                               'port)
-                                                                             (if (unsafe-struct*-cas!
-                                                                                  self_0
-                                                                                  2
-                                                                                  #f
-                                                                                  #t)
-                                                                               (void)
-                                                                               (port-lock-slow
-                                                                                self_0))
-                                                                             (memory-order-acquire)))))
+                                                                             (if (if (not
+                                                                                      (pthreads-started?))
+                                                                                   (not
+                                                                                    (core-port-lock
+                                                                                     self_0))
+                                                                                   #f)
+                                                                               (set-core-port-lock!
+                                                                                self_0
+                                                                                #t)
+                                                                               (begin
+                                                                                 (if (unsafe-struct*-cas!
+                                                                                      self_0
+                                                                                      2
+                                                                                      #f
+                                                                                      #t)
+                                                                                   (void)
+                                                                                   (port-lock-slow
+                                                                                    self_0))
+                                                                                 (memory-order-acquire)))))))
                                                                       #f)))
                                                                (call-with-values
                                                                 (lambda ()
@@ -29261,15 +30210,26 @@
                                                         (void)
                                                         (begin
                                                           (begin
-                                                            (memory-order-release)
-                                                            (if (unsafe-struct*-cas!
-                                                                 self17_0
-                                                                 2
-                                                                 #t
-                                                                 #f)
-                                                              (void)
-                                                              (port-unlock-slow
-                                                               self17_0))
+                                                            (if (if (not
+                                                                     (pthreads-started?))
+                                                                  (eq?
+                                                                   #t
+                                                                   (core-port-lock
+                                                                    self17_0))
+                                                                  #f)
+                                                              (set-core-port-lock!
+                                                               self17_0
+                                                               #f)
+                                                              (begin
+                                                                (memory-order-release)
+                                                                (if (unsafe-struct*-cas!
+                                                                     self17_0
+                                                                     2
+                                                                     #t
+                                                                     #f)
+                                                                  (void)
+                                                                  (port-unlock-slow
+                                                                   self17_0))))
                                                             (assert-pop-lock-level!
                                                              'port)
                                                             (unsafe-end-atomic))
@@ -29333,15 +30293,26 @@
                                                                self17_0)
                                                             (begin
                                                               (begin
-                                                                (memory-order-release)
-                                                                (if (unsafe-struct*-cas!
-                                                                     self17_0
-                                                                     2
-                                                                     #t
-                                                                     #f)
-                                                                  (void)
-                                                                  (port-unlock-slow
-                                                                   self17_0))
+                                                                (if (if (not
+                                                                         (pthreads-started?))
+                                                                      (eq?
+                                                                       #t
+                                                                       (core-port-lock
+                                                                        self17_0))
+                                                                      #f)
+                                                                  (set-core-port-lock!
+                                                                   self17_0
+                                                                   #f)
+                                                                  (begin
+                                                                    (memory-order-release)
+                                                                    (if (unsafe-struct*-cas!
+                                                                         self17_0
+                                                                         2
+                                                                         #t
+                                                                         #f)
+                                                                      (void)
+                                                                      (port-unlock-slow
+                                                                       self17_0))))
                                                                 (assert-pop-lock-level!
                                                                  'port)
                                                                 (unsafe-end-atomic))
@@ -29349,15 +30320,25 @@
                                                                 (unsafe-start-uninterruptible)
                                                                 (assert-push-lock-level!
                                                                  'port)
-                                                                (if (unsafe-struct*-cas!
-                                                                     self17_0
-                                                                     2
-                                                                     #f
-                                                                     #t)
-                                                                  (void)
-                                                                  (port-lock-slow
-                                                                   self17_0))
-                                                                (memory-order-acquire)))
+                                                                (if (if (not
+                                                                         (pthreads-started?))
+                                                                      (not
+                                                                       (core-port-lock
+                                                                        self17_0))
+                                                                      #f)
+                                                                  (set-core-port-lock!
+                                                                   self17_0
+                                                                   #t)
+                                                                  (begin
+                                                                    (if (unsafe-struct*-cas!
+                                                                         self17_0
+                                                                         2
+                                                                         #f
+                                                                         #t)
+                                                                      (void)
+                                                                      (port-lock-slow
+                                                                       self17_0))
+                                                                    (memory-order-acquire)))))
                                                             (void)))
                                                         (if (evt? r16_0)
                                                           (void)
@@ -29385,15 +30366,25 @@
                                                        (unsafe-start-uninterruptible)
                                                        (assert-push-lock-level!
                                                         'port)
-                                                       (if (unsafe-struct*-cas!
-                                                            self_0
-                                                            2
-                                                            #f
-                                                            #t)
-                                                         (void)
-                                                         (port-lock-slow
-                                                          self_0))
-                                                       (memory-order-acquire))
+                                                       (if (if (not
+                                                                (pthreads-started?))
+                                                             (not
+                                                              (core-port-lock
+                                                               self_0))
+                                                             #f)
+                                                         (set-core-port-lock!
+                                                          self_0
+                                                          #t)
+                                                         (begin
+                                                           (if (unsafe-struct*-cas!
+                                                                self_0
+                                                                2
+                                                                #f
+                                                                #t)
+                                                             (void)
+                                                             (port-lock-slow
+                                                              self_0))
+                                                           (memory-order-acquire))))
                                                      (check-write-result_0
                                                       #t
                                                       who_0
@@ -29403,15 +30394,26 @@
                                                       end_0
                                                       non-block/buffer?_0)
                                                      (begin
-                                                       (memory-order-release)
-                                                       (if (unsafe-struct*-cas!
-                                                            self_0
-                                                            2
-                                                            #t
-                                                            #f)
-                                                         (void)
-                                                         (port-unlock-slow
-                                                          self_0))
+                                                       (if (if (not
+                                                                (pthreads-started?))
+                                                             (eq?
+                                                              #t
+                                                              (core-port-lock
+                                                               self_0))
+                                                             #f)
+                                                         (set-core-port-lock!
+                                                          self_0
+                                                          #f)
+                                                         (begin
+                                                           (memory-order-release)
+                                                           (if (unsafe-struct*-cas!
+                                                                self_0
+                                                                2
+                                                                #t
+                                                                #f)
+                                                             (void)
+                                                             (port-unlock-slow
+                                                              self_0))))
                                                        (assert-pop-lock-level!
                                                         'port)
                                                        (unsafe-end-atomic))
@@ -29516,15 +30518,26 @@
                                                                   (check-for-break)
                                                                   (begin
                                                                     (begin
-                                                                      (memory-order-release)
-                                                                      (if (unsafe-struct*-cas!
-                                                                           self_0
-                                                                           2
-                                                                           #t
-                                                                           #f)
-                                                                        (void)
-                                                                        (port-unlock-slow
-                                                                         self_0))
+                                                                      (if (if (not
+                                                                               (pthreads-started?))
+                                                                            (eq?
+                                                                             #t
+                                                                             (core-port-lock
+                                                                              self_0))
+                                                                            #f)
+                                                                        (set-core-port-lock!
+                                                                         self_0
+                                                                         #f)
+                                                                        (begin
+                                                                          (memory-order-release)
+                                                                          (if (unsafe-struct*-cas!
+                                                                               self_0
+                                                                               2
+                                                                               #t
+                                                                               #f)
+                                                                            (void)
+                                                                            (port-unlock-slow
+                                                                             self_0))))
                                                                       (assert-pop-lock-level!
                                                                        'port)
                                                                       (unsafe-end-atomic))
@@ -29540,15 +30553,25 @@
                                                                         (unsafe-start-uninterruptible)
                                                                         (assert-push-lock-level!
                                                                          'port)
-                                                                        (if (unsafe-struct*-cas!
-                                                                             self_0
-                                                                             2
-                                                                             #f
-                                                                             #t)
-                                                                          (void)
-                                                                          (port-lock-slow
-                                                                           self_0))
-                                                                        (memory-order-acquire)))))))))
+                                                                        (if (if (not
+                                                                                 (pthreads-started?))
+                                                                              (not
+                                                                               (core-port-lock
+                                                                                self_0))
+                                                                              #f)
+                                                                          (set-core-port-lock!
+                                                                           self_0
+                                                                           #t)
+                                                                          (begin
+                                                                            (if (unsafe-struct*-cas!
+                                                                                 self_0
+                                                                                 2
+                                                                                 #f
+                                                                                 #t)
+                                                                              (void)
+                                                                              (port-lock-slow
+                                                                               self_0))
+                                                                            (memory-order-acquire)))))))))))
                                                         (begin
                                                           (check-write-result_0
                                                            #f
@@ -29610,15 +30633,26 @@
                                                                 imm-end_0)
                                                          (begin
                                                            (begin
-                                                             (memory-order-release)
-                                                             (if (unsafe-struct*-cas!
-                                                                  self_0
-                                                                  2
-                                                                  #t
-                                                                  #f)
-                                                               (void)
-                                                               (port-unlock-slow
-                                                                self_0))
+                                                             (if (if (not
+                                                                      (pthreads-started?))
+                                                                   (eq?
+                                                                    #t
+                                                                    (core-port-lock
+                                                                     self_0))
+                                                                   #f)
+                                                               (set-core-port-lock!
+                                                                self_0
+                                                                #f)
+                                                               (begin
+                                                                 (memory-order-release)
+                                                                 (if (unsafe-struct*-cas!
+                                                                      self_0
+                                                                      2
+                                                                      #t
+                                                                      #f)
+                                                                   (void)
+                                                                   (port-unlock-slow
+                                                                    self_0))))
                                                              (assert-pop-lock-level!
                                                               'port)
                                                              (unsafe-end-atomic))
@@ -29639,15 +30673,25 @@
                                                                  (unsafe-start-uninterruptible)
                                                                  (assert-push-lock-level!
                                                                   'port)
-                                                                 (if (unsafe-struct*-cas!
-                                                                      self_0
-                                                                      2
-                                                                      #f
-                                                                      #t)
-                                                                   (void)
-                                                                   (port-lock-slow
-                                                                    self_0))
-                                                                 (memory-order-acquire))
+                                                                 (if (if (not
+                                                                          (pthreads-started?))
+                                                                       (not
+                                                                        (core-port-lock
+                                                                         self_0))
+                                                                       #f)
+                                                                   (set-core-port-lock!
+                                                                    self_0
+                                                                    #t)
+                                                                   (begin
+                                                                     (if (unsafe-struct*-cas!
+                                                                          self_0
+                                                                          2
+                                                                          #f
+                                                                          #t)
+                                                                       (void)
+                                                                       (port-lock-slow
+                                                                        self_0))
+                                                                     (memory-order-acquire))))
                                                                (wrap-check-write-evt-result_0
                                                                 '|user port write-evt|
                                                                 r_0
@@ -29676,15 +30720,26 @@
                                                              (check-for-break)
                                                              (begin
                                                                (begin
-                                                                 (memory-order-release)
-                                                                 (if (unsafe-struct*-cas!
-                                                                      self_0
-                                                                      2
-                                                                      #t
-                                                                      #f)
-                                                                   (void)
-                                                                   (port-unlock-slow
-                                                                    self_0))
+                                                                 (if (if (not
+                                                                          (pthreads-started?))
+                                                                       (eq?
+                                                                        #t
+                                                                        (core-port-lock
+                                                                         self_0))
+                                                                       #f)
+                                                                   (set-core-port-lock!
+                                                                    self_0
+                                                                    #f)
+                                                                   (begin
+                                                                     (memory-order-release)
+                                                                     (if (unsafe-struct*-cas!
+                                                                          self_0
+                                                                          2
+                                                                          #t
+                                                                          #f)
+                                                                       (void)
+                                                                       (port-unlock-slow
+                                                                        self_0))))
                                                                  (assert-pop-lock-level!
                                                                   'port)
                                                                  (unsafe-end-atomic))
@@ -29698,15 +30753,25 @@
                                                                    (unsafe-start-uninterruptible)
                                                                    (assert-push-lock-level!
                                                                     'port)
-                                                                   (if (unsafe-struct*-cas!
-                                                                        self_0
-                                                                        2
-                                                                        #f
-                                                                        #t)
-                                                                     (void)
-                                                                     (port-lock-slow
-                                                                      self_0))
-                                                                   (memory-order-acquire)))))))))))
+                                                                   (if (if (not
+                                                                            (pthreads-started?))
+                                                                         (not
+                                                                          (core-port-lock
+                                                                           self_0))
+                                                                         #f)
+                                                                     (set-core-port-lock!
+                                                                      self_0
+                                                                      #t)
+                                                                     (begin
+                                                                       (if (unsafe-struct*-cas!
+                                                                            self_0
+                                                                            2
+                                                                            #f
+                                                                            #t)
+                                                                         (void)
+                                                                         (port-lock-slow
+                                                                          self_0))
+                                                                       (memory-order-acquire)))))))))))))
                                                 (let ((get-location_0
                                                        (if user-get-location4_0
                                                          (make-get-location
@@ -29719,15 +30784,26 @@
                                                             (lambda (self_0)
                                                               (begin
                                                                 (begin
-                                                                  (memory-order-release)
-                                                                  (if (unsafe-struct*-cas!
-                                                                       self_0
-                                                                       2
-                                                                       #t
-                                                                       #f)
-                                                                    (void)
-                                                                    (port-unlock-slow
-                                                                     self_0))
+                                                                  (if (if (not
+                                                                           (pthreads-started?))
+                                                                        (eq?
+                                                                         #t
+                                                                         (core-port-lock
+                                                                          self_0))
+                                                                        #f)
+                                                                    (set-core-port-lock!
+                                                                     self_0
+                                                                     #f)
+                                                                    (begin
+                                                                      (memory-order-release)
+                                                                      (if (unsafe-struct*-cas!
+                                                                           self_0
+                                                                           2
+                                                                           #t
+                                                                           #f)
+                                                                        (void)
+                                                                        (port-unlock-slow
+                                                                         self_0))))
                                                                   (assert-pop-lock-level!
                                                                    'port)
                                                                   (unsafe-end-atomic))
@@ -29737,15 +30813,25 @@
                                                                   (unsafe-start-uninterruptible)
                                                                   (assert-push-lock-level!
                                                                    'port)
-                                                                  (if (unsafe-struct*-cas!
-                                                                       self_0
-                                                                       2
-                                                                       #f
-                                                                       #t)
-                                                                    (void)
-                                                                    (port-lock-slow
-                                                                     self_0))
-                                                                  (memory-order-acquire)))))
+                                                                  (if (if (not
+                                                                           (pthreads-started?))
+                                                                        (not
+                                                                         (core-port-lock
+                                                                          self_0))
+                                                                        #f)
+                                                                    (set-core-port-lock!
+                                                                     self_0
+                                                                     #t)
+                                                                    (begin
+                                                                      (if (unsafe-struct*-cas!
+                                                                           self_0
+                                                                           2
+                                                                           #f
+                                                                           #t)
+                                                                        (void)
+                                                                        (port-lock-slow
+                                                                         self_0))
+                                                                      (memory-order-acquire)))))))
                                                            #f)))
                                                     (call-with-values
                                                      (lambda ()
@@ -29765,15 +30851,26 @@
                                                                  (lambda (self_0)
                                                                    (begin
                                                                      (begin
-                                                                       (memory-order-release)
-                                                                       (if (unsafe-struct*-cas!
-                                                                            self_0
-                                                                            2
-                                                                            #t
-                                                                            #f)
-                                                                         (void)
-                                                                         (port-unlock-slow
-                                                                          self_0))
+                                                                       (if (if (not
+                                                                                (pthreads-started?))
+                                                                             (eq?
+                                                                              #t
+                                                                              (core-port-lock
+                                                                               self_0))
+                                                                             #f)
+                                                                         (set-core-port-lock!
+                                                                          self_0
+                                                                          #f)
+                                                                         (begin
+                                                                           (memory-order-release)
+                                                                           (if (unsafe-struct*-cas!
+                                                                                self_0
+                                                                                2
+                                                                                #t
+                                                                                #f)
+                                                                             (void)
+                                                                             (port-unlock-slow
+                                                                              self_0))))
                                                                        (assert-pop-lock-level!
                                                                         'port)
                                                                        (unsafe-end-atomic))
@@ -29783,15 +30880,25 @@
                                                                        (unsafe-start-uninterruptible)
                                                                        (assert-push-lock-level!
                                                                         'port)
-                                                                       (if (unsafe-struct*-cas!
-                                                                            self_0
-                                                                            2
-                                                                            #f
-                                                                            #t)
-                                                                         (void)
-                                                                         (port-lock-slow
-                                                                          self_0))
-                                                                       (memory-order-acquire)))))))
+                                                                       (if (if (not
+                                                                                (pthreads-started?))
+                                                                             (not
+                                                                              (core-port-lock
+                                                                               self_0))
+                                                                             #f)
+                                                                         (set-core-port-lock!
+                                                                          self_0
+                                                                          #t)
+                                                                         (begin
+                                                                           (if (unsafe-struct*-cas!
+                                                                                self_0
+                                                                                2
+                                                                                #f
+                                                                                #t)
+                                                                             (void)
+                                                                             (port-lock-slow
+                                                                              self_0))
+                                                                           (memory-order-acquire)))))))))
                                                            (finish-port/count
                                                             (let ((app_0
                                                                    (let ((app_0
@@ -30277,10 +31384,15 @@
                             (begin
                               (unsafe-start-uninterruptible)
                               (assert-push-lock-level! 'port)
-                              (if (unsafe-struct*-cas! in_1 2 #f #t)
-                                (void)
-                                (port-lock-slow in_1))
-                              (memory-order-acquire))
+                              (if (if (not (pthreads-started?))
+                                    (not (core-port-lock in_1))
+                                    #f)
+                                (set-core-port-lock! in_1 #t)
+                                (begin
+                                  (if (unsafe-struct*-cas! in_1 2 #f #t)
+                                    (void)
+                                    (port-lock-slow in_1))
+                                  (memory-order-acquire))))
                             (begin
                               (prepare-change in_1)
                               (begin
@@ -30288,10 +31400,19 @@
                                 (let ((r_0 (|#%app| byte-ready_0 in_1 void)))
                                   (begin
                                     (begin
-                                      (memory-order-release)
-                                      (if (unsafe-struct*-cas! in_1 2 #t #f)
-                                        (void)
-                                        (port-unlock-slow in_1))
+                                      (if (if (not (pthreads-started?))
+                                            (eq? #t (core-port-lock in_1))
+                                            #f)
+                                        (set-core-port-lock! in_1 #f)
+                                        (begin
+                                          (memory-order-release)
+                                          (if (unsafe-struct*-cas!
+                                               in_1
+                                               2
+                                               #t
+                                               #f)
+                                            (void)
+                                            (port-unlock-slow in_1))))
                                       (assert-pop-lock-level! 'port)
                                       (unsafe-end-atomic))
                                     (let ((or-part_0 (eq? #t r_0)))

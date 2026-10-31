@@ -39,4 +39,5 @@
         condition-wait
         condition-signal
         assert-push-lock-level!
-        assert-pop-lock-level!)
+        assert-pop-lock-level!
+        pthreads-started?)

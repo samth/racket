@@ -46,6 +46,7 @@
   [raise-definition-result-arity-error (known-procedure 4)]
 
   [make-pthread-parameter (known-procedure 2)]
+  [pthreads-started? (known-procedure 1)]
   [engine-block (known-procedure 1)]
 
   [assert-push-lock-level! (known-procedure 2)]

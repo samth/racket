@@ -24259,7 +24259,7 @@
   (lambda (s_0)
     (let ((built-in-s_0 (string->symbol (format ".~s" s_0))))
       (begin (hash-set! built-in-symbols built-in-s_0 #t) built-in-s_0))))
-(define effect_2483
+(define effect_2617
   (begin
     (void
      (begin
@@ -24315,6 +24315,7 @@
              apply-bytes-append
              call-with-module-prompt
              make-pthread-parameter
+             pthreads-started?
              engine-block
              make-mutex
              make-condition
@@ -94668,7 +94669,7 @@
                                      all-exp-forms_0)))
                                (rebuild.1 #t s_0 temp46_0))))))))))))))))
     (void)))
-(define effect_2617
+(define effect_2618
   (begin
     (void
      (add-core-form!*

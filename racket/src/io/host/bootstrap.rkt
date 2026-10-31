@@ -86,6 +86,7 @@
 
 (primitive-table '#%pthread
                  (hasheq 'unsafe-make-place-local box
+                         'pthreads-started? (lambda () #t)
                          'unsafe-place-local-ref unbox
                          'unsafe-place-local-set! set-box!
                          'unsafe-add-global-finalizer (lambda (v proc) (void))

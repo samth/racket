@@ -65,7 +65,8 @@
       [else
        (scheduler-lock-release lock)]))
   (define (lock-acquire/a lock) (void))
-  (define (lock-release/a lock) (void))]
+  (define (lock-release/a lock) (void))
+  (define (pthreads-started?) #f)]
  [else
   (define transition-lock (make-mutex))
   (define transition-cond (make-condition))
@@ -176,4 +177,6 @@
   ;; with respect to engines, such as `eq-hashtable-ref`, so they
   ;; have nothing to do while the place has only one OS thread
   (define (lock-acquire/a lock) (when (place-in-parallel?) (lock-acquire lock)))
+  ;; For the "io" layer's port locks, which use the same idea
+  (define (pthreads-started?) (place-in-parallel?))
   (define (lock-release/a lock) (when (place-in-parallel?) (lock-release lock)))])

@@ -9542,3 +9542,38 @@
       (#2%make-record-type-descriptor 'A #f #f #f #f '(2 . 0))
       #f))
 )
+
+(mat cp0-cyclic-rtd
+  ;; an rtd whose construction depends (through `finish`) on a procedure
+  ;; that uses the record type's own accessor: the accessor should still
+  ;; be inlined, whichever of the rtd or accessor binding cp0 visits first
+  (equivalent-expansion?
+   (parameterize ([optimize-level 3] [enable-cp0 #t] [#%$suppress-primitive-inlining #f])
+     (expand/optimize
+      '(lambda (mk)
+         (letrec* ([finish (mk (lambda (p) (pt-x p)))]
+                   [rtd (make-record-type-descriptor (finish 'name) #f #f #f #f '#((immutable x)))]
+                   [eff (finish rtd)]
+                   [pt-x (record-accessor rtd 0)]
+                   [pt? (record-predicate rtd)])
+           (lambda (p) (if (pt? p) (pt-x p) 0))))))
+   `(lambda (mk)
+      (let ([finish (mk (lambda (p) (#3%$object-ref 'scheme-object p ,fixnum?)))])
+        (let ([rtd (#3%make-record-type-descriptor (finish 'name) #f #f #f #f '#((immutable x)))])
+          (finish rtd)
+          (lambda (p)
+            (if (#3%record? p rtd)
+                (#3%$object-ref 'scheme-object p ,fixnum?)
+                0))))))
+  (equal?
+   (let ([mk (lambda (get) (lambda (x) (if (eq? x 'name) 'pt (and (record? x) get))))])
+     (letrec* ([finish (mk (lambda (p) (pt-x p)))]
+               [rtd (make-record-type-descriptor (finish 'name) #f #f #f #f '#((immutable x)))]
+               [get (finish rtd)]
+               [pt-x (record-accessor rtd 0)]
+               [pt? (record-predicate rtd)]
+               [make-pt (record-constructor (make-record-constructor-descriptor rtd #f #f))])
+       (let ([p (make-pt 5)])
+         (list (and (pt? p) (pt-x p)) (get p) (pt? 5)))))
+   '(5 5 #f))
+)

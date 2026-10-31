@@ -687,6 +687,70 @@
       (lambda (opnds)
         (map value-visit-operand! opnds)))
 
+    (define provisional-record-type
+      ; opnd is being visited, and we've found a cyclic reference to it.
+      ; If opnd's expression creates a record-type descriptor whose layout
+      ; is determined by constant arguments (and a parent that is already
+      ; known), return a compile-time rtd for it.  This lets a reference
+      ; to the rtd within the cycle, such as from a record accessor used by
+      ; one of the record type's own property values, be treated as a
+      ; reference to a known record type.
+      (lambda (opnd)
+        (define (get-const e k)
+          (nanopass-case (Lsrc Expr) e
+            [(quote ,d) (k d)]
+            [else #f]))
+        (define (get-parent e k)
+          (nanopass-case (Lsrc Expr) e
+            [(quote ,d) (and (eq? d #f) (k #f))]
+            [(ref ,maybe-src ,x)
+             (let ([x-opnd (prelex-operand (lookup x (operand-env opnd)))])
+               (and (operand? x-opnd)
+                    (fx= (operand-pending x-opnd) 0)
+                    (not (prelex-was-assigned (lookup x (operand-env opnd))))
+                    (nanopass-case (Lsrc Expr) (result-exp (value-visit-operand! x-opnd))
+                      [(record-type ,rtd ,e)
+                       (and (not (record-type-sealed? rtd)) (k rtd))]
+                      [(quote ,d)
+                       (and (record-type-descriptor? d)
+                            (not (record-type-sealed? d))
+                            (k d))]
+                      [else #f])))]
+            [else #f]))
+        (define (build ?parent ?sealed ?opaque ?fields)
+          (get-parent ?parent
+            (lambda (prtd)
+              (get-const ?sealed
+                (lambda (sealed?)
+                  (get-const ?opaque
+                    (lambda (opaque?)
+                      (get-const ?fields
+                        (lambda (fields)
+                          (let ([opaque? (or opaque? (and prtd (record-type-opaque? prtd)))])
+                            (guard (c [#t #f])
+                              ($make-record-type-descriptor base-ctrtd 'tmp prtd #f
+                                (and sealed? #t) opaque? fields 'cp0
+                                (if (or opaque?
+                                        (not prtd)
+                                        (and (record-type-opaque-known? prtd)
+                                             (not (record-type-opaque? prtd))))
+                                    (fxlogor ctrtd-sealed-known ctrtd-opaque-known)
+                                    ctrtd-sealed-known)))))))))))))
+        (and (not (operand-value opnd))
+             (nanopass-case (Lsrc Expr) (operand-exp opnd)
+               [(call ,preinfo ,pr ,e* ...)
+                (case (primref-name pr)
+                  [($make-record-type-descriptor)
+                   ; base-rtd name parent uid sealed opaque fields who . extras
+                   (and (fx>= (length e*) 8)
+                        (build (list-ref e* 2) (list-ref e* 4) (list-ref e* 5) (list-ref e* 6)))]
+                  [(make-record-type-descriptor r6rs:make-record-type-descriptor)
+                   ; name parent uid sealed opaque fields
+                   (and (fx= (length e*) 6)
+                        (build (list-ref e* 1) (list-ref e* 3) (list-ref e* 4) (list-ref e* 5)))]
+                  [else #f])]
+               [else #f]))))
+
     (define residualize-seq
       ; ctxt must be an app context.  set used and unused lists in context
       (lambda (used unused ctxt)
@@ -5489,7 +5553,12 @@
                          (if (prelex-was-assigned new-id)
                              (residualize-ref maybe-src new-id sc)
                              (copy maybe-src new-id opnd ctxt sc wd name moi))])
-                      (residualize-ref maybe-src new-id sc)))))])]
+                      (let ([rtd (and opnd
+                                      (not (prelex-was-assigned new-id))
+                                      (provisional-record-type opnd))])
+                        (if rtd
+                            `(record-type ,rtd ,(residualize-ref maybe-src new-id sc))
+                            (residualize-ref maybe-src new-id sc)))))))])]
       [(seq ,[cp0 : e1 'effect env sc wd #f moi -> e1] ,e2)
        (make-seq ctxt e1 (cp0 e2 ctxt env sc wd name moi))]
       [(if ,[cp0 : e1 'test env sc wd #f moi -> e1] ,e2 ,e3)

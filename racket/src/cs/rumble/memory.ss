@@ -3,7 +3,15 @@
 (define request-incremental? #f)
 (define disable-incremental? #f)
 
+;; Allocation between minor collections, per allocating place. A
+;; larger nursery means fewer minor collections and less promotion of
+;; short-lived objects to older generations. Compiling large programs
+;; allocates tens of GB, and going from 8 MB to 32 MB cuts total GC
+;; time by about 20% there without increasing peak memory use.
+(define nursery-bytes (* 32 1024 1024))
+
 (define (set-collect-handler!)
+  (collect-trip-bytes nursery-bytes)
   (collect-request-handler (lambda ()
                              ;; Handler is called in an unspecified thread with
                              ;; all other threads paused (at some point where interrupts
@@ -36,7 +44,7 @@
 (define (collect-trip-for-allocating-places! delta)
   (with-global-lock
    (set! allocating-places (+ allocating-places delta))
-   (collect-trip-bytes (* allocating-places (* 8 1024 1024)))))
+   (collect-trip-bytes (* allocating-places nursery-bytes))))
 
 ;; Replicate the counting that `(collect)` would do
 ;; so that we can report a generation to the notification

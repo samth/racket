@@ -112,11 +112,16 @@
                                        avail-cache)) ; cache for `continuation-prompt-available?`
 
 (define-racket-record-type continuation-prompt-tag
-  [fields (mutable name)] ; mutable => constructor generates fresh instances
+  [fields (immutable hash) ; field 0 => `eq-hash-code` result
+          (mutable name)] ; mutable => constructor generates fresh instances
   [nongenerative]
   [sealed #t]
-  [constructor create-continuation-prompt-tag]
+  [constructor make-continuation-prompt-tag/hash]
   [predicate authentic-continuation-prompt-tag?])
+
+
+(define (create-continuation-prompt-tag name)
+  (make-continuation-prompt-tag/hash (next-field0-hash!) name))
 
 (define the-default-continuation-prompt-tag (create-continuation-prompt-tag 'default))
 
@@ -820,7 +825,7 @@
 (define (set-continuation-applicables!)
   (struct-property-set! prop:object-name
                         rtd:continuation-prompt-tag
-                        0))
+                        1))
 
 ;; ----------------------------------------
 ;; Metacontinuation operations for continutions

@@ -251,6 +251,7 @@
                   'condition-broadcast (lambda args
                                          (error "condition-broadcast: not ready"))
                   'threaded? (lambda () #f)
+                  'prop:unsafe-authentic-override prop:unsafe-authentic-override
                   'make-mutex (lambda () (vector #f 0 (make-semaphore 1)))
                   'mutex-acquire (lambda (s) (cond
                                                [(eq? (vector-ref s 0) (current-thread))

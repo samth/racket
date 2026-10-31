@@ -206,16 +206,32 @@
             info)]
           [else (maybe-immediate-values)])]
        [`((,prop:s ,s? ,s-ref) (make-struct-type-property ,_ . ,rest))
+        ;; Check whether the property type has an immediate (or no) guard
+        ;; and no supers:
+        (define immediate? (or (null? (unwrap rest))
+                               (and (not (wrap-car rest))
+                                    (null? (unwrap (wrap-cdr rest))))))
+        ;; Check whether the property type has no supers (but maybe a guard):
+        (define no-supers? (or immediate?
+                               (let ([args (unwrap-list rest)])
+                                 (and args
+                                      (or ((length args) . <= . 1)
+                                          (match (cadr args)
+                                            [`null #t]
+                                            [`'() #t]
+                                            [`,_ #f]))))))
         (values
          (add-struct-type-property-known prop:s s-ref s?
-                                         ;; Check whether the property type has an immediate (or no) guard:
-                                         (or (null? (unwrap rest))
-                                             (and (not (wrap-car rest))
-                                                  (null? (unwrap (wrap-cdr rest)))))
+                                         immediate?
+                                         no-supers?
                                          knowns)
          #f)]
-       [`((,prop:s ,s? ,s-ref) (unsafe-make-struct-type-property/guard-calls-no-arguments . ,_))
-        (values (add-struct-type-property-known prop:s s-ref s? #t knowns)
+       [`((,prop:s ,s? ,s-ref) (unsafe-make-struct-type-property/guard-calls-no-arguments . ,rest))
+        (values (add-struct-type-property-known prop:s s-ref s? #t
+                                                ;; no supers?
+                                                (let ([args (unwrap-list rest)])
+                                                  (and args ((length args) . <= . 2)))
+                                                knowns)
                 #f)]
        [`,_ (maybe-immediate-values)])]
     [`,_ (nothing)]))

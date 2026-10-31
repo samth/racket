@@ -7,7 +7,8 @@
          "infer-known.rkt"
          "unwrap-let.rkt"
          "lambda.rkt"
-         "aim.rkt")
+         "aim.rkt"
+         "escape.rkt")
 
 (provide find-definitions)
 
@@ -127,7 +128,8 @@
                                     (if (struct-type-info-pure-constructor? info)
                                         (known-struct-constructor (arithmetic-shift 1 (struct-type-info-field-count info)) type struct:s)
                                         a-known-constant))]
-                  [authentic? (struct-type-info-authentic? info)]
+                  [authentic? (or (struct-type-info-authentic? info)
+                                  (and (inferred-authentic? info struct:s acc/muts) 'inferred))]
                   [sealed? (struct-type-info-sealed? info)]
                   [knowns (hash-set knowns
                                     (unwrap s?)
@@ -246,3 +248,36 @@
 
 (define (find-cross-module-inline? defn)
   (wrap-property defn 'compiler-hint:cross-module-inline))
+
+;; EXPERIMENT: a structure type is effectively authentic when nothing
+;; outside the module can create an impersonator of its instances.
+;; That holds when its struct-type value, accessors and mutators are
+;; private to the module and used only in direct calls, it has no
+;; parent type, it is opaque, and it has no properties (whose accessors
+;; could be used with `chaperone-struct`) and is not a procedure.
+(define (inferred-authentic? info struct:s acc/muts)
+  (define private-id? (current-private-id?))
+  (and private-id?
+       (not (struct-type-info-parent info))
+       (not (struct-type-info-prefab-immutables info))
+       (not (struct-type-info-maybe-proc? info))
+       (private-id? struct:s)
+       (for/and ([id (in-list acc/muts)])
+         (private-id? id))
+       (let ([rest (struct-type-info-rest info)])
+         (define (no-props? p)
+           (match p
+             [`null #t]
+             [`(quote ()) #t]
+             [`(list) #t]
+             [`(list (cons prop:sealed ,_)) #t]
+             [`,_ #f]))
+         (define (opaque? i)
+           (match i
+             [`(current-inspector) #t]
+             [`,_ #f]))
+         (match rest
+           [`() #t]
+           [`(,props) (no-props? props)]
+           [`(,props ,insp . ,_) (and (no-props? props) (opaque? insp))]
+           [`,_ #f]))))

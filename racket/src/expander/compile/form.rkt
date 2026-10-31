@@ -51,6 +51,7 @@
                        #:to-correlated-linklet? [to-correlated-linklet? #f]
                        #:optimize-linklet? [optimize-linklet? #t]
                        #:unsafe?-box [unsafe?-box #f]
+                       #:keep-export? [keep-export? #f] ; #f or (phase binding-sym -> boolean)
                        #:realm [realm (current-compile-realm)])
   (define phase (compile-context-phase cctx))
   (define self (compile-context-self cctx))
@@ -260,7 +261,9 @@
              ;; exports
              (,@(link-info-def-decls li)
               ,@(for/list ([binding-sym (in-list (header-binding-syms-in-order
-                                                  (hash-ref phase-to-header phase)))])
+                                                  (hash-ref phase-to-header phase)))]
+                           #:when (or (not keep-export?)
+                                      (keep-export? phase binding-sym)))
                   (define def-sym (hash-ref binding-sym-to-define-sym binding-sym))
                   (if (eq? def-sym binding-sym)
                       def-sym

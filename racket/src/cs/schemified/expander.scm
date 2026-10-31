@@ -87,6 +87,8 @@
 (define rx2199 (byte-regexp #vu8(34)))
 (define rx2194 (byte-regexp #vu8(0)))
 (define rx2668 (regexp "[.]"))
+(define rx2400 (byte-regexp #vu8(94 91 94 0 61 93 43 36)))
+(define rx2956 (byte-regexp #vu8(94 91 94 0 61 93 42 36)))
 (define hash2725 (hash))
 (define hash2610 (hasheq))
 (define hash2589 (hasheqv))
@@ -1211,6 +1213,30 @@
        'call-with-default-reading-parameterization
        "(procedure-arity-includes/c 0)"
        thunk_0))))
+(define bytes-environment-variable-name?
+  (lambda (s_0)
+    (if (bytes? s_0)
+      (if (eq? 'windows (system-type))
+        (regexp-match? rx2400 s_0)
+        (regexp-match? rx2956 s_0))
+      #f)))
+(define string-environment-variable-name?
+  (lambda (s_0)
+    (if (string? s_0)
+      (bytes-environment-variable-name? (string->bytes/locale s_0 63))
+      #f)))
+(define getenv
+  (lambda (s_0)
+    (begin
+      (if (string-environment-variable-name? s_0)
+        (void)
+        (raise-argument-error 'getenv "string-environment-variable-name?" s_0))
+      (let ((v_0
+             (let ((app_0 (current-environment-variables)))
+               (environment-variables-ref
+                app_0
+                (string->bytes/locale s_0 63)))))
+        (if v_0 (bytes->string/locale v_0 '#\x3f) #f)))))
 (define-values
  (prop:keyword-impersonator keyword-impersonator? keyword-impersonator-ref)
  (make-struct-type-property 'keyword-impersonator))
@@ -19398,7 +19424,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish916
+  (let ((finish917
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -19420,11 +19446,11 @@
             #f
             '(1 . 0)
             'make-struct-type
-            (finish916 'proc)
-            (finish916 'arity)
+            (finish917 'proc)
+            (finish917 'arity)
             #f
             |#%system-inspector|)))
-      (let ((effect917 (finish916 struct:set!-transformer_0)))
+      (let ((effect918 (finish917 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -39025,28 +39051,29 @@
             encoded-root-expand-ctx-box6_0
             force-phases5_0
             get-module-linklet-info11_0
+            keep-export?18_0
             module-prompt?13_0
             optimize-linklet?16_0
             other-form-callback10_0
-            realm18_0
+            realm19_0
             root-ctx-only-if-syntax?7_0
             serializable?12_0
             to-correlated-linklet?15_0
             unlimited-compile?-box14_0
             unsafe?-box17_0
-            bodys36_0
-            cctx37_0
-            mpis38_0)
+            bodys38_0
+            cctx39_0
+            mpis40_0)
      (let ((get-module-linklet-info_0
             (if (eq? get-module-linklet-info11_0 unsafe-undefined)
               (|#%name| get-module-linklet-info (lambda (mod-name_0 p_0) #f))
               get-module-linklet-info11_0)))
        (let ((realm_0
-              (if (eq? realm18_0 unsafe-undefined)
+              (if (eq? realm19_0 unsafe-undefined)
                 (current-compile-realm)
-                realm18_0)))
-         (let ((phase_0 (compile-context-phase cctx37_0)))
-           (let ((self_0 (compile-context-self cctx37_0)))
+                realm19_0)))
+         (let ((phase_0 (compile-context-phase cctx39_0)))
+           (let ((self_0 (compile-context-self cctx39_0)))
              (let ((syntax-literals_0 (make-syntax-literals)))
                (let ((phase-to-body_0 (make-hasheqv)))
                  (let ((add-body!_0
@@ -39073,7 +39100,7 @@
                                    or-part_0
                                    (let ((header_0
                                           (make-header
-                                           mpis38_0
+                                           mpis40_0
                                            syntax-literals_0)))
                                      (begin
                                        (hash-set!
@@ -39099,7 +39126,7 @@
                           (for-loop_0 force-phases5_0))
                          (let ((saw-define-syntaxes?_0 #f))
                            (begin
-                             (if (compile-context-module-self cctx37_0)
+                             (if (compile-context-module-self cctx39_0)
                                (letrec*
                                 ((loop!_0
                                   (|#%name|
@@ -39181,7 +39208,7 @@
                                         (for-loop_0 bodys_0))
                                        (void))))))
                                 (loop!_0
-                                 bodys36_0
+                                 bodys38_0
                                  phase_0
                                  (find-or-create-header!_0 phase_0)))
                                (void))
@@ -39193,7 +39220,7 @@
                                          (registered-as-required?
                                           header_0
                                           sym_0))))))
-                               (let ((last-i_0 (sub1 (length bodys36_0))))
+                               (let ((last-i_0 (sub1 (length bodys38_0))))
                                  (begin
                                    (letrec*
                                     ((loop!_0
@@ -39223,7 +39250,7 @@
                                                                      body_0)))
                                                                (let ((def-syms_0
                                                                       (if (compile-context-module-self
-                                                                           cctx37_0)
+                                                                           cctx39_0)
                                                                         (reverse$1
                                                                          (letrec*
                                                                           ((for-loop_1
@@ -39291,13 +39318,13 @@
                                                                                      (let ((fold-var_1
                                                                                             (let ((fold-var_1
                                                                                                    (cons
-                                                                                                    (let ((temp72_0
+                                                                                                    (let ((temp74_0
                                                                                                            (compile-context-self
-                                                                                                            cctx37_0)))
+                                                                                                            cctx39_0)))
                                                                                                       (register-required-variable-use!.1
                                                                                                        #t
                                                                                                        header_0
-                                                                                                       temp72_0
+                                                                                                       temp74_0
                                                                                                        phase_1
                                                                                                        binding-sym_0
                                                                                                        #f))
@@ -39314,24 +39341,24 @@
                                                                  (let ((rhs_0
                                                                         (let ((app_0
                                                                                (if (compile-context?
-                                                                                    cctx37_0)
+                                                                                    cctx39_0)
                                                                                  (compile-context1.1
                                                                                   (compile-context-namespace
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   phase_1
                                                                                   (compile-context-self
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-module-self
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-full-module-name
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-lazy-syntax-literals?
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   header_0)
                                                                                  (raise-argument-error
                                                                                   'struct-copy
                                                                                   "compile-context?"
-                                                                                  cctx37_0))))
+                                                                                  cctx39_0))))
                                                                           (compile$2
                                                                            (parsed-define-values-rhs
                                                                             body_0)
@@ -39372,7 +39399,7 @@
                                                                           body_0))))
                                                                      (if (let ((or-part_0
                                                                                 (compile-context-module-self
-                                                                                 cctx37_0)))
+                                                                                 cctx39_0)))
                                                                            (if or-part_0
                                                                              or-part_0
                                                                              (null?
@@ -39425,24 +39452,24 @@
                                                                            ids_0
                                                                            binding-syms_0
                                                                            (if (compile-context?
-                                                                                cctx37_0)
+                                                                                cctx39_0)
                                                                              (compile-context1.1
                                                                               (compile-context-namespace
-                                                                               cctx37_0)
+                                                                               cctx39_0)
                                                                               phase_1
                                                                               (compile-context-self
-                                                                               cctx37_0)
+                                                                               cctx39_0)
                                                                               (compile-context-module-self
-                                                                               cctx37_0)
+                                                                               cctx39_0)
                                                                               (compile-context-full-module-name
-                                                                               cctx37_0)
+                                                                               cctx39_0)
                                                                               (compile-context-lazy-syntax-literals?
-                                                                               cctx37_0)
+                                                                               cctx39_0)
                                                                               header_0)
                                                                              (raise-argument-error
                                                                               'struct-copy
                                                                               "compile-context?"
-                                                                              cctx37_0))
+                                                                              cctx39_0))
                                                                            #f)))))))))
                                                            (if (parsed-define-syntaxes?
                                                                 body_0)
@@ -39501,27 +39528,27 @@
                                                                              (parsed-define-syntaxes-rhs
                                                                               body_0)
                                                                              (if (compile-context?
-                                                                                  cctx37_0)
-                                                                               (let ((phase81_0
+                                                                                  cctx39_0)
+                                                                               (let ((phase83_0
                                                                                       (add1
                                                                                        phase_1)))
                                                                                  (compile-context1.1
                                                                                   (compile-context-namespace
-                                                                                   cctx37_0)
-                                                                                  phase81_0
+                                                                                   cctx39_0)
+                                                                                  phase83_0
                                                                                   (compile-context-self
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-module-self
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-full-module-name
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-lazy-syntax-literals?
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   next-header_0))
                                                                                (raise-argument-error
                                                                                 'struct-copy
                                                                                 "compile-context?"
-                                                                                cctx37_0)))))
+                                                                                cctx39_0)))))
                                                                        (begin
                                                                          (|#%app|
                                                                           definition-callback9_0)
@@ -39588,7 +39615,7 @@
                                                                                      gen-syms_0)))))
                                                                              (begin
                                                                                (if (compile-context-module-self
-                                                                                    cctx37_0)
+                                                                                    cctx39_0)
                                                                                  (let ((app_0
                                                                                         (add1
                                                                                          phase_1)))
@@ -39620,24 +39647,24 @@
                                                                                       ids_0
                                                                                       binding-syms_0
                                                                                       (if (compile-context?
-                                                                                           cctx37_0)
+                                                                                           cctx39_0)
                                                                                         (compile-context1.1
                                                                                          (compile-context-namespace
-                                                                                          cctx37_0)
+                                                                                          cctx39_0)
                                                                                          phase_1
                                                                                          (compile-context-self
-                                                                                          cctx37_0)
+                                                                                          cctx39_0)
                                                                                          (compile-context-module-self
-                                                                                          cctx37_0)
+                                                                                          cctx39_0)
                                                                                          (compile-context-full-module-name
-                                                                                          cctx37_0)
+                                                                                          cctx39_0)
                                                                                          (compile-context-lazy-syntax-literals?
-                                                                                          cctx37_0)
+                                                                                          cctx39_0)
                                                                                          header_0)
                                                                                         (raise-argument-error
                                                                                          'struct-copy
                                                                                          "compile-context?"
-                                                                                         cctx37_0))
+                                                                                         cctx39_0))
                                                                                       gen-syms_0)))))
                                                                                (set! saw-define-syntaxes?_0
                                                                                  #t))))))))))
@@ -39670,24 +39697,24 @@
                                                                          other-form-callback10_0
                                                                          body_0
                                                                          (if (compile-context?
-                                                                              cctx37_0)
+                                                                              cctx39_0)
                                                                            (compile-context1.1
                                                                             (compile-context-namespace
-                                                                             cctx37_0)
+                                                                             cctx39_0)
                                                                             phase_1
                                                                             (compile-context-self
-                                                                             cctx37_0)
+                                                                             cctx39_0)
                                                                             (compile-context-module-self
-                                                                             cctx37_0)
+                                                                             cctx39_0)
                                                                             (compile-context-full-module-name
-                                                                             cctx37_0)
+                                                                             cctx39_0)
                                                                             (compile-context-lazy-syntax-literals?
-                                                                             cctx37_0)
+                                                                             cctx39_0)
                                                                             header_0)
                                                                            (raise-argument-error
                                                                             'struct-copy
                                                                             "compile-context?"
-                                                                            cctx37_0)))))
+                                                                            cctx39_0)))))
                                                                    (if e_0
                                                                      (begin
                                                                        (|#%app|
@@ -39704,24 +39731,24 @@
                                                                  (let ((e_0
                                                                         (let ((app_0
                                                                                (if (compile-context?
-                                                                                    cctx37_0)
+                                                                                    cctx39_0)
                                                                                  (compile-context1.1
                                                                                   (compile-context-namespace
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   phase_1
                                                                                   (compile-context-self
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-module-self
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-full-module-name
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   (compile-context-lazy-syntax-literals?
-                                                                                   cctx37_0)
+                                                                                   cctx39_0)
                                                                                   header_0)
                                                                                  (raise-argument-error
                                                                                   'struct-copy
                                                                                   "compile-context?"
-                                                                                  cctx37_0))))
+                                                                                  cctx39_0))))
                                                                           (compile$2
                                                                            body_0
                                                                            app_0
@@ -39747,7 +39774,7 @@
                                             (for-loop_0 bodys_0 0))
                                            (void))))))
                                     (loop!_0
-                                     bodys36_0
+                                     bodys38_0
                                      phase_0
                                      (find-or-create-header!_0 phase_0)))
                                    (let ((encoded-root-expand-pos_0
@@ -39771,10 +39798,10 @@
                                               #f)
                                             #f)))
                                      (let ((phases-in-order_0
-                                            (let ((temp89_0
+                                            (let ((temp91_0
                                                    (hash-keys
                                                     phase-to-body_0)))
-                                              (sort.1 #f #f temp89_0 <))))
+                                              (sort.1 #f #f temp91_0 <))))
                                        (let ((min-phase_0
                                               (if (pair? phases-in-order_0)
                                                 (car phases-in-order_0)
@@ -39815,7 +39842,7 @@
                                                                                         (generate-links+imports
                                                                                          header_0
                                                                                          phase_1
-                                                                                         cctx37_0
+                                                                                         cctx39_0
                                                                                          optimize-linklet?16_0))
                                                                                       (lambda (link-module-uses_0
                                                                                                imports_0
@@ -39917,22 +39944,32 @@
                                                                                                                                    (unsafe-cdr
                                                                                                                                     lst_2)))
                                                                                                                               (let ((fold-var_1
-                                                                                                                                     (let ((fold-var_1
-                                                                                                                                            (cons
-                                                                                                                                             (let ((def-sym_0
-                                                                                                                                                    (hash-ref
-                                                                                                                                                     binding-sym-to-define-sym_0
-                                                                                                                                                     binding-sym_0)))
-                                                                                                                                               (if (eq?
+                                                                                                                                     (if (let ((or-part_0
+                                                                                                                                                (not
+                                                                                                                                                 keep-export?18_0)))
+                                                                                                                                           (if or-part_0
+                                                                                                                                             or-part_0
+                                                                                                                                             (|#%app|
+                                                                                                                                              keep-export?18_0
+                                                                                                                                              phase_1
+                                                                                                                                              binding-sym_0)))
+                                                                                                                                       (let ((fold-var_1
+                                                                                                                                              (cons
+                                                                                                                                               (let ((def-sym_0
+                                                                                                                                                      (hash-ref
+                                                                                                                                                       binding-sym-to-define-sym_0
+                                                                                                                                                       binding-sym_0)))
+                                                                                                                                                 (if (eq?
+                                                                                                                                                      def-sym_0
+                                                                                                                                                      binding-sym_0)
+                                                                                                                                                   def-sym_0
+                                                                                                                                                   (list
                                                                                                                                                     def-sym_0
-                                                                                                                                                    binding-sym_0)
-                                                                                                                                                 def-sym_0
-                                                                                                                                                 (list
-                                                                                                                                                  def-sym_0
-                                                                                                                                                  binding-sym_0)))
-                                                                                                                                             fold-var_0)))
-                                                                                                                                       (values
-                                                                                                                                        fold-var_1))))
+                                                                                                                                                    binding-sym_0)))
+                                                                                                                                               fold-var_0)))
+                                                                                                                                         (values
+                                                                                                                                          fold-var_1))
+                                                                                                                                       fold-var_0)))
                                                                                                                                 (for-loop_1
                                                                                                                                  fold-var_1
                                                                                                                                  rest_1))))
@@ -39959,47 +39996,47 @@
                                                                                                         'module
                                                                                                         #f)
                                                                                                        module-use*s_0)
-                                                                                                      (let ((temp92_0
+                                                                                                      (let ((temp94_0
                                                                                                              (hasheq
                                                                                                               'module
                                                                                                               (compile-context-full-module-name
-                                                                                                               cctx37_0)
+                                                                                                               cctx39_0)
                                                                                                               'phase
                                                                                                               phase_1)))
-                                                                                                        (let ((temp98_0
+                                                                                                        (let ((temp100_0
                                                                                                                (if unlimited-compile?-box14_0
                                                                                                                  (unbox
                                                                                                                   unlimited-compile?-box14_0)
                                                                                                                  #f)))
-                                                                                                          (let ((temp101_0
+                                                                                                          (let ((temp103_0
                                                                                                                  (if unsafe?-box17_0
                                                                                                                    (unbox
                                                                                                                     unsafe?-box17_0)
                                                                                                                    #f)))
-                                                                                                            (let ((temp103_0
+                                                                                                            (let ((temp105_0
                                                                                                                    (compile-context-namespace
-                                                                                                                    cctx37_0)))
-                                                                                                              (let ((temp101_1
-                                                                                                                     temp101_0)
-                                                                                                                    (temp98_1
-                                                                                                                     temp98_0)
-                                                                                                                    (temp92_1
-                                                                                                                     temp92_0))
+                                                                                                                    cctx39_0)))
+                                                                                                              (let ((temp103_1
+                                                                                                                     temp103_0)
+                                                                                                                    (temp100_1
+                                                                                                                     temp100_0)
+                                                                                                                    (temp94_1
+                                                                                                                     temp94_0))
                                                                                                                 (compile-module-linklet.1
                                                                                                                  body-import-instances3_0
                                                                                                                  body-imports2_0
-                                                                                                                 temp92_1
+                                                                                                                 temp94_1
                                                                                                                  unsafe-undefined
                                                                                                                  get-module-linklet-info_0
                                                                                                                  #f
                                                                                                                  module-prompt?13_0
                                                                                                                  module-use*s_0
-                                                                                                                 temp103_0
+                                                                                                                 temp105_0
                                                                                                                  optimize-linklet?16_0
                                                                                                                  realm_0
                                                                                                                  serializable?12_0
-                                                                                                                 temp98_1
-                                                                                                                 temp101_1
+                                                                                                                 temp100_1
+                                                                                                                 temp103_1
                                                                                                                  body-linklet_0))))))))
                                                                                                   (lambda (linklet_0
                                                                                                            new-module-use*s_0)
@@ -40106,7 +40143,7 @@
                                                            (let ((phase-to-link-module-uses-expr_0
                                                                   (serialize-phase-to-link-module-uses
                                                                    phase-to-link-module-uses_0
-                                                                   mpis38_0)))
+                                                                   mpis40_0)))
                                                              (let ((table_4
                                                                     hash2725))
                                                                (let ((phase-to-link-extra-inspectorsss_0
@@ -40331,25 +40368,25 @@
 (define compile-module-linklet.1
   (|#%name|
    compile-module-linklet
-   (lambda (body-import-instances43_0
-            body-imports42_0
-            body-info41_0
-            compile-linklet40_0
-            get-module-linklet-info44_0
-            load-modules?51_0
-            module-prompt?46_0
-            module-use*s48_0
-            namespace52_0
-            optimize-linklet?49_0
-            realm53_0
-            serializable?45_0
-            unlimited-compile?47_0
-            unsafe?50_0
-            body-linklet68_0)
+   (lambda (body-import-instances45_0
+            body-imports44_0
+            body-info43_0
+            compile-linklet42_0
+            get-module-linklet-info46_0
+            load-modules?53_0
+            module-prompt?48_0
+            module-use*s50_0
+            namespace54_0
+            optimize-linklet?51_0
+            realm55_0
+            serializable?47_0
+            unlimited-compile?49_0
+            unsafe?52_0
+            body-linklet70_0)
      (let ((compile-linklet_0
-            (if (eq? compile-linklet40_0 unsafe-undefined)
+            (if (eq? compile-linklet42_0 unsafe-undefined)
               compile-linklet
-              compile-linklet40_0)))
+              compile-linklet42_0)))
        (call-with-values
         (lambda ()
           (begin
@@ -40357,17 +40394,17 @@
               (start-performance-region 'compile '_ 'linklet)
               (void))
             (begin0
-              (let ((info_0 (hash-set body-info41_0 'name 'module)))
+              (let ((info_0 (hash-set body-info43_0 'name 'module)))
                 (let ((keys_0
                        (list->vector
-                        (append body-import-instances43_0 module-use*s48_0))))
+                        (append body-import-instances45_0 module-use*s50_0))))
                   (let ((getter_0
                          (make-module-use-to-linklet
-                          optimize-linklet?49_0
-                          load-modules?51_0
-                          namespace52_0
-                          get-module-linklet-info44_0
-                          module-use*s48_0)))
+                          optimize-linklet?51_0
+                          load-modules?53_0
+                          namespace54_0
+                          get-module-linklet-info46_0
+                          module-use*s50_0)))
                     (let ((keys_1 keys_0) (info_1 info_0))
                       (with-continuation-mark*
                        push-authentic
@@ -40375,27 +40412,27 @@
                        (extend-parameterization
                         (continuation-mark-set-first #f parameterization-key)
                         current-compile-realm
-                        realm53_0)
+                        realm55_0)
                        (|#%app|
                         compile-linklet_0
-                        body-linklet68_0
+                        body-linklet70_0
                         info_1
                         keys_1
                         getter_0
                         (let ((flags_0
-                               (if serializable?45_0
-                                 (if module-prompt?46_0
+                               (if serializable?47_0
+                                 (if module-prompt?48_0
                                    '(serializable use-prompt)
                                    '(serializable))
-                                 (if module-prompt?46_0
+                                 (if module-prompt?48_0
                                    '(use-prompt)
-                                   (if optimize-linklet?49_0 '() '(quick))))))
+                                   (if optimize-linklet?51_0 '() '(quick))))))
                           (let ((flags_1
-                                 (if unsafe?50_0
+                                 (if unsafe?52_0
                                    (cons 'unsafe flags_0)
                                    flags_0)))
                             (let ((flags_2
-                                   (if unlimited-compile?47_0
+                                   (if unlimited-compile?49_0
                                      (cons 'unlimited-compile flags_1)
                                      flags_1)))
                               flags_2)))))))))
@@ -40404,7 +40441,7 @@
           (values
            linklet_0
            (let ((app_0 (vector->list new-module-use*s_0)))
-             (list-tail app_0 (length body-imports42_0))))))))))
+             (list-tail app_0 (length body-imports44_0))))))))))
 (define make-module-use-to-linklet
   (lambda (optimize-linklet?_0
            load-modules?_0
@@ -44150,6 +44187,7 @@
                                    null
                                    unsafe-undefined
                                    #f
+                                   #f
                                    temp24_0
                                    temp23_1
                                    unsafe-undefined
@@ -47220,7 +47258,7 @@
                                                                                                 (car
                                                                                                  s_1)))
                                                                                            s_2)))
-                                                                                    (let ((kw78_0
+                                                                                    (let ((kw79_0
                                                                                            (let ((s_2
                                                                                                   (cdr
                                                                                                    s_1)))
@@ -47244,20 +47282,20 @@
                                                                                              _0))
                                                                                         (values
                                                                                          _1
-                                                                                         kw78_0))))
+                                                                                         kw79_0))))
                                                                                   (raise-syntax-error$1
                                                                                    #f
                                                                                    "bad syntax"
                                                                                    s_0)))
                                                                               (lambda (_0
-                                                                                       kw76_0)
+                                                                                       kw77_0)
                                                                                 (values
                                                                                  #t
                                                                                  _0
-                                                                                 kw76_0))))
+                                                                                 kw77_0))))
                                                                            (lambda (ok?_0
                                                                                     _0
-                                                                                    kw76_0)
+                                                                                    kw77_0)
                                                                              (begin
                                                                                (letrec*
                                                                                 ((for-loop_0
@@ -47307,7 +47345,7 @@
                                                                                               rest_0))))
                                                                                        (values))))))
                                                                                 (for-loop_0
-                                                                                 kw76_0))
+                                                                                 kw77_0))
                                                                                (void)
                                                                                #f)))))
                                                                       #f))))
@@ -47327,201 +47365,143 @@
                                                                            phase_0
                                                                            #f)
                                                                           #f)))))
-                                                               (call-with-values
-                                                                (lambda ()
-                                                                  (compile-forms.1
-                                                                   temp61_0
-                                                                   temp60_0
-                                                                   temp62_0
-                                                                   check-side-effects!_0
-                                                                   void
-                                                                   encoded-root-expand-ctx-box_0
-                                                                   temp63_0
-                                                                   temp68_0
-                                                                   #t
-                                                                   #t
-                                                                   temp67_0
-                                                                   realm_0
-                                                                   body-context-simple?_0
-                                                                   serializable?16_0
-                                                                   to-correlated-linklet?17_0
-                                                                   unlimited-compile?-box_0
-                                                                   unsafe?-box_0
-                                                                   bodys_0
-                                                                   body-cctx_0
-                                                                   mpis_0))
-                                                                (lambda (body-linklets_0
-                                                                         body-min-phase_0
-                                                                         body-max-phase_0
-                                                                         phase-to-link-module-uses_0
-                                                                         phase-to-link-module-uses-expr_0
-                                                                         phase-to-link-extra-inspectorsss_0
-                                                                         syntax-literals_0
-                                                                         root-ctx-pos_0)
-                                                                  (call-with-values
-                                                                   (lambda ()
-                                                                     (add-portal-syntaxes
-                                                                      syntax-literals_0
-                                                                      portal-syntaxes_0
-                                                                      body-max-phase_0
-                                                                      body-min-phase_0))
-                                                                   (lambda (portal-stxes_0
-                                                                            max-phase_0
-                                                                            min-phase_0)
-                                                                     (begin
-                                                                       (if modules-being-compiled18_0
-                                                                         (let ((app_0
-                                                                                (1/module-path-index-resolve
-                                                                                 self_0)))
-                                                                           (hash-set!
-                                                                            modules-being-compiled18_0
-                                                                            app_0
-                                                                            (let ((table_0
-                                                                                   hash2610))
-                                                                              (let ((table_1
-                                                                                     table_0))
-                                                                                (letrec*
-                                                                                 ((for-loop_0
-                                                                                   (|#%name|
-                                                                                    for-loop
-                                                                                    (lambda (table_2
-                                                                                             i_0)
-                                                                                      (if i_0
-                                                                                        (call-with-values
-                                                                                         (lambda ()
-                                                                                           (hash-iterate-key+value
-                                                                                            body-linklets_0
-                                                                                            i_0))
-                                                                                         (lambda (phase_0
-                                                                                                  linklet_0)
-                                                                                           (let ((table_3
-                                                                                                  (let ((table_3
-                                                                                                         (let ((val_0
-                                                                                                                (let ((app_1
-                                                                                                                       (hash-ref
-                                                                                                                        phase-to-link-module-uses_0
-                                                                                                                        phase_0
-                                                                                                                        #f)))
-                                                                                                                  (module-linklet-info2.1
-                                                                                                                   linklet_0
-                                                                                                                   app_1
-                                                                                                                   self_0
-                                                                                                                   #f
-                                                                                                                   #f
-                                                                                                                   (if phase-to-link-extra-inspectorsss_0
-                                                                                                                     (hash-ref
-                                                                                                                      phase-to-link-extra-inspectorsss_0
-                                                                                                                      phase_0
-                                                                                                                      #f)
-                                                                                                                     #f)))))
-                                                                                                           (hash-set
-                                                                                                            table_2
-                                                                                                            phase_0
-                                                                                                            val_0))))
-                                                                                                    (values
-                                                                                                     table_3))))
-                                                                                             (for-loop_0
-                                                                                              table_3
-                                                                                              (hash-iterate-next
-                                                                                               body-linklets_0
-                                                                                               i_0)))))
-                                                                                        table_2)))))
-                                                                                 (for-loop_0
-                                                                                  table_1
-                                                                                  (hash-iterate-first
-                                                                                   body-linklets_0)))))))
-                                                                         (void))
-                                                                       (let ((declaration-linklet_0
-                                                                              (if serializable?16_0
-                                                                                (let ((s_0
-                                                                                       (generate-module-declaration-linklet
-                                                                                        mpis_0
-                                                                                        self_0
-                                                                                        requires_0
-                                                                                        recur-requires_0
-                                                                                        flattened-requires_0
-                                                                                        provides_0
-                                                                                        phase-to-link-module-uses-expr_0
-                                                                                        portal-stxes_0)))
-                                                                                  (if to-correlated-linklet?17_0
-                                                                                    (correlated-linklet1.1
-                                                                                     s_0
-                                                                                     'decl
-                                                                                     #f)
-                                                                                    (begin
-                                                                                      (if log-performance?
-                                                                                        (start-performance-region
-                                                                                         'compile
-                                                                                         'module
-                                                                                         'linklet)
-                                                                                        (void))
-                                                                                      (begin0
-                                                                                        (compile-linklet
-                                                                                         s_0
-                                                                                         (hasheq
-                                                                                          'module
-                                                                                          full-module-name14_0
-                                                                                          'name
-                                                                                          'decl))
-                                                                                        (if log-performance?
-                                                                                          (end-performance-region)
-                                                                                          (void))))))
-                                                                                #f)))
-                                                                         (let ((syntax-literals-linklet_0
-                                                                                (if (not
-                                                                                     (null?
-                                                                                      (syntax-literals-stxes
-                                                                                       syntax-literals_0)))
-                                                                                  (let ((app_0
-                                                                                         (list
-                                                                                          deserialize-imports
-                                                                                          (list
-                                                                                           mpi-vector-id)
-                                                                                          (list*
-                                                                                           deserialized-syntax-vector-id
-                                                                                           (if serializable?16_0
-                                                                                             (list
-                                                                                              deserialize-syntax-id)
-                                                                                             '()))
-                                                                                          instance-imports)))
+                                                               (let ((temp74_0
+                                                                      (private-definitions-filter
+                                                                       provides_0
+                                                                       post-submodules20_0)))
+                                                                 (let ((temp68_1
+                                                                        temp68_0)
+                                                                       (temp67_1
+                                                                        temp67_0)
+                                                                       (temp63_1
+                                                                        temp63_0)
+                                                                       (temp62_1
+                                                                        temp62_0)
+                                                                       (temp61_1
+                                                                        temp61_0)
+                                                                       (temp60_1
+                                                                        temp60_0))
+                                                                   (call-with-values
+                                                                    (lambda ()
+                                                                      (compile-forms.1
+                                                                       temp61_1
+                                                                       temp60_1
+                                                                       temp62_1
+                                                                       check-side-effects!_0
+                                                                       void
+                                                                       encoded-root-expand-ctx-box_0
+                                                                       temp63_1
+                                                                       temp68_1
+                                                                       temp74_0
+                                                                       #t
+                                                                       #t
+                                                                       temp67_1
+                                                                       realm_0
+                                                                       body-context-simple?_0
+                                                                       serializable?16_0
+                                                                       to-correlated-linklet?17_0
+                                                                       unlimited-compile?-box_0
+                                                                       unsafe?-box_0
+                                                                       bodys_0
+                                                                       body-cctx_0
+                                                                       mpis_0))
+                                                                    (lambda (body-linklets_0
+                                                                             body-min-phase_0
+                                                                             body-max-phase_0
+                                                                             phase-to-link-module-uses_0
+                                                                             phase-to-link-module-uses-expr_0
+                                                                             phase-to-link-extra-inspectorsss_0
+                                                                             syntax-literals_0
+                                                                             root-ctx-pos_0)
+                                                                      (call-with-values
+                                                                       (lambda ()
+                                                                         (add-portal-syntaxes
+                                                                          syntax-literals_0
+                                                                          portal-syntaxes_0
+                                                                          body-max-phase_0
+                                                                          body-min-phase_0))
+                                                                       (lambda (portal-stxes_0
+                                                                                max-phase_0
+                                                                                min-phase_0)
+                                                                         (begin
+                                                                           (if modules-being-compiled18_0
+                                                                             (let ((app_0
+                                                                                    (1/module-path-index-resolve
+                                                                                     self_0)))
+                                                                               (hash-set!
+                                                                                modules-being-compiled18_0
+                                                                                app_0
+                                                                                (let ((table_0
+                                                                                       hash2610))
+                                                                                  (let ((table_1
+                                                                                         table_0))
+                                                                                    (letrec*
+                                                                                     ((for-loop_0
+                                                                                       (|#%name|
+                                                                                        for-loop
+                                                                                        (lambda (table_2
+                                                                                                 i_0)
+                                                                                          (if i_0
+                                                                                            (call-with-values
+                                                                                             (lambda ()
+                                                                                               (hash-iterate-key+value
+                                                                                                body-linklets_0
+                                                                                                i_0))
+                                                                                             (lambda (phase_0
+                                                                                                      linklet_0)
+                                                                                               (let ((table_3
+                                                                                                      (let ((table_3
+                                                                                                             (let ((val_0
+                                                                                                                    (let ((app_1
+                                                                                                                           (hash-ref
+                                                                                                                            phase-to-link-module-uses_0
+                                                                                                                            phase_0
+                                                                                                                            #f)))
+                                                                                                                      (module-linklet-info2.1
+                                                                                                                       linklet_0
+                                                                                                                       app_1
+                                                                                                                       self_0
+                                                                                                                       #f
+                                                                                                                       #f
+                                                                                                                       (if phase-to-link-extra-inspectorsss_0
+                                                                                                                         (hash-ref
+                                                                                                                          phase-to-link-extra-inspectorsss_0
+                                                                                                                          phase_0
+                                                                                                                          #f)
+                                                                                                                         #f)))))
+                                                                                                               (hash-set
+                                                                                                                table_2
+                                                                                                                phase_0
+                                                                                                                val_0))))
+                                                                                                        (values
+                                                                                                         table_3))))
+                                                                                                 (for-loop_0
+                                                                                                  table_3
+                                                                                                  (hash-iterate-next
+                                                                                                   body-linklets_0
+                                                                                                   i_0)))))
+                                                                                            table_2)))))
+                                                                                     (for-loop_0
+                                                                                      table_1
+                                                                                      (hash-iterate-first
+                                                                                       body-linklets_0)))))))
+                                                                             (void))
+                                                                           (let ((declaration-linklet_0
+                                                                                  (if serializable?16_0
                                                                                     (let ((s_0
-                                                                                           (let ((app_1
-                                                                                                  (list*
-                                                                                                   get-syntax-literal!-id
-                                                                                                   '(get-encoded-root-expand-ctx))))
-                                                                                             (list*
-                                                                                              'linklet
-                                                                                              app_0
-                                                                                              app_1
-                                                                                              (let ((app_2
-                                                                                                     (let ((temp82_0
-                                                                                                            (not
-                                                                                                             serializable?16_0)))
-                                                                                                       (generate-lazy-syntax-literals!.1
-                                                                                                        temp82_0
-                                                                                                        syntax-literals_0
-                                                                                                        mpis_0
-                                                                                                        self_0))))
-                                                                                                (qq-append
-                                                                                                 app_2
-                                                                                                 (list
-                                                                                                  (list
-                                                                                                   'define-values
-                                                                                                   '(get-encoded-root-expand-ctx)
-                                                                                                   (if root-ctx-pos_0
-                                                                                                     (list
-                                                                                                      'lambda
-                                                                                                      '()
-                                                                                                      (list
-                                                                                                       get-syntax-literal!-id
-                                                                                                       root-ctx-pos_0))
-                                                                                                     (if empty-result-for-module->namespace?_0
-                                                                                                       ''empty
-                                                                                                       ''#f))))))))))
+                                                                                           (generate-module-declaration-linklet
+                                                                                            mpis_0
+                                                                                            self_0
+                                                                                            requires_0
+                                                                                            recur-requires_0
+                                                                                            flattened-requires_0
+                                                                                            provides_0
+                                                                                            phase-to-link-module-uses-expr_0
+                                                                                            portal-stxes_0)))
                                                                                       (if to-correlated-linklet?17_0
                                                                                         (correlated-linklet1.1
                                                                                          s_0
-                                                                                         'syntax-literals
+                                                                                         'decl
                                                                                          #f)
                                                                                         (begin
                                                                                           (if log-performance?
@@ -47531,36 +47511,18 @@
                                                                                              'linklet)
                                                                                             (void))
                                                                                           (begin0
-                                                                                            (call-with-values
-                                                                                             (lambda ()
-                                                                                               (compile-linklet
-                                                                                                s_0
-                                                                                                (hasheq
-                                                                                                 'module
-                                                                                                 full-module-name14_0
-                                                                                                 'name
-                                                                                                 'syntax-literals)
-                                                                                                (vector
-                                                                                                 deserialize-instance
-                                                                                                 empty-top-syntax-literal-instance
-                                                                                                 empty-syntax-literals-data-instance
-                                                                                                 empty-instance-instance)
-                                                                                                (lambda (inst_0)
-                                                                                                  (values
-                                                                                                   inst_0
-                                                                                                   #f))
-                                                                                                (if serializable?16_0
-                                                                                                  '(serializable)
-                                                                                                  '())))
-                                                                                             (lambda (linklet_0
-                                                                                                      new-keys_0)
-                                                                                               linklet_0))
+                                                                                            (compile-linklet
+                                                                                             s_0
+                                                                                             (hasheq
+                                                                                              'module
+                                                                                              full-module-name14_0
+                                                                                              'name
+                                                                                              'decl))
                                                                                             (if log-performance?
                                                                                               (end-performance-region)
-                                                                                              (void)))))))
-                                                                                  #f)))
-                                                                           (let ((syntax-literals-data-linklet_0
-                                                                                  (if serializable?16_0
+                                                                                              (void))))))
+                                                                                    #f)))
+                                                                             (let ((syntax-literals-linklet_0
                                                                                     (if (not
                                                                                          (null?
                                                                                           (syntax-literals-stxes
@@ -47569,42 +47531,52 @@
                                                                                              (list
                                                                                               deserialize-imports
                                                                                               (list
-                                                                                               mpi-vector-id))))
+                                                                                               mpi-vector-id)
+                                                                                              (list*
+                                                                                               deserialized-syntax-vector-id
+                                                                                               (if serializable?16_0
+                                                                                                 (list
+                                                                                                  deserialize-syntax-id)
+                                                                                                 '()))
+                                                                                              instance-imports)))
                                                                                         (let ((s_0
                                                                                                (let ((app_1
+                                                                                                      (list*
+                                                                                                       get-syntax-literal!-id
+                                                                                                       '(get-encoded-root-expand-ctx))))
+                                                                                                 (list*
+                                                                                                  'linklet
+                                                                                                  app_0
+                                                                                                  app_1
+                                                                                                  (let ((app_2
+                                                                                                         (let ((temp83_0
+                                                                                                                (not
+                                                                                                                 serializable?16_0)))
+                                                                                                           (generate-lazy-syntax-literals!.1
+                                                                                                            temp83_0
+                                                                                                            syntax-literals_0
+                                                                                                            mpis_0
+                                                                                                            self_0))))
+                                                                                                    (qq-append
+                                                                                                     app_2
+                                                                                                     (list
                                                                                                       (list
-                                                                                                       deserialized-syntax-vector-id
-                                                                                                       deserialize-syntax-id)))
-                                                                                                 (let ((app_2
-                                                                                                        (list*
-                                                                                                         'define-values
+                                                                                                       'define-values
+                                                                                                       '(get-encoded-root-expand-ctx)
+                                                                                                       (if root-ctx-pos_0
                                                                                                          (list
-                                                                                                          deserialized-syntax-vector-id)
-                                                                                                         '((box
-                                                                                                            #f)))))
-                                                                                                   (list*
-                                                                                                    'linklet
-                                                                                                    app_0
-                                                                                                    app_1
-                                                                                                    app_2
-                                                                                                    (begin
-                                                                                                      (if log-performance?
-                                                                                                        (start-performance-region
-                                                                                                         'compile
-                                                                                                         'module
-                                                                                                         'serialize)
-                                                                                                        (void))
-                                                                                                      (begin0
-                                                                                                        (generate-lazy-syntax-literals-data!
-                                                                                                         syntax-literals_0
-                                                                                                         mpis_0)
-                                                                                                        (if log-performance?
-                                                                                                          (end-performance-region)
-                                                                                                          (void)))))))))
+                                                                                                          'lambda
+                                                                                                          '()
+                                                                                                          (list
+                                                                                                           get-syntax-literal!-id
+                                                                                                           root-ctx-pos_0))
+                                                                                                         (if empty-result-for-module->namespace?_0
+                                                                                                           ''empty
+                                                                                                           ''#f))))))))))
                                                                                           (if to-correlated-linklet?17_0
                                                                                             (correlated-linklet1.1
                                                                                              s_0
-                                                                                             'syntax-literals-data
+                                                                                             'syntax-literals
                                                                                              #f)
                                                                                             (begin
                                                                                               (if log-performance?
@@ -47614,261 +47586,344 @@
                                                                                                  'linklet)
                                                                                                 (void))
                                                                                               (begin0
-                                                                                                (compile-linklet
-                                                                                                 s_0
-                                                                                                 (hasheq
-                                                                                                  'module
-                                                                                                  full-module-name14_0
-                                                                                                  'name
-                                                                                                  'syntax-literals-data))
+                                                                                                (call-with-values
+                                                                                                 (lambda ()
+                                                                                                   (compile-linklet
+                                                                                                    s_0
+                                                                                                    (hasheq
+                                                                                                     'module
+                                                                                                     full-module-name14_0
+                                                                                                     'name
+                                                                                                     'syntax-literals)
+                                                                                                    (vector
+                                                                                                     deserialize-instance
+                                                                                                     empty-top-syntax-literal-instance
+                                                                                                     empty-syntax-literals-data-instance
+                                                                                                     empty-instance-instance)
+                                                                                                    (lambda (inst_0)
+                                                                                                      (values
+                                                                                                       inst_0
+                                                                                                       #f))
+                                                                                                    (if serializable?16_0
+                                                                                                      '(serializable)
+                                                                                                      '())))
+                                                                                                 (lambda (linklet_0
+                                                                                                          new-keys_0)
+                                                                                                   linklet_0))
                                                                                                 (if log-performance?
                                                                                                   (end-performance-region)
                                                                                                   (void)))))))
-                                                                                      #f)
-                                                                                    #f)))
-                                                                             (let ((data-linklet_0
-                                                                                    (if serializable?16_0
-                                                                                      (let ((s_0
-                                                                                             (generate-module-data-linklet
-                                                                                              mpis_0)))
-                                                                                        (if to-correlated-linklet?17_0
-                                                                                          (correlated-linklet1.1
-                                                                                           s_0
-                                                                                           'data
-                                                                                           #f)
-                                                                                          (begin
-                                                                                            (if log-performance?
-                                                                                              (start-performance-region
-                                                                                               'compile
-                                                                                               'module
-                                                                                               'linklet)
-                                                                                              (void))
-                                                                                            (begin0
-                                                                                              (compile-linklet
-                                                                                               s_0
-                                                                                               (hasheq
-                                                                                                'module
-                                                                                                full-module-name14_0
-                                                                                                'name
-                                                                                                'data))
-                                                                                              (if log-performance?
-                                                                                                (end-performance-region)
-                                                                                                (void))))))
                                                                                       #f)))
-                                                                               (let ((bundle_0
-                                                                                      (let ((bundle_0
-                                                                                             (hash-set
-                                                                                              body-linklets_0
-                                                                                              'name
-                                                                                              full-module-name14_0)))
-                                                                                        (let ((bundle_1
-                                                                                               (hash-set
-                                                                                                bundle_0
-                                                                                                'decl
-                                                                                                (if declaration-linklet_0
-                                                                                                  declaration-linklet_0
-                                                                                                  'in-memory))))
-                                                                                          (let ((bundle_2
-                                                                                                 (if data-linklet_0
-                                                                                                   (hash-set
-                                                                                                    bundle_1
-                                                                                                    'data
-                                                                                                    data-linklet_0)
-                                                                                                   bundle_1)))
-                                                                                            (let ((bundle_3
-                                                                                                   (if syntax-literals-linklet_0
-                                                                                                     (hash-set
-                                                                                                      bundle_2
-                                                                                                      'stx
-                                                                                                      syntax-literals-linklet_0)
-                                                                                                     bundle_2)))
-                                                                                              (let ((bundle_4
-                                                                                                     (if syntax-literals-data-linklet_0
-                                                                                                       (hash-set
-                                                                                                        bundle_3
-                                                                                                        'stx-data
-                                                                                                        syntax-literals-data-linklet_0)
-                                                                                                       bundle_3)))
-                                                                                                (let ((bundle_5
-                                                                                                       (if (null?
-                                                                                                            pre-submodules19_0)
-                                                                                                         bundle_4
-                                                                                                         (hash-set
-                                                                                                          bundle_4
-                                                                                                          'pre
-                                                                                                          (map_2353
-                                                                                                           car
-                                                                                                           pre-submodules19_0)))))
-                                                                                                  (let ((bundle_6
-                                                                                                         (if (null?
-                                                                                                              post-submodules20_0)
-                                                                                                           bundle_5
-                                                                                                           (hash-set
-                                                                                                            bundle_5
-                                                                                                            'post
-                                                                                                            (map_2353
-                                                                                                             car
-                                                                                                             post-submodules20_0)))))
-                                                                                                    (let ((bundle_7
-                                                                                                           (if cross-phase-persistent?_0
-                                                                                                             (hash-set
-                                                                                                              bundle_6
-                                                                                                              'cross-phase-persistent?
-                                                                                                              #t)
-                                                                                                             bundle_6)))
-                                                                                                      (let ((bundle_8
-                                                                                                             (if language-info_0
-                                                                                                               (hash-set
-                                                                                                                bundle_7
-                                                                                                                'language-info
-                                                                                                                language-info_0)
-                                                                                                               bundle_7)))
-                                                                                                        (let ((bundle_9
-                                                                                                               (if (not
-                                                                                                                    (eq?
-                                                                                                                     realm_0
-                                                                                                                     'racket))
-                                                                                                                 (hash-set
-                                                                                                                  bundle_8
-                                                                                                                  'realm
-                                                                                                                  realm_0)
-                                                                                                                 bundle_8)))
-                                                                                                          (let ((bundle_10
-                                                                                                                 (if (zero?
-                                                                                                                      min-phase_0)
-                                                                                                                   bundle_9
-                                                                                                                   (hash-set
-                                                                                                                    bundle_9
-                                                                                                                    'min-phase
-                                                                                                                    min-phase_0))))
-                                                                                                            (let ((bundle_11
-                                                                                                                   (if (zero?
-                                                                                                                        max-phase_0)
-                                                                                                                     bundle_10
-                                                                                                                     (hash-set
-                                                                                                                      bundle_10
-                                                                                                                      'max-phase
-                                                                                                                      max-phase_0))))
-                                                                                                              (let ((bundle_12
-                                                                                                                     (if (hash-count
-                                                                                                                          side-effects_0)
-                                                                                                                       (hash-set
-                                                                                                                        bundle_11
-                                                                                                                        'side-effects
-                                                                                                                        (let ((temp83_0
-                                                                                                                               (hash-keys
-                                                                                                                                side-effects_0)))
-                                                                                                                          (sort.1
-                                                                                                                           #f
-                                                                                                                           #f
-                                                                                                                           temp83_0
-                                                                                                                           <)))
-                                                                                                                       bundle_11)))
-                                                                                                                (let ((bundle_13
-                                                                                                                       (if empty-result-for-module->namespace?_0
-                                                                                                                         (hash-set
-                                                                                                                          bundle_12
-                                                                                                                          'module->namespace
-                                                                                                                          'empty)
-                                                                                                                         bundle_12)))
-                                                                                                                  (let ((bundle_14
-                                                                                                                         (if (unbox
-                                                                                                                              unsafe?-box_0)
-                                                                                                                           (hash-set
-                                                                                                                            bundle_13
-                                                                                                                            'unsafe?
-                                                                                                                            #t)
-                                                                                                                           bundle_13)))
-                                                                                                                    (1/hash->linklet-bundle
-                                                                                                                     bundle_14))))))))))))))))))
-                                                                                 (let ((ld_0
-                                                                                        (if (if (null?
-                                                                                                 pre-submodules19_0)
-                                                                                              (if (null?
-                                                                                                   post-submodules20_0)
-                                                                                                (not
-                                                                                                 force-linklet-directory?15_0)
-                                                                                                #f)
-                                                                                              #f)
-                                                                                          bundle_0
-                                                                                          (let ((ht_0
-                                                                                                 (hasheq
-                                                                                                  #f
-                                                                                                  bundle_0)))
-                                                                                            (let ((ht_1
-                                                                                                   (let ((ht_1
-                                                                                                          ht_0))
-                                                                                                     (let ((lst_0
-                                                                                                            (append
-                                                                                                             pre-submodules19_0
-                                                                                                             post-submodules20_0)))
-                                                                                                       (letrec*
-                                                                                                        ((for-loop_0
-                                                                                                          (|#%name|
-                                                                                                           for-loop
-                                                                                                           (lambda (ht_2
-                                                                                                                    lst_1)
-                                                                                                             (if (pair?
-                                                                                                                  lst_1)
-                                                                                                               (let ((sm_0
-                                                                                                                      (unsafe-car
-                                                                                                                       lst_1)))
-                                                                                                                 (let ((rest_0
-                                                                                                                        (unsafe-cdr
-                                                                                                                         lst_1)))
-                                                                                                                   (let ((ht_3
-                                                                                                                          (let ((ht_3
-                                                                                                                                 (let ((app_0
-                                                                                                                                        (car
-                                                                                                                                         sm_0)))
-                                                                                                                                   (hash-set
-                                                                                                                                    ht_2
-                                                                                                                                    app_0
-                                                                                                                                    (compiled-in-memory-linklet-directory
-                                                                                                                                     (cdr
-                                                                                                                                      sm_0))))))
-                                                                                                                            (values
-                                                                                                                             ht_3))))
-                                                                                                                     (for-loop_0
-                                                                                                                      ht_3
-                                                                                                                      rest_0))))
-                                                                                                               ht_2)))))
-                                                                                                        (for-loop_0
-                                                                                                         ht_1
-                                                                                                         lst_0))))))
-                                                                                              (1/hash->linklet-directory
-                                                                                               ht_1))))))
-                                                                                   (let ((app_0
-                                                                                          (current-code-inspector)))
-                                                                                     (let ((app_1
-                                                                                            (mpis-as-vector
-                                                                                             mpis_0)))
-                                                                                       (let ((app_2
-                                                                                              (syntax-literals-as-vector
+                                                                               (let ((syntax-literals-data-linklet_0
+                                                                                      (if serializable?16_0
+                                                                                        (if (not
+                                                                                             (null?
+                                                                                              (syntax-literals-stxes
                                                                                                syntax-literals_0)))
-                                                                                         (let ((app_3
+                                                                                          (let ((app_0
+                                                                                                 (list
+                                                                                                  deserialize-imports
+                                                                                                  (list
+                                                                                                   mpi-vector-id))))
+                                                                                            (let ((s_0
+                                                                                                   (let ((app_1
+                                                                                                          (list
+                                                                                                           deserialized-syntax-vector-id
+                                                                                                           deserialize-syntax-id)))
+                                                                                                     (let ((app_2
+                                                                                                            (list*
+                                                                                                             'define-values
+                                                                                                             (list
+                                                                                                              deserialized-syntax-vector-id)
+                                                                                                             '((box
+                                                                                                                #f)))))
+                                                                                                       (list*
+                                                                                                        'linklet
+                                                                                                        app_0
+                                                                                                        app_1
+                                                                                                        app_2
+                                                                                                        (begin
+                                                                                                          (if log-performance?
+                                                                                                            (start-performance-region
+                                                                                                             'compile
+                                                                                                             'module
+                                                                                                             'serialize)
+                                                                                                            (void))
+                                                                                                          (begin0
+                                                                                                            (generate-lazy-syntax-literals-data!
+                                                                                                             syntax-literals_0
+                                                                                                             mpis_0)
+                                                                                                            (if log-performance?
+                                                                                                              (end-performance-region)
+                                                                                                              (void)))))))))
+                                                                                              (if to-correlated-linklet?17_0
+                                                                                                (correlated-linklet1.1
+                                                                                                 s_0
+                                                                                                 'syntax-literals-data
+                                                                                                 #f)
+                                                                                                (begin
+                                                                                                  (if log-performance?
+                                                                                                    (start-performance-region
+                                                                                                     'compile
+                                                                                                     'module
+                                                                                                     'linklet)
+                                                                                                    (void))
+                                                                                                  (begin0
+                                                                                                    (compile-linklet
+                                                                                                     s_0
+                                                                                                     (hasheq
+                                                                                                      'module
+                                                                                                      full-module-name14_0
+                                                                                                      'name
+                                                                                                      'syntax-literals-data))
+                                                                                                    (if log-performance?
+                                                                                                      (end-performance-region)
+                                                                                                      (void)))))))
+                                                                                          #f)
+                                                                                        #f)))
+                                                                                 (let ((data-linklet_0
+                                                                                        (if serializable?16_0
+                                                                                          (let ((s_0
+                                                                                                 (generate-module-data-linklet
+                                                                                                  mpis_0)))
+                                                                                            (if to-correlated-linklet?17_0
+                                                                                              (correlated-linklet1.1
+                                                                                               s_0
+                                                                                               'data
+                                                                                               #f)
+                                                                                              (begin
+                                                                                                (if log-performance?
+                                                                                                  (start-performance-region
+                                                                                                   'compile
+                                                                                                   'module
+                                                                                                   'linklet)
+                                                                                                  (void))
+                                                                                                (begin0
+                                                                                                  (compile-linklet
+                                                                                                   s_0
+                                                                                                   (hasheq
+                                                                                                    'module
+                                                                                                    full-module-name14_0
+                                                                                                    'name
+                                                                                                    'data))
+                                                                                                  (if log-performance?
+                                                                                                    (end-performance-region)
+                                                                                                    (void))))))
+                                                                                          #f)))
+                                                                                   (let ((bundle_0
+                                                                                          (let ((bundle_0
+                                                                                                 (hash-set
+                                                                                                  body-linklets_0
+                                                                                                  'name
+                                                                                                  full-module-name14_0)))
+                                                                                            (let ((bundle_1
+                                                                                                   (hash-set
+                                                                                                    bundle_0
+                                                                                                    'decl
+                                                                                                    (if declaration-linklet_0
+                                                                                                      declaration-linklet_0
+                                                                                                      'in-memory))))
+                                                                                              (let ((bundle_2
+                                                                                                     (if data-linklet_0
+                                                                                                       (hash-set
+                                                                                                        bundle_1
+                                                                                                        'data
+                                                                                                        data-linklet_0)
+                                                                                                       bundle_1)))
+                                                                                                (let ((bundle_3
+                                                                                                       (if syntax-literals-linklet_0
+                                                                                                         (hash-set
+                                                                                                          bundle_2
+                                                                                                          'stx
+                                                                                                          syntax-literals-linklet_0)
+                                                                                                         bundle_2)))
+                                                                                                  (let ((bundle_4
+                                                                                                         (if syntax-literals-data-linklet_0
+                                                                                                           (hash-set
+                                                                                                            bundle_3
+                                                                                                            'stx-data
+                                                                                                            syntax-literals-data-linklet_0)
+                                                                                                           bundle_3)))
+                                                                                                    (let ((bundle_5
+                                                                                                           (if (null?
+                                                                                                                pre-submodules19_0)
+                                                                                                             bundle_4
+                                                                                                             (hash-set
+                                                                                                              bundle_4
+                                                                                                              'pre
+                                                                                                              (map_2353
+                                                                                                               car
+                                                                                                               pre-submodules19_0)))))
+                                                                                                      (let ((bundle_6
+                                                                                                             (if (null?
+                                                                                                                  post-submodules20_0)
+                                                                                                               bundle_5
+                                                                                                               (hash-set
+                                                                                                                bundle_5
+                                                                                                                'post
+                                                                                                                (map_2353
+                                                                                                                 car
+                                                                                                                 post-submodules20_0)))))
+                                                                                                        (let ((bundle_7
+                                                                                                               (if cross-phase-persistent?_0
+                                                                                                                 (hash-set
+                                                                                                                  bundle_6
+                                                                                                                  'cross-phase-persistent?
+                                                                                                                  #t)
+                                                                                                                 bundle_6)))
+                                                                                                          (let ((bundle_8
+                                                                                                                 (if language-info_0
+                                                                                                                   (hash-set
+                                                                                                                    bundle_7
+                                                                                                                    'language-info
+                                                                                                                    language-info_0)
+                                                                                                                   bundle_7)))
+                                                                                                            (let ((bundle_9
+                                                                                                                   (if (not
+                                                                                                                        (eq?
+                                                                                                                         realm_0
+                                                                                                                         'racket))
+                                                                                                                     (hash-set
+                                                                                                                      bundle_8
+                                                                                                                      'realm
+                                                                                                                      realm_0)
+                                                                                                                     bundle_8)))
+                                                                                                              (let ((bundle_10
+                                                                                                                     (if (zero?
+                                                                                                                          min-phase_0)
+                                                                                                                       bundle_9
+                                                                                                                       (hash-set
+                                                                                                                        bundle_9
+                                                                                                                        'min-phase
+                                                                                                                        min-phase_0))))
+                                                                                                                (let ((bundle_11
+                                                                                                                       (if (zero?
+                                                                                                                            max-phase_0)
+                                                                                                                         bundle_10
+                                                                                                                         (hash-set
+                                                                                                                          bundle_10
+                                                                                                                          'max-phase
+                                                                                                                          max-phase_0))))
+                                                                                                                  (let ((bundle_12
+                                                                                                                         (if (hash-count
+                                                                                                                              side-effects_0)
+                                                                                                                           (hash-set
+                                                                                                                            bundle_11
+                                                                                                                            'side-effects
+                                                                                                                            (let ((temp84_0
+                                                                                                                                   (hash-keys
+                                                                                                                                    side-effects_0)))
+                                                                                                                              (sort.1
+                                                                                                                               #f
+                                                                                                                               #f
+                                                                                                                               temp84_0
+                                                                                                                               <)))
+                                                                                                                           bundle_11)))
+                                                                                                                    (let ((bundle_13
+                                                                                                                           (if empty-result-for-module->namespace?_0
+                                                                                                                             (hash-set
+                                                                                                                              bundle_12
+                                                                                                                              'module->namespace
+                                                                                                                              'empty)
+                                                                                                                             bundle_12)))
+                                                                                                                      (let ((bundle_14
+                                                                                                                             (if (unbox
+                                                                                                                                  unsafe?-box_0)
+                                                                                                                               (hash-set
+                                                                                                                                bundle_13
+                                                                                                                                'unsafe?
+                                                                                                                                #t)
+                                                                                                                               bundle_13)))
+                                                                                                                        (1/hash->linklet-bundle
+                                                                                                                         bundle_14))))))))))))))))))
+                                                                                     (let ((ld_0
+                                                                                            (if (if (null?
+                                                                                                     pre-submodules19_0)
+                                                                                                  (if (null?
+                                                                                                       post-submodules20_0)
+                                                                                                    (not
+                                                                                                     force-linklet-directory?15_0)
+                                                                                                    #f)
+                                                                                                  #f)
+                                                                                              bundle_0
+                                                                                              (let ((ht_0
+                                                                                                     (hasheq
+                                                                                                      #f
+                                                                                                      bundle_0)))
+                                                                                                (let ((ht_1
+                                                                                                       (let ((ht_1
+                                                                                                              ht_0))
+                                                                                                         (let ((lst_0
+                                                                                                                (append
+                                                                                                                 pre-submodules19_0
+                                                                                                                 post-submodules20_0)))
+                                                                                                           (letrec*
+                                                                                                            ((for-loop_0
+                                                                                                              (|#%name|
+                                                                                                               for-loop
+                                                                                                               (lambda (ht_2
+                                                                                                                        lst_1)
+                                                                                                                 (if (pair?
+                                                                                                                      lst_1)
+                                                                                                                   (let ((sm_0
+                                                                                                                          (unsafe-car
+                                                                                                                           lst_1)))
+                                                                                                                     (let ((rest_0
+                                                                                                                            (unsafe-cdr
+                                                                                                                             lst_1)))
+                                                                                                                       (let ((ht_3
+                                                                                                                              (let ((ht_3
+                                                                                                                                     (let ((app_0
+                                                                                                                                            (car
+                                                                                                                                             sm_0)))
+                                                                                                                                       (hash-set
+                                                                                                                                        ht_2
+                                                                                                                                        app_0
+                                                                                                                                        (compiled-in-memory-linklet-directory
+                                                                                                                                         (cdr
+                                                                                                                                          sm_0))))))
+                                                                                                                                (values
+                                                                                                                                 ht_3))))
+                                                                                                                         (for-loop_0
+                                                                                                                          ht_3
+                                                                                                                          rest_0))))
+                                                                                                                   ht_2)))))
+                                                                                                            (for-loop_0
+                                                                                                             ht_1
+                                                                                                             lst_0))))))
+                                                                                                  (1/hash->linklet-directory
+                                                                                                   ht_1))))))
+                                                                                       (let ((app_0
+                                                                                              (current-code-inspector)))
+                                                                                         (let ((app_1
+                                                                                                (mpis-as-vector
+                                                                                                 mpis_0)))
+                                                                                           (let ((app_2
+                                                                                                  (syntax-literals-as-vector
+                                                                                                   syntax-literals_0)))
+                                                                                             (let ((app_3
+                                                                                                    (map_2353
+                                                                                                     cdr
+                                                                                                     pre-submodules19_0)))
+                                                                                               (compiled-in-memory1.1
+                                                                                                ld_0
+                                                                                                self_0
+                                                                                                requires_0
+                                                                                                recur-requires_0
+                                                                                                flattened-requires_0
+                                                                                                provides_0
+                                                                                                phase-to-link-module-uses_0
+                                                                                                app_0
+                                                                                                phase-to-link-extra-inspectorsss_0
+                                                                                                portal-stxes_0
+                                                                                                app_1
+                                                                                                app_2
+                                                                                                app_3
                                                                                                 (map_2353
                                                                                                  cdr
-                                                                                                 pre-submodules19_0)))
-                                                                                           (compiled-in-memory1.1
-                                                                                            ld_0
-                                                                                            self_0
-                                                                                            requires_0
-                                                                                            recur-requires_0
-                                                                                            flattened-requires_0
-                                                                                            provides_0
-                                                                                            phase-to-link-module-uses_0
-                                                                                            app_0
-                                                                                            phase-to-link-extra-inspectorsss_0
-                                                                                            portal-stxes_0
-                                                                                            app_1
-                                                                                            app_2
-                                                                                            app_3
-                                                                                            (map_2353
-                                                                                             cdr
-                                                                                             post-submodules20_0)
-                                                                                            #f
-                                                                                            #f)))))))))))))))))))))))))))))))))))))))))))
+                                                                                                 post-submodules20_0)
+                                                                                                #f
+                                                                                                #f)))))))))))))))))))))))))))))))))))))))))))))
          (if log-performance? (end-performance-region) (void)))))))
 (define update-submodule-names
   (lambda (cim_0 name_0 full-module-name_0)
@@ -48067,6 +48122,131 @@
           (if (symbol? (vector-ref li_0 1)) li_0 #f)
           #f)
         #f)
+      #f)))
+(define private-definitions-filter
+  (lambda (provides_0 post-submodules_0)
+    (if (if (getenv "PLT_PRIVATE_DEFINITIONS")
+          (if (null? post-submodules_0)
+            (letrec*
+             ((for-loop_0
+               (|#%name|
+                for-loop
+                (lambda (result_0 i_0)
+                  (if i_0
+                    (call-with-values
+                     (lambda () (hash-iterate-key+value provides_0 i_0))
+                     (lambda (phase_0 at-phase_0)
+                       (let ((result_1
+                              (letrec*
+                               ((for-loop_1
+                                 (|#%name|
+                                  for-loop
+                                  (lambda (result_1 i_1)
+                                    (if i_1
+                                      (call-with-values
+                                       (lambda ()
+                                         (hash-iterate-key+value
+                                          at-phase_0
+                                          i_1))
+                                       (lambda (sym_0 b_0)
+                                         (let ((result_2
+                                                (let ((result_2
+                                                       (if (let ((or-part_0
+                                                                  (eqv?
+                                                                   phase_0
+                                                                   0)))
+                                                             (if or-part_0
+                                                               or-part_0
+                                                               (not phase_0)))
+                                                         (not
+                                                          (provided-as-transformer?
+                                                           b_0))
+                                                         #f)))
+                                                  (values result_2))))
+                                           (if (if (not
+                                                    (let ((x_0
+                                                           (list sym_0 b_0)))
+                                                      (not result_2)))
+                                                 #t
+                                                 #f)
+                                             (for-loop_1
+                                              result_2
+                                              (hash-iterate-next
+                                               at-phase_0
+                                               i_1))
+                                             result_2))))
+                                      result_1)))))
+                               (for-loop_1
+                                result_0
+                                (hash-iterate-first at-phase_0)))))
+                         (if (if (not
+                                  (let ((x_0 (list phase_0 at-phase_0)))
+                                    (not result_1)))
+                               #t
+                               #f)
+                           (for-loop_0
+                            result_1
+                            (hash-iterate-next provides_0 i_0))
+                           result_1))))
+                    result_0)))))
+             (for-loop_0 #t (hash-iterate-first provides_0)))
+            #f)
+          #f)
+      (let ((table_0 hash2610))
+        (let ((provided-syms_0
+               (let ((table_1 table_0))
+                 (letrec*
+                  ((for-loop_0
+                    (|#%name|
+                     for-loop
+                     (lambda (table_2 i_0)
+                       (if i_0
+                         (call-with-values
+                          (lambda () (hash-iterate-key+value provides_0 i_0))
+                          (lambda (phase_0 at-phase_0)
+                            (let ((table_3
+                                   (letrec*
+                                    ((for-loop_1
+                                      (|#%name|
+                                       for-loop
+                                       (lambda (table_3 i_1)
+                                         (if i_1
+                                           (call-with-values
+                                            (lambda ()
+                                              (hash-iterate-key+value
+                                               at-phase_0
+                                               i_1))
+                                            (lambda (sym_0 b_0)
+                                              (let ((table_4
+                                                     (let ((table_4
+                                                            (let ((key_0
+                                                                   (module-binding-sym
+                                                                    (provided-as-binding
+                                                                     b_0))))
+                                                              (hash-set
+                                                               table_3
+                                                               key_0
+                                                               #t))))
+                                                       (values table_4))))
+                                                (for-loop_1
+                                                 table_4
+                                                 (hash-iterate-next
+                                                  at-phase_0
+                                                  i_1)))))
+                                           table_3)))))
+                                    (for-loop_1
+                                     table_2
+                                     (hash-iterate-first at-phase_0)))))
+                              (for-loop_0
+                               table_3
+                               (hash-iterate-next provides_0 i_0)))))
+                         table_2)))))
+                  (for-loop_0 table_1 (hash-iterate-first provides_0))))))
+          (lambda (phase_0 binding-sym_0)
+            (let ((or-part_0 (not (eqv? phase_0 0))))
+              (if or-part_0
+                or-part_0
+                (hash-ref provided-syms_0 binding-sym_0 #f))))))
       #f)))
 (define 1/compiled-expression-recompile
   (|#%name|

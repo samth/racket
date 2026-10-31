@@ -5,6 +5,7 @@
          "import.rkt"
          "export.rkt"
          "struct-convert.rkt"
+         "escape.rkt"
          "simple.rkt"
          "source-sym.rkt"
          "find-definition.rkt"
@@ -136,10 +137,16 @@
        (define src-syms (get-definition-source-syms bodys))
        ;; Schemify the body, collecting information about defined names:
        (define-values (new-body defn-info mutated)
-         (schemify-body* bodys prim-knowns primitives imports exports
-                         serializable?-box datum-intern? allow-set!-undefined? add-import! target
-                         unsafe-mode? enforce-constant? allow-inline? no-prompt? #t
-                         compiler-query))
+         (parameterize ([current-private-id?
+                         (let ([escapes (escaping-ids bodys)])
+                           (lambda (id)
+                             (let ([u-id (unwrap id)])
+                               (not (or (hash-ref exports u-id #f)
+                                        (hash-ref escapes u-id #f))))))])
+           (schemify-body* bodys prim-knowns primitives imports exports
+                           serializable?-box datum-intern? allow-set!-undefined? add-import! target
+                           unsafe-mode? enforce-constant? allow-inline? no-prompt? #t
+                           compiler-query)))
        ;; Convert internal to external identifiers for known-value info;
        ;; this step might add exports, so we need an outer loop to recur
        ; to handle additions
@@ -1019,7 +1026,7 @@
                                  `(unsafe-struct*-ref ,tmp ,(known-field-accessor-pos k))
                                  `(if (unsafe-struct? ,tmp ,(schemify type-id 'fresh))
                                       (unsafe-struct*-ref ,tmp ,(known-field-accessor-pos k))
-                                      ,(let ([a `(,s-rator ,tmp)])
+                                      ,(let ([a `(,s-rator ,(guard-inferred-authentic (known-field-accessor-authentic? k) tmp))])
                                          (if (known-field-accessor-authentic? k)
                                              (cons '#%app/no-return a)
                                              a)))))
@@ -1040,7 +1047,7 @@
                                  `(unsafe-struct*-set! ,tmp ,(known-field-mutator-pos k) ,tmp-rhs)
                                  `(if (unsafe-struct? ,tmp ,(schemify type-id 'fresh))
                                       (unsafe-struct*-set! ,tmp ,(known-field-mutator-pos k) ,tmp-rhs)
-                                      ,(let ([a `(,s-rator ,tmp ,tmp-rhs)])
+                                      ,(let ([a `(,s-rator ,(guard-inferred-authentic (known-field-mutator-authentic? k) tmp) ,tmp-rhs)])
                                          (if (known-field-mutator-authentic? k)
                                              (cons '#%app/no-return a)
                                              a)))))
@@ -1214,3 +1221,12 @@
                (schemify-body* (cdr l) wcm-state unsafe-mode?))]))
 
     (schemify* v wcm-state unsafe-mode?)))
+
+;; EXPERIMENT: for a structure type that is inferred to be authentic,
+;; an impersonator can only come from privileged code (such as
+;; `module->namespace`); make the out-of-line accessor or mutator
+;; reject it, so that the call really does not return
+(define (guard-inferred-authentic authentic? tmp)
+  (if (eq? authentic? 'inferred)
+      `(if (impersonator? ,tmp) #f ,tmp)
+      tmp))

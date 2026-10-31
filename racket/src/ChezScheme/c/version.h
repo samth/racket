@@ -29,8 +29,13 @@
 # else
 #  define FORCEINLINE static __attribute__((__always_inline__)) inline
 # endif
+#elif defined(__GNUC__) || defined(__clang__)
+/* Plain `inline` is only a hint, and GCC declines it inside large
+   functions such as the collector's sweep loops, which then call
+   `MaybeSegInfo` out of line for every swept pointer. */
+# define FORCEINLINE static __attribute__((__always_inline__)) inline
 #else
-#define FORCEINLINE static inline
+# define FORCEINLINE static inline
 #endif
 
 /* GCC 10 and later and all versions of Clang provide `__has_builtin` for

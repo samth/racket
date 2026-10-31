@@ -44,7 +44,8 @@
         [make-mutex host:make-mutex]
         [mutex-acquire host:mutex-acquire]
         [mutex-release host:mutex-release]
-        threaded?)
+        threaded?
+        [prop:unsafe-authentic-override host:prop:unsafe-authentic-override])
 
 (bounce #%engine
         make-engine
@@ -113,6 +114,5 @@
 
         continuation-current-primitive
 
-        [prop:unsafe-authentic-override host:prop:unsafe-authentic-override]
         [get-system-stats host:get-system-stats]
         [internal-error host:internal-error])

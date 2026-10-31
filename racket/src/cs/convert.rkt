@@ -109,7 +109,14 @@
 
 (lift l)
 
-(define prim-knowns (get-prim-knowns))
+;; Names that one layer gets from another directly (via `++direct`)
+;; aren't in the primitive tables, but some of them are known to
+;; be structure-type properties without supers:
+(define prim-knowns
+  (for/fold ([knowns (get-prim-knowns)]) ([id (in-list '(prop:place-message
+                                                          prop:secondary-evt
+                                                          prop:unsafe-authentic-override))])
+    (hash-set knowns id (known-struct-type-property/no-supers))))
 (define primitives (get-primitives))
 (check-known-values prim-knowns primitives)
 

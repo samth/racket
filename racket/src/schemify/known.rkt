@@ -55,6 +55,8 @@
          known-field-mutator/need-imports known-field-mutator/need-imports? known-field-mutator/need-imports-needed
          known-struct-type-maker/need-imports known-struct-type-maker/need-imports? known-struct-type-maker/need-imports-needed
          known-struct-type-property/immediate-guard known-struct-type-property/immediate-guard?
+         known-struct-type-property/immediate-guard/no-supers known-struct-type-property/immediate-guard/no-supers?
+         known-struct-type-property/no-supers known-struct-type-property/no-supers?
          known-struct-metatype-ref known-struct-metatype-ref? known-struct-metatype-ref-type-id known-struct-metatype-ref-pos
          known-struct-metatype-ref/need-imports known-struct-metatype-ref/need-imports? known-struct-metatype-ref/need-imports-needed
          a-known-constant
@@ -166,6 +168,13 @@
 (struct known-struct-type-maker/need-imports (needed) #:prefab #:omit-define-syntaxes #:super struct:known-struct-type-maker)
 
 (struct known-struct-type-property/immediate-guard () #:prefab #:omit-define-syntaxes)
+;; A property with no super properties, so attaching it doesn't attach anything else,
+;; such as `prop:procedure`:
+(struct known-struct-type-property/immediate-guard/no-supers () #:prefab #:omit-define-syntaxes
+  #:super struct:known-struct-type-property/immediate-guard)
+;; Like `known-struct-type-property/immediate-guard/no-supers`, but with a guard:
+(struct known-struct-type-property/no-supers () #:prefab #:omit-define-syntaxes
+  #:super struct:known-constant)
 
 (struct known-struct-metatype-ref (type-id pos) #:prefab #:omit-define-syntaxes #:super struct:known-procedure/pure)
 (struct known-struct-metatype-ref/need-imports (needed) #:prefab #:omit-define-syntaxes #:super struct:known-struct-metatype-ref)

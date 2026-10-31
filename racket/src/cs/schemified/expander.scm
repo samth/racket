@@ -5820,8 +5820,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2266 'proc)
-   (finish_2266 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2442 (finish_2266 struct:resolved-module-path))
@@ -6081,8 +6081,8 @@
    #f
    '(4 . 12)
    'make-struct-type
-   (finish_2670 'proc)
-   (finish_2670 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2892 (finish_2670 struct:module-path-index))
@@ -7187,8 +7187,8 @@
    #f
    '(3 . 0)
    'make-struct-type
-   (finish_2290 'proc)
-   (finish_2290 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2528 (finish_2290 struct:scope-set))
@@ -8354,8 +8354,8 @@
    #f
    '(7 . 1)
    'make-struct-type
-   (finish_2357 'proc)
-   (finish_2357 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2447 (finish_2357 struct:syntax))
@@ -8826,8 +8826,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2247 'proc)
-   (finish_2247 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2734 (finish_2247 struct:full-binding))
@@ -9149,8 +9149,8 @@
    #f
    '(9 . 0)
    'make-struct-type
-   (finish_2458 'proc)
-   (finish_2458 'arity)
+   #f
+   #f
    #f
    #f))
 (define effect_2481 (finish_2458 struct:full-module-binding))
@@ -9255,8 +9255,8 @@
    #f
    '(4 . 0)
    'make-struct-type
-   (finish_2620 'proc)
-   (finish_2620 'arity)
+   #f
+   #f
    #f
    #f))
 (define effect_2891 (finish_2620 struct:simple-module-binding))
@@ -9526,8 +9526,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2061 'proc)
-   (finish_2061 'arity)
+   #f
+   #f
    #f
    #f))
 (define effect_2690 (finish_2061 struct:like-ambiguous-binding))
@@ -9573,8 +9573,8 @@
    #f
    '(3 . 0)
    'make-struct-type
-   (finish_2494 'proc)
-   (finish_2494 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2950 (finish_2494 struct:table-with-bulk-bindings))
@@ -9638,8 +9638,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2866 'proc)
-   (finish_2866 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2253 (finish_2866 struct:bulk-binding-at))
@@ -11189,8 +11189,8 @@
    #f
    '(2 . 2)
    'make-struct-type
-   (finish_3102 'proc)
-   (finish_3102 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2269 (finish_3102 struct:scope))
@@ -11261,8 +11261,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2317 'proc)
-   (finish_2317 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2498 (finish_2317 struct:interned-scope))
@@ -11396,8 +11396,8 @@
    #f
    '(5 . 0)
    'make-struct-type
-   (finish_2681 'proc)
-   (finish_2681 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_1895 (finish_2681 struct:multi-scope))
@@ -11489,8 +11489,8 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2594 'proc)
-   (finish_2594 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2683 (finish_2594 struct:representative-scope))
@@ -11585,8 +11585,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_3292 'proc)
-   (finish_3292 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2854 (finish_3292 struct:shifted-multi-scope))
@@ -12783,8 +12783,8 @@
    #f
    '(8 . 0)
    'make-struct-type
-   (finish_1917 'proc)
-   (finish_1917 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2326 (finish_1917 struct:propagation))
@@ -14240,8 +14240,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2041 'proc)
-   (finish_2041 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3011 (finish_2041 struct:full-local-binding))
@@ -14370,8 +14370,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2476 'proc)
-   (finish_2476 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2525 (finish_2476 struct:id-rename-transformer))
@@ -15146,8 +15146,8 @@
    #f
    '(3 . 0)
    'make-struct-type
-   (finish_3200 'proc)
-   (finish_3200 'arity)
+   #f
+   #f
    #f
    #f))
 (define effect_2629 (finish_3200 struct:provided))
@@ -15376,8 +15376,8 @@
    #f
    '(8 . 9)
    'make-struct-type
-   (finish_2524 'proc)
-   (finish_2524 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2834 (finish_2524 struct:bulk-binding))
@@ -16372,8 +16372,8 @@
    #f
    '(17 . 8192)
    'make-struct-type
-   (finish_2563 'proc)
-   (finish_2563 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3128 (finish_2563 struct:namespace))
@@ -17639,8 +17639,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2922 'proc)
-   (finish_2922 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2097 (finish_2922 struct:module-use))
@@ -20165,8 +20165,8 @@
             #f
             '(1 . 0)
             'make-struct-type
-            (finish949 'proc)
-            (finish949 'arity)
+            #f
+            #f
             #f
             |#%system-inspector|)))
       (let ((effect950 (finish949 struct:set!-transformer_0)))
@@ -35765,8 +35765,8 @@
    #f
    '(16 . 0)
    'make-struct-type
-   (finish_3098 'proc)
-   (finish_3098 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2572 (finish_3098 struct:compiled-in-memory))
@@ -36923,8 +36923,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2902 'proc)
-   (finish_2902 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2692 (finish_2902 struct:linklet-directory))
@@ -36992,8 +36992,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2824 'proc)
-   (finish_2824 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2464 (finish_2824 struct:linklet-bundle))
@@ -38503,8 +38503,8 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2356 'proc)
-   (finish_2356 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2316 (finish_2356 struct:module-use*))
@@ -51351,8 +51351,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2095 'proc)
-   (finish_2095 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2849 (finish_2095 struct:liberal-define-context))
@@ -63132,8 +63132,8 @@
    #f
    '(4 . 0)
    'make-struct-type
-   (finish_2508 'proc)
-   (finish_2508 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2167 (finish_2508 struct:readtable))

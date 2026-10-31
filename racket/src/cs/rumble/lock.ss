@@ -74,6 +74,15 @@
   ;; there the operation is atomic from the Racket perspective, and
   ;; it's worth using a CAS to make the uncontended case fast.
 
+  ;; Until a place forks its first extra pthread (for a future or a
+  ;; parallel thread), only one OS thread can touch the place's tables,
+  ;; so the CAS is skipped; blocking engine swaps is still needed. The
+  ;; flag is set by the only OS thread of the place, which is not in
+  ;; the middle of a locked operation, and it is never cleared, so an
+  ;; acquire and its release always agree on whether the CAS is used.
+  (define-syntax-rule (place-in-parallel?)
+    (eq? #t (#%vector-ref (place-registers) PARALLEL-PTHREADS-INDEX)))
+
   ;; box of
   ;;  #f - unlocked, uncontended
   ;;  #t - locked, uncontended
@@ -90,9 +99,10 @@
        ;; need to block engine swaps to provide atomic behavior,
        ;; and the engine-specific opeartion is cheaper than disabling all interrupts
        (start-engine-uninterrupted 'lock-acquire)
-       (cond
-         [(box-cas! lock #f #t) (memory-order-acquire)]
-         [else (#%$app/no-inline lock-acquire/slow lock)])]
+       (when (place-in-parallel?)
+         (cond
+           [(box-cas! lock #f #t) (memory-order-acquire)]
+           [else (#%$app/no-inline lock-acquire/slow lock)]))]
       [else
        (scheduler-lock-acquire lock)]))
 
@@ -126,11 +136,12 @@
     (cond
       [(not lock) (enable-interrupts) (#%void)]
       [(box? lock)
-       (memory-order-release)
-       (cond
-         [(box-cas! lock #t #f) (void)]
-         [else
-          (#%$app/no-inline lock-release-slow lock)])
+       (when (place-in-parallel?)
+         (memory-order-release)
+         (cond
+           [(box-cas! lock #t #f) (void)]
+           [else
+            (#%$app/no-inline lock-release-slow lock)]))
        (end-engine-uninterrupted 'lock-release)
        (void)]
       [else
@@ -161,5 +172,8 @@
              [else
               (loop)]))])))
 
-  (define (lock-acquire/a lock) (lock-acquire lock))
-  (define (lock-release/a lock) (lock-release lock))])
+  ;; The "/a" variants are for an operation that is atomic by itself
+  ;; with respect to engines, such as `eq-hashtable-ref`, so they
+  ;; have nothing to do while the place has only one OS thread
+  (define (lock-acquire/a lock) (when (place-in-parallel?) (lock-acquire lock)))
+  (define (lock-release/a lock) (when (place-in-parallel?) (lock-release lock)))])

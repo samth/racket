@@ -2,6 +2,8 @@
  [(threaded?)
   (define make-pthread-parameter make-thread-parameter)
   (define (fork-pthread thunk)
+    ;; Tell nonscheduler locks (in "lock.ss") that they are needed now
+    (#%vector-set! (get-place-registers) PARALLEL-PTHREADS-INDEX #t)
     (fork-thread (let ([place-registers (get-place-registers)])
                    (lambda ()
                      (init-virtual-registers)

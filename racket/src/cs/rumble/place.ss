@@ -12,7 +12,8 @@
 
 (define LOCAL_TABLE-INDEX 0)
 (define ASYNC-CALLBACK-REGISTER-INDEX 1)
-;; index 2 is available
+;; #t once the place has forked a pthread for futures or parallel threads
+(define PARALLEL-PTHREADS-INDEX 2)
 
 (define-virtual-register place-registers (#%make-vector NUM-PLACE-REGISTERS 0))
 (define place-register-inits (#%make-vector NUM-PLACE-REGISTERS 0))

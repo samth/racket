@@ -24,7 +24,9 @@
          "linklet.rkt"
          "correlated-linklet.rkt"
          "../eval/reflect.rkt"
-         "../eval/reflect-name.rkt")
+         "../eval/reflect-name.rkt"
+         "../namespace/provided.rkt"
+         "../syntax/module-binding.rkt")
 
 (provide compile-module)
 
@@ -186,6 +188,7 @@
                     #:unlimited-compile?-box unlimited-compile?-box
                     #:to-correlated-linklet? to-correlated-linklet?
                     #:unsafe?-box unsafe?-box
+                    #:keep-export? (private-definitions-filter provides post-submodules)
                     #:realm realm))
 
    ;; register any portal syntax objects:
@@ -454,3 +457,31 @@
        (module-path? (vector-ref li 0))
        (symbol? (vector-ref li 1))
        li))
+
+;; ------------------------------------------------------------
+
+;; EXPERIMENT (PLT_PRIVATE_DEFINITIONS): leave phase-0 definitions that
+;; are not provided out of the body linklet's exports, so that schemify
+;; can see that they are private to the module. This is only safe when
+;; nothing else can refer to them: no `module*` submodules and nothing
+;; provided except phase-0 variables. It makes
+;; those definitions unavailable to `module->namespace`.
+(define (private-definitions-filter provides post-submodules)
+  (cond
+    [(and (getenv "PLT_PRIVATE_DEFINITIONS")
+          (null? post-submodules)
+          ;; provided syntax, or anything provided for a phase other than 0
+          ;; (such as a function that generates syntax), could produce a
+          ;; reference to a definition that is not provided:
+          (for*/and ([(phase at-phase) (in-hash provides)]
+                     [(sym b) (in-hash at-phase)])
+            (and (or (eqv? phase 0) (not phase))
+                 (not (provided-as-transformer? b)))))
+     (define provided-syms
+       (for*/hasheq ([(phase at-phase) (in-hash provides)]
+                     [(sym b) (in-hash at-phase)])
+         (values (module-binding-sym (provided-as-binding b)) #t)))
+     (lambda (phase binding-sym)
+       (or (not (eqv? phase 0))
+           (hash-ref provided-syms binding-sym #f)))]
+    [else #f]))

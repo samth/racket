@@ -2939,8 +2939,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_1876 'proc)
-   (finish_1876 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2826 (finish_1876 struct:select-waiter))
@@ -4263,8 +4263,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2668 'proc)
-   (finish_2668 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2387 (finish_2668 struct:semaphore-peek-select-waiter))
@@ -9131,8 +9131,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2400 'proc)
-   (finish_2400 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2956 (finish_2400 struct:channel-select-waiter))

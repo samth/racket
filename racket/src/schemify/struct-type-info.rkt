@@ -94,11 +94,16 @@
                               [else
                                (match (car props)
                                  [`(cons ,p ,_)
-                                  (and (memq p '(prop:authentic
-                                                 prop:sealed
-                                                 prop:procedure
-                                                 prop:procedure-arity))
-                                       (not (eq? p name))
+                                  (and (let ([u-p (unwrap p)])
+                                         (and (not (eq? u-p name))
+                                              (or (memq u-p '(prop:authentic
+                                                              prop:sealed
+                                                              prop:procedure
+                                                              prop:procedure-arity))
+                                                  ;; a property with no supers can't imply `name`
+                                                  (and (symbol? u-p)
+                                                       (known-struct-type-property/immediate-guard/no-supers?
+                                                        (find-known u-p prim-knowns knowns imports mutated))))))
                                        (loop (cdr props)))]
                                  [`,_ #f])]))]
                          [`null #t]
@@ -259,10 +264,12 @@
                  u)))]
     [`,_ #f]))
 
-(define (add-struct-type-property-known prop:s s-ref s? immediate-guard? knowns)
+(define (add-struct-type-property-known prop:s s-ref s? immediate-guard? no-supers? knowns)
   (define type (string->uninterned-symbol (symbol->string (unwrap prop:s))))
   (let* ([knowns (hash-set knowns (unwrap s-ref) (known-accessor 2 type))]
          [knowns (hash-set knowns (unwrap s?) (known-predicate 2 type))])
     (if immediate-guard?
-        (hash-set knowns (unwrap prop:s) (known-struct-type-property/immediate-guard))
+        (hash-set knowns (unwrap prop:s) (if no-supers?
+                                             (known-struct-type-property/immediate-guard/no-supers)
+                                             (known-struct-type-property/immediate-guard)))
         knowns)))

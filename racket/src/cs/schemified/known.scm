@@ -3375,6 +3375,76 @@
           (known-struct-type-property/immediate-guard?_2536
            (impersonator-val v))
           #f))))))
+(define finish_2551
+  (make-struct-type-install-properties
+   '(known-struct-type-property/immediate-guard/no-supers)
+   0
+   0
+   (if (struct-type? struct:known-struct-type-property/immediate-guard)
+     struct:known-struct-type-property/immediate-guard
+     (check-struct-type
+      'struct
+      struct:known-struct-type-property/immediate-guard))
+   null
+   'prefab
+   #f
+   '()
+   #f
+   'known-struct-type-property/immediate-guard/no-supers))
+(define struct:known-struct-type-property/immediate-guard/no-supers
+  (|#%make-record-type-descriptor|
+   |#%racket-base-rtd|
+   'known-struct-type-property/immediate-guard/no-supers
+   (if (struct-type? struct:known-struct-type-property/immediate-guard)
+     struct:known-struct-type-property/immediate-guard
+     (check-struct-type
+      'struct
+      struct:known-struct-type-property/immediate-guard))
+   (structure-type-lookup-prefab-uid
+    'known-struct-type-property/immediate-guard/no-supers
+    (if (struct-type? struct:known-struct-type-property/immediate-guard)
+      struct:known-struct-type-property/immediate-guard
+      (check-struct-type
+       'struct
+       struct:known-struct-type-property/immediate-guard))
+    0
+    0
+    #f
+    '())
+   #f
+   #f
+   '(0 . 0)
+   'make-struct-type
+   #f
+   #f
+   #f
+   'prefab))
+(define effect_2274
+  (finish_2551 struct:known-struct-type-property/immediate-guard/no-supers))
+(define known-struct-type-property/immediate-guard/no-supers
+  (|#%name|
+   known-struct-type-property/immediate-guard/no-supers
+   (record-constructor
+    (make-record-constructor-descriptor
+     struct:known-struct-type-property/immediate-guard/no-supers
+     #f
+     #f))))
+(define known-struct-type-property/immediate-guard/no-supers?_2423
+  (|#%name|
+   known-struct-type-property/immediate-guard/no-supers?
+   (record-predicate
+    struct:known-struct-type-property/immediate-guard/no-supers)))
+(define known-struct-type-property/immediate-guard/no-supers?
+  (|#%name|
+   known-struct-type-property/immediate-guard/no-supers?
+   (lambda (v)
+     (if (known-struct-type-property/immediate-guard/no-supers?_2423 v)
+       #t
+       ($value
+        (if (impersonator? v)
+          (known-struct-type-property/immediate-guard/no-supers?_2423
+           (impersonator-val v))
+          #f))))))
 (define finish_2996
   (make-struct-type-install-properties
    '(known-struct-metatype-ref)

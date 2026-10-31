@@ -67,9 +67,6 @@
   (define (lock-acquire/a lock) (void))
   (define (lock-release/a lock) (void))]
  [else
-  (define transition-lock (make-mutex))
-  (define transition-cond (make-condition))
-
   ;; A nonscheduler lock is for `eq?`- and `eqv?`-based hash tables,
   ;; there the operation is atomic from the Racket perspective, and
   ;; it's worth using a CAS to make the uncontended case fast.
@@ -83,11 +80,10 @@
   (define-syntax-rule (place-in-parallel?)
     (eq? #t (#%vector-ref (place-registers) PARALLEL-PTHREADS-INDEX)))
 
-  ;; box of
-  ;;  #f - unlocked, uncontended
-  ;;  #t - locked, uncontended
-  ;;  <mutex> - contended and managed by mutex
-  ;;  <void> - locked, contended, switches to <mutex> on release
+  ;; A box of #f (unlocked) or #t (locked). The lock is held only
+  ;; for a short table operation, and the holder cannot be swapped out
+  ;; by engines, so a waiter spins and then backs off; releasing is
+  ;; then just a store, with no second CAS.
 
   (define (make-nonscheduler-lock)
     (box #f))
@@ -107,30 +103,17 @@
        (scheduler-lock-acquire lock)]))
 
   (define (lock-acquire/slow lock)
-    (let loop ()
+    (let loop ([n 0] [sleep-ns 1000])
       (cond
-        [(box-cas! lock #f #t)
-         ;; uncontended lock
+        [(and (not (unbox lock))
+              (box-cas! lock #f #t))
          (memory-order-acquire)]
+        [(fx< n 100)
+         (loop (fx+ n 1) sleep-ns)]
         [else
-         (let ([v (unbox lock)])
-           (cond
-             [(mutex? v)
-              ;; contended lock that has switched to using a mutex
-              (mutex-acquire v)]
-             [(or (eq? v #t)
-                  (void? v))
-              ;; contended lock that needs to switch to a mutex, maybe in process already
-              (mutex-acquire transition-lock)
-              (cond
-                [(box-cas! lock v (void))
-                 (condition-wait transition-cond transition-lock)
-                 (mutex-release transition-lock)]
-                [else
-                 (mutex-release transition-lock)])
-              (loop)]
-             [else
-              (loop)]))])))
+         ;; The holder may have been descheduled by the OS, so back off
+         (#%sleep (#%make-time 'time-duration sleep-ns 0))
+         (loop 0 (fxmin (fx* sleep-ns 2) 1000000))])))
 
   (define (lock-release lock)
     (cond
@@ -138,39 +121,11 @@
       [(box? lock)
        (when (place-in-parallel?)
          (memory-order-release)
-         (cond
-           [(box-cas! lock #t #f) (void)]
-           [else
-            (#%$app/no-inline lock-release-slow lock)]))
+         (set-box! lock #f))
        (end-engine-uninterrupted 'lock-release)
        (void)]
       [else
        (scheduler-lock-release lock)]))
-
-  (define (lock-release-slow lock)
-    (let loop ()
-      (cond
-        [(box-cas! lock #t #f)
-         ;; release uncontended lock
-         (void)]
-        [else
-         (let ([v (unbox lock)])
-           (cond
-             [(mutex? v)
-              ;; contended lock that has switched to using a mutex
-              (mutex-release v)]
-             [(void? v)
-              ;; contended lock that needs to switch to a mutex
-              (let ([m (make-mutex)])
-                (cond
-                  [(box-cas! lock (void) m)
-                   (mutex-acquire transition-lock)
-                   (condition-broadcast transition-cond)
-                   (mutex-release transition-lock)]
-                  [else
-                   (loop)]))]
-             [else
-              (loop)]))])))
 
   ;; The "/a" variants are for an operation that is atomic by itself
   ;; with respect to engines, such as `eq-hashtable-ref`, so they

@@ -1264,6 +1264,7 @@
 (define host:mutex-acquire mutex-acquire)
 (define host:mutex-release mutex-release)
 (define 1/threaded? threaded?)
+(define host:prop:unsafe-authentic-override prop:unsafe-authentic-override)
 (define make-engine (hash-ref (primitive-table '|#%engine|) 'make-engine #f))
 (define make-engine-thread-cell-state
   (hash-ref (primitive-table '|#%engine|) 'make-engine-thread-cell-state #f))
@@ -1360,8 +1361,6 @@
    #f))
 (define continuation-current-primitive
   (hash-ref (primitive-table '|#%engine|) 'continuation-current-primitive #f))
-(define host:prop:unsafe-authentic-override
-  (hash-ref (primitive-table '|#%engine|) 'prop:unsafe-authentic-override #f))
 (define host:get-system-stats
   (hash-ref (primitive-table '|#%engine|) 'get-system-stats #f))
 (define host:internal-error
@@ -2263,8 +2262,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2483 'proc)
-   (finish_2483 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2474 (finish_2483 struct:never-evt))
@@ -2309,8 +2308,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2218 'proc)
-   (finish_2218 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2333 (finish_2218 struct:always-evt))
@@ -2355,8 +2354,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2449 'proc)
-   (finish_2449 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2210 (finish_2449 struct:async-evt))
@@ -2401,8 +2400,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_3384 'proc)
-   (finish_3384 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2815 (finish_3384 struct:wrap-evt))
@@ -2462,8 +2461,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2655 'proc)
-   (finish_2655 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3118 (finish_2655 struct:handle-evt))
@@ -2509,8 +2508,8 @@
    #f
    '(5 . 0)
    'make-struct-type
-   (finish_3332 'proc)
-   (finish_3332 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3002 (finish_3332 struct:control-state-evt))
@@ -2641,8 +2640,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2343 'proc)
-   (finish_2343 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2169 (finish_2343 struct:poll-guard-evt))
@@ -2703,8 +2702,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2902 'proc)
-   (finish_2902 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2613 (finish_2902 struct:choice-evt))
@@ -2821,8 +2820,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2235 'proc)
-   (finish_2235 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2260 (finish_2235 struct:poller-evt))
@@ -2939,8 +2938,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_1876 'proc)
-   (finish_1876 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2826 (finish_1876 struct:select-waiter))
@@ -3897,7 +3896,7 @@
                               (|#%app| (message-ized-unmessage v_1))
                               v_1)))))))))))))
        (loop_0 v_0)))))
-(define finish_2464
+(define finish_2469
   (make-struct-type-install-properties
    '(place)
    21
@@ -3909,7 +3908,7 @@
      prop:place-message
      (lambda (self_0) (lambda () (lambda () (place-pch self_0)))))
     (cons 1/prop:evt 3)
-    (cons host:prop:unsafe-authentic-override #t))
+    (cons prop:unsafe-authentic-override #t))
    (current-inspector)
    #f
    '(0 1 2 3 6 15)
@@ -3925,11 +3924,11 @@
    #f
    '(21 . 2064304)
    'make-struct-type
-   (finish_2464 'proc)
-   (finish_2464 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
-(define effect_2619 (finish_2464 struct:place))
+(define effect_2619 (finish_2469 struct:place))
 (define place1.1
   (|#%name|
    place
@@ -4090,7 +4089,7 @@
      'racket/primitive
      msg_0
      'racket/primitive)))
-(define finish_2797
+(define finish_2362
   (make-struct-type-install-properties
    '(semaphore)
    1
@@ -4103,7 +4102,7 @@
      (poller2.1
       (lambda (s_0 poll-ctx_0)
         (semaphore-wait/poll.1 #f unsafe-undefined s_0 s_0 poll-ctx_0))))
-    (cons host:prop:unsafe-authentic-override #t))
+    (cons prop:unsafe-authentic-override #t))
    (current-inspector)
    #f
    '()
@@ -4119,11 +4118,11 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_2797 'proc)
-   (finish_2797 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
-(define effect_2927 (finish_2797 struct:semaphore))
+(define effect_2927 (finish_2362 struct:semaphore))
 (define semaphore1.1
   (|#%name|
    semaphore
@@ -4157,8 +4156,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2060 'proc)
-   (finish_2060 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2665 (finish_2060 struct:custodian-accessible-semaphore))
@@ -4202,8 +4201,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2448 'proc)
-   (finish_2448 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2414 (finish_2448 struct:semaphore-peek-evt))
@@ -4263,8 +4262,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2668 'proc)
-   (finish_2668 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2387 (finish_2668 struct:semaphore-peek-select-waiter))
@@ -5245,8 +5244,8 @@
    #f
    '(2 . 1)
    'make-struct-type
-   (finish_2536 'proc)
-   (finish_2536 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2694 (finish_2536 struct:custodian-box))
@@ -6737,7 +6736,7 @@
                 (void))))))
          (loop_0 mref_0))
         (unlock-custodians)))))
-(define finish_2277
+(define finish_2795
   (make-struct-type-install-properties
    '(thread)
    24
@@ -6769,7 +6768,7 @@
               app_2
               app_3
               app_4
-              (cons host:prop:unsafe-authentic-override #t)))))))
+              (cons prop:unsafe-authentic-override #t)))))))
    (current-inspector)
    #f
    '(0 2 7)
@@ -6785,11 +6784,11 @@
    #f
    '(24 . 16777082)
    'make-struct-type
-   (finish_2277 'proc)
-   (finish_2277 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
-(define effect_2668 (finish_2277 struct:thread))
+(define effect_2668 (finish_2795 struct:thread))
 (define thread1.1
   (|#%name|
    thread
@@ -7522,8 +7521,8 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_2598 'proc)
-   (finish_2598 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2691 (finish_2598 struct:dead-evt))
@@ -7564,8 +7563,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_3414 'proc)
-   (finish_3414 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2565 (finish_3414 struct:dead-evt/suspend-to-kill))
@@ -8095,8 +8094,8 @@
    #f
    '(2 . 2)
    'make-struct-type
-   (finish_2360 'proc)
-   (finish_2360 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2478 (finish_2360 struct:suspend-resume-evt))
@@ -8192,8 +8191,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2344 'proc)
-   (finish_2344 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2442 (finish_2344 struct:suspend-evt))
@@ -8234,8 +8233,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2494 'proc)
-   (finish_2494 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2874 (finish_2494 struct:resume-evt))
@@ -8276,8 +8275,8 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_2484 'proc)
-   (finish_2484 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3021 (finish_2484 struct:suspend-semaphore))
@@ -8827,8 +8826,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2796 'proc)
-   (finish_2796 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2506 (finish_2796 struct:thread-receiver-evt))
@@ -8912,8 +8911,8 @@
    #f
    '(4 . 12)
    'make-struct-type
-   (finish_2112 'proc)
-   (finish_2112 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2481 (finish_2112 struct:channel))
@@ -9057,8 +9056,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_1979 'proc)
-   (finish_1979 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2715 (finish_1979 struct:channel-put-evt*))
@@ -9131,8 +9130,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2400 'proc)
-   (finish_2400 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2956 (finish_2400 struct:channel-select-waiter))
@@ -11295,8 +11294,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2891 'proc)
-   (finish_2891 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2704 (finish_2891 struct:replacing-evt))
@@ -11357,8 +11356,8 @@
    #f
    '(3 . 0)
    'make-struct-type
-   (finish_2391 'proc)
-   (finish_2391 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2461 (finish_2391 struct:nested-sync-evt))
@@ -11575,8 +11574,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2856 'proc)
-   (finish_2856 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2195 (finish_2856 struct:system-idle-evt))
@@ -12260,8 +12259,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2356 'proc)
-   (finish_2356 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2000 (finish_2356 struct:future-evt))
@@ -14456,8 +14455,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2553 'proc)
-   (finish_2553 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2822 (finish_2553 struct:alarm-evt))
@@ -14969,7 +14968,7 @@
       ((s_0 proc_0) (call-with-semaphore/enable-break_0 s_0 proc_0 #f null))
       ((s_0 proc_0 try-fail12_0 . args_0)
        (call-with-semaphore/enable-break_0 s_0 proc_0 try-fail12_0 args_0))))))
-(define finish_2875
+(define finish_2839
   (make-struct-type-install-properties
    '(will-executor)
    2
@@ -14983,7 +14982,7 @@
        (wrap-evt7.1
         (semaphore-peek-evt3.1 (will-executor-sema we_0))
         (lambda (v_0) we_0))))
-    (cons host:prop:unsafe-authentic-override #t))
+    (cons prop:unsafe-authentic-override #t))
    (current-inspector)
    #f
    '(0 1)
@@ -14999,11 +14998,11 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2875 'proc)
-   (finish_2875 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
-(define effect_2170 (finish_2875 struct:will-executor))
+(define effect_2170 (finish_2839 struct:will-executor))
 (define will-executor1.1
   (|#%name|
    will-executor
@@ -16073,8 +16072,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2272 'proc)
-   (finish_2272 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2480 (finish_2272 struct:place-done-evt))
@@ -16327,8 +16326,8 @@
    #f
    '(6 . 0)
    'make-struct-type
-   (finish_2441 'proc)
-   (finish_2441 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2172 (finish_2441 struct:pchannel))

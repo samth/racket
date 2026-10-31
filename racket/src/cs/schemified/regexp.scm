@@ -6006,8 +6006,8 @@
    #f
    '(10 . 0)
    'make-struct-type
-   (finish_1953 'proc)
-   (finish_1953 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2726 (finish_1953 struct:rx:regexp))

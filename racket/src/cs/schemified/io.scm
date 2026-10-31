@@ -3910,8 +3910,8 @@
    #f
    '(8 . 252)
    'make-struct-type
-   (finish_2338 'proc)
-   (finish_2338 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2337 (finish_2338 struct:core-port))
@@ -4511,8 +4511,8 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2218 'proc)
-   (finish_2218 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2528 (finish_2218 struct:core-input-port))
@@ -4835,8 +4835,8 @@
    #f
    '(4 . 15)
    'make-struct-type
-   (finish_3032 'proc)
-   (finish_3032 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2808 (finish_3032 struct:core-output-port))
@@ -5095,8 +5095,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2564 'proc)
-   (finish_2564 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2493 (finish_2564 struct:write-evt))
@@ -6789,8 +6789,8 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_3101 'proc)
-   (finish_3101 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2802 (finish_3101 struct:commit-input-port))
@@ -7022,8 +7022,8 @@
    #f
    '(5 . 31)
    'make-struct-type
-   (finish_2316 'proc)
-   (finish_2316 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2578 (finish_2316 struct:peek-via-read-input-port))
@@ -8651,8 +8651,8 @@
    #f
    '(5 . 31)
    'make-struct-type
-   (finish_2070 'proc)
-   (finish_2070 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_1979 (finish_2070 struct:fd-input-port))
@@ -9123,8 +9123,8 @@
    #f
    '(8 . 255)
    'make-struct-type
-   (finish_2420 'proc)
-   (finish_2420 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2896 (finish_2420 struct:fd-output-port))
@@ -9989,8 +9989,8 @@
    #f
    '(4 . 0)
    'make-struct-type
-   (finish_2550 'proc)
-   (finish_2550 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2660 (finish_2550 struct:fd-evt))
@@ -10132,8 +10132,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2435 'proc)
-   (finish_2435 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2170 (finish_2435 struct:rktio-fd-flushed-evt))
@@ -10501,8 +10501,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2339 'proc)
-   (finish_2339 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2490 (finish_2339 struct:progress-evt))
@@ -11675,8 +11675,8 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_3163 'proc)
-   (finish_3163 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2318 (finish_3163 struct:pipe-input-port))
@@ -12086,8 +12086,8 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_2124 'proc)
-   (finish_2124 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2635 (finish_2124 struct:pipe-output-port))
@@ -12714,8 +12714,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2436 'proc)
-   (finish_2436 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2599 (finish_2436 struct:pipe-write-poller))
@@ -12820,8 +12820,8 @@
    #f
    '(1 . 0)
    'make-struct-type
-   (finish_2170 'proc)
-   (finish_2170 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2907 (finish_2170 struct:pipe-read-poller))
@@ -18064,8 +18064,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2782 'proc)
-   (finish_2782 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2995 (finish_2782 struct:path))
@@ -19238,8 +19238,8 @@
    #f
    '(3 . 7)
    'make-struct-type
-   (finish_2932 'proc)
-   (finish_2932 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2847 (finish_2932 struct:bytes-input-port))
@@ -19558,8 +19558,8 @@
    #f
    '(3 . 7)
    'make-struct-type
-   (finish_2411 'proc)
-   (finish_2411 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2052 (finish_2411 struct:bytes-output-port))
@@ -20084,8 +20084,8 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2069 'proc)
-   (finish_2069 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3019 (finish_2069 struct:max-output-port))
@@ -21047,8 +21047,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2460 'proc)
-   (finish_2460 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2267 (finish_2460 struct:nowhere-output-port))
@@ -33898,8 +33898,8 @@
    #f
    '(3 . 0)
    'make-struct-type
-   (finish_2386 'proc)
-   (finish_2386 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2324 (finish_2386 struct:queue-log-receiver))
@@ -34037,8 +34037,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2083 'proc)
-   (finish_2083 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2591 (finish_2083 struct:stdio-log-receiver))
@@ -34182,8 +34182,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2544 'proc)
-   (finish_2544 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2288 (finish_2544 struct:syslog-log-receiver))
@@ -35161,8 +35161,8 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2790 'proc)
-   (finish_2790 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_3368 (finish_2790 struct:fs-change-evt))
@@ -35710,8 +35710,8 @@
    #f
    '(3 . 3)
    'make-struct-type
-   (finish_3020 'proc)
-   (finish_3020 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2289 (finish_3020 struct:subprocess))
@@ -36739,8 +36739,8 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_2010 'proc)
-   (finish_2010 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2486 (finish_2010 struct:tcp-input-port))
@@ -36940,8 +36940,8 @@
    #f
    '(1 . 1)
    'make-struct-type
-   (finish_2476 'proc)
-   (finish_2476 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2179 (finish_2476 struct:tcp-output-port))
@@ -37184,8 +37184,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2561 'proc)
-   (finish_2561 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_1868 (finish_2561 struct:rktio-evt))
@@ -37811,8 +37811,8 @@
    #f
    '(3 . 0)
    'make-struct-type
-   (finish_2775 'proc)
-   (finish_2775 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2347 (finish_2775 struct:tcp-listener))
@@ -38297,8 +38297,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_1939 'proc)
-   (finish_1939 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2608 (finish_1939 struct:accept-evt))
@@ -39769,8 +39769,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2690 'proc)
-   (finish_2690 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2114 (finish_2690 struct:udp-sending-evt))
@@ -39807,8 +39807,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2617 'proc)
-   (finish_2617 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2524 (finish_2617 struct:udp-sending-ready-evt))
@@ -40210,8 +40210,8 @@
    #f
    '(2 . 0)
    'make-struct-type
-   (finish_2327 'proc)
-   (finish_2327 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2638 (finish_2327 struct:udp-receiving-evt))
@@ -40248,8 +40248,8 @@
    #f
    '(0 . 0)
    'make-struct-type
-   (finish_2856 'proc)
-   (finish_2856 'arity)
+   #f
+   #f
    #f
    |#%system-inspector|))
 (define effect_2865 (finish_2856 struct:udp-receiving-ready-evt))

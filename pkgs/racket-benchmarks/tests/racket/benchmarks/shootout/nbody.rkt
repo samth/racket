@@ -37,7 +37,7 @@ Correct output N = 1000 is
 (define +dt+ 0.01)
 
 (define-struct body (x y z vx vy vz mass)
-  #:mutable)
+  #:mutable #:authentic)
 
 (define *sun*
   (make-body 0.0 0.0 0.0 0.0 0.0 0.0 +solar-mass+))

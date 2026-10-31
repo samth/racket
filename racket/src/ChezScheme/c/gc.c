@@ -715,7 +715,10 @@ static void do_relocate_pure_in_owner(thread_gc *tgc, ptr *ppp) {
 /* Like `relocate_impure_help`, but skips the segment lookup for a
    pointer equal to `last`, the most recent pointer found to be
    outside the collected space. In a heap of records of one type,
-   every object's first word is the same record-type descriptor. */
+   every object's first word is the same record-type descriptor.
+   Used only for the first word of each pair of words in `space_pure`,
+   which holds immutable all-pointer records; pairs, which never
+   repeat a pointer that way, would only pay for the extra test. */
 #ifdef ENABLE_OBJECT_COUNTS
 /* measuring needs to see every pointer */
 # define relocate_impure_help_cached(ppp, pp, from_g, last) relocate_impure_help(ppp, pp, from_g)
@@ -2031,10 +2034,10 @@ static iptr sweep_generation_pass(thread_gc *tgc) {
           /* only pairs in these spaces in backreference mode */
           FLUSH_REMOTE_BLOCK
           SET_BACKREFERENCE(TYPE(TO_PTR(pp), type_pair));
-          relocate_impure_help_cached(pp, p, from_g, last_nonold);
+          relocate_impure_help(pp, p, from_g);
           ppn = pp + 1;
           p = *ppn;
-          relocate_impure_help_cached(ppn, p, from_g, last_nonold);
+          relocate_impure_help(ppn, p, from_g);
           FLUSH_REMOTE(tgc, TYPE(TO_PTR(pp), type_pair)); /* can always treat as a pair to sweep words */
           pp = ppn + 1;
         });
@@ -2072,10 +2075,11 @@ static iptr sweep_generation_pass(thread_gc *tgc) {
       sweep_space(space_pure, from_g, {
           FLUSH_REMOTE_BLOCK
           SET_BACKREFERENCE(TYPE(TO_PTR(pp), type_pair)); /* only pairs put here in backreference mode */
+          /* objects are aligned to two words, so a record's type descriptor is always in the first one */
           relocate_impure_help_cached(pp, p, from_g, last_nonold);
           ppn = pp + 1;
           p = *ppn;
-          relocate_impure_help_cached(ppn, p, from_g, last_nonold);
+          relocate_impure_help(ppn, p, from_g);
           FLUSH_REMOTE(tgc, TYPE(TO_PTR(pp), type_pair));
           pp = ppn + 1;
         });

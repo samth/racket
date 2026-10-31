@@ -895,6 +895,24 @@
 (err/rt-test (make-input-port #f void add1 void))
 (err/rt-test (make-input-port #f void void add1))
 
+;; An exception from a custom port's procedure while `sync` polls
+;; the port is raised by `sync`, and leaves the port and the thread
+;; usable
+(let ([exn-boom? (lambda (e) (and (exn:fail? e) (equal? (exn-message e) "boom")))]
+      [boom (lambda args (error "boom"))])
+  (define (check p [exn-ok? exn-boom?])
+    (err/rt-test (sync p) exn-ok?)
+    (err/rt-test (sync/timeout 0 p) exn-ok?)
+    (err/rt-test (sync p) exn-ok?)
+    (define r #f)
+    (sync (thread (lambda () (with-handlers ([exn-ok? (lambda (e) (set! r 'ok))]) (sync p)))))
+    (test 'ok values r)
+    (test 'done sync (wrap-evt (thread void) (lambda (v) 'done))))
+  (check (make-input-port 'boom boom #f void))
+  (check (make-input-port 'boom (lambda (bstr) never-evt) boom void))
+  (check (make-input-port 'boom (lambda (bstr) 'not-a-valid-result) #f void)
+         exn:fail:contract?))
+
 (test #t output-port? (make-output-port #f always-evt void void))
 (test #t output-port? (make-output-port #f always-evt void void))
 (test 7786 object-name (make-output-port 7786 always-evt void void))

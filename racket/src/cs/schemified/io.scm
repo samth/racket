@@ -4443,7 +4443,7 @@
              (if who3_0
                (raise-argument-error who3_0 "input-port?" v4_0)
                default_0))))))))
-(define finish_2218
+(define finish_2673
   (make-struct-type-install-properties
    '(core-input-port)
    2
@@ -4468,29 +4468,42 @@
                  poller
                  (lambda (self_0 poll-ctx_0)
                    (let ((v_0
-                          (begin
-                            (begin
-                              (unsafe-start-uninterruptible)
-                              (assert-push-lock-level! 'port)
-                              (if (unsafe-struct*-cas! i_1 2 #f #t)
-                                (void)
-                                (port-lock-slow i_1))
-                              (memory-order-acquire))
-                            (begin0
-                              (|#%app|
-                               byte-ready_0
-                               i_1
-                               (lambda ()
-                                 (|#%app|
-                                  schedule-info-did-work!
-                                  (|#%app| poll-ctx-sched-info poll-ctx_0))))
+                          (call-with-escape-continuation
+                           (lambda (k_0)
+                             (with-continuation-mark*
+                              authentic
+                              exception-handler-key
+                              (lambda (e_0)
+                                (|#%app|
+                                 k_0
+                                 (wrap-evt
+                                  always-evt
+                                  (lambda (v_0) (raise e_0)))))
                               (begin
-                                (memory-order-release)
-                                (if (unsafe-struct*-cas! i_1 2 #t #f)
-                                  (void)
-                                  (port-unlock-slow i_1))
-                                (assert-pop-lock-level! 'port)
-                                (unsafe-end-atomic))))))
+                                (begin
+                                  (unsafe-start-uninterruptible)
+                                  (assert-push-lock-level! 'port)
+                                  (if (unsafe-struct*-cas! i_1 2 #f #t)
+                                    (void)
+                                    (port-lock-slow i_1))
+                                  (memory-order-acquire))
+                                (begin0
+                                  (|#%app|
+                                   byte-ready_0
+                                   i_1
+                                   (lambda ()
+                                     (|#%app|
+                                      schedule-info-did-work!
+                                      (|#%app|
+                                       poll-ctx-sched-info
+                                       poll-ctx_0))))
+                                  (begin
+                                    (memory-order-release)
+                                    (if (unsafe-struct*-cas! i_1 2 #t #f)
+                                      (void)
+                                      (port-unlock-slow i_1))
+                                    (assert-pop-lock-level! 'port)
+                                    (unsafe-end-atomic)))))))))
                      (if (evt? v_0)
                        (values #f v_0)
                        (if (eq? v_0 #t)
@@ -4511,11 +4524,11 @@
    #f
    '(2 . 3)
    'make-struct-type
-   (finish_2218 'proc)
-   (finish_2218 'arity)
+   (finish_2673 'proc)
+   (finish_2673 'arity)
    #f
    |#%system-inspector|))
-(define effect_2528 (finish_2218 struct:core-input-port))
+(define effect_2528 (finish_2673 struct:core-input-port))
 (define create-core-input-port
   (|#%name|
    create-core-input-port

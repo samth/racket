@@ -5,7 +5,9 @@
          "../host/pthread.rkt"
          "port.rkt"
          "lock.rkt"
-         "evt.rkt")
+         "evt.rkt"
+         (only-in '#%paramz
+                  exception-handler-key))
 
 (provide prop:input-port
          input-port?
@@ -134,10 +136,21 @@
                                   (poller
                                    (lambda (self poll-ctx)
                                      ;; atomic mode
-                                     (define v (with-lock i
-                                                 (byte-ready i
-                                                             (lambda ()
-                                                               (schedule-info-did-work! (poll-ctx-sched-info poll-ctx))))))
+                                     (define v
+                                       ;; `byte-ready` can call a custom port's procedures,
+                                       ;; which can raise an exception; it must not escape
+                                       ;; in atomic mode, so raise it from a wrapper, instead,
+                                       ;; which runs after `sync` has left atomic mode
+                                       (call-with-escape-continuation
+                                        (lambda (k)
+                                          (with-continuation-mark
+                                              exception-handler-key
+                                              (lambda (e)
+                                                (k (wrap-evt always-evt (lambda (v) (raise e)))))
+                                            (with-lock i
+                                              (byte-ready i
+                                                          (lambda ()
+                                                            (schedule-info-did-work! (poll-ctx-sched-info poll-ctx)))))))))
                                      (cond
                                        [(evt? v)
                                         (values #f v)]

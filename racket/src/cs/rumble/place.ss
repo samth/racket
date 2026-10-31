@@ -19,7 +19,10 @@
 (define place-register-inits (#%make-vector NUM-PLACE-REGISTERS 0))
 
 (define (init-place-locals!)
-  (#%vector-set! (place-registers) LOCAL_TABLE-INDEX (make-weak-hasheq)))
+  (#%vector-set! (place-registers) LOCAL_TABLE-INDEX (make-weak-hasheq))
+  ;; PROTOTYPE: act as if a pthread exists, so hash-table locks are always used
+  (when (#%getenv "PLT_HASH_ALWAYS_LOCK")
+    (#%vector-set! (place-registers) PARALLEL-PTHREADS-INDEX #t)))
 
 (define-record place-local (default-v))
 

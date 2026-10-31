@@ -10852,6 +10852,23 @@
   (|#%name| scope-binding-table (record-accessor struct:scope 2)))
 (define set-scope-binding-table!
   (|#%name| set-scope-binding-table! (record-mutator struct:scope 2)))
+(define effect_2489
+  (begin
+    (|#%call-with-values|
+     (lambda ()
+       (let ((t_0 (primitive-table '|#%expander-internal|)))
+         (let ((set-field0-eq-hash-code!_0
+                (if t_0
+                  (hash-ref
+                   t_0
+                   'unsafe-set-struct-type-field0-eq-hash-code!
+                   #f)
+                  #f)))
+           (if set-field0-eq-hash-code!_0
+             (|#%app| set-field0-eq-hash-code!_0 struct:scope)
+             (void)))))
+     print-values)
+    (void)))
 (define deserialize-scope
   (case-lambda
    (() top-level-common-scope)
@@ -19398,7 +19415,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish916
+  (let ((finish917
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -19420,11 +19437,11 @@
             #f
             '(1 . 0)
             'make-struct-type
-            (finish916 'proc)
-            (finish916 'arity)
+            (finish917 'proc)
+            (finish917 'arity)
             #f
             |#%system-inspector|)))
-      (let ((effect917 (finish916 struct:set!-transformer_0)))
+      (let ((effect918 (finish917 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer

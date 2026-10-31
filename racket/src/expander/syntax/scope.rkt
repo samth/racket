@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/private/place-local
+         (only-in '#%linklet primitive-table)
          ffi/unsafe/atomic
          "../common/set.rkt"
          "../compile/serialize-property.rkt"
@@ -127,6 +128,14 @@
                                       register-trigger
                                       reach-implicitly
                                       report-shifts)))
+
+;; When the host supports it, use a scope's `id` field as its
+;; `eq-hash-code`, since scopes are hashed heavily as keys in scope
+;; sets. This works for subtypes of `scope`, too.
+(let ([t (primitive-table '#%expander-internal)])
+  (define set-field0-eq-hash-code! (and t (hash-ref t 'unsafe-set-struct-type-field0-eq-hash-code! #f)))
+  (when set-field0-eq-hash-code!
+    (set-field0-eq-hash-code! struct:scope)))
 
 (define deserialize-scope
   (case-lambda

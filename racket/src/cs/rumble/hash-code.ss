@@ -30,6 +30,17 @@
     (eq-hashtable-set! codes p 0)
     (eq-hashtable-delete! codes p)))
 
+;; An internal hook for the expander: instances of the record type
+;; `field0-hash-rtd` (or a subtype) have an immutable fixnum or ratio
+;; in field 0 that can serve as the instance's `eq-hash-code` (it
+;; doesn't have to be unique, just well distributed),
+;; which avoids registering every such instance in `codes`. The
+;; expander uses this for scopes, which are hashed heavily as keys in
+;; scope sets.
+(define field0-hash-rtd #f)
+(define (unsafe-set-struct-type-field0-eq-hash-code! rtd)
+  (set! field0-hash-rtd rtd))
+
 (define (eq-hash-code x)
   (cond
    [(and (symbol? x)
@@ -40,6 +51,15 @@
     (symbol-hash x)]
    [(number? x) (number-hash x)]
    [(char? x) (char->integer x)]
+   [(and field0-hash-rtd
+         (#%record? x field0-hash-rtd)
+         (let ([v (#%$record-ref x 0)])
+           (cond
+             [(fixnum? v) v]
+             [(ratnum? v) (let ([n (#3%$ratio-numerator v)])
+                            (and (fixnum? n) n))]
+             [else #f])))
+    => (lambda (n) (fxand n (most-positive-fixnum)))]
    [else
     (let ([p (eq-hashtable-try-atomic-cell codes x counter)])
       (cond

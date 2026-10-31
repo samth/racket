@@ -307,6 +307,7 @@
           object-name
 
           eq-hash-code
+          unsafe-set-struct-type-field0-eq-hash-code! ; not exported to Racket
           eqv-hash-code
           equal-hash-code
           equal-hash-code/recur

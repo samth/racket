@@ -196,6 +196,30 @@
 /* locally defined functions */
 static IGEN copy(thread_gc *tgc, ptr pp, seginfo *si, ptr *dest);
 static IGEN mark_object(thread_gc *tgc, ptr pp, seginfo *si);
+
+/* Most objects copied by the collector are a few words long, and a
+   call to `memcpy` (through the PLT, with a length known only at run
+   time) costs more than the copy itself. Copy up to 8 words inline.
+   As `memcpy_aligned` allows, the length is rounded up to a whole
+   number of words. */
+FORCEINLINE void gc_memcpy_aligned(void *dest, const void *src, uptr n) {
+  ptr *d = (ptr *)dest;
+  const ptr *s = (const ptr *)src;
+  switch ((n + ptr_bytes - 1) >> log2_ptr_bytes) {
+  case 8: d[7] = s[7]; /* fallthrough */
+  case 7: d[6] = s[6]; /* fallthrough */
+  case 6: d[5] = s[5]; /* fallthrough */
+  case 5: d[4] = s[4]; /* fallthrough */
+  case 4: d[3] = s[3]; /* fallthrough */
+  case 3: d[2] = s[2]; /* fallthrough */
+  case 2: d[1] = s[1]; /* fallthrough */
+  case 1: d[0] = s[0]; /* fallthrough */
+  case 0: break;
+  default: memcpy(dest, src, n);
+  }
+}
+#undef memcpy_aligned
+#define memcpy_aligned(d, s, n) gc_memcpy_aligned(d, s, n)
 static void sweep(thread_gc *tgc, ptr p, IGEN from_g);
 static void sweep_in_old(thread_gc *tgc, ptr p);
 static void sweep_object_in_old(thread_gc *tgc, ptr p);
@@ -681,6 +705,38 @@ static void do_relocate_pure_in_owner(thread_gc *tgc, ptr *ppp) {
 # define NO_DIRTY_NEWSPACE_UNUSED    /* empty */
 
 #endif /* !NO_DIRTY_NEWSPACE_POINTERS */
+
+#ifdef NO_DIRTY_NEWSPACE_POINTERS
+# define relocate_impure_old_help(ppp, pp, from_g, si) do {(void)from_g; relocate_pure_help_help(ppp, pp, si);} while (0)
+#else
+# define relocate_impure_old_help(ppp, pp, from_g, si) relocate_impure_help_help(ppp, pp, from_g, si)
+#endif
+
+/* Like `relocate_impure_help`, but skips the segment lookup for a
+   pointer equal to `last`, the most recent pointer found to be
+   outside the collected space. In a heap of records of one type,
+   every object's first word is the same record-type descriptor.
+   Used only for the first word of each pair of words in `space_pure`,
+   which holds immutable all-pointer records; pairs, which never
+   repeat a pointer that way, would only pay for the extra test. */
+#ifdef ENABLE_OBJECT_COUNTS
+/* measuring needs to see every pointer */
+# define relocate_impure_help_cached(ppp, pp, from_g, last) relocate_impure_help(ppp, pp, from_g)
+#else
+# define relocate_impure_help_cached(ppp, pp, from_g, last) do {        \
+    if (pp != last) {                                                   \
+      seginfo *SI;                                                      \
+      if (!FIXMEDIATE(pp)) {                                            \
+        if ((SI = MaybeSegInfo(ptr_get_segment(pp))) == NULL)           \
+          last = pp;                                                    \
+        else if (SI->old_space)                                         \
+          relocate_impure_old_help(ppp, pp, from_g, SI);                \
+        else                                                            \
+          last = pp;                                                    \
+      }                                                                 \
+    }                                                                   \
+  } while (0)
+#endif
 
 #define relocate_dirty(PPP, YOUNGEST) do {                              \
     seginfo *_si; ptr *_ppp = PPP, _pp = *_ppp; IGEN _pg;               \
@@ -1963,6 +2019,7 @@ static void forward_or_bwp(NO_DIRTY_NEWSPACE_UNUSED thread_gc *tgc, NO_DIRTY_NEW
 
 static iptr sweep_generation_pass(thread_gc *tgc) {
   ptr *slp, *nlp; ptr *pp, *ppn, p, *nl, *sl; IGEN from_g;
+  ptr last_nonold = FIX(0); (void)last_nonold;
   seginfo *si;
   iptr num_swept_bytes = 0;
 
@@ -2018,7 +2075,8 @@ static iptr sweep_generation_pass(thread_gc *tgc) {
       sweep_space(space_pure, from_g, {
           FLUSH_REMOTE_BLOCK
           SET_BACKREFERENCE(TYPE(TO_PTR(pp), type_pair)); /* only pairs put here in backreference mode */
-          relocate_impure_help(pp, p, from_g);
+          /* objects are aligned to two words, so a record's type descriptor is always in the first one */
+          relocate_impure_help_cached(pp, p, from_g, last_nonold);
           ppn = pp + 1;
           p = *ppn;
           relocate_impure_help(ppn, p, from_g);

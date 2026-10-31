@@ -395,10 +395,8 @@
    [(mutable-hash? ht)
     (cond
      [(eq-mutable-hash? ht)
-      (lock-acquire/a (mutable-hash-lock ht))
-      (let ([v (eq-hashtable-ref (mutable-hash-ht ht) k none)])
-        (lock-release/a (mutable-hash-lock ht))
-        v)]
+      (with-eq-read-lock (mutable-hash-lock ht)
+        (eq-hashtable-ref (mutable-hash-ht ht) k none))]
      [else
       (lock-acquire (mutable-hash-lock ht))
       (let ([v (hashtable-ref (mutable-hash-ht ht) k none)])

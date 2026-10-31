@@ -1551,7 +1551,9 @@
         [(_ ?x ?b succ fail)
          (let ([x ?x])
            (let loop ([b ?b])
-             (if (fixnum? b)
+             ;; `b` can be #f when a reader without a lock walks onto
+             ;; an entry that a concurrent `eq-hashtable-delete!` unlinked
+             (if (or (fixnum? b) (not b))
                  fail
                  (let ([keyval ($tlc-keyval b)])
                    (if (eq? (car keyval) x)

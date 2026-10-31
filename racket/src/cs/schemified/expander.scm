@@ -4074,7 +4074,7 @@
        #vu8(80 76 84 95 69 88 80 65 78 68 69 82 95 84 73 77 69 83))
     #t
     #f))
-(define cell.1$10 (unsafe-make-place-local #f))
+(define cell.1$11 (unsafe-make-place-local #f))
 (define cell.2$8 (unsafe-make-place-local (make-hasheq)))
 (define performance-place-init!
   (lambda () (unsafe-place-local-set! cell.2$8 (make-hasheq))))
@@ -4443,10 +4443,10 @@
 (define start-performance-region
   (lambda path_0
     (unsafe-place-local-set!
-     cell.1$10
+     cell.1$11
      (let ((app_0
             (let ((app_0
-                   (if (unsafe-place-local-ref cell.1$10)
+                   (if (unsafe-place-local-ref cell.1$11)
                      (letrec*
                       ((loop_0
                         (|#%name|
@@ -4470,7 +4470,7 @@
                                      null))))))))))
                       (loop_0
                        path_0
-                       (region-path (car (unsafe-place-local-ref cell.1$10)))))
+                       (region-path (car (unsafe-place-local-ref cell.1$11)))))
                      path_0)))
               (let ((app_1 (current-inexact-monotonic-milliseconds)))
                 (let ((app_2 (current-gc-milliseconds)))
@@ -4482,17 +4482,17 @@
                    0.0
                    0
                    0))))))
-       (cons app_0 (unsafe-place-local-ref cell.1$10))))))
+       (cons app_0 (unsafe-place-local-ref cell.1$11))))))
 (define end-performance-region
   (lambda ()
     (let ((now_0 (current-inexact-monotonic-milliseconds)))
       (let ((now-gc_0 (current-gc-milliseconds)))
         (let ((now-memory_0 (current-memory-use 'cumulative)))
-          (let ((r_0 (car (unsafe-place-local-ref cell.1$10))))
+          (let ((r_0 (car (unsafe-place-local-ref cell.1$11))))
             (begin
               (unsafe-place-local-set!
-               cell.1$10
-               (cdr (unsafe-place-local-ref cell.1$10)))
+               cell.1$11
+               (cdr (unsafe-place-local-ref cell.1$11)))
               (let ((full-delta_0 (- now_0 (region-start r_0))))
                 (let ((delta_0 (- full-delta_0 (region-as-nested r_0))))
                   (let ((full-delta-gc_0 (- now-gc_0 (region-start-gc r_0))))
@@ -4566,34 +4566,34 @@
                                              (cdr path_0)))))))))))
                              (let ((app_0 (unsafe-place-local-ref cell.2$8)))
                                (loop_0 app_0 (region-path r_0))))
-                            (if (unsafe-place-local-ref cell.1$10)
+                            (if (unsafe-place-local-ref cell.1$11)
                               (begin
                                 (let ((app_0
                                        (car
-                                        (unsafe-place-local-ref cell.1$10))))
+                                        (unsafe-place-local-ref cell.1$11))))
                                   (set-region-as-nested!
                                    app_0
                                    (+
                                     (region-as-nested
-                                     (car (unsafe-place-local-ref cell.1$10)))
+                                     (car (unsafe-place-local-ref cell.1$11)))
                                     full-delta_0)))
                                 (let ((app_0
                                        (car
-                                        (unsafe-place-local-ref cell.1$10))))
+                                        (unsafe-place-local-ref cell.1$11))))
                                   (set-region-as-nested-gc!
                                    app_0
                                    (+
                                     (region-as-nested-gc
-                                     (car (unsafe-place-local-ref cell.1$10)))
+                                     (car (unsafe-place-local-ref cell.1$11)))
                                     full-delta-gc_0)))
                                 (let ((app_0
                                        (car
-                                        (unsafe-place-local-ref cell.1$10))))
+                                        (unsafe-place-local-ref cell.1$11))))
                                   (set-region-as-nested-memory!
                                    app_0
                                    (+
                                     (region-as-nested-memory
-                                     (car (unsafe-place-local-ref cell.1$10)))
+                                     (car (unsafe-place-local-ref cell.1$11)))
                                     full-delta-memory_0))))
                               (void))))))))))))))))
 (define effect_2055
@@ -5798,10 +5798,28 @@
                        result_0)))))
                 (for-loop_0 0 (hash-iterate-first new-ht_0)))))
           (table2.1 new-ht_0 count_0 (max 128 (* 2 count_0))))))))
-(define finish_2266
+(define set-field0-eq-hash-code!
+  (let ((t_0 (primitive-table '|#%expander-internal|)))
+    (if t_0
+      (hash-ref t_0 'unsafe-set-struct-type-field0-eq-hash-code! #f)
+      #f)))
+(define register-field0-eq-hash-code!
+  (lambda (struct-type_0)
+    (if set-field0-eq-hash-code!
+      (|#%app| set-field0-eq-hash-code! struct-type_0)
+      (void))))
+(define cell.1$10 (unsafe-make-place-local (box 0)))
+(define next-field0-hash!
+  (lambda ()
+    (let ((n_0 (unsafe-unbox* (unsafe-place-local-ref cell.1$10))))
+      (begin
+        (let ((app_0 (unsafe-place-local-ref cell.1$10)))
+          (unsafe-set-box*! app_0 (fxand (fx+ n_0 1) 1073741823)))
+        n_0))))
+(define finish_2095
   (make-struct-type-install-properties
    '(resolved-module-path)
-   1
+   2
    0
    #f
    (list
@@ -5836,7 +5854,7 @@
         (|#%app| hash-code_0 (1/resolved-module-path-name a_0))))))
    (current-inspector)
    #f
-   '(0)
+   '(0 1)
    #f
    'resolved-module-path))
 (define struct:resolved-module-path
@@ -5847,13 +5865,13 @@
    (|#%nongenerative-uid| resolved-module-path)
    #f
    #f
-   '(1 . 0)
+   '(2 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2442 (finish_2266 struct:resolved-module-path))
+(define effect_2442 (finish_2095 struct:resolved-module-path))
 (define resolved-module-path1.1
   (|#%name|
    resolved-module-path
@@ -5863,10 +5881,20 @@
   (|#%name|
    resolved-module-path?
    (record-predicate struct:resolved-module-path)))
+(define resolved-module-path-hash
+  (|#%name|
+   resolved-module-path-hash
+   (record-accessor struct:resolved-module-path 0)))
 (define 1/resolved-module-path-name
   (|#%name|
    resolved-module-path-name
-   (record-accessor struct:resolved-module-path 0)))
+   (record-accessor struct:resolved-module-path 1)))
+(define effect_2948
+  (begin
+    (|#%call-with-values|
+     (lambda () (register-field0-eq-hash-code! struct:resolved-module-path))
+     print-values)
+    (void)))
 (define format-resolved-module-path-name
   (lambda (p_0)
     (if (path? p_0)
@@ -5975,7 +6003,9 @@
            "                    (and/c path? complete-path?))\n"
            "              (non-empty-listof symbol?)))")
           p_0))
-       (weak-intern! resolved-module-paths (resolved-module-path1.1 p_0))))))
+       (weak-intern!
+        resolved-module-paths
+        (resolved-module-path1.1 (next-field0-hash!) p_0))))))
 (define resolved-module-path->module-path
   (lambda (r_0)
     (let ((name_0 (1/resolved-module-path-name r_0)))
@@ -6825,6 +6855,14 @@
   (lambda (small-ht_0 key_0 val_0)
     (set-box! small-ht_0 (hash-set (unbox small-ht_0) key_0 val_0))))
 (define small-hash-keys (lambda (small-ht_0) (hash-keys (unbox small-ht_0))))
+(define make-cas-hasheq (lambda () (box hash2610)))
+(define make-cas-hasheqv (lambda () (box hash2589)))
+(define cas-hash-set!
+  (lambda (b_0 k_0 v_0)
+    (let ((ht_0 (unsafe-unbox* b_0)))
+      (if (unsafe-box*-cas! b_0 ht_0 (hash-set ht_0 k_0 v_0))
+        (void)
+        (cas-hash-set! b_0 k_0 v_0)))))
 (define finish_1890
   (make-struct-type-install-properties
    '(serialize-state)
@@ -10495,6 +10533,7 @@
 (define fallback->list
   (lambda (smss_0)
     (if (fallback? smss_0) (fallback-search-list smss_0) (list smss_0))))
+(define RESOLVE-CACHE-SIZE 4096)
 (define make-cache$1
   (|#%name| make-cache (lambda () (box (make-weak-box #f)))))
 (define cell.1$6 (unsafe-make-place-local (make-cache$1)))
@@ -10503,27 +10542,32 @@
 (define clear-resolve-cache!
   (case-lambda
    ((sym_0)
-    (let ((c_0
+    (let ((vec_0
            (weak-box-value (unsafe-unbox* (unsafe-place-local-ref cell.1$6)))))
       (begin
-        (if c_0 (hash-remove! c_0 sym_0) (void))
+        (if vec_0
+          (let ((i_0 (fxand (eq-hash-code sym_0) 4095)))
+            (let ((e_0 (unsafe-vector*-ref vec_0 i_0)))
+              (if (if e_0 (eq? sym_0 (entry-sym e_0)) #f)
+                (unsafe-vector*-set! vec_0 i_0 #f)
+                (void))))
+          (void))
         (unsafe-set-box*! (unsafe-place-local-ref cell.2$5) #f))))
    (()
-    (let ((c_0
-           (weak-box-value (unsafe-unbox* (unsafe-place-local-ref cell.1$6)))))
-      (begin
-        (if c_0 (hash-clear! c_0) (void))
-        (unsafe-set-box*! (unsafe-place-local-ref cell.2$5) #f))))))
-(define finish_2822
+    (begin
+      (let ((app_0 (unsafe-place-local-ref cell.1$6)))
+        (unsafe-set-box*! app_0 (make-weak-box #f)))
+      (unsafe-set-box*! (unsafe-place-local-ref cell.2$5) #f)))))
+(define finish_1824
   (make-struct-type-install-properties
    '(entry)
-   4
+   5
    0
    #f
    (list (cons prop:authentic #t))
    (current-inspector)
    #f
-   '(0 1 2 3)
+   '(0 1 2 3 4)
    #f
    'entry))
 (define struct:entry
@@ -10534,34 +10578,38 @@
    (|#%nongenerative-uid| entry)
    #f
    #f
-   '(4 . 0)
+   '(5 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2728 (finish_2822 struct:entry))
+(define effect_2728 (finish_1824 struct:entry))
 (define entry1.1
   (|#%name|
    entry
    (record-constructor
     (make-record-constructor-descriptor struct:entry #f #f))))
 (define entry? (|#%name| entry? (record-predicate struct:entry)))
-(define entry-scs (|#%name| entry-scs (record-accessor struct:entry 0)))
-(define entry-smss (|#%name| entry-smss (record-accessor struct:entry 1)))
-(define entry-phase (|#%name| entry-phase (record-accessor struct:entry 2)))
+(define entry-sym (|#%name| entry-sym (record-accessor struct:entry 0)))
+(define entry-scs (|#%name| entry-scs (record-accessor struct:entry 1)))
+(define entry-smss (|#%name| entry-smss (record-accessor struct:entry 2)))
+(define entry-phase (|#%name| entry-phase (record-accessor struct:entry 3)))
 (define entry-binding
-  (|#%name| entry-binding (record-accessor struct:entry 3)))
+  (|#%name| entry-binding (record-accessor struct:entry 4)))
 (define resolve-cache-get
   (lambda (sym_0 phase_0 scs_0 smss_0)
-    (let ((c_0
+    (let ((vec_0
            (weak-box-value (unsafe-unbox* (unsafe-place-local-ref cell.1$6)))))
-      (if c_0
-        (let ((v_0 (hash-ref c_0 sym_0 #f)))
+      (if vec_0
+        (let ((v_0
+               (unsafe-vector*-ref vec_0 (fxand (eq-hash-code sym_0) 4095))))
           (if v_0
-            (if (eqv? phase_0 (entry-phase v_0))
-              (if (set=? scs_0 (entry-scs v_0))
-                (if (set=? smss_0 (entry-smss v_0)) (entry-binding v_0) #f)
+            (if (eq? sym_0 (entry-sym v_0))
+              (if (eqv? phase_0 (entry-phase v_0))
+                (if (set=? scs_0 (entry-scs v_0))
+                  (if (set=? smss_0 (entry-smss v_0)) (entry-binding v_0) #f)
+                  #f)
                 #f)
               #f)
             #f))
@@ -10569,13 +10617,20 @@
 (define resolve-cache-set!
   (lambda (sym_0 phase_0 scs_0 smss_0 b_0)
     (let ((wb_0 (unsafe-unbox* (unsafe-place-local-ref cell.1$6))))
-      (let ((c_0 (weak-box-value wb_0)))
-        (if (not c_0)
+      (let ((vec_0 (weak-box-value wb_0)))
+        (if (not vec_0)
           (begin
             (let ((app_0 (unsafe-place-local-ref cell.1$6)))
-              (unsafe-box*-cas! app_0 wb_0 (make-weak-box (make-hasheq))))
+              (unsafe-box*-cas!
+               app_0
+               wb_0
+               (make-weak-box (make-vector 4096 #f))))
             (resolve-cache-set! sym_0 phase_0 scs_0 smss_0 b_0))
-          (hash-set! c_0 sym_0 (entry1.1 scs_0 smss_0 phase_0 b_0)))))))
+          (let ((app_0 (fxand (eq-hash-code sym_0) 4095)))
+            (unsafe-vector*-set!
+             vec_0
+             app_0
+             (entry1.1 sym_0 scs_0 smss_0 phase_0 b_0))))))))
 (define SHIFTED-CACHE-SIZE 16)
 (define cell.2$5 (unsafe-make-place-local (box #f)))
 (define cell.3$2 (unsafe-make-place-local 0))
@@ -10852,21 +10907,10 @@
   (|#%name| scope-binding-table (record-accessor struct:scope 2)))
 (define set-scope-binding-table!
   (|#%name| set-scope-binding-table! (record-mutator struct:scope 2)))
-(define effect_2489
+(define effect_2974
   (begin
     (|#%call-with-values|
-     (lambda ()
-       (let ((t_0 (primitive-table '|#%expander-internal|)))
-         (let ((set-field0-eq-hash-code!_0
-                (if t_0
-                  (hash-ref
-                   t_0
-                   'unsafe-set-struct-type-field0-eq-hash-code!
-                   #f)
-                  #f)))
-           (if set-field0-eq-hash-code!_0
-             (|#%app| set-field0-eq-hash-code!_0 struct:scope)
-             (void)))))
+     (lambda () (register-field0-eq-hash-code! struct:scope))
      print-values)
     (void)))
 (define deserialize-scope
@@ -11193,10 +11237,10 @@
     (begin
       (set-scope-binding-table! s_0 bt_0)
       (set-representative-scope-owner! s_0 owner_0))))
-(define finish_3292
+(define finish_2613
   (make-struct-type-install-properties
    '(shifted-multi-scope)
-   2
+   3
    0
    #f
    (list
@@ -11229,7 +11273,7 @@
          (write-string ">" port_0)))))
    (current-inspector)
    #f
-   '(0 1)
+   '(0 1 2)
    #f
    'shifted-multi-scope))
 (define struct:shifted-multi-scope
@@ -11240,13 +11284,13 @@
    (|#%nongenerative-uid| shifted-multi-scope)
    #t
    #f
-   '(2 . 0)
+   '(3 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2854 (finish_3292 struct:shifted-multi-scope))
+(define effect_2854 (finish_2613 struct:shifted-multi-scope))
 (define shifted-multi-scope5.1
   (|#%name|
    shifted-multi-scope
@@ -11256,14 +11300,24 @@
   (|#%name|
    shifted-multi-scope?
    (record-predicate struct:shifted-multi-scope)))
+(define shifted-multi-scope-hash
+  (|#%name|
+   shifted-multi-scope-hash
+   (record-accessor struct:shifted-multi-scope 0)))
 (define shifted-multi-scope-phase
   (|#%name|
    shifted-multi-scope-phase
-   (record-accessor struct:shifted-multi-scope 0)))
+   (record-accessor struct:shifted-multi-scope 1)))
 (define shifted-multi-scope-multi-scope
   (|#%name|
    shifted-multi-scope-multi-scope
-   (record-accessor struct:shifted-multi-scope 1)))
+   (record-accessor struct:shifted-multi-scope 2)))
+(define effect_2753
+  (begin
+    (|#%call-with-values|
+     (lambda () (register-field0-eq-hash-code! struct:shifted-multi-scope))
+     print-values)
+    (void)))
 (define deserialize-shifted-multi-scope
   (lambda (phase_0 multi-scope_0)
     (intern-shifted-multi-scope phase_0 multi-scope_0)))
@@ -11294,7 +11348,11 @@
            (transaction-loop_0
             (multi-scope-shifted multi-scope_0)
             phase_0
-            (lambda () (shifted-multi-scope5.1 phase_0 multi-scope_0)))))
+            (lambda ()
+              (shifted-multi-scope5.1
+               (next-field0-hash!)
+               phase_0
+               multi-scope_0)))))
        (let ((or-part_0
               (hash-ref
                (unbox (multi-scope-label-shifted multi-scope_0))
@@ -11305,7 +11363,11 @@
            (transaction-loop_0
             (multi-scope-label-shifted multi-scope_0)
             phase_0
-            (lambda () (shifted-multi-scope5.1 phase_0 multi-scope_0)))))))))
+            (lambda ()
+              (shifted-multi-scope5.1
+               (next-field0-hash!)
+               phase_0
+               multi-scope_0)))))))))
 (define finish_3013
   (make-struct-type-install-properties
    '(shifted-to-label-phase)
@@ -15820,7 +15882,7 @@
                                        (if share-from-ns7_0
                                          (namespace-module-instances
                                           share-from-ns7_0)
-                                         (make-hasheqv)))))))))))))))
+                                         (make-cas-hasheqv)))))))))))))))
              (begin
                (if register?4_0
                  (let ((small-ht_0 (namespace-phase-to-namespace ns_0)))
@@ -17283,16 +17345,16 @@
                 supermodule-name22_0
                 get-all-variables_0
                 get-portal-syntax-callback_0)))))))))
-(define finish_2793
+(define finish_2279
   (make-struct-type-install-properties
    '(module-instance)
-   8
+   9
    0
    #f
    (list (cons prop:authentic #t))
    (current-inspector)
    #f
-   '(0 1 3 6 7)
+   '(0 1 2 4 7 8)
    #f
    'module-instance))
 (define struct:module-instance
@@ -17303,13 +17365,13 @@
    (|#%nongenerative-uid| module-instance)
    #f
    #f
-   '(8 . 52)
+   '(9 . 104)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2382 (finish_2793 struct:module-instance))
+(define effect_2382 (finish_2279 struct:module-instance))
 (define module-instance48.1
   (|#%name|
    module-instance
@@ -17317,60 +17379,70 @@
     (make-record-constructor-descriptor struct:module-instance #f #f))))
 (define module-instance?
   (|#%name| module-instance? (record-predicate struct:module-instance)))
+(define module-instance-hash
+  (|#%name| module-instance-hash (record-accessor struct:module-instance 0)))
 (define module-instance-namespace
   (|#%name|
    module-instance-namespace
-   (record-accessor struct:module-instance 0)))
+   (record-accessor struct:module-instance 1)))
 (define module-instance-module
-  (|#%name| module-instance-module (record-accessor struct:module-instance 1)))
+  (|#%name| module-instance-module (record-accessor struct:module-instance 2)))
 (define module-instance-shifted-requires
   (|#%name|
    module-instance-shifted-requires
-   (record-accessor struct:module-instance 2)))
+   (record-accessor struct:module-instance 3)))
 (define module-instance-phase-level-to-state
   (|#%name|
    module-instance-phase-level-to-state
-   (record-accessor struct:module-instance 3)))
+   (record-accessor struct:module-instance 4)))
 (define module-instance-made-available?
   (|#%name|
    module-instance-made-available?
-   (record-accessor struct:module-instance 4)))
+   (record-accessor struct:module-instance 5)))
 (define module-instance-attached?
   (|#%name|
    module-instance-attached?
-   (record-accessor struct:module-instance 5)))
+   (record-accessor struct:module-instance 6)))
 (define module-instance-data-box
   (|#%name|
    module-instance-data-box
-   (record-accessor struct:module-instance 6)))
+   (record-accessor struct:module-instance 7)))
 (define module-instance-portal-syntaxes
   (|#%name|
    module-instance-portal-syntaxes
-   (record-accessor struct:module-instance 7)))
+   (record-accessor struct:module-instance 8)))
 (define set-module-instance-shifted-requires!
   (|#%name|
    set-module-instance-shifted-requires!
-   (record-mutator struct:module-instance 2)))
+   (record-mutator struct:module-instance 3)))
 (define set-module-instance-made-available?!
   (|#%name|
    set-module-instance-made-available?!
-   (record-mutator struct:module-instance 4)))
+   (record-mutator struct:module-instance 5)))
 (define set-module-instance-attached?!
   (|#%name|
    set-module-instance-attached?!
-   (record-mutator struct:module-instance 5)))
+   (record-mutator struct:module-instance 6)))
+(define effect_2611
+  (begin
+    (|#%call-with-values|
+     (lambda () (register-field0-eq-hash-code! struct:module-instance))
+     print-values)
+    (void)))
 (define make-module-instance
   (lambda (m-ns_0 m_0 portal-syntaxes_0)
-    (let ((app_0 (make-small-hasheqv)))
-      (module-instance48.1
-       m-ns_0
-       m_0
-       #f
-       app_0
-       #f
-       #f
-       (box #f)
-       portal-syntaxes_0))))
+    (let ((app_0 (next-field0-hash!)))
+      (let ((app_1 (make-small-hasheqv)))
+        (module-instance48.1
+         app_0
+         m-ns_0
+         m_0
+         #f
+         app_1
+         #f
+         #f
+         (box #f)
+         portal-syntaxes_0)))))
 (define make-module-namespace.1
   (|#%name|
    make-module-namespace
@@ -17393,7 +17465,7 @@
                       (let ((available-module-instances169_0 (make-hasheqv)))
                         (let ((available-cross-phase-module-instances170_0
                                (box null)))
-                          (let ((module-instances171_0 (make-hasheqv)))
+                          (let ((module-instances171_0 (make-cas-hasheqv)))
                             (let ((declaration-inspector172_0
                                    (current-code-inspector)))
                               (let ((module-instances171_1
@@ -17432,10 +17504,10 @@
          (begin
            (let ((small-ht_0 (namespace-phase-to-namespace m-ns_0)))
              (set-box! small-ht_0 (hash-set (unbox small-ht_0) 0 m-ns_0)))
-           (let ((at-phase_0 (make-hasheq)))
+           (let ((at-phase_0 (make-cas-hasheq)))
              (begin
-               (hash-set! (namespace-module-instances m-ns_0) 0 at-phase_0)
-               (hash-set!
+               (cas-hash-set! (namespace-module-instances m-ns_0) 0 at-phase_0)
+               (cas-hash-set!
                 at-phase_0
                 name_0
                 (make-module-instance m-ns_0 #f portal-syntaxes52_0))
@@ -17510,10 +17582,12 @@
                              (hash-ref (unbox states_0) phase_0 #f))))
                        (let ((at-phase_0
                               (hash-ref
-                               (namespace-module-instances ns61_0)
-                               phase_0)))
+                               (unsafe-unbox*
+                                (namespace-module-instances ns61_0))
+                               phase_0
+                               #f)))
                          (begin
-                           (hash-set!
+                           (cas-hash-set!
                             at-phase_0
                             mod-name63_0
                             (make-module-instance m-ns_0 m62_0 #f))
@@ -17605,13 +17679,14 @@
             0-phase73_0)
      (let ((mi_0
             (let ((or-part_0
-                   (hash-ref
-                    (hash-ref
-                     (namespace-module-instances ns71_0)
-                     0-phase73_0
-                     hash2610)
-                    name72_0
-                    #f)))
+                   (let ((at-phase_0
+                          (hash-ref
+                           (unsafe-unbox* (namespace-module-instances ns71_0))
+                           0-phase73_0
+                           #f)))
+                     (if at-phase_0
+                       (hash-ref (unsafe-unbox* at-phase_0) name72_0 #f)
+                       #f))))
               (if or-part_0
                 or-part_0
                 (let ((or-part_1
@@ -17620,7 +17695,7 @@
                                      (namespace-root-namespace ns71_0)))
                                 (if or-part_1 or-part_1 ns71_0))))
                          (hash-ref
-                          (namespace-module-instances c-ns_0)
+                          (unsafe-unbox* (namespace-module-instances c-ns_0))
                           name72_0
                           #f))))
                   (if or-part_1
@@ -17722,7 +17797,7 @@
                     (set-box!
                      small-ht_1
                      (hash-set (unbox small-ht_1) 1 val_0)))))
-              (hash-set!
+              (cas-hash-set!
                (namespace-module-instances
                 (let ((or-part_0 (namespace-root-namespace ns_0)))
                   (if or-part_0 or-part_0 ns_0)))
@@ -17762,21 +17837,10 @@
                         run-phase-level_0
                         'started)))
                     (let ((at-phase_0
-                           (let ((or-part_0
-                                  (hash-ref
-                                   (namespace-module-instances ns_0)
-                                   0-phase_0
-                                   #f)))
-                             (if or-part_0
-                               or-part_0
-                               (let ((at-phase_0 (make-hasheq)))
-                                 (begin
-                                   (hash-set!
-                                    (namespace-module-instances ns_0)
-                                    0-phase_0
-                                    at-phase_0)
-                                   at-phase_0))))))
-                      (hash-set! at-phase_0 name_0 mi_0))))))))))))
+                           (namespace-module-instances-at-phase
+                            ns_0
+                            0-phase_0)))
+                      (cas-hash-set! at-phase_0 name_0 mi_0))))))))))))
 (define namespace-create-module-instance!
   (lambda (ns_0 name_0 0-phase_0 m_0 mpi_0)
     (let ((m-ns_0
@@ -17828,24 +17892,25 @@
         (let ((mi_0 (make-module-instance m-ns_0 m_0 #f)))
           (begin
             (if (module-cross-phase-persistent? m_0)
-              (hash-set! (namespace-module-instances ns_0) name_0 mi_0)
+              (cas-hash-set! (namespace-module-instances ns_0) name_0 mi_0)
               (let ((at-phase_0
-                     (let ((or-part_0
-                            (hash-ref
-                             (namespace-module-instances ns_0)
-                             0-phase_0
-                             #f)))
-                       (if or-part_0
-                         or-part_0
-                         (let ((at-phase_0 (make-hasheq)))
-                           (begin
-                             (hash-set!
-                              (namespace-module-instances ns_0)
-                              0-phase_0
-                              at-phase_0)
-                             at-phase_0))))))
-                (hash-set! at-phase_0 name_0 mi_0)))
+                     (namespace-module-instances-at-phase ns_0 0-phase_0)))
+                (cas-hash-set! at-phase_0 name_0 mi_0)))
             mi_0))))))
+(define namespace-module-instances-at-phase
+  (lambda (ns_0 0-phase_0)
+    (let ((b_0 (namespace-module-instances ns_0)))
+      (let ((ht_0 (unsafe-unbox* b_0)))
+        (let ((or-part_0 (hash-ref ht_0 0-phase_0 #f)))
+          (if or-part_0
+            or-part_0
+            (let ((at-phase_0 (make-cas-hasheq)))
+              (if (unsafe-box*-cas!
+                   b_0
+                   ht_0
+                   (hash-set ht_0 0-phase_0 at-phase_0))
+                at-phase_0
+                (namespace-module-instances-at-phase ns_0 0-phase_0)))))))))
 (define check-availablilty
   (lambda (mi_0 check-available-at-phase-level_0 unavailable-callback_0)
     (let ((m_0 (module-instance-module mi_0)))
@@ -18700,9 +18765,8 @@
 (define namespace-primitive-module-visit!
   (lambda (ns_0 name_0)
     (let ((mi_0
-           (hash-ref
-            (namespace-module-instances ns_0)
-            (1/make-resolved-module-path name_0))))
+           (let ((app_0 (unsafe-unbox* (namespace-module-instances ns_0))))
+             (hash-ref app_0 (1/make-resolved-module-path name_0) #f))))
       (run-module-instance!.1 #f #t #t 1 hash2610 null #f #f mi_0 ns_0))))
 (define namespace-clear-shifted-requires!
   (lambda (ns_0 mod-name_0)
@@ -19415,7 +19479,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish917
+  (let ((finish925
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -19441,7 +19505,7 @@
             #f
             #f
             |#%system-inspector|)))
-      (let ((effect918 (finish917 struct:set!-transformer_0)))
+      (let ((effect926 (finish925 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -24160,7 +24224,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2611 (finish_2322 struct:mpi-intern-table))
+(define effect_2612 (finish_2322 struct:mpi-intern-table))
 (define mpi-intern-table1.1
   (|#%name|
    mpi-intern-table
@@ -50543,7 +50607,7 @@
   has-liberal-define-context-property?
   liberal-define-context-value)
  (make-struct-type-property 'liberal-define-context))
-(define finish_2095
+(define finish_2096
   (make-struct-type-install-properties
    '(liberal-define-context)
    0
@@ -50569,7 +50633,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2849 (finish_2095 struct:liberal-define-context))
+(define effect_2849 (finish_2096 struct:liberal-define-context))
 (define make-liberal-define-context
   (|#%name|
    make-liberal-define-context
@@ -52792,7 +52856,7 @@
      module*
      |#%declare|
      |#%stratified-body|)))
-(define finish_2794
+(define finish_2793
   (make-struct-type-install-properties
    '(internal-definition-context)
    7
@@ -52818,7 +52882,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2979 (finish_2794 struct:internal-definition-context))
+(define effect_2979 (finish_2793 struct:internal-definition-context))
 (define internal-definition-context1.1
   (|#%name|
    internal-definition-context
@@ -83479,7 +83543,7 @@
                               kws2378)))
                         (rebuild.1 #t s_0 temp294_0)))))))))))))
     (void)))
-(define effect_2612
+(define effect_2613
   (begin
     (void
      (add-core-form!*

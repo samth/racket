@@ -1,5 +1,7 @@
 #lang racket/base
 (require "../common/phase.rkt"
+         "../common/cas-hash.rkt"
+         "../common/field0-hash.rkt"
          "../common/phase+space.rkt"
          "../common/small-hash.rkt"
          "../common/performance.rkt"
@@ -167,7 +169,8 @@
 ;; namespace. If a module instance is attached from one namespace to another,
 ;; it's really the `namespace` within the instance that is shared, not the
 ;; `module-instance` object.
-(struct module-instance (namespace
+(struct module-instance (hash                          ; field 0 => `eq-hash-code`
+                         namespace
                          module                        ; can be #f for the module being expanded
                          [shifted-requires #:mutable]  ; computed on demand; shifted from `module-requires` or `module-flattened-requires`
                          phase-level-to-state          ; phase-level -> #f, 'available, or 'started
@@ -177,8 +180,11 @@
                          portal-syntaxes)              ; for a module being expanded 
   #:authentic)
 
+(register-field0-eq-hash-code! struct:module-instance)
+
 (define (make-module-instance m-ns m portal-syntaxes)
-  (module-instance m-ns           ; namespace
+  (module-instance (next-field0-hash!)
+                   m-ns           ; namespace
                    m              ; module
                    #f             ; shifted-requires (not yet computed)
                    (make-small-hasheqv) ; phase-level-to-state
@@ -213,12 +219,12 @@
                                              (make-small-hasheq))]
                  [available-module-instances (make-hasheqv)]
                  [available-cross-phase-module-instances (box null)]
-                 [module-instances (make-hasheqv)]
+                 [module-instances (make-cas-hasheqv)]
                  [declaration-inspector (current-code-inspector)]))
   (small-hash-set! (namespace-phase-to-namespace m-ns) phase m-ns)
-  (define at-phase (make-hasheq))
-  (hash-set! (namespace-module-instances m-ns) phase at-phase)
-  (hash-set! at-phase name (make-module-instance m-ns #f portal-syntaxes))
+  (define at-phase (make-cas-hasheq))
+  (cas-hash-set! (namespace-module-instances m-ns) phase at-phase)
+  (cas-hash-set! at-phase name (make-module-instance m-ns #f portal-syntaxes))
   m-ns)
 
 ;; ----------------------------------------
@@ -256,8 +262,8 @@
     (define visit? (eq? 'started (small-hash-ref states (add1 phase) #f)))
     (define run? (eq? 'started (small-hash-ref states phase #f)))
 
-    (define at-phase (hash-ref (namespace-module-instances ns) phase))
-    (hash-set! at-phase mod-name (make-module-instance m-ns m #f))
+    (define at-phase (cas-hash-ref (namespace-module-instances ns) phase #f))
+    (cas-hash-set! at-phase mod-name (make-module-instance m-ns m #f))
 
     (set-module-instance-shifted-requires! prior-mi #f)
     (namespace-clear-shifted-requires! ns mod-name)
@@ -300,11 +306,11 @@
                                     #:check-available-at-phase-level [check-available-at-phase-level #f]
                                     #:unavailable-callback [unavailable-callback void])
   (define mi
-    (or (hash-ref (hash-ref (namespace-module-instances ns) 0-phase #hasheq())
-                  name
-                  #f)
+    (or (let ([at-phase (cas-hash-ref (namespace-module-instances ns) 0-phase #f)])
+          (and at-phase
+               (cas-hash-ref at-phase name #f)))
         (let ([c-ns (or (namespace-root-namespace ns) ns)])
-          (hash-ref (namespace-module-instances c-ns) name #f))
+          (cas-hash-ref (namespace-module-instances c-ns) name #f))
         (and complain-on-failure?
              (error 'require
                     (string-append
@@ -343,9 +349,9 @@
     (small-hash-set! (namespace-phase-level-to-definitions m-ns)
                      1
                      (namespace->definitions existing-m-ns 1))
-    (hash-set! (namespace-module-instances (or (namespace-root-namespace ns) ns))
-               name
-               mi)
+    (cas-hash-set! (namespace-module-instances (or (namespace-root-namespace ns) ns))
+                   name
+                   mi)
     (small-hash-set! (module-instance-phase-level-to-state mi) 0 'started)]
    [else
     (define run-phase-level (phase- run-phase 0-phase))
@@ -354,11 +360,8 @@
                      run-phase-level
                      (namespace->definitions existing-m-ns run-phase-level))
     (small-hash-set! (module-instance-phase-level-to-state mi) run-phase-level 'started)
-    (define at-phase (or (hash-ref (namespace-module-instances ns) 0-phase #f)
-                         (let ([at-phase (make-hasheq)])
-                           (hash-set! (namespace-module-instances ns) 0-phase at-phase)
-                           at-phase)))
-    (hash-set! at-phase name mi)]))
+    (define at-phase (namespace-module-instances-at-phase ns 0-phase))
+    (cas-hash-set! at-phase name mi)]))
 
 (define (namespace-create-module-instance! ns name 0-phase m mpi)
   (define m-ns (struct-copy namespace ns
@@ -376,13 +379,21 @@
   (small-hash-set! (namespace-phase-to-namespace m-ns) 0-phase m-ns)
   (define mi (make-module-instance m-ns m #f))
   (if (module-cross-phase-persistent? m)
-      (hash-set! (namespace-module-instances ns) name mi)
-      (let ([at-phase (or (hash-ref (namespace-module-instances ns) 0-phase #f)
-                          (let ([at-phase (make-hasheq)])
-                            (hash-set! (namespace-module-instances ns) 0-phase at-phase)
-                            at-phase))])
-        (hash-set! at-phase name mi)))
+      (cas-hash-set! (namespace-module-instances ns) name mi)
+      (let ([at-phase (namespace-module-instances-at-phase ns 0-phase)])
+        (cas-hash-set! at-phase name mi)))
   mi)
+
+;; Gets or creates the table for a phase; if two threads race to
+;; create it, the one that loses retries and uses the other's table
+(define (namespace-module-instances-at-phase ns 0-phase)
+  (define b (namespace-module-instances ns))
+  (define ht (unbox* b))
+  (or (hash-ref ht 0-phase #f)
+      (let ([at-phase (make-cas-hasheq)])
+        (if (box-cas! b ht (hash-set ht 0-phase at-phase))
+            at-phase
+            (namespace-module-instances-at-phase ns 0-phase)))))
 
 (define (check-availablilty mi check-available-at-phase-level unavailable-callback)
   (define m (module-instance-module mi))
@@ -673,7 +684,7 @@
          (loop))))))
 
 (define (namespace-primitive-module-visit! ns name)
-  (define mi (hash-ref (namespace-module-instances ns) (make-resolved-module-path name)))
+  (define mi (cas-hash-ref (namespace-module-instances ns) (make-resolved-module-path name) #f))
   (run-module-instance! mi ns #:run-phase 1 #:skip-run? #f #:otherwise-available? #t))
 
 (define (namespace-clear-shifted-requires! ns mod-name)

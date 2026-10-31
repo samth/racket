@@ -55,9 +55,11 @@
               #f))
 
 (define-record-type parameter-data
-  (fields guard
+  (fields hash ; field 0 => `eq-hash-code` result
+          guard
           (mutable name) ; not actually mutable, but ensures fresh allocations
           realm))
+
 
 (define-record-type derived-parameter-data
   (parent parameter-data)
@@ -93,7 +95,7 @@
      (check who symbol? name)
      (check who symbol? realm)
      (let ([default-c (make-thread-cell v #t)]
-           [data (make-parameter-data guard name realm)])
+           [data (make-parameter-data (next-field0-hash!) guard name realm)])
        (make-arity-wrapper-procedure
         (case-lambda
          [()
@@ -127,6 +129,7 @@
           [() (|#%app| wrap (p))]))
      3
      (make-derived-parameter-data
+      (next-field0-hash!)
       guard
       name
       realm

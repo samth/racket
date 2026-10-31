@@ -983,6 +983,7 @@
   (set-collect-handler!)
   (set-primitive-applicables!)
   (set-continuation-applicables!)
+  (set-field0-hash-rtds!)
   (set-impersonator-applicables!)
   (set-mpair-hash!)
   (set-hash-hash!)

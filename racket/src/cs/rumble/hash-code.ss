@@ -30,16 +30,43 @@
     (eq-hashtable-set! codes p 0)
     (eq-hashtable-delete! codes p)))
 
-;; An internal hook for the expander: instances of the record type
-;; `field0-hash-rtd` (or a subtype) have an immutable fixnum or ratio
-;; in field 0 that can serve as the instance's `eq-hash-code` (it
-;; doesn't have to be unique, just well distributed),
-;; which avoids registering every such instance in `codes`. The
-;; expander uses this for scopes, which are hashed heavily as keys in
-;; scope sets.
-(define field0-hash-rtd #f)
+;; Instances of a record type in `field0-hash-rtds` (or a subtype)
+;; have an immutable fixnum, ratio, or interned symbol in field 0 that
+;; can serve as the instance's `eq-hash-code` (it doesn't have to be
+;; unique, just well distributed). That avoids registering every such
+;; instance in `codes`, which is relatively expensive. Rumble uses
+;; this for keywords, parameters, and prompt tags, and the expander
+;; uses it (via `unsafe-set-struct-type-field0-eq-hash-code!`) for
+;; scopes and other structs that it uses heavily as `hasheq` keys.
+(define field0-hash-rtds '())
 (define (unsafe-set-struct-type-field0-eq-hash-code! rtd)
-  (set! field0-hash-rtd rtd))
+  ;; Registration happens during startup (rumble and expander
+  ;; initialization), so no lock is needed; later registrations are
+  ;; checked first, so the expander's scopes come before rumble's types
+  (unless (#%memq rtd field0-hash-rtds)
+    (set! field0-hash-rtds (cons rtd field0-hash-rtds))))
+
+;; For field 0 of rumble records that use `field0-hash-rtds`
+(define field0-hash-counter 0)
+(define (next-field0-hash!)
+  ;; Races are harmless, since a hash code doesn't have to be unique
+  (let ([n field0-hash-counter])
+    (set! field0-hash-counter (if (fx= n (most-positive-fixnum)) 0 (fx+ n 1)))
+    n))
+
+(define (field0-hash-code x)
+  (let loop ([rtds field0-hash-rtds])
+    (cond
+      [(null? rtds) #f]
+      [(#%record? x (car rtds))
+       (let ([v (#%$record-ref x 0)])
+         (cond
+           [(fixnum? v) (fxand v (most-positive-fixnum))]
+           [(ratnum? v) (let ([n (#3%$ratio-numerator v)])
+                          (and (fixnum? n) (fxand n (most-positive-fixnum))))]
+           [(and (symbol? v) (not (gensym? v))) (symbol-hash v)]
+           [else #f]))]
+      [else (loop (cdr rtds))])))
 
 (define (eq-hash-code x)
   (cond
@@ -51,15 +78,8 @@
     (symbol-hash x)]
    [(number? x) (number-hash x)]
    [(char? x) (char->integer x)]
-   [(and field0-hash-rtd
-         (#%record? x field0-hash-rtd)
-         (let ([v (#%$record-ref x 0)])
-           (cond
-             [(fixnum? v) v]
-             [(ratnum? v) (let ([n (#3%$ratio-numerator v)])
-                            (and (fixnum? n) n))]
-             [else #f])))
-    => (lambda (n) (fxand n (most-positive-fixnum)))]
+   [(and (#%$record? x) (field0-hash-code x))
+    => (lambda (n) n)]
    [else
     (let ([p (eq-hashtable-try-atomic-cell codes x counter)])
       (cond

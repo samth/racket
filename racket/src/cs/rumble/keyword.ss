@@ -4,6 +4,13 @@
   (sealed #t)
   (nongenerative #{keyword dhghafpy3v03qbye1a9lwf-0}))
 
+;; Called during rumble initialization
+(define (set-field0-hash-rtds!)
+  ;; Keywords are interned, so the symbol's hash code works as an `eq-hash-code`
+  (unsafe-set-struct-type-field0-eq-hash-code! (record-type-descriptor keyword))
+  (unsafe-set-struct-type-field0-eq-hash-code! (record-type-descriptor parameter-data))
+  (unsafe-set-struct-type-field0-eq-hash-code! rtd:continuation-prompt-tag))
+
 (define keywords (make-ephemeron-eq-hashtable))
 
 (define/who (string->keyword s)

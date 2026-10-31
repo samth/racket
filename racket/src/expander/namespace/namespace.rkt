@@ -2,6 +2,7 @@
 (require "../common/promise.rkt"
          "../common/phase.rkt"
          "../common/small-hash.rkt"
+         "../common/cas-hash.rkt"
          "../syntax/bulk-binding.rkt"
          "../common/module-path.rkt"
          "../expand/root-expand-context.rkt"
@@ -127,7 +128,7 @@
                    (box null))
                (if share-from-ns
                    (namespace-module-instances share-from-ns)
-                   (make-hasheqv))))
+                   (make-cas-hasheqv))))
   (when register?
     (small-hash-set! (namespace-phase-to-namespace ns) phase ns))
   ns)

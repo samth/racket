@@ -2117,8 +2117,20 @@ Notes:
   (define (fold-call/other preinfo e0 e* ctxt oldtypes plxc)
     (let*-values ([(ntypes e* r* t* t-t* f-t*)
                    (map-Expr/delayed e* oldtypes plxc)]
+                  [(op) (nanopass-case (Lsrc Expr) e0
+                          [(ref ,maybe-src ,x)
+                           (let ([t (eq-hashtable-ref loop-trackers x #f)])
+                             (and t
+                                  (if (fx= (length r*) (length (loop-tracker-x* t)))
+                                      (begin (loop-record-call! t r*) x)
+                                      (begin (loop-tracker-escaped?-set! t #t) #f))))]
+                          [else #f])]
                   [(e0 ret0 types0 t-types0 f-types0 e0-bottom?)
-                   (Expr/call e0 'tail ntypes oldtypes plxc)])
+                   (let ([saved loop-operator])
+                     (set! loop-operator op)
+                     (let-values ([v* (Expr/call e0 'tail ntypes oldtypes plxc)])
+                       (set! loop-operator saved)
+                       (apply values v*)))])
       (cond
         [(or (and e0-bottom? e0)
              (ormap (lambda (e r) (and (predicate-implies? r 'bottom) e)) e* r*))
@@ -2259,11 +2271,46 @@ Notes:
                 #f #f (predicate-implies? ret 'bottom)))]))
   )
 
+;; EXPERIMENT: type inference for loop variables. A letrec-bound procedure
+  ;; with one fixed-arity clause that is only ever called directly gets
+  ;; parameter types from the union of its call sites' argument types, found
+  ;; by iterating to a fixed point. CHEZ_CPTYPES_LOOPS=0 disables it.
+  (define-record-type loop-tracker
+    (nongenerative)
+    (sealed #t)
+    (fields x* (mutable assumed) (mutable seen) (mutable escaped?)))
+  (define loop-trackers (make-eq-hashtable)) ; procedure prelex -> tracker
+  (define loop-params (make-eq-hashtable))   ; first parameter prelex -> tracker
+  (define loop-operator #f) ; prelex being visited as a direct-call operator
+  (define loop-depth 0)
+  (define loop-max-depth 3)
+  (define loop-max-rounds 3)
+  (define (loop-types-enabled?)
+    (let ([s (getenv "CHEZ_CPTYPES_LOOPS")])
+      (not (and s (string=? s "0")))))
+  (define (loop-record-call! t r*)
+    (loop-tracker-seen-set! t
+      (map (lambda (old r)
+             ;; a record type in a variable may be bound inside the loop, so it can differ
+             ;; between iterations
+             (let ([r (if r (predicate-forget-refs r) ptr-pred)])
+               (if (eq? old 'bottom) r (predicate-union old r))))
+           (loop-tracker-seen t) r*)))
+  (define (loop-candidate x e)
+    (and (not (prelex-assigned x))
+         (nanopass-case (Lsrc Expr) e
+           [(case-lambda ,preinfo (clause (,x* ...) ,interface ,body))
+            (and (pair? x*) (fx= interface (length x*)) x*)]
+           [else #f])))
+
   (define-pass cptypes : Lsrc (ir ctxt types plxc) -> Lsrc (ret types t-types f-types)
     (Expr : Expr (ir ctxt types plxc) -> Expr (ret types t-types f-types)
       [(quote ,d)
        (values ir (datum->predicate d ir) types #f #f)]
       [(ref ,maybe-src ,x)
+       (unless (eq? x loop-operator)
+         (let ([t (eq-hashtable-ref loop-trackers x #f)])
+           (when t (loop-tracker-escaped?-set! t #t))))
        (case ctxt
          [(test)
           (let ([t (pred-env-lookup types x plxc)])
@@ -2387,7 +2434,13 @@ Notes:
                         (nanopass-case (Lsrc CaseLambdaClause) cl
                           [(clause (,x* ...) ,interface ,body)
                            (let-values ([(body ret types t-types f-types)
-                                         (Expr body 'tail types plxc)]) ;use 'tail context just in case
+                                         (Expr body 'tail
+                                               (let ([t (and (pair? x*) (eq-hashtable-ref loop-params (car x*) #f))])
+                                                 (if (and t (eq? (loop-tracker-x* t) x*) (loop-tracker-assumed t))
+                                                     (fold-left (lambda (types x p) (pred-env-add types x p plxc))
+                                                                types x* (loop-tracker-assumed t))
+                                                     types))
+                                               plxc)]) ;use 'tail context just in case
                              (for-each (lambda (x) (prelex-operand-set! x #f)) x*)
                              (with-output-language (Lsrc CaseLambdaClause)
                                `(clause (,x* ...) ,interface ,body)))]))
@@ -2412,17 +2465,103 @@ Notes:
            (values `(call ,preinfo (foreign (,conv* ...) ,name ,e (,arg-type* ...) ,result-type) ,e* ...)
                    ret types #f #f)))]
       [(call ,preinfo ,e0 ,e*  ...)
-       (fold-call/other preinfo e0 e* ctxt types plxc)]
+       (nanopass-case (Lsrc Expr) e0
+         ;; named let: ((letrec ([x (lambda ...)] ...) x) e* ...) => (letrec ([x (lambda ...)] ...) (x e* ...))
+         ;; so that the loop is seen as only called directly. e* cannot refer to x*, and the
+         ;; bindings are all lambdas, so evaluation order doesn't change.
+         [(letrec ((,x* ,e1*) ...) (ref ,maybe-src ,x))
+          (guard (loop-types-enabled?)
+                 (memq x x*)
+                 (andmap (lambda (e1) (nanopass-case (Lsrc Expr) e1 [(case-lambda ,preinfo ,cl* ...) #t] [else #f])) e1*))
+          ;; analyze the rewritten form, but put the result back in the original shape
+          (let-values ([(ir ret ntypes t-types f-types)
+                        (Expr (with-output-language (Lsrc Expr)
+                                `(letrec ([,x* ,e1*] ...) (call ,preinfo (ref ,maybe-src ,x) ,e* ...)))
+                              ctxt types plxc)])
+            (values (nanopass-case (Lsrc Expr) ir
+                      [(letrec ((,x2* ,e2*) ...) (call ,preinfo2 (ref ,maybe-src2 ,x2) ,e3* ...))
+                       (guard (eq? x2 x))
+                       (with-output-language (Lsrc Expr)
+                         `(call ,preinfo2 (letrec ([,x2* ,e2*] ...) (ref ,maybe-src2 ,x2)) ,e3* ...))]
+                      [else ir])
+                    ret ntypes t-types f-types))]
+         [else (fold-call/other preinfo e0 e* ctxt types plxc)])]
       [(letrec ((,x* ,e*) ...) ,body)
-       (let-values ([(ntypes e* r* t* t-t* f-t*)
-                     (map-Expr/delayed e* types plxc)])
-         (let ([ntypes/x (fold-left (lambda (t x p) (pred-env-add t x p plxc)) ntypes x* r*)])
-           (let*-values ([(body ret n-types/x t-types/x f-types/x)
-                         (Expr body ctxt ntypes/x plxc)]
-                         [(n-types t-types f-types)
-                          (pred-env-triple-filter/base n-types/x t-types/x f-types/x x* ctxt ntypes plxc)])
-               (values `(letrec ([,x* ,e*] ...) ,body)
-                       ret n-types t-types f-types))))]
+       (let ([in-e* e*] [in-body body])
+         (define (analyze)
+           (let-values ([(ntypes e* r* t* t-t* f-t*)
+                         (map-Expr/delayed in-e* types plxc)])
+             (let ([ntypes/x (fold-left (lambda (t x p) (pred-env-add t x p plxc)) ntypes x* r*)])
+               (let*-values ([(body ret n-types/x t-types/x f-types/x)
+                             (Expr in-body ctxt ntypes/x plxc)]
+                             [(n-types t-types f-types)
+                              (pred-env-triple-filter/base n-types/x t-types/x f-types/x x* ctxt ntypes plxc)])
+                 (list `(letrec ([,x* ,e*] ...) ,body)
+                       ret n-types t-types f-types)))))
+         (let ([trackers (if (and (fx< loop-depth loop-max-depth) (loop-types-enabled?))
+                             (fold-right (lambda (x e acc)
+                                           (let ([y* (loop-candidate x e)])
+                                             (if y*
+                                                 (cons (make-loop-tracker y* #f (map (lambda (y) 'bottom) y*) #f) acc)
+                                                 acc)))
+                                         '() x* e*)
+                             '())])
+           (cond
+             [(null? trackers) (apply values (analyze))]
+             [else
+              (let ([tx* (fold-right (lambda (x e acc) (if (loop-candidate x e) (cons x acc) acc)) '() x* e*)])
+                (define (install!)
+                  (for-each (lambda (x t)
+                              (eq-hashtable-set! loop-trackers x t)
+                              (eq-hashtable-set! loop-params (car (loop-tracker-x* t)) t))
+                            tx* trackers))
+                (define (uninstall!)
+                  (for-each (lambda (x t)
+                              (eq-hashtable-delete! loop-trackers x)
+                              (eq-hashtable-delete! loop-params (car (loop-tracker-x* t))))
+                            tx* trackers))
+                (define (reset! t assumed)
+                  (loop-tracker-assumed-set! t assumed)
+                  (loop-tracker-seen-set! t (map (lambda (y) 'bottom) (loop-tracker-x* t)))
+                  (loop-tracker-escaped?-set! t #f))
+                (define (run)
+                  (set! loop-depth (fx+ loop-depth 1))
+                  (install!)
+                  (let ([r (analyze)])
+                    (uninstall!)
+                    (set! loop-depth (fx- loop-depth 1))
+                    r))
+                ;; round 0: no assumptions
+                (let ([r0 (run)])
+                  (let loop ([round 1] [prev r0])
+                    (let ([useful (filter (lambda (t)
+                                            (and (not (loop-tracker-escaped? t))
+                                                 (not (ormap (lambda (p) (eq? p 'bottom)) (loop-tracker-seen t)))
+                                                 (not (andmap predicate-is-ptr? (loop-tracker-seen t)))))
+                                          trackers)])
+                      (cond
+                        [(or (null? useful) (fx> round loop-max-rounds)) (apply values r0)]
+                        [else
+                         (for-each (lambda (t)
+                                     (reset! t (and (memq t useful) (loop-tracker-seen t))))
+                                   trackers)
+                         (let ([r (run)])
+                           (if (andmap (lambda (t)
+                                         (or (not (loop-tracker-assumed t))
+                                             (and (not (loop-tracker-escaped? t))
+                                                  (andmap predicate-implies?
+                                                          (loop-tracker-seen t) (loop-tracker-assumed t)))))
+                                       trackers)
+                               (apply values r)
+                               (begin
+                                 ;; widen: next round assumes the union
+                                 (for-each (lambda (t)
+                                             (when (loop-tracker-assumed t)
+                                               (loop-tracker-seen-set! t
+                                                 (map (lambda (a s) (if (eq? s 'bottom) a (predicate-union a s)))
+                                                      (loop-tracker-assumed t) (loop-tracker-seen t)))))
+                                           trackers)
+                                 (loop (fx+ round 1) r))))])))))])))]
       [(letrec* ((,x* ,e*) ...) ,body)
        (let*-values ([(e* ntypes/x)
                       (let loop ([x* x*] [e* e*] [types types] [rev-e* '()]) ; this is similar to an ordered-map

@@ -110,7 +110,8 @@
    predicate-union
    predicate-substract
    make-pred-$record/rtd
-   make-pred-$record/ref)
+   make-pred-$record/ref
+   predicate-forget-refs)
 
   (define-record-type pred-or
     (fields sin mul nor exi rec)
@@ -405,6 +406,15 @@
   ; file for cross compilation, because the offsets may be incorrect
   (define rtd-ancestry (csv7:record-field-accessor #!base-rtd 'ancestry))
   (define rtd-flds (csv7:record-field-accessor #!base-rtd 'flds))
+
+  ;; Replace a record type that is stored in a variable by a generic record,
+  ;; for a type that may be used where that variable has a different value
+  (define (predicate-forget-refs x)
+    (cond
+      [(pred-$record/ref? x) '$record]
+      [(and (pred-or? x) (pred-$record/ref? (pred-or-rec x)))
+       (make-pred-or (pred-or-sin x) (pred-or-mul x) (pred-or-nor x) (pred-or-exi x) '$record)]
+      [else x]))
 
   ;could be a ctrtd
   (define (pred-$record-maybe-rtd x)

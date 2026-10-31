@@ -2216,7 +2216,6 @@
    (cptypes-equivalent-expansion?
     '(lambda (x) (+ (#%$call-consuming-continuation-attachment 'a (lambda (a) (error 'x "no ~s" a))) 1))
     '(lambda (x) (#%$call-consuming-continuation-attachment 'a (lambda (a) (error 'x "no ~s" a))))))
-
   (parameterize ([optimize-level 2])
     (cptypes-equivalent-expansion?
      '(lambda (p) (car p) (vector-ref p 0) (oops))
@@ -2516,4 +2515,59 @@
     '(lambda (t m)
        (let ([x (if t (random) (div-and-mod "2" m))])
          (list x x x))))
+)
+
+(mat cptypes-loop-variables
+  ; A letrec-bound procedure that is only called directly gets
+  ; parameter types from the union of its call sites' argument types.
+  (cptypes-equivalent-expansion?
+    '(lambda (n)
+       (let loop ([a 0.0] [i 0])
+         (if (fx= i n) a (loop (fl+ a 1.0) (fx+/wraparound i 1)))))
+    '(lambda (n)
+       (let loop ([a 0.0] [i 0])
+         (if (fx= i n) a (loop (#3%fl+ a 1.0) (fx+/wraparound i 1))))))
+  (cptypes-equivalent-expansion?
+    '(lambda (n)
+       (let loop ([a 0.0] [i 0])
+         (if (fx= i n) (flonum? a) (loop (fl+ a 1.0) (fx+/wraparound i 1)))))
+    '(lambda (n)
+       (let loop ([a 0.0] [i 0])
+         (if (fx= i n) #t (loop (#3%fl+ a 1.0) (fx+/wraparound i 1))))))
+  ; The type of a parameter includes every call site, here #f
+  (not (cptypes-equivalent-expansion?
+        '(lambda (h first next)
+           (let loop ([pos (first h)])
+             (if pos (cons pos (loop (next h pos))) '())))
+        '(lambda (h first next)
+           (let loop ([pos (first h)])
+             (cons pos (loop (next h pos)))))))
+  (not (cptypes-equivalent-expansion?
+        '(lambda (n)
+           (let loop ([a 0.0] [i 0])
+             (if (fx= i n) (flonum? a) (loop (if (fx= i 5) 'x (fl+ a 1.0)) (fx+/wraparound i 1)))))
+        '(lambda (n)
+           (let loop ([a 0.0] [i 0])
+             (if (fx= i n) #t (loop (if (fx= i 5) 'x (fl+ a 1.0)) (fx+/wraparound i 1)))))))
+  ; No types when the procedure escapes
+  (not (cptypes-equivalent-expansion?
+        '(lambda (n f)
+           (letrec ([loop (lambda (a) (if (f loop) (flonum? a) (loop 1.0)))])
+             (loop 0.0)))
+        '(lambda (n f)
+           (letrec ([loop (lambda (a) (if (f loop) #t (loop 1.0)))])
+             (loop 0.0)))))
+  (equal?
+    (let ([h (make-eqv-hashtable)])
+      (hashtable-set! h 1 2)
+      (let loop ([ks (vector->list (hashtable-keys h))] [acc '()])
+        (if (pair? ks) (loop (cdr ks) (cons (car ks) acc)) acc)))
+    '(1))
+  (equal?
+    ((lambda (first next)
+       (let loop ([pos (first)])
+         (if pos (cons pos (loop (next pos))) '())))
+     (lambda () 0)
+     (lambda (p) (and (< p 3) (+ p 1))))
+    '(0 1 2 3))
 )

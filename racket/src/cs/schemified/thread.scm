@@ -13603,7 +13603,7 @@
                  ((loop_0
                    (|#%name|
                     loop
-                    (lambda ()
+                    (lambda (spin?_0)
                       (if (eq? (worker-state w_0) 'exit-request)
                         (begin
                           (set-worker-state! w_0 'exited)
@@ -13628,19 +13628,47 @@
                                   (set-scheduler-capacity!
                                    s_0
                                    (+ (scheduler-capacity s_0) 1))
-                                  (loop_0))
+                                  (loop_0 #t))
                                 (begin
                                   (lock-release (future*-lock cond-val_0))
                                   (mutex-acquire (scheduler-mutex s_0))
-                                  (loop_0))))
-                            (begin
-                              (worker-check-in w_0)
-                              (condition-wait
-                               (scheduler-cond s_0)
-                               (scheduler-mutex s_0))
-                              (loop_0)))))))))
-                 (loop_0)))))))
+                                  (loop_0 spin?_0))))
+                            (if spin?_0
+                              (begin
+                                (worker-check-in w_0)
+                                (mutex-release (scheduler-mutex s_0))
+                                (spin-for-work w_0 s_0)
+                                (mutex-acquire (scheduler-mutex s_0))
+                                (loop_0 #f))
+                              (begin
+                                (worker-check-in w_0)
+                                (condition-wait
+                                 (scheduler-cond s_0)
+                                 (scheduler-mutex s_0))
+                                (loop_0 #f))))))))))
+                 (loop_0 #f)))))))
       (set-worker-pthread! w_0 th_0))))
+(define WORKER-SPIN-MSECS 2.0)
+(define spin-for-work
+  (lambda (w_0 s_0)
+    (let ((state_0 (worker-state w_0)))
+      (let ((until_0 (+ (current-inexact-monotonic-milliseconds) 2.0)))
+        (letrec*
+         ((loop_0
+           (|#%name|
+            loop
+            (lambda (n_0)
+              (if (let ((or-part_0 (scheduler-futures-head s_0)))
+                    (if or-part_0
+                      or-part_0
+                      (not (eq? state_0 (worker-state w_0)))))
+                (void)
+                (if (fx= n_0 1000)
+                  (if (> (current-inexact-monotonic-milliseconds) until_0)
+                    (void)
+                    (loop_0 0))
+                  (loop_0 (fx+ n_0 1))))))))
+         (loop_0 0))))))
 (define maybe-run-future-in-worker
   (lambda (f_0 w_0 s_0)
     (if (let ((or-part_0

@@ -1004,7 +1004,7 @@
        (current-thread/in-racket #f)
        (current-future 'worker)
        (host:mutex-acquire (scheduler-mutex s))
-       (let loop ()
+       (let loop ([spin? #f])
          (cond
            [(eq? (worker-state w) 'exit-request)
             (set-worker-state! w 'exited)
@@ -1024,19 +1024,44 @@
                     ;; look for more work
                     (host:mutex-acquire (scheduler-mutex s))
                     (set-scheduler-capacity! s (+ (scheduler-capacity s) 1))
-                    (loop)]
+                    (loop #t)]
                    [else
                     ;; future was claimed by someone else before
                     ;; we could deschedule it
                     (lock-release (future*-lock f))
                     (host:mutex-acquire (scheduler-mutex s))
-                    (loop)]))]
+                    (loop spin?)]))]
+           [spin?
+            ;; Just finished a future, so more work may come soon (e.g., the
+            ;; next round of a fork-join loop). Waiting briefly without the
+            ;; lock avoids a sleep and an OS wakeup, which can place this
+            ;; pthread badly (e.g., on a CPU that is already busy)
+            (worker-check-in w)
+            (host:mutex-release (scheduler-mutex s))
+            (spin-for-work w s)
+            (host:mutex-acquire (scheduler-mutex s))
+            (loop #f)]
            [else
             (worker-check-in w)
             ;; wait for work
             (host:condition-wait (scheduler-cond s) (scheduler-mutex s))
-            (loop)])))))
+            (loop #f)])))))
   (set-worker-pthread! w th))
+
+;; Polls without the scheduler lock until work is available, the
+;; worker's state changes, or WORKER-SPIN-MSECS pass
+(define WORKER-SPIN-MSECS 2.0)
+(define (spin-for-work w s)
+  (define state (worker-state w))
+  (define until (+ (current-inexact-monotonic-milliseconds) WORKER-SPIN-MSECS))
+  (let loop ([n 0])
+    (unless (or (scheduler-futures-head s)
+                (not (eq? state (worker-state w))))
+      (cond
+        [(fx= n 1000)
+         (unless ((current-inexact-monotonic-milliseconds) . > . until)
+           (loop 0))]
+        [else (loop (fx+ n 1))]))))
 
 ;; called with lock on f
 (define (maybe-run-future-in-worker f w s)

@@ -4,11 +4,14 @@
   (define (fork-pthread thunk)
     ;; Tell nonscheduler locks (in "lock.ss") that they are needed now
     (#%vector-set! (get-place-registers) PARALLEL-PTHREADS-INDEX #t)
+    ;; Scale the minor-GC trigger with allocating OS threads, as for places
+    (collect-trip-for-allocating-places! +1)
     (fork-thread (let ([place-registers (get-place-registers)])
                    (lambda ()
                      (init-virtual-registers)
                      (set-place-registers! place-registers)
-                     (thunk)))))
+                     (thunk)
+                     (collect-trip-for-allocating-places! -1)))))
   (define pthread? thread?)
   (define in-original-host-thread?
     (let ([initial-thread-id (get-thread-id)])

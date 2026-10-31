@@ -45,6 +45,13 @@
 
   (define user-installed-tables (make-hasheq))
 
+  ;; Hooks that the expander can use when available, but that are not
+  ;; exported to Racket programs:
+  (define expander-internal-table
+    (let ([ht (make-hasheq)])
+      (hash-set! ht 'unsafe-set-struct-type-field0-eq-hash-code! unsafe-set-struct-type-field0-eq-hash-code!)
+      ht))
+
   (define primitive-table
     (case-lambda
      [(key)
@@ -61,6 +68,7 @@
         [(|#%extfl|) extfl-table]
         [(|#%network|) network-table]
         [(|#%terminal|) terminal-table]
+        [(|#%expander-internal|) expander-internal-table]
         [else (hash-ref user-installed-tables key #f)])]
      [(key table)
       (hash-set! user-installed-tables key table)]))

@@ -597,6 +597,47 @@
     (define build-fl=
       (lambda (e1 e2) ; must be bound
         `(inline ,(make-info-unboxed-args '(#t #t)) ,%fp= ,e1 ,e2)))
+    ;; EXPERIMENT: flonum fast path for generic arithmetic and comparisons, after
+    ;; the fixnum fast path fails. CHEZ_GENERIC_FL=1: both flonums; =2: also one
+    ;; flonum and one nonzero fixnum (arithmetic only). e1 and e2 must be bound.
+    (define generic-fl-mode
+      (lambda ()
+        (let ([s (getenv "CHEZ_GENERIC_FL")])
+          (or (and s (string->number s)) 0))))
+    (define build-generic-fl
+      (lambda (mixed-ok? mk e1 e2 libcall)
+        (let ([mode (generic-fl-mode)])
+          (cond
+            [(eqv? mode 0) libcall]
+            [(or (eqv? mode 1) (not mixed-ok?))
+             `(if ,(build-flonums? (list e1 e2)) ,(mk e1 e2) ,libcall)]
+            [else
+             (let ([Llib (make-local-label 'Llib)])
+               (define (fx->fp e) `(unboxed-fp ,(%inline fpt ,(build-unfix e))))
+               (define (nonzero-fixnum? e)
+                 (build-and (%type-check mask-fixnum type-fixnum ,e)
+                            (build-not (%inline eq? ,e (immediate 0)))))
+               `(if ,(%type-check mask-flonum type-flonum ,e1)
+                    (if ,(%type-check mask-flonum type-flonum ,e2)
+                        ,(mk e1 e2)
+                        (if ,(nonzero-fixnum? e2)
+                            ,(mk e1 (fx->fp e2))
+                            (label ,Llib ,libcall)))
+                    (if ,(build-and (nonzero-fixnum? e1) (%type-check mask-flonum type-flonum ,e2))
+                        ,(mk (fx->fp e1) e2)
+                        (goto ,Llib))))]))))
+    (define generic-fl-arith
+      (lambda (op)
+        (lambda (a b)
+          (bind #f fp (a b)
+            `(unboxed-fp (inline ,(make-info-unboxed-args '(#t #t)) ,op ,a ,b))))))
+    (define generic-fl-compare
+      (lambda (op swap?)
+        (lambda (a b)
+          (bind #f fp (a b)
+            (if swap?
+                `(inline ,(make-info-unboxed-args '(#t #t)) ,op ,b ,a)
+                `(inline ,(make-info-unboxed-args '(#t #t)) ,op ,a ,b))))))
     (define build-chars?
       (lambda (e1 e2)
         (define char-constant?
@@ -4546,19 +4587,19 @@
       (define-inline 2 +
         [() `(immediate ,(fix 0))]
         [(e) (build-fxop? %+/ovfl 'overflow e `(quote 0) values (lambda (e1 e2) (build-libcall #t src sexpr + e1 e2)))]
-        [(e1 e2) (build-fxop? %+/ovfl 'overflow e1 e2 values (lambda (e1 e2) (build-libcall #t src sexpr + e1 e2)))]
+        [(e1 e2) (build-fxop? %+/ovfl 'overflow e1 e2 values (lambda (e1 e2) (build-generic-fl #t (generic-fl-arith %fp+) e1 e2 (build-libcall #t src sexpr + e1 e2))))]
         ; TODO: handle 3-operand case ala fx+, w/3-operand library +
         [(e1 . e*) #f])
       (define-inline 2 *
         [() `(immediate ,(fix 1))]
         [(e) (build-fxop? %*/ovfl 'multiply-overflow e `(quote 1) build-unfix (lambda (e1 e2) (build-libcall #t src sexpr * e1 e2)))]
         ; TODO: swap e1 & e2 if e1 is constant
-        [(e1 e2) (build-fxop? %*/ovfl 'multiply-overflow e1 e2 build-unfix (lambda (e1 e2) (build-libcall #t src sexpr * e1 e2)))]
+        [(e1 e2) (build-fxop? %*/ovfl 'multiply-overflow e1 e2 build-unfix (lambda (e1 e2) (build-generic-fl #t (generic-fl-arith %fp*) e1 e2 (build-libcall #t src sexpr * e1 e2))))]
         ; TODO: handle 3-operand case ala fx+, w/3-operand library *
         [(e1 . e*) #f])
       (define-inline 2 -
         [(e) (build-fxop? %-/ovfl 'overflow `(quote 0) e values (lambda (e1 e2) (build-libcall #t src sexpr - e1 e2)))]
-        [(e1 e2) (build-fxop? %-/ovfl 'overflow e1 e2 values (lambda (e1 e2) (build-libcall #t src sexpr - e1 e2)))]
+        [(e1 e2) (build-fxop? %-/ovfl 'overflow e1 e2 values (lambda (e1 e2) (build-generic-fl #t (generic-fl-arith %fp-) e1 e2 (build-libcall #t src sexpr - e1 e2))))]
         ; TODO: handle 3-operand case ala fx+, w/3-operand library -
         [(e1 e2 . e*) #f]))
     (let ()
@@ -4608,7 +4649,8 @@
               [else (bind #t (e1 e2)
                       `(if ,(build-fixnums? (list e1 e2))
                            ,(%inline eq? ,e1 ,e2)
-                           ,(build-libcall #t src sexpr = e1 e2)))])))
+                           ,(build-generic-fl #f (generic-fl-compare %fp= #f) e1 e2
+                              (build-libcall #t src sexpr = e1 e2))))])))
       (define-inline 2 =
         [(e1 e2) (go src sexpr e1 e2)]
         [(e1 . e*) #f])
@@ -4618,7 +4660,7 @@
     (let ()
       (define-syntax define-relop-inline
         (syntax-rules ()
-          [(_ name r6rs:name relop op)
+          [(_ name r6rs:name relop op flcmp)
            (let ()
              (define builder
                (lambda (e1 e2 libcall)
@@ -4626,7 +4668,7 @@
                      (bind #t (e1 e2)
                        `(if ,(build-fixnums? (list e1 e2))
                             ,(%inline op ,e1 ,e2)
-                            ,(libcall e1 e2))))))
+                            ,(build-generic-fl #f flcmp e1 e2 (libcall e1 e2)))))))
              (define-inline 2 name
                [(e1 e2)
                 (builder e1 e2
@@ -4639,10 +4681,10 @@
                   (lambda (e1 e2) (build-libcall #t src sexpr name e1 e2)))]
                ; TODO: handle 3-operand case w/3-operand library routine
                [(e1 e2 . e*) #f]))]))
-      (define-relop-inline < r6rs:< RELOP< <)
-      (define-relop-inline <= r6rs:<= RELOP<= <=)
-      (define-relop-inline >= r6rs:>= RELOP>= >=)
-      (define-relop-inline > r6rs:> RELOP> >))
+      (define-relop-inline < r6rs:< RELOP< < (generic-fl-compare %fp< #f))
+      (define-relop-inline <= r6rs:<= RELOP<= <= (generic-fl-compare %fp<= #f))
+      (define-relop-inline >= r6rs:>= RELOP>= >= (generic-fl-compare %fp<= #t))
+      (define-relop-inline > r6rs:> RELOP> > (generic-fl-compare %fp< #t)))
     (define-inline 3 positive?  ; 3 so opt-level 2 errors come from positive?
       [(e) (handle-prim src sexpr 3 '> (list e `(quote 0)))])
     (define-inline 3 nonnegative? ; 3 so opt-level 2 errors come from nonnegative?

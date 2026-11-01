@@ -218,7 +218,7 @@
 
 ;; ----------------------------------------
 
-(define empty-scopes (seteq))
+(define empty-scopes empty-scope-set)
 (define empty-shifted-multi-scopes (seteq))
 (define empty-mpi-shifts null)
 (define empty-props #hasheq())
@@ -367,7 +367,7 @@
   (syntax (if taint
               (modified-content content taint)
               content)
-          (vector*-ref context-triple 0)
+          (->scope-set (vector*-ref context-triple 0))
           (vector*-ref context-triple 1)
           (vector*-ref context-triple 2)
           srcloc

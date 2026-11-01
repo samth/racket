@@ -3,6 +3,7 @@
          ffi/unsafe/atomic
          "../common/set.rkt"
          "../common/field0-hash.rkt"
+         "../common/scope-set.rkt"
          "../compile/serialize-property.rkt"
          "../compile/serialize-state.rkt"
          "../common/memo.rkt"
@@ -73,6 +74,7 @@
 
 (module+ for-debug
   (provide (struct-out scope)
+           scope-id
            (struct-out interned-scope)
            (struct-out multi-scope)
            (struct-out representative-scope)
@@ -85,9 +87,10 @@
 ;; faster and to improve GC, since non-nested binding contexts will
 ;; generally not share a most-recent scope.
 
-(struct scope (id             ; internal scope identity as an exact rational; used for sorting
-               kind           ; 'macro for macro-introduction scopes, otherwise treated as debug info
-               [binding-table #:mutable]) ; see "binding-table.rkt"
+;; The `scope-base` parent has `id` (internal scope identity as an
+;; exact rational; used for sorting) and `key` (for hashing scope sets)
+(struct scope scope-base (kind           ; 'macro for macro-introduction scopes, otherwise treated as debug info
+                          [binding-table #:mutable]) ; see "binding-table.rkt"
   #:authentic
   ;; Custom printer:
   #:property prop:custom-write
@@ -137,7 +140,12 @@
   (case-lambda
     [() top-level-common-scope]
     [(kind)
-     (scope (new-deserialize-scope-id!) kind empty-binding-table)]))
+     (make-scope (new-deserialize-scope-id!) kind)]))
+
+(define (scope-id s) (scope-base-id s))
+
+(define (make-scope id kind)
+  (scope id (make-scope-key id) kind empty-binding-table))
 
 (define (deserialize-scope-fill! s bt)
   (set-scope-binding-table! s bt))
@@ -257,7 +265,8 @@
   #:property prop:implicitly-reachable #t)
 
 (define (deserialize-representative-scope kind phase)
-  (define v (representative-scope (new-deserialize-scope-id!) kind #f #f phase))
+  (define id (new-deserialize-scope-id!))
+  (define v (representative-scope id (make-scope-key id) kind #f #f phase))
   v)
 
 (define (deserialize-representative-scope-fill! s bt owner)
@@ -350,10 +359,10 @@
     [else (+ scope-id 1/2 (/ 1 (- 2 phase)))])) ; (1/2, 3/4]
 
 ;; A shared "outside-edge" scope for all top-level contexts
-(define top-level-common-scope (scope 0 'module empty-binding-table))
+(define top-level-common-scope (make-scope 0 'module))
 
 (define (new-scope kind)
-  (scope (new-scope-id!) kind empty-binding-table))
+  (make-scope (new-scope-id!) kind))
 
 ;; The intern table used for interned scopes. A lock is needed for
 ;; updates to enable `hash-keys` and `in-hash-values. Furthermore,
@@ -377,13 +386,15 @@
 
 (define (scope-place-init!)
   (set! interned-scopes-table (make-ephemeron-hasheq))
-  (set! interned-scopes-table-lock (make-uninterruptible-lock)))
+  (set! interned-scopes-table-lock (make-uninterruptible-lock))
+  (set! sorted-ops-cache (box (cons #f null))))
 
 (define (make-interned-scope sym)
   (define (make)
     ;; since interned scopes are reused by unmarshalled code, and because they’re generally unlikely
     ;; to be a good target for bindings, always create them with a negative id
-    (interned-scope (- (new-scope-id!)) 'interned empty-binding-table sym))
+    (define id (- (new-scope-id!)))
+    (interned-scope id (make-scope-key id) 'interned empty-binding-table sym))
   (cond
     [(hash-ref interned-scopes-table sym #f)
      => (lambda (s) s)]
@@ -408,9 +419,11 @@
   ;; Get the identity of `ms` at phase`
   (let ([scopes (unbox (multi-scope-scopes ms))])
     (or (hash-ref scopes phase #f)
-        (let ([s (representative-scope (make-representative-scope-id
-                                        (multi-scope-id ms)
-                                        phase)
+        (let* ([id (make-representative-scope-id
+                    (multi-scope-id ms)
+                    phase)]
+               [s (representative-scope id
+                                       (make-scope-key id)
                                        'module
                                        empty-binding-table
                                        ms phase)])
@@ -685,18 +698,32 @@
                    prev-mss add inspector
                    prop)))
 
+;; Propagation applies the same operations to all children of a
+;; syntax object, so remember the last sorted list of operations.
+;; The cache is a single pair, so it's safe for concurrent use.
+(define-place-local sorted-ops-cache (box (cons #f null)))
+
+(define (sorted-scope-ops ops)
+  (define c (unbox* sorted-ops-cache))
+  (cond
+    [(eq? (car c) ops) (cdr c)]
+    [else
+     (define sorted (sort-scope-ops
+                     (for/list ([(sc op) (in-immutable-hash ops)]
+                                #:unless (shifted-multi-scope? sc))
+                       (cons sc op))))
+     (set-box*! sorted-ops-cache (cons ops sorted))
+     sorted]))
+
 (define (propagation-apply prop scs parent-s)
   (cond
    [(eq? (propagation-prev-scs prop) scs)
     (syntax-scopes parent-s)]
    [else
     (define new-scs
-      (for/fold ([scs scs]) ([(sc op) (in-immutable-hash (propagation-scope-ops prop))]
-                             #:when (not (shifted-multi-scope? sc)))
-        (case op
-          [(add) (set-add scs sc)]
-          [(remove) (set-remove scs sc)]
-          [else (set-flip scs sc)])))
+      (scope-set-apply-ops
+       (->scope-set scs)
+       (sorted-scope-ops (propagation-scope-ops prop))))
     ;; Improve sharing if the result matches the parent:
     (if (set=? new-scs (syntax-scopes parent-s))
         (syntax-scopes parent-s)
@@ -939,19 +966,19 @@
 (define (find-max-scope scopes)
   (when (set-empty? scopes)
     (error "cannot bind in empty scope set"))
-  (for/fold ([max-sc (set-first scopes)]) ([sc (in-set scopes)])
-    (if (scope>? sc max-sc)
-        sc
-        max-sc)))
+  ;; A scope set is sorted with the most recent scope first
+  (scope-set-max scopes))
 
-(define (add-binding-in-scopes! scopes sym binding #:just-for-nominal? [just-for-nominal? #f])
+(define (add-binding-in-scopes! in-scopes sym binding #:just-for-nominal? [just-for-nominal? #f])
+  (define scopes (->scope-set in-scopes))
   (define max-sc (find-max-scope scopes))
   (define bt (binding-table-add (scope-binding-table max-sc) scopes sym binding just-for-nominal?))
   (set-scope-binding-table! max-sc bt)
   (clear-resolve-cache! sym))
 
-(define (add-bulk-binding-in-scopes! scopes bulk-binding
+(define (add-bulk-binding-in-scopes! in-scopes bulk-binding
                                      #:shadow-except [shadow-except #f])
+  (define scopes (->scope-set in-scopes))
   (define max-sc (find-max-scope scopes))
   (define bt (binding-table-add-bulk (scope-binding-table max-sc) scopes bulk-binding
                                      #:shadow-except shadow-except))

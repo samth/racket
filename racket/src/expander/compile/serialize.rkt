@@ -878,8 +878,16 @@
                  [(#:seteq) (seteq)]
                  [(#:seteqv) (seteqv)]))
      (define len (vector*-ref vec (add1 pos)))
-     (for/fold ([s s] [pos (+ pos 2)]) ([i (in-range len)])
-       (decodes #:pos pos (k) (set-add s k)))]
+     (define-values (new-s new-pos)
+       (for/fold ([s s] [pos (+ pos 2)]) ([i (in-range len)])
+         (decodes #:pos pos (k) (set-add s k))))
+     ;; A non-empty set of scopes is a scope set:
+     (values (if (and (positive? len)
+                      (hash-eq? new-s)
+                      (scope? (set-first new-s)))
+                 (->scope-set new-s)
+                 new-s)
+             new-pos)]
     [(#:prefab)
      (define-values (key next-pos) (decodes #:pos (add1 pos) (k) k))
      (define len (vector*-ref vec next-pos))

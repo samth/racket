@@ -1,8 +1,8 @@
 #lang racket/base
 (require racket/private/place-local
-         (only-in '#%linklet primitive-table)
          ffi/unsafe/atomic
          "../common/set.rkt"
+         "../common/field0-hash.rkt"
          "../compile/serialize-property.rkt"
          "../compile/serialize-state.rkt"
          "../common/memo.rkt"
@@ -132,10 +132,6 @@
 ;; When the host supports it, use a scope's `id` field as its
 ;; `eq-hash-code`, since scopes are hashed heavily as keys in scope
 ;; sets. This works for subtypes of `scope`, too.
-(let ([t (primitive-table '#%expander-internal)])
-  (define set-field0-eq-hash-code! (and t (hash-ref t 'unsafe-set-struct-type-field0-eq-hash-code! #f)))
-  (when set-field0-eq-hash-code!
-    (set-field0-eq-hash-code! struct:scope)))
 
 (define deserialize-scope
   (case-lambda
@@ -268,7 +264,8 @@
   (deserialize-scope-fill! s bt)
   (set-representative-scope-owner! s owner))
 
-(struct shifted-multi-scope (phase        ; non-label phase shift or shifted-to-label-phase
+(struct shifted-multi-scope (hash         ; field 0 => `eq-hash-code`
+                             phase        ; non-label phase shift or shifted-to-label-phase
                              multi-scope) ; a multi-scope
   #:authentic
   #:sealed
@@ -288,6 +285,12 @@
   (lambda (sms bulk-shifts reach)
     (reach (shifted-multi-scope-multi-scope sms) bulk-shifts)))
 
+(register-field0-eq-hash-code! struct:shifted-multi-scope)
+;; Register scopes last so they're checked first:
+(register-field0-eq-hash-code! struct:representative-scope)
+(register-field0-eq-hash-code! struct:interned-scope)
+(register-field0-eq-hash-code! struct:scope)
+
 (define (deserialize-shifted-multi-scope phase multi-scope)
   (intern-shifted-multi-scope phase multi-scope))
 
@@ -306,13 +309,13 @@
     (or (hash-ref (unbox (multi-scope-shifted multi-scope)) phase #f)
         (transaction-loop (multi-scope-shifted multi-scope)
                           phase
-                          (lambda () (shifted-multi-scope phase multi-scope))))]
+                          (lambda () (shifted-multi-scope (next-field0-hash!) phase multi-scope))))]
    [else
     ;; `equal?`-hashed by shifted-to-label-phase
     (or (hash-ref (unbox (multi-scope-label-shifted multi-scope)) phase #f)
         (transaction-loop (multi-scope-label-shifted multi-scope)
                           phase
-                          (lambda () (shifted-multi-scope phase multi-scope))))]))
+                          (lambda () (shifted-multi-scope (next-field0-hash!) phase multi-scope))))]))
 
 ;; A `shifted-to-label-phase` record in the `phase` field of a
 ;; `shifted-multi-scope` makes the shift reversible; when we're

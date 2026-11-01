@@ -448,6 +448,7 @@ Notes:
 
   (module (pred-env-empty pred-env-bottom
            pred-env-add pred-env-add/not pred-env-remove/base pred-env-lookup
+           pred-env-add/minlen pred-env-lookup/minlen
            pred-env-intersect/base pred-env-union/super-base
            pred-env-rebase
            predicate-intersect predicate-union)
@@ -523,6 +524,33 @@ Notes:
         [else
          (and (not (prelex-assigned x))
               (fxmap-ref types (prelex-counter x plxc) #f))]))
+
+    ; Length facts: a lower bound on the length of the vector-like object
+    ; bound to an unassigned variable, kept under a key derived from the
+    ; variable's counter so that it never mixes with the variable's type.
+    ; `kind` is a small fixnum that separates flvectors, fxvectors, and
+    ; vectors known to be mutable.
+    ; The keys sit above every prelex counter, because the fxmap
+    ; operations assume nonnegative keys.
+    (define minlen-kinds 4)
+    (define minlen-key-base (fxsll 1 (fx- (fixnum-width) 4)))
+    (define (minlen-key x kind plxc)
+      (fx+ minlen-key-base (fx* (prelex-counter x plxc) minlen-kinds) kind))
+
+    (define (pred-env-add/minlen types x kind n plxc)
+      (cond
+        [(and x (not (prelex-assigned x)))
+         (pred-env-add/key types (minlen-key x kind plxc) (make-pred-minlen n))]
+        [else types]))
+
+    ; returns the known lower bound, or 0
+    (define (pred-env-lookup/minlen types x kind plxc)
+      (cond
+        [(eq? types bottom-fxmap) 0]
+        [(prelex-assigned x) 0]
+        [else
+         (let ([p (fxmap-ref types (minlen-key x kind plxc) #f)])
+           (if (pred-minlen? p) (pred-minlen-n p) 0))]))
 
     ; This is conceptually the intersection of the types in `types` and `from`
     ; but since 'ptr is not stored to save space and time, the implementation
@@ -1193,7 +1221,6 @@ Notes:
                                        ret ntypes #f #f)])]))
         (define-set-immediate $record-set! (rec i val))
         (define-set-immediate $record-cas! (rec i old new) boolean-pred)
-        (define-set-immediate vector-set! (vec i val))
         (define-set-immediate vector-cas! (vec i old new) boolean-pred)
         (define-set-immediate set-box! (b val))
         (define-set-immediate box-cas! (b old new) boolean-pred)
@@ -1201,6 +1228,64 @@ Notes:
         (define-set-immediate set-cdr! (p val))
         (define-set-immediate car-cas! (p old new) boolean-pred)
         (define-set-immediate cdr-cas! (p old new) boolean-pred))
+
+;; Length facts. After `(flvector-ref x k)` returns, for a constant
+      ;; `k` and an unassigned `x`, `x` is an flvector with more than `k`
+      ;; elements, so a later access to `x` at a constant index up to `k`
+      ;; needs no check. Vectors can be immutable, so only a successful
+      ;; `vector-set!` licenses an unchecked `vector-set!`.
+      (let ()
+        (define flvector-kind 0)
+        (define fxvector-kind 1)
+        (define vector-kind 2)
+        (define mutable-vector-kind 3)
+        (define (ref-var e)
+          (nanopass-case (Lsrc Expr) e
+            [(ref ,maybe-src ,x) x]
+            [else #f]))
+        (define (constant-index e)
+          (nanopass-case (Lsrc Expr) e
+            [(quote ,d) (and (fixnum? d) (fx>= d 0) d)]
+            [else #f]))
+        (define (known-length types x kinds plxc)
+          (fold-left (lambda (n kind) (fxmax n (pred-env-lookup/minlen types x kind plxc)))
+                     0 kinds))
+        ;; returns the primref to use and the types after the call
+        (define (access prim pr vec i ntypes plxc check-kinds add-kinds)
+          (let ([x (ref-var vec)] [k (constant-index i)])
+            (cond
+              [(and x k)
+               (values (if (fx< k (known-length ntypes x check-kinds plxc))
+                           (lookup-primref 3 prim)
+                           pr)
+                       (fold-left (lambda (types kind) (pred-env-add/minlen types x kind (fx+ k 1) plxc))
+                                  ntypes add-kinds))]
+              [else (values pr ntypes)])))
+
+        (define-syntax define-specialize/ref
+          (syntax-rules ()
+            [(_ prim kinds add-kinds)
+             (define-specialize 2 prim
+               [(vec i) (let-values ([(pr ntypes) (access 'prim pr vec i ntypes plxc kinds add-kinds)])
+                          (values `(call ,preinfo ,pr ,vec ,i) ret ntypes #f #f))])]))
+        (define-syntax define-specialize/set
+          (syntax-rules ()
+            [(_ prim kinds add-kinds wrap-val)
+             (define-specialize 2 prim
+               [(vec i val) (let-values ([(pr ntypes) (access 'prim pr vec i ntypes plxc kinds add-kinds)])
+                              (values `(call ,preinfo ,pr ,vec ,i ,(wrap-val val (get-type val)))
+                                      void-rec ntypes #f #f))])]))
+        (define (no-wrap val type) val)
+        (define (wrap-fixmediate val type)
+          (if (non-literal-fixmediate? val type)
+              `(call ,(make-preinfo-call) ,(lookup-primref 3 '$fixmediate) ,val)
+              val))
+        (define-specialize/ref flvector-ref (list flvector-kind) (list flvector-kind))
+        (define-specialize/ref fxvector-ref (list fxvector-kind) (list fxvector-kind))
+        (define-specialize/ref vector-ref (list vector-kind mutable-vector-kind) (list vector-kind))
+        (define-specialize/set flvector-set! (list flvector-kind) (list flvector-kind) no-wrap)
+        (define-specialize/set fxvector-set! (list fxvector-kind) (list fxvector-kind) no-wrap)
+        (define-specialize/set vector-set! (list mutable-vector-kind) (list vector-kind mutable-vector-kind) wrap-fixmediate))
 
       (define-specialize 2 (record? $sealed-record? record-instance? $sealed-record-instance?)
         [(val rtd) (let* ([alt-if-record (case (primref-name pr)

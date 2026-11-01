@@ -110,7 +110,10 @@
    predicate-union
    predicate-substract
    make-pred-$record/rtd
-   make-pred-$record/ref)
+   make-pred-$record/ref
+   make-pred-minlen
+   pred-minlen?
+   pred-minlen-n)
 
   (define-record-type pred-or
     (fields sin mul nor exi rec)
@@ -135,6 +138,15 @@
   (define-record-type pred-$record/ref
     (fields ref maybe-rtd)
     (nongenerative #{pred-$record/ref zc0e8e4cs8scbwhdj7qpad6k3-1})
+    (sealed #t))
+
+  ; A lower bound on the length of a vector-like object. These appear
+  ; only under the separate keys that cptypes uses for length facts,
+  ; never mixed with the predicates above, so they are compared only
+  ; with each other (or with #f and 'bottom).
+  (define-record-type pred-minlen
+    (fields n)
+    (nongenerative #{pred-minlen b1s5m3p0q7z2x8k4c6v9n0d2a-0})
     (sealed #t))
 
   (define ($black-hole) '#6=#6#)
@@ -1226,6 +1238,10 @@
       [(or (not x) (not y)) #f]
       [(eq? x 'bottom) y]
       [(eq? y 'bottom) x]
+      [(or (pred-minlen? x) (pred-minlen? y))
+       (if (and (pred-minlen? x) (pred-minlen? y))
+           (if (fx<= (pred-minlen-n x) (pred-minlen-n y)) x y)
+           #f)]
       [(and (pred-or? x)
             (pred-or? y))
        (let ()
@@ -1361,6 +1377,10 @@
       [(or (eq? x 'bottom)
            (eq? y 'bottom))
        'bottom]
+      [(or (pred-minlen? x) (pred-minlen? y))
+       (if (and (pred-minlen? x) (pred-minlen? y))
+           (if (fx>= (pred-minlen-n x) (pred-minlen-n y)) x y)
+           (if (pred-minlen? x) x y))]
       [(and (pred-or? x)
             (pred-or? y))
        (let ()
@@ -1426,6 +1446,7 @@
        'bottom]
       [(eq? y 'bottom)
        x]
+      [(or (pred-minlen? x) (pred-minlen? y)) x]
       [(and (pred-or? x)
             (pred-or? y))
        (let ()

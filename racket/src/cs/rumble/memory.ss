@@ -3,24 +3,28 @@
 (define request-incremental? #f)
 (define disable-incremental? #f)
 
-;; Parses a size like "64M", "512k", or "1073741824" from an
-;; environment variable, returning #f if it's not set or not valid
+;; Parses a size like "64M", "512k", or "1073741824", returning #f
+;; if it's not valid
+(define (parse-size s)
+  (and s
+       (let* ([len (string-length s)]
+              [last-ch (and (fx> len 0) (char-downcase (string-ref s (fx- len 1))))]
+              [scale (case last-ch
+                       [(#\k) 1024]
+                       [(#\m) (* 1024 1024)]
+                       [(#\g) (* 1024 1024 1024)]
+                       [else 1])]
+              [n (string->number (if (eqv? scale 1) s (substring s 0 (fx- len 1))) 10)])
+         (and n
+              (exact? n)
+              (integer? n)
+              (positive? n)
+              (* n scale)))))
+
+;; Parses a size from an environment variable, returning #f if it's not
+;; set or not valid
 (define (getenv-size name)
-  (let ([s (getenv name)])
-    (and s
-         (let* ([len (string-length s)]
-                [last-ch (and (fx> len 0) (char-downcase (string-ref s (fx- len 1))))]
-                [scale (case last-ch
-                         [(#\k) 1024]
-                         [(#\m) (* 1024 1024)]
-                         [(#\g) (* 1024 1024 1024)]
-                         [else 1])]
-                [n (string->number (if (eqv? scale 1) s (substring s 0 (fx- len 1))) 10)])
-           (and n
-                (exact? n)
-                (integer? n)
-                (positive? n)
-                (* n scale))))))
+  (parse-size (getenv name)))
 
 ;; Allocation between minor collections, per allocating place. A
 ;; larger nursery means fewer minor collections and less promotion of
@@ -33,19 +37,56 @@
                           (* 8 1024 1024)))
 
 ;; Unless PLT_CS_NURSERY_SIZE is set, the nursery grows with the heap
-;; after each major collection: 1/8 of the live heap, between 8 MB
-;; and 32 MB. Small-heap programs keep a cache-friendly nursery, while
-;; programs with a big heap (where each minor collection is more
-;; expensive and promotes more) get fewer minor collections.
+;; after each major collection: 1/8 of the live heap, at least 8 MB
+;; and at most half of the last-level cache (shared among allocating
+;; places), and never more than 32 MB. Programs with a big heap, where
+;; each minor collection is more expensive and promotes more, get
+;; fewer minor collections, but the nursery stays small enough that
+;; fresh allocation tends to stay in cache, which matters for the
+;; mutator's speed. If the cache size is unknown, the nursery stays
+;; at 8 MB. PLT_CS_CACHE_SIZE overrides the detected cache size.
 (define MIN-NURSERY-BYTES (* 8 1024 1024))
 (define MAX-NURSERY-BYTES (* 32 1024 1024))
+
+;; #f => not yet detected, 0 => unknown
+(define last-level-cache-bytes #f)
+
+;; Linux: the largest data or unified cache that sysfs reports for CPU 0
+(define (detect-last-level-cache-bytes)
+  (or (getenv-size "PLT_CS_CACHE_SIZE")
+      (guard (x [#t 0])
+        (let ([read-line-at (lambda (path)
+                              (and (#%file-exists? path)
+                                   (let ([p (#%open-input-file path)])
+                                     (let ([l (#%get-line p)])
+                                       (#%close-port p)
+                                       (and (string? l) l)))))])
+          (let loop ([i 0] [best-level 0] [best-size 0])
+            (let ([dir (#%format "/sys/devices/system/cpu/cpu0/cache/index~a/" i)])
+              (cond
+                [(and (fx< i 16) (#%file-exists? (string-append dir "level")))
+                 (let ([level (string->number (or (read-line-at (string-append dir "level")) "") 10)]
+                       [type (read-line-at (string-append dir "type"))]
+                       [size (parse-size (read-line-at (string-append dir "size")))])
+                   (if (and level size
+                            (#%member type '("Data" "Unified"))
+                            (or (> level best-level)
+                                (and (= level best-level) (> size best-size))))
+                       (loop (fx+ i 1) level size)
+                       (loop (fx+ i 1) best-level best-size)))]
+                [else best-size])))))))
+
 (define (adjust-nursery-for-heap! live-bytes)
   (unless fixed-nursery-bytes
-    (let ([n (max MIN-NURSERY-BYTES
-                  (min MAX-NURSERY-BYTES
-                       ;; round down to a megabyte
-                       (* (quotient (quotient live-bytes 8) (* 1024 1024))
-                          (* 1024 1024))))])
+    (unless last-level-cache-bytes
+      (set! last-level-cache-bytes (detect-last-level-cache-bytes)))
+    (let* ([cache-limit (quotient last-level-cache-bytes (* 2 allocating-places))]
+           [n (max MIN-NURSERY-BYTES
+                   (min MAX-NURSERY-BYTES
+                        cache-limit
+                        (quotient live-bytes 8)))]
+           ;; round down to a megabyte
+           [n (* (quotient n (* 1024 1024)) (* 1024 1024))])
       (unless (= n nursery-bytes)
         (set! nursery-bytes n)
         (collect-trip-bytes (* allocating-places nursery-bytes))))))

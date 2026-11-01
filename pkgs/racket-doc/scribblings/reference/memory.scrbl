@@ -224,6 +224,19 @@ Set the @envvar{PLT_INCREMENTAL_GC} environment variable
 to a value that starts with @litchar{0}, @litchar{n}, or @litchar{N} to
 disable incremental-mode requests (in all implementations of Racket).
 
+In the @tech{CS} implementation of Racket, set the
+@as-index{@envvar{PLT_CS_NURSERY_SIZE}} environment variable before
+Racket starts to change how many bytes each place allocates between
+minor collections (the default is 32 megabytes). Set the
+@as-index{@envvar{PLT_CS_HEAP_SIZE}} environment variable to a size
+below which allocation does not trigger a major collection (the
+default is 32 megabytes); a program that is known to need a large heap
+can use it to avoid early major collections. Each size is a positive
+integer number of bytes, optionally followed by @litchar{K},
+@litchar{M}, or @litchar{G} (in either case) to scale it by 1024,
+1024@superscript{2}, or 1024@superscript{3}; any other value is
+ignored.
+
 Each garbage collection logs a message (see @secref["logging"]) at the
 @racket['debug] level with topic @racket['GC]. In the @tech{CS} and @tech{3m}
 implementations of Racket, ``major'' collections are also logged at the
@@ -322,7 +335,8 @@ collection mode, the text has the format
 ]}
 
 @history[#:changed "6.3.0.7" @elem{Added @envvar{PLT_INCREMENTAL_GC}.}
-         #:changed "7.6.0.9" @elem{Added major-collection logging for the topic @racket['GC:major].}]
+         #:changed "7.6.0.9" @elem{Added major-collection logging for the topic @racket['GC:major].}
+         #:changed "9.4.0.4" @elem{Added @envvar{PLT_CS_NURSERY_SIZE} and @envvar{PLT_CS_HEAP_SIZE}.}]
 
 
 @defproc[(collect-garbage [request (or/c 'major 'minor 'incremental) 'major]) void?]{

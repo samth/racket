@@ -386,8 +386,7 @@
 
 (define (scope-place-init!)
   (set! interned-scopes-table (make-ephemeron-hasheq))
-  (set! interned-scopes-table-lock (make-uninterruptible-lock))
-  (set! sorted-ops-cache (box (cons #f null))))
+  (set! interned-scopes-table-lock (make-uninterruptible-lock)))
 
 (define (make-interned-scope sym)
   (define (make)
@@ -627,7 +626,8 @@
 
 (struct propagation (prev-scs   ; owner's scopes before ops
                      prev-smss  ; owner's shifted multi scopes before ops
-                     scope-ops  ; scope -> (or/c 'add 'remove 'flip)
+                     scope-ops  ; list of (cons scope (or/c 'add 'remove 'flip)); see "scope-set.rkt"
+                     sms-ops    ; shifted-multi-scope -> (or/c 'add 'remove 'flip)
                      ;; mpi-shifts and inspectors are mostly
                      ;; implemented at the "binding.rkt" layer,
                      ;; but we accommodate them here
@@ -641,49 +641,50 @@
   #:property prop:propagation-taint (lambda (p) (propagation-taint p))
   #:property prop:propagation-set-taint (lambda (p v) (propagation-set-taint p v)))
 
+(define (sms-op-compose ops sms op)
+  (case op
+    [(add remove) (hash-set ops sms op)]
+    [else
+     (define current-op (hash-ref ops sms #f))
+     (case current-op
+       [(add) (hash-set ops sms 'remove)]
+       [(remove) (hash-set ops sms 'add)]
+       [(flip) (hash-remove ops sms)]
+       [else (hash-set ops sms 'flip)])]))
+
+(define (propagation-op prop sc op prev-scs prev-smss prev-mss)
+  (cond
+    [(propagation? prop)
+     (define new-prop
+       (if (shifted-multi-scope? sc)
+           (struct-copy propagation prop
+                        [sms-ops (sms-op-compose (propagation-sms-ops prop) sc op)])
+           (struct-copy propagation prop
+                        [scope-ops (scope-ops-update (propagation-scope-ops prop) sc op)])))
+     (if (and (null? (propagation-scope-ops new-prop))
+              (zero? (hash-count (propagation-sms-ops new-prop)))
+              (not (propagation-inspector new-prop))
+              (not (propagation-add-mpi-shifts new-prop)))
+         ;; Nothing left to propagate, except maybe taint
+         (propagation-taint new-prop)
+         new-prop)]
+    [(shifted-multi-scope? sc)
+     (propagation prev-scs prev-smss null (hasheq sc op)
+                  prev-mss #f #f
+                  prop)]
+    [else
+     (propagation prev-scs prev-smss (list (cons sc op)) #hasheq()
+                  prev-mss #f #f
+                  prop)]))
+
 (define (propagation-add prop sc prev-scs prev-smss prev-mss)
-  (if (propagation? prop)
-      (struct-copy propagation prop
-                   [scope-ops (hash-set (propagation-scope-ops prop)
-                                        sc
-                                        'add)])
-      (propagation prev-scs prev-smss (hasheq sc 'add)
-                   prev-mss #f #f
-                   prop)))
+  (propagation-op prop sc 'add prev-scs prev-smss prev-mss))
 
 (define (propagation-remove prop sc prev-scs prev-smss prev-mss)
-  (if (propagation? prop)
-      (struct-copy propagation prop
-                   [scope-ops (hash-set (propagation-scope-ops prop)
-                                        sc
-                                        'remove)])
-      (propagation prev-scs prev-smss (hasheq sc 'remove)
-                   prev-mss #f #f
-                   prop)))
+  (propagation-op prop sc 'remove prev-scs prev-smss prev-mss))
 
 (define (propagation-flip prop sc prev-scs prev-smss prev-mss)
-  (if (propagation? prop)
-      (let* ([ops (propagation-scope-ops prop)]
-             [current-op (hash-ref ops sc #f)])
-        (cond
-         [(and (eq? current-op 'flip)
-               (= 1 (hash-count ops))
-               (not (propagation-inspector prop))
-               (not (propagation-add-mpi-shifts prop)))
-          ;; Nothing left to propagate, except maybe taint
-          (propagation-taint prop)]
-         [else
-          (struct-copy propagation prop
-                       [scope-ops
-                        (if (eq? current-op 'flip)
-                            (hash-remove ops sc)
-                            (hash-set ops sc (case current-op
-                                               [(add) 'remove]
-                                               [(remove) 'add]
-                                               [else 'flip])))])]))
-      (propagation prev-scs prev-smss (hasheq sc 'flip)
-                   prev-mss #f #f
-                   prop)))
+  (propagation-op prop sc 'flip prev-scs prev-smss prev-mss))
 
 (define (propagation-mpi-shift prop add inspector prev-scs prev-smss prev-mss)
   (if (propagation? prop)
@@ -694,26 +695,9 @@
                                          (or add base-add)))]
                    [inspector (or (propagation-inspector prop)
                                   inspector)])
-      (propagation prev-scs prev-smss #hasheq()
+      (propagation prev-scs prev-smss null #hasheq()
                    prev-mss add inspector
                    prop)))
-
-;; Propagation applies the same operations to all children of a
-;; syntax object, so remember the last sorted list of operations.
-;; The cache is a single pair, so it's safe for concurrent use.
-(define-place-local sorted-ops-cache (box (cons #f null)))
-
-(define (sorted-scope-ops ops)
-  (define c (unbox* sorted-ops-cache))
-  (cond
-    [(eq? (car c) ops) (cdr c)]
-    [else
-     (define sorted (sort-scope-ops
-                     (for/list ([(sc op) (in-immutable-hash ops)]
-                                #:unless (shifted-multi-scope? sc))
-                       (cons sc op))))
-     (set-box*! sorted-ops-cache (cons ops sorted))
-     sorted]))
 
 (define (propagation-apply prop scs parent-s)
   (cond
@@ -723,7 +707,7 @@
     (define new-scs
       (scope-set-apply-ops
        (->scope-set scs)
-       (sorted-scope-ops (propagation-scope-ops prop))))
+       (propagation-scope-ops prop)))
     ;; Improve sharing if the result matches the parent:
     (if (set=? new-scs (syntax-scopes parent-s))
         (syntax-scopes parent-s)
@@ -735,8 +719,7 @@
     (syntax-shifted-multi-scopes parent-s)]
    [else
     (define new-smss
-      (for/fold ([smss smss]) ([(sms op) (in-immutable-hash (propagation-scope-ops prop))]
-                               #:when (shifted-multi-scope? sms))
+      (for/fold ([smss smss]) ([(sms op) (in-immutable-hash (propagation-sms-ops prop))])
         (fallback-update-first
          smss
          (lambda (smss)
@@ -788,6 +771,7 @@
       (propagation prev-scs
                    prev-smss
                    (propagation-scope-ops prop)
+                   (propagation-sms-ops prop)
                    prev-mss
                    (propagation-add-mpi-shifts prop)
                    (propagation-inspector prop)
@@ -796,19 +780,10 @@
                        base-prop))])]
    [else
     (define new-ops
-      ;; [could call `cache-or-reuse-hash` here (or a copy for propagations),
-      ;;  but that doesn't seem to same time or space overall]
-      (for/fold ([ops (propagation-scope-ops base-prop)]) ([(sc op) (in-immutable-hash (propagation-scope-ops prop))])
-        (case op
-          [(add) (hash-set ops sc 'add)]
-          [(remove) (hash-set ops sc 'remove)]
-          [else ; flip
-           (define current-op (hash-ref ops sc #f))
-           (case current-op
-             [(add) (hash-set ops sc 'remove)]
-             [(remove) (hash-set ops sc 'add)]
-             [(flip) (hash-remove ops sc)]
-             [else (hash-set ops sc 'flip)])])))
+      (scope-ops-compose (propagation-scope-ops base-prop) (propagation-scope-ops prop)))
+    (define new-sms-ops
+      (for/fold ([ops (propagation-sms-ops base-prop)]) ([(sms op) (in-immutable-hash (propagation-sms-ops prop))])
+        (sms-op-compose ops sms op)))
     (define add (propagation-add-mpi-shifts prop))
     (define base-add (propagation-add-mpi-shifts base-prop))
     (define new-taint
@@ -816,7 +791,8 @@
               (propagation-taint base-prop))
           'tainted/need-propagate
           (propagation-taint base-prop)))
-    (if (and (zero? (hash-count new-ops))
+    (if (and (null? new-ops)
+             (zero? (hash-count new-sms-ops))
              (not add)
              (not base-add)
              (not (propagation-inspector prop))
@@ -824,6 +800,7 @@
         new-taint
         (struct-copy propagation base-prop
                      [scope-ops new-ops]
+                     [sms-ops new-sms-ops]
                      [add-mpi-shifts (if (and add base-add)
                                          (lambda (mss) (add (base-add mss)))
                                          (or add base-add))]

@@ -42,7 +42,9 @@
          list->scope-set
          hash->scope-set
          scope-set-apply-ops
-         sort-scope-ops)
+         scope-ops-ref
+         scope-ops-update
+         scope-ops-compose)
 
 ;; Every scope has an `id` (exact rational) and a fixnum `key`
 (struct scope-base (id key)
@@ -216,15 +218,71 @@
 (define (hash->scope-set ht)
   (list->scope-set (hash-keys ht)))
 
-;; Sort a list of `(cons scope op)` by decreasing scope id
-(define (sort-scope-ops ops)
-  (cond
-    [(or (null? ops) (null? (cdr ops))) ops]
-    [else (sort ops (lambda (a b) (sc> (car a) (car b))))]))
+;; ----------------------------------------
+;; Scope operations: a list of `(cons scope op)` with `op` as 'add,
+;; 'remove, or 'flip, where each scope appears at most once, sorted by
+;; decreasing scope id. Lazy propagation records pending operations
+;; this way, so that composing two sets of pending operations is a
+;; merge and applying them to a scope set is a merge.
 
-;; Apply a list of `(cons scope op)` with `op` as 'add, 'remove, or
-;; 'flip, where each scope appears at most once, sorted by decreasing
-;; scope id (see `sort-scope-ops`). The result shares the tail of `s`
+;; Result of performing `new` after `cur` (which can be #f), where
+;; #f means no operation
+(define (compose-op cur new)
+  (case new
+    [(add) 'add]
+    [(remove) 'remove]
+    [else (case cur
+            [(add) 'remove]
+            [(remove) 'add]
+            [(flip) #f]
+            [else 'flip])]))
+
+(define (scope-ops-ref ops sc)
+  (let loop ([ops ops])
+    (cond
+      [(null? ops) #f]
+      [(eq? (caar ops) sc) (cdar ops)]
+      [(sc> sc (caar ops)) #f]
+      [else (loop (cdr ops))])))
+
+;; Add `op` for `sc` after the operations in `ops`
+(define (scope-ops-update ops sc op)
+  (let loop ([l ops])
+    (cond
+      [(or (null? l) (sc> sc (caar l)))
+       (prefix-onto ops l (cons (cons sc op) l))]
+      [(eq? (caar l) sc)
+       (define new-op (compose-op (cdar l) op))
+       (cond
+         [(eq? new-op (cdar l)) ops]
+         [new-op (prefix-onto ops l (cons (cons sc new-op) (cdr l)))]
+         [else (prefix-onto ops l (cdr l))])]
+      [else (loop (cdr l))])))
+
+;; Operations equivalent to `base` followed by `new`
+(define (scope-ops-compose base new)
+  (cond
+    [(null? new) base]
+    [(null? base) new]
+    [else
+     (let loop ([b base] [n new])
+       (cond
+         [(null? n) b]
+         [(null? b) n]
+         [else
+          (define bsc (caar b))
+          (define nsc (caar n))
+          (cond
+            [(eq? bsc nsc)
+             (define op (compose-op (cdar b) (cdar n)))
+             (if op
+                 (cons (if (eq? op (cdar b)) (car b) (cons bsc op))
+                       (loop (cdr b) (cdr n)))
+                 (loop (cdr b) (cdr n)))]
+            [(sc> bsc nsc) (cons (car b) (loop (cdr b) n))]
+            [else (cons (car n) (loop b (cdr n)))])]))]))
+
+;; Apply scope operations (see above) to a scope set. The result shares the tail of `s`
 ;; after the oldest scope mentioned by `ops`.
 (define (scope-set-apply-ops s ops)
   (cond

@@ -28,8 +28,27 @@
 ;; compiling large programs (they allocate tens of GB), but a nursery
 ;; that doesn't fit in cache slows down the allocating code itself.
 ;; PLT_CS_NURSERY_SIZE overrides the default.
-(define nursery-bytes (or (getenv-size "PLT_CS_NURSERY_SIZE")
+(define fixed-nursery-bytes (getenv-size "PLT_CS_NURSERY_SIZE"))
+(define nursery-bytes (or fixed-nursery-bytes
                           (* 8 1024 1024)))
+
+;; Unless PLT_CS_NURSERY_SIZE is set, the nursery grows with the heap
+;; after each major collection: 1/8 of the live heap, between 8 MB
+;; and 32 MB. Small-heap programs keep a cache-friendly nursery, while
+;; programs with a big heap (where each minor collection is more
+;; expensive and promotes more) get fewer minor collections.
+(define MIN-NURSERY-BYTES (* 8 1024 1024))
+(define MAX-NURSERY-BYTES (* 32 1024 1024))
+(define (adjust-nursery-for-heap! live-bytes)
+  (unless fixed-nursery-bytes
+    (let ([n (max MIN-NURSERY-BYTES
+                  (min MAX-NURSERY-BYTES
+                       ;; round down to a megabyte
+                       (* (quotient (quotient live-bytes 8) (* 1024 1024))
+                          (* 1024 1024))))])
+      (unless (= n nursery-bytes)
+        (set! nursery-bytes n)
+        (collect-trip-bytes (* allocating-places nursery-bytes))))))
 
 ;; A major collection is not triggered by memory use below this size
 ;; (but explicit `(collect-garbage)` calls still happen). Programs
@@ -192,6 +211,7 @@
             ;;  immediate major GC too soon. So, watch both.
             (let ([scale (lambda (n)
                            (+ n (inexact->exact (floor (* (sqrt (max 0 n)) GC-TRIGGER-FACTOR)))))])
+              (adjust-nursery-for-heap! (- post-allocated (bytes-finalized)))
               (set! trigger-major-gc-allocated (max min-heap-bytes
                                                     (scale (- post-allocated (bytes-finalized)))))
               (set! trigger-major-gc-allocated+overhead (max (* 2 min-heap-bytes)

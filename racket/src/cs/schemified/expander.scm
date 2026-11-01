@@ -4045,7 +4045,7 @@
        #vu8(80 76 84 95 69 88 80 65 78 68 69 82 95 84 73 77 69 83))
     #t
     #f))
-(define cell.1$10 (unsafe-make-place-local #f))
+(define cell.1$11 (unsafe-make-place-local #f))
 (define cell.2$7 (unsafe-make-place-local (make-hasheq)))
 (define performance-place-init!
   (lambda () (unsafe-place-local-set! cell.2$7 (make-hasheq))))
@@ -4414,10 +4414,10 @@
 (define start-performance-region
   (lambda path_0
     (unsafe-place-local-set!
-     cell.1$10
+     cell.1$11
      (let ((app_0
             (let ((app_0
-                   (if (unsafe-place-local-ref cell.1$10)
+                   (if (unsafe-place-local-ref cell.1$11)
                      (letrec*
                       ((loop_0
                         (|#%name|
@@ -4441,7 +4441,7 @@
                                      null))))))))))
                       (loop_0
                        path_0
-                       (region-path (car (unsafe-place-local-ref cell.1$10)))))
+                       (region-path (car (unsafe-place-local-ref cell.1$11)))))
                      path_0)))
               (let ((app_1 (current-inexact-monotonic-milliseconds)))
                 (let ((app_2 (current-gc-milliseconds)))
@@ -4453,17 +4453,17 @@
                    0.0
                    0
                    0))))))
-       (cons app_0 (unsafe-place-local-ref cell.1$10))))))
+       (cons app_0 (unsafe-place-local-ref cell.1$11))))))
 (define end-performance-region
   (lambda ()
     (let ((now_0 (current-inexact-monotonic-milliseconds)))
       (let ((now-gc_0 (current-gc-milliseconds)))
         (let ((now-memory_0 (current-memory-use 'cumulative)))
-          (let ((r_0 (car (unsafe-place-local-ref cell.1$10))))
+          (let ((r_0 (car (unsafe-place-local-ref cell.1$11))))
             (begin
               (unsafe-place-local-set!
-               cell.1$10
-               (cdr (unsafe-place-local-ref cell.1$10)))
+               cell.1$11
+               (cdr (unsafe-place-local-ref cell.1$11)))
               (let ((full-delta_0 (- now_0 (region-start r_0))))
                 (let ((delta_0 (- full-delta_0 (region-as-nested r_0))))
                   (let ((full-delta-gc_0 (- now-gc_0 (region-start-gc r_0))))
@@ -4537,34 +4537,34 @@
                                              (cdr path_0)))))))))))
                              (let ((app_0 (unsafe-place-local-ref cell.2$7)))
                                (loop_0 app_0 (region-path r_0))))
-                            (if (unsafe-place-local-ref cell.1$10)
+                            (if (unsafe-place-local-ref cell.1$11)
                               (begin
                                 (let ((app_0
                                        (car
-                                        (unsafe-place-local-ref cell.1$10))))
+                                        (unsafe-place-local-ref cell.1$11))))
                                   (set-region-as-nested!
                                    app_0
                                    (+
                                     (region-as-nested
-                                     (car (unsafe-place-local-ref cell.1$10)))
+                                     (car (unsafe-place-local-ref cell.1$11)))
                                     full-delta_0)))
                                 (let ((app_0
                                        (car
-                                        (unsafe-place-local-ref cell.1$10))))
+                                        (unsafe-place-local-ref cell.1$11))))
                                   (set-region-as-nested-gc!
                                    app_0
                                    (+
                                     (region-as-nested-gc
-                                     (car (unsafe-place-local-ref cell.1$10)))
+                                     (car (unsafe-place-local-ref cell.1$11)))
                                     full-delta-gc_0)))
                                 (let ((app_0
                                        (car
-                                        (unsafe-place-local-ref cell.1$10))))
+                                        (unsafe-place-local-ref cell.1$11))))
                                   (set-region-as-nested-memory!
                                    app_0
                                    (+
                                     (region-as-nested-memory
-                                     (car (unsafe-place-local-ref cell.1$10)))
+                                     (car (unsafe-place-local-ref cell.1$11)))
                                     full-delta-memory_0))))
                               (void))))))))))))))))
 (define effect_2055
@@ -5769,10 +5769,30 @@
                        result_0)))))
                 (for-loop_0 0 (hash-iterate-first new-ht_0)))))
           (table2.1 new-ht_0 count_0 (max 128 (* 2 count_0))))))))
-(define finish_2266
+(define set-field0-eq-hash-code!
+  (let ((t_0 (primitive-table '|#%expander-internal|)))
+    (if t_0
+      (hash-ref t_0 'unsafe-set-struct-type-field0-eq-hash-code! #f)
+      #f)))
+(define register-field0-eq-hash-code!.1
+  (|#%name|
+   register-field0-eq-hash-code!
+   (lambda (hot?1_0 struct-type3_0)
+     (if set-field0-eq-hash-code!
+       (|#%app| set-field0-eq-hash-code! struct-type3_0 hot?1_0)
+       (void)))))
+(define cell.1$10 (unsafe-make-place-local (box 0)))
+(define next-field0-hash!
+  (lambda ()
+    (let ((n_0 (unsafe-unbox* (unsafe-place-local-ref cell.1$10))))
+      (begin
+        (let ((app_0 (unsafe-place-local-ref cell.1$10)))
+          (unsafe-set-box*! app_0 (fxand (fx+ n_0 1) 1073741823)))
+        n_0))))
+(define finish_2095
   (make-struct-type-install-properties
    '(resolved-module-path)
-   1
+   2
    0
    #f
    (list
@@ -5807,7 +5827,7 @@
         (|#%app| hash-code_0 (1/resolved-module-path-name a_0))))))
    (current-inspector)
    #f
-   '(0)
+   '(0 1)
    #f
    'resolved-module-path))
 (define struct:resolved-module-path
@@ -5818,13 +5838,13 @@
    (|#%nongenerative-uid| resolved-module-path)
    #f
    #f
-   '(1 . 0)
+   '(2 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2442 (finish_2266 struct:resolved-module-path))
+(define effect_2442 (finish_2095 struct:resolved-module-path))
 (define resolved-module-path1.1
   (|#%name|
    resolved-module-path
@@ -5834,10 +5854,21 @@
   (|#%name|
    resolved-module-path?
    (record-predicate struct:resolved-module-path)))
+(define resolved-module-path-hash
+  (|#%name|
+   resolved-module-path-hash
+   (record-accessor struct:resolved-module-path 0)))
 (define 1/resolved-module-path-name
   (|#%name|
    resolved-module-path-name
-   (record-accessor struct:resolved-module-path 0)))
+   (record-accessor struct:resolved-module-path 1)))
+(define effect_2622
+  (begin
+    (|#%call-with-values|
+     (lambda ()
+       (register-field0-eq-hash-code!.1 #f struct:resolved-module-path))
+     print-values)
+    (void)))
 (define format-resolved-module-path-name
   (lambda (p_0)
     (if (path? p_0)
@@ -5946,7 +5977,9 @@
            "                    (and/c path? complete-path?))\n"
            "              (non-empty-listof symbol?)))")
           p_0))
-       (weak-intern! resolved-module-paths (resolved-module-path1.1 p_0))))))
+       (weak-intern!
+        resolved-module-paths
+        (resolved-module-path1.1 (next-field0-hash!) p_0))))))
 (define resolved-module-path->module-path
   (lambda (r_0)
     (let ((name_0 (1/resolved-module-path-name r_0)))
@@ -6086,7 +6119,7 @@
    #f
    |#%system-inspector|))
 (define effect_2892 (finish_2670 struct:module-path-index))
-(define module-path-index2.1
+(define module-path-index3.1
   (|#%name|
    module-path-index
    (record-constructor
@@ -6128,18 +6161,18 @@
   (let ((module-path-index-resolve_0
          (|#%name|
           module-path-index-resolve
-          (lambda (mpi5_0 load?3_0 stx4_0)
+          (lambda (mpi6_0 load?4_0 stx5_0)
             (begin
-              (if (1/module-path-index? mpi5_0)
+              (if (1/module-path-index? mpi6_0)
                 (void)
                 (raise-argument-error
                  'module-path-index-resolve
                  "module-path-index?"
-                 mpi5_0))
-              (let ((or-part_0 (module-path-index-resolved mpi5_0)))
+                 mpi6_0))
+              (let ((or-part_0 (module-path-index-resolved mpi6_0)))
                 (if or-part_0
                   or-part_0
-                  (if (module-path-index-path mpi5_0)
+                  (if (module-path-index-path mpi6_0)
                     (let ((mod-name_0
                            (begin
                              (if log-performance?
@@ -6147,15 +6180,15 @@
                                (void))
                              (begin0
                                (let ((app_0 (1/current-module-name-resolver)))
-                                 (let ((app_1 (module-path-index-path mpi5_0)))
+                                 (let ((app_1 (module-path-index-path mpi6_0)))
                                    (|#%app|
                                     app_0
                                     app_1
                                     (module-path-index-resolve/maybe
-                                     (module-path-index-base mpi5_0)
-                                     load?3_0)
-                                    stx4_0
-                                    load?3_0)))
+                                     (module-path-index-base mpi6_0)
+                                     load?4_0)
+                                    stx5_0
+                                    load?4_0)))
                                (if log-performance?
                                  (end-performance-region)
                                  (void))))))
@@ -6167,85 +6200,85 @@
                            "current module name resolver's result is not a resolved module path"
                            "result"
                            mod-name_0))
-                        (set-module-path-index-resolved! mpi5_0 mod-name_0)
+                        (set-module-path-index-resolved! mpi6_0 mod-name_0)
                         mod-name_0))
                     (raise-arguments-error
                      'module-path-index-resolve
                      "\"self\" index has no resolution"
                      "module path index"
-                     mpi5_0)))))))))
+                     mpi6_0)))))))))
     (|#%name|
      module-path-index-resolve
      (case-lambda
       ((mpi_0) (module-path-index-resolve_0 mpi_0 #f #f))
-      ((mpi_0 load?_0 stx4_0)
-       (module-path-index-resolve_0 mpi_0 load?_0 stx4_0))
-      ((mpi_0 load?3_0) (module-path-index-resolve_0 mpi_0 load?3_0 #f))))))
+      ((mpi_0 load?_0 stx5_0)
+       (module-path-index-resolve_0 mpi_0 load?_0 stx5_0))
+      ((mpi_0 load?4_0) (module-path-index-resolve_0 mpi_0 load?4_0 #f))))))
 (define 1/module-path-index-join
   (let ((module-path-index-join_0
          (|#%name|
           module-path-index-join
-          (lambda (mod-path7_0 base8_0 submod6_0)
+          (lambda (mod-path8_0 base9_0 submod7_0)
             (begin
-              (if (let ((or-part_0 (not mod-path7_0)))
-                    (if or-part_0 or-part_0 (1/module-path? mod-path7_0)))
+              (if (let ((or-part_0 (not mod-path8_0)))
+                    (if or-part_0 or-part_0 (1/module-path? mod-path8_0)))
                 (void)
                 (raise-argument-error
                  'module-path-index-join
                  "(or/c #f module-path?)"
-                 mod-path7_0))
-              (if (let ((or-part_0 (not base8_0)))
+                 mod-path8_0))
+              (if (let ((or-part_0 (not base9_0)))
                     (if or-part_0
                       or-part_0
-                      (let ((or-part_1 (1/resolved-module-path? base8_0)))
+                      (let ((or-part_1 (1/resolved-module-path? base9_0)))
                         (if or-part_1
                           or-part_1
-                          (1/module-path-index? base8_0)))))
+                          (1/module-path-index? base9_0)))))
                 (void)
                 (raise-argument-error
                  'module-path-index-join
                  "(or/c #f resolved-module-path? module-path-index?)"
-                 base8_0))
-              (if (let ((or-part_0 (not submod6_0)))
+                 base9_0))
+              (if (let ((or-part_0 (not submod7_0)))
                     (if or-part_0
                       or-part_0
-                      (if (pair? submod6_0)
-                        (if (list? submod6_0)
-                          (andmap_2814 symbol? submod6_0)
+                      (if (pair? submod7_0)
+                        (if (list? submod7_0)
+                          (andmap_2814 symbol? submod7_0)
                           #f)
                         #f)))
                 (void)
                 (raise-argument-error
                  'module-path-index-join
                  "(or/c #f (non-empty-listof symbol?))"
-                 submod6_0))
-              (if (if (not mod-path7_0) base8_0 #f)
+                 submod7_0))
+              (if (if (not mod-path8_0) base9_0 #f)
                 (raise-arguments-error
                  'module-path-index-join
                  "cannot combine #f path with non-#f base"
                  "given base"
-                 base8_0)
+                 base9_0)
                 (void))
-              (if (if submod6_0 mod-path7_0 #f)
+              (if (if submod7_0 mod-path8_0 #f)
                 (raise-arguments-error
                  'module-path-index-join
                  "cannot combine #f submodule list with non-#f module path"
                  "given module path"
-                 mod-path7_0
+                 mod-path8_0
                  "given submodule list"
-                 submod6_0)
+                 submod7_0)
                 (void))
-              (if submod6_0
+              (if submod7_0
                 (make-self-module-path-index
                  (1/make-resolved-module-path
-                  (cons '|expanded module| submod6_0)))
-                (module-path-index-join* mod-path7_0 base8_0)))))))
+                  (cons '|expanded module| submod7_0)))
+                (module-path-index-join* mod-path8_0 base9_0)))))))
     (|#%name|
      module-path-index-join
      (case-lambda
       ((mod-path_0 base_0) (module-path-index-join_0 mod-path_0 base_0 #f))
-      ((mod-path_0 base_0 submod6_0)
-       (module-path-index-join_0 mod-path_0 base_0 submod6_0))))))
+      ((mod-path_0 base_0 submod7_0)
+       (module-path-index-join_0 mod-path_0 base_0 submod7_0))))))
 (define module-path-index-join*
   (lambda (mod-path_0 base_0)
     (let ((keep-base_0
@@ -6270,7 +6303,7 @@
                            (loop_0 (cadr mod-path_1))
                            base_0)))))))))
             (loop_0 mod-path_0))))
-      (module-path-index2.1 mod-path_0 keep-base_0 #f '()))))
+      (module-path-index3.1 mod-path_0 keep-base_0 #f '()))))
 (define module-path-index-resolve/maybe
   (lambda (base_0 load?_0)
     (if (1/module-path-index? base_0)
@@ -6310,12 +6343,12 @@
          #f)))))
 (define make-self-module-path-index
   (case-lambda
-   ((name_0) (module-path-index2.1 #f #f name_0 '()))
+   ((name_0) (module-path-index3.1 #f #f name_0 '()))
    ((name_0 enclosing_0)
     (make-self-module-path-index
-     (let ((temp21_0
+     (let ((temp22_0
             (if enclosing_0 (1/module-path-index-resolve enclosing_0) #f)))
-       (build-module-name.1 unsafe-undefined name_0 temp21_0))))))
+       (build-module-name.1 unsafe-undefined name_0 temp22_0))))))
 (define cell.1$9 (unsafe-make-place-local (make-weak-hash)))
 (define cell.2$6 (unsafe-make-place-local (unsafe-make-uninterruptible-lock)))
 (define generic-module-name '|expanded module|)
@@ -6339,7 +6372,7 @@
                    (if e_0 (ephemeron-value e_0) #f))))
             (if or-part_0
               or-part_0
-              (let ((mpi_0 (module-path-index2.1 #f #f r_0 '())))
+              (let ((mpi_0 (module-path-index3.1 #f #f r_0 '())))
                 (begin
                   (let ((app_0 (unsafe-place-local-ref cell.1$9)))
                     (hash-set! app_0 r_0 (make-ephemeron r_0 mpi_0)))
@@ -6398,7 +6431,7 @@
                 (let ((fresh-base_0
                        (hash-ref freshen-cache_0 result-base_0 #f)))
                   (let ((fresh-mpi_0
-                         (module-path-index2.1
+                         (module-path-index3.1
                           (module-path-index-path result-mpi_0)
                           (if fresh-base_0 fresh-base_0 result-base_0)
                           #f
@@ -6603,25 +6636,25 @@
 (define build-module-name.1
   (|#%name|
    build-module-name
-   (lambda (original9_0 name11_0 enclosing12_0)
+   (lambda (original10_0 name12_0 enclosing13_0)
      (let ((orig-name_0
-            (if (eq? original9_0 unsafe-undefined) name11_0 original9_0)))
+            (if (eq? original10_0 unsafe-undefined) name12_0 original10_0)))
        (let ((enclosing-module-name_0
-              (if enclosing12_0
-                (1/resolved-module-path-name enclosing12_0)
+              (if enclosing13_0
+                (1/resolved-module-path-name enclosing13_0)
                 #f)))
          (1/make-resolved-module-path
-          (if (equal? name11_0 "..")
+          (if (equal? name12_0 "..")
             (if (not (pair? enclosing-module-name_0))
               (error "too many \"..\"s:" orig-name_0)
               (if (= 2 (length enclosing-module-name_0))
                 (car enclosing-module-name_0)
                 (reverse$1 (cdr (reverse$1 enclosing-module-name_0)))))
             (if (not enclosing-module-name_0)
-              name11_0
+              name12_0
               (if (pair? enclosing-module-name_0)
-                (append enclosing-module-name_0 (list name11_0))
-                (list enclosing-module-name_0 name11_0))))))))))
+                (append enclosing-module-name_0 (list name12_0))
+                (list enclosing-module-name_0 name12_0))))))))))
 (define 1/current-module-name-resolver
   (make-parameter
    core-module-name-resolver
@@ -11036,6 +11069,7 @@
 (define fallback->list
   (lambda (smss_0)
     (if (fallback? smss_0) (fallback-search-list smss_0) (list smss_0))))
+(define RESOLVE-CACHE-SIZE 4096)
 (define make-cache$1
   (|#%name| make-cache (lambda () (box (make-weak-box #f)))))
 (define cell.1$6 (unsafe-make-place-local (make-cache$1)))
@@ -11044,23 +11078,28 @@
 (define clear-resolve-cache!
   (case-lambda
    ((sym_0)
-    (let ((c_0
+    (let ((vec_0
            (weak-box-value (unsafe-unbox* (unsafe-place-local-ref cell.1$6)))))
-      (if c_0 (hash-remove! c_0 sym_0) (void))))
+      (if vec_0
+        (let ((i_0 (fxand (eq-hash-code sym_0) 4095)))
+          (let ((e_0 (unsafe-vector*-ref vec_0 i_0)))
+            (if (if e_0 (eq? sym_0 (entry-sym e_0)) #f)
+              (unsafe-vector*-set! vec_0 i_0 #f)
+              (void))))
+        (void))))
    (()
-    (let ((c_0
-           (weak-box-value (unsafe-unbox* (unsafe-place-local-ref cell.1$6)))))
-      (if c_0 (hash-clear! c_0) (void))))))
-(define finish_2822
+    (let ((app_0 (unsafe-place-local-ref cell.1$6)))
+      (unsafe-set-box*! app_0 (make-weak-box #f))))))
+(define finish_1824
   (make-struct-type-install-properties
    '(entry)
-   4
+   5
    0
    #f
    (list (cons prop:authentic #t))
    (current-inspector)
    #f
-   '(0 1 2 3)
+   '(0 1 2 3 4)
    #f
    'entry))
 (define struct:entry
@@ -11071,34 +11110,38 @@
    (|#%nongenerative-uid| entry)
    #f
    #f
-   '(4 . 0)
+   '(5 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2728 (finish_2822 struct:entry))
+(define effect_2728 (finish_1824 struct:entry))
 (define entry1.1
   (|#%name|
    entry
    (record-constructor
     (make-record-constructor-descriptor struct:entry #f #f))))
 (define entry? (|#%name| entry? (record-predicate struct:entry)))
-(define entry-scs (|#%name| entry-scs (record-accessor struct:entry 0)))
-(define entry-smss (|#%name| entry-smss (record-accessor struct:entry 1)))
-(define entry-phase (|#%name| entry-phase (record-accessor struct:entry 2)))
+(define entry-sym (|#%name| entry-sym (record-accessor struct:entry 0)))
+(define entry-scs (|#%name| entry-scs (record-accessor struct:entry 1)))
+(define entry-smss (|#%name| entry-smss (record-accessor struct:entry 2)))
+(define entry-phase (|#%name| entry-phase (record-accessor struct:entry 3)))
 (define entry-binding
-  (|#%name| entry-binding (record-accessor struct:entry 3)))
+  (|#%name| entry-binding (record-accessor struct:entry 4)))
 (define resolve-cache-get
   (lambda (sym_0 phase_0 scs_0 smss_0)
-    (let ((c_0
+    (let ((vec_0
            (weak-box-value (unsafe-unbox* (unsafe-place-local-ref cell.1$6)))))
-      (if c_0
-        (let ((v_0 (hash-ref c_0 sym_0 #f)))
+      (if vec_0
+        (let ((v_0
+               (unsafe-vector*-ref vec_0 (fxand (eq-hash-code sym_0) 4095))))
           (if v_0
-            (if (eqv? phase_0 (entry-phase v_0))
-              (if (scope-set=? scs_0 (entry-scs v_0))
-                (if (set=? smss_0 (entry-smss v_0)) (entry-binding v_0) #f)
+            (if (eq? sym_0 (entry-sym v_0))
+              (if (eqv? phase_0 (entry-phase v_0))
+                (if (scope-set=? scs_0 (entry-scs v_0))
+                  (if (set=? smss_0 (entry-smss v_0)) (entry-binding v_0) #f)
+                  #f)
                 #f)
               #f)
             #f))
@@ -11106,13 +11149,20 @@
 (define resolve-cache-set!
   (lambda (sym_0 phase_0 scs_0 smss_0 b_0)
     (let ((wb_0 (unsafe-unbox* (unsafe-place-local-ref cell.1$6))))
-      (let ((c_0 (weak-box-value wb_0)))
-        (if (not c_0)
+      (let ((vec_0 (weak-box-value wb_0)))
+        (if (not vec_0)
           (begin
             (let ((app_0 (unsafe-place-local-ref cell.1$6)))
-              (unsafe-box*-cas! app_0 wb_0 (make-weak-box (make-hasheq))))
+              (unsafe-box*-cas!
+               app_0
+               wb_0
+               (make-weak-box (make-vector 4096 #f))))
             (resolve-cache-set! sym_0 phase_0 scs_0 smss_0 b_0))
-          (hash-set! c_0 sym_0 (entry1.1 scs_0 smss_0 phase_0 b_0)))))))
+          (let ((app_0 (fxand (eq-hash-code sym_0) 4095)))
+            (unsafe-vector*-set!
+             vec_0
+             app_0
+             (entry1.1 sym_0 scs_0 smss_0 phase_0 b_0))))))))
 (define cache-place-init! (lambda () (resolve-cache-place-init!)))
 (define finish_3102
   (make-struct-type-install-properties
@@ -11205,23 +11255,6 @@
   (|#%name| scope-binding-table (record-accessor struct:scope 1)))
 (define set-scope-binding-table!
   (|#%name| set-scope-binding-table! (record-mutator struct:scope 1)))
-(define effect_2489
-  (begin
-    (|#%call-with-values|
-     (lambda ()
-       (let ((t_0 (primitive-table '|#%expander-internal|)))
-         (let ((set-field0-eq-hash-code!_0
-                (if t_0
-                  (hash-ref
-                   t_0
-                   'unsafe-set-struct-type-field0-eq-hash-code!
-                   #f)
-                  #f)))
-           (if set-field0-eq-hash-code!_0
-             (|#%app| set-field0-eq-hash-code!_0 struct:scope)
-             (void)))))
-     print-values)
-    (void)))
 (define deserialize-scope
   (case-lambda
    (() top-level-common-scope)
@@ -11553,10 +11586,10 @@
     (begin
       (set-scope-binding-table! s_0 bt_0)
       (set-representative-scope-owner! s_0 owner_0))))
-(define finish_3292
+(define finish_2613
   (make-struct-type-install-properties
    '(shifted-multi-scope)
-   2
+   3
    0
    #f
    (list
@@ -11589,7 +11622,7 @@
          (write-string ">" port_0)))))
    (current-inspector)
    #f
-   '(0 1)
+   '(0 1 2)
    #f
    'shifted-multi-scope))
 (define struct:shifted-multi-scope
@@ -11600,13 +11633,13 @@
    (|#%nongenerative-uid| shifted-multi-scope)
    #t
    #f
-   '(2 . 0)
+   '(3 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2854 (finish_3292 struct:shifted-multi-scope))
+(define effect_2854 (finish_2613 struct:shifted-multi-scope))
 (define shifted-multi-scope5.1
   (|#%name|
    shifted-multi-scope
@@ -11616,14 +11649,44 @@
   (|#%name|
    shifted-multi-scope?
    (record-predicate struct:shifted-multi-scope)))
+(define shifted-multi-scope-hash
+  (|#%name|
+   shifted-multi-scope-hash
+   (record-accessor struct:shifted-multi-scope 0)))
 (define shifted-multi-scope-phase
   (|#%name|
    shifted-multi-scope-phase
-   (record-accessor struct:shifted-multi-scope 0)))
+   (record-accessor struct:shifted-multi-scope 1)))
 (define shifted-multi-scope-multi-scope
   (|#%name|
    shifted-multi-scope-multi-scope
-   (record-accessor struct:shifted-multi-scope 1)))
+   (record-accessor struct:shifted-multi-scope 2)))
+(define effect_2684
+  (begin
+    (|#%call-with-values|
+     (lambda ()
+       (register-field0-eq-hash-code!.1 #f struct:shifted-multi-scope))
+     print-values)
+    (void)))
+(define effect_2729
+  (begin
+    (|#%call-with-values|
+     (lambda ()
+       (register-field0-eq-hash-code!.1 #f struct:representative-scope))
+     print-values)
+    (void)))
+(define effect_2619
+  (begin
+    (|#%call-with-values|
+     (lambda () (register-field0-eq-hash-code!.1 #f struct:interned-scope))
+     print-values)
+    (void)))
+(define effect_3127
+  (begin
+    (|#%call-with-values|
+     (lambda () (register-field0-eq-hash-code!.1 #t struct:scope))
+     print-values)
+    (void)))
 (define deserialize-shifted-multi-scope
   (lambda (phase_0 multi-scope_0)
     (intern-shifted-multi-scope phase_0 multi-scope_0)))
@@ -11654,7 +11717,11 @@
            (transaction-loop_0
             (multi-scope-shifted multi-scope_0)
             phase_0
-            (lambda () (shifted-multi-scope5.1 phase_0 multi-scope_0)))))
+            (lambda ()
+              (shifted-multi-scope5.1
+               (next-field0-hash!)
+               phase_0
+               multi-scope_0)))))
        (let ((or-part_0
               (hash-ref
                (unbox (multi-scope-label-shifted multi-scope_0))
@@ -11665,7 +11732,11 @@
            (transaction-loop_0
             (multi-scope-label-shifted multi-scope_0)
             phase_0
-            (lambda () (shifted-multi-scope5.1 phase_0 multi-scope_0)))))))))
+            (lambda ()
+              (shifted-multi-scope5.1
+               (next-field0-hash!)
+               phase_0
+               multi-scope_0)))))))))
 (define finish_3013
   (make-struct-type-install-properties
    '(shifted-to-label-phase)
@@ -11693,7 +11764,7 @@
    #f
    'prefab))
 (define effect_2315 (finish_3013 struct:shifted-to-label-phase))
-(define shifted-to-label-phase6.1
+(define shifted-to-label-phase11.1
   (|#%name|
    shifted-to-label-phase
    (record-constructor
@@ -11858,7 +11929,7 @@
   (let ((new-multi-scope_0
          (|#%name|
           new-multi-scope
-          (lambda (name7_0)
+          (lambda (name12_0)
             (intern-shifted-multi-scope
              0
              (let ((app_0 (new-scope-id!)))
@@ -11866,13 +11937,13 @@
                  (let ((app_2 (box (hasheqv))))
                    (multi-scope3.1
                     app_0
-                    name7_0
+                    name12_0
                     app_1
                     app_2
                     (box (hash)))))))))))
     (case-lambda
      (() (new-multi-scope_0 #f))
-     ((name7_0) (new-multi-scope_0 name7_0)))))
+     ((name12_0) (new-multi-scope_0 name12_0)))))
 (define multi-scope-to-scope-at-phase
   (lambda (ms_0 phase_0)
     (let ((scopes_0 (unbox (multi-scope-scopes ms_0))))
@@ -11968,51 +12039,51 @@
                                                      (syntax-mpi-shifts
                                                       sub-s_0))))
                                                (if (syntax?$1 sub-s_0)
-                                                 (let ((scopes42_0
+                                                 (let ((scopes47_0
                                                         (apply-to-scopes_0
                                                          (syntax-scopes
                                                           sub-s_0))))
-                                                   (let ((shifted-multi-scopes43_0
+                                                   (let ((shifted-multi-scopes48_0
                                                           (propagation-apply-shifted
                                                            prop_0
                                                            (syntax-shifted-multi-scopes
                                                             sub-s_0)
                                                            s_0)))
-                                                     (let ((mpi-shifts44_0
+                                                     (let ((mpi-shifts49_0
                                                             (propagation-apply-mpi-shifts
                                                              prop_0
                                                              (syntax-mpi-shifts
                                                               sub-s_0)
                                                              s_0)))
-                                                       (let ((inspector45_0
+                                                       (let ((inspector50_0
                                                               (propagation-apply-inspector
                                                                prop_0
                                                                (syntax-inspector
                                                                 sub-s_0))))
-                                                         (let ((content*46_0
+                                                         (let ((content*51_0
                                                                 (if scope-propagations+taint_0
                                                                   (modified-content1.1
                                                                    sub-content_0
                                                                    scope-propagations+taint_0)
                                                                   sub-content_0)))
-                                                           (let ((inspector45_1
-                                                                  inspector45_0)
-                                                                 (mpi-shifts44_1
-                                                                  mpi-shifts44_0)
-                                                                 (shifted-multi-scopes43_1
-                                                                  shifted-multi-scopes43_0)
-                                                                 (scopes42_1
-                                                                  scopes42_0))
+                                                           (let ((inspector50_1
+                                                                  inspector50_0)
+                                                                 (mpi-shifts49_1
+                                                                  mpi-shifts49_0)
+                                                                 (shifted-multi-scopes48_1
+                                                                  shifted-multi-scopes48_0)
+                                                                 (scopes47_1
+                                                                  scopes47_0))
                                                              (syntax2.1
-                                                              content*46_0
-                                                              scopes42_1
-                                                              shifted-multi-scopes43_1
-                                                              mpi-shifts44_1
+                                                              content*51_0
+                                                              scopes47_1
+                                                              shifted-multi-scopes48_1
+                                                              mpi-shifts49_1
                                                               (syntax-srcloc$1
                                                                sub-s_0)
                                                               (syntax-props
                                                                sub-s_0)
-                                                              inspector45_1)))))))
+                                                              inspector50_1)))))))
                                                  (raise-argument-error
                                                   'struct-copy
                                                   "syntax?"
@@ -12105,7 +12176,7 @@
                                                    content*_1)
                                                   #f)))
                                            (if (syntax?$1 sub-s_0)
-                                             (let ((content*47_0
+                                             (let ((content*52_0
                                                     (let ((new-p_0
                                                            (if (taint? p_0)
                                                              t_0
@@ -12120,7 +12191,7 @@
                                                          new-p_0)
                                                         content_1))))
                                                (syntax2.1
-                                                content*47_0
+                                                content*52_0
                                                 (syntax-scopes sub-s_0)
                                                 (syntax-shifted-multi-scopes
                                                  sub-s_0)
@@ -12233,13 +12304,13 @@
                        content*_0)))
                 (if (shifted-multi-scope? sc_2)
                   (if (syntax?$1 s_0)
-                    (let ((shifted-multi-scopes48_0
+                    (let ((shifted-multi-scopes53_0
                            (fallback-update-first
                             (syntax-shifted-multi-scopes s_0)
                             (lambda (smss_0)
                               (let ((s_1 (fallback-first smss_0)))
                                 (hash-set s_1 sc_2 #t))))))
-                      (let ((content*49_0
+                      (let ((content*54_0
                              (if (datum-has-elements? content_0)
                                (let ((prop_0
                                       (let ((prop_0
@@ -12264,21 +12335,21 @@
                                    (modified-content1.1 content_0 prop_0)
                                    content_0))
                                content*_0)))
-                        (let ((shifted-multi-scopes48_1
-                               shifted-multi-scopes48_0))
+                        (let ((shifted-multi-scopes53_1
+                               shifted-multi-scopes53_0))
                           (syntax2.1
-                           content*49_0
+                           content*54_0
                            (syntax-scopes s_0)
-                           shifted-multi-scopes48_1
+                           shifted-multi-scopes53_1
                            (syntax-mpi-shifts s_0)
                            (syntax-srcloc$1 s_0)
                            (syntax-props s_0)
                            (syntax-inspector s_0)))))
                     (raise-argument-error 'struct-copy "syntax?" s_0))
                   (if (syntax?$1 s_0)
-                    (let ((scopes50_0
+                    (let ((scopes55_0
                            (scope-set-add (syntax-scopes s_0) sc_2)))
-                      (let ((content*51_0
+                      (let ((content*56_0
                              (if (datum-has-elements? content_0)
                                (let ((prop_0
                                       (let ((prop_0
@@ -12303,10 +12374,10 @@
                                    (modified-content1.1 content_0 prop_0)
                                    content_0))
                                content*_0)))
-                        (let ((scopes50_1 scopes50_0))
+                        (let ((scopes55_1 scopes55_0))
                           (syntax2.1
-                           content*51_0
-                           scopes50_1
+                           content*56_0
+                           scopes55_1
                            (syntax-shifted-multi-scopes s_0)
                            (syntax-mpi-shifts s_0)
                            (syntax-srcloc$1 s_0)
@@ -12340,13 +12411,13 @@
                        content*_0)))
                 (if (shifted-multi-scope? sc_2)
                   (if (syntax?$1 s_0)
-                    (let ((shifted-multi-scopes52_0
+                    (let ((shifted-multi-scopes57_0
                            (fallback-update-first
                             (syntax-shifted-multi-scopes s_0)
                             (lambda (smss_0)
                               (let ((s_1 (fallback-first smss_0)))
                                 (hash-remove s_1 sc_2))))))
-                      (let ((content*53_0
+                      (let ((content*58_0
                              (if (datum-has-elements? content_0)
                                (let ((prop_0
                                       (let ((prop_0
@@ -12371,21 +12442,21 @@
                                    (modified-content1.1 content_0 prop_0)
                                    content_0))
                                content*_0)))
-                        (let ((shifted-multi-scopes52_1
-                               shifted-multi-scopes52_0))
+                        (let ((shifted-multi-scopes57_1
+                               shifted-multi-scopes57_0))
                           (syntax2.1
-                           content*53_0
+                           content*58_0
                            (syntax-scopes s_0)
-                           shifted-multi-scopes52_1
+                           shifted-multi-scopes57_1
                            (syntax-mpi-shifts s_0)
                            (syntax-srcloc$1 s_0)
                            (syntax-props s_0)
                            (syntax-inspector s_0)))))
                     (raise-argument-error 'struct-copy "syntax?" s_0))
                   (if (syntax?$1 s_0)
-                    (let ((scopes54_0
+                    (let ((scopes59_0
                            (scope-set-remove (syntax-scopes s_0) sc_2)))
-                      (let ((content*55_0
+                      (let ((content*60_0
                              (if (datum-has-elements? content_0)
                                (let ((prop_0
                                       (let ((prop_0
@@ -12410,10 +12481,10 @@
                                    (modified-content1.1 content_0 prop_0)
                                    content_0))
                                content*_0)))
-                        (let ((scopes54_1 scopes54_0))
+                        (let ((scopes59_1 scopes59_0))
                           (syntax2.1
-                           content*55_0
-                           scopes54_1
+                           content*60_0
+                           scopes59_1
                            (syntax-shifted-multi-scopes s_0)
                            (syntax-mpi-shifts s_0)
                            (syntax-srcloc$1 s_0)
@@ -12510,8 +12581,8 @@
                          (let ((app_0 (car l_0)))
                            (cons app_0 (loop_0 (cdr l_0))))))))))
                 (loop_0
-                 (let ((scope-id58_0 scope-id))
-                   (sort.1 #f scope-id58_0 scs_0 >)))))))
+                 (let ((scope-id63_0 scope-id))
+                   (sort.1 #f scope-id63_0 scs_0 >)))))))
         (reverse$1
          (letrec*
           ((for-loop_0
@@ -12534,8 +12605,8 @@
                (modified-content-content content*_0)
                content*_0)))
         (if (syntax?$1 s_0)
-          (let ((scopes59_0 (scope-set-apply-ops (syntax-scopes s_0) ops_0)))
-            (let ((content*60_0
+          (let ((scopes64_0 (scope-set-apply-ops (syntax-scopes s_0) ops_0)))
+            (let ((content*65_0
                    (if (datum-has-elements? content_0)
                      (let ((prop_0
                             (propagation-ops
@@ -12551,10 +12622,10 @@
                          (modified-content1.1 content_0 prop_0)
                          content_0))
                      content*_0)))
-              (let ((scopes59_1 scopes59_0))
+              (let ((scopes64_1 scopes64_0))
                 (syntax2.1
-                 content*60_0
-                 scopes59_1
+                 content*65_0
+                 scopes64_1
                  (syntax-shifted-multi-scopes s_0)
                  (syntax-mpi-shifts s_0)
                  (syntax-srcloc$1 s_0)
@@ -12576,12 +12647,12 @@
                      content*_0)))
               (if (shifted-multi-scope? sc_2)
                 (if (syntax?$1 s_0)
-                  (let ((shifted-multi-scopes61_0
+                  (let ((shifted-multi-scopes66_0
                          (fallback-update-first
                           (syntax-shifted-multi-scopes s_0)
                           (lambda (smss_0)
                             (set-flip (fallback-first smss_0) sc_2)))))
-                    (let ((content*62_0
+                    (let ((content*67_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
                                     (let ((prop_0
@@ -12606,20 +12677,20 @@
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
                              content*_0)))
-                      (let ((shifted-multi-scopes61_1
-                             shifted-multi-scopes61_0))
+                      (let ((shifted-multi-scopes66_1
+                             shifted-multi-scopes66_0))
                         (syntax2.1
-                         content*62_0
+                         content*67_0
                          (syntax-scopes s_0)
-                         shifted-multi-scopes61_1
+                         shifted-multi-scopes66_1
                          (syntax-mpi-shifts s_0)
                          (syntax-srcloc$1 s_0)
                          (syntax-props s_0)
                          (syntax-inspector s_0)))))
                   (raise-argument-error 'struct-copy "syntax?" s_0))
                 (if (syntax?$1 s_0)
-                  (let ((scopes63_0 (scope-set-flip (syntax-scopes s_0) sc_2)))
-                    (let ((content*64_0
+                  (let ((scopes68_0 (scope-set-flip (syntax-scopes s_0) sc_2)))
+                    (let ((content*69_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
                                     (let ((prop_0
@@ -12644,10 +12715,10 @@
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
                              content*_0)))
-                      (let ((scopes63_1 scopes63_0))
+                      (let ((scopes68_1 scopes68_0))
                         (syntax2.1
-                         content*64_0
-                         scopes63_1
+                         content*69_0
+                         scopes68_1
                          (syntax-shifted-multi-scopes s_0)
                          (syntax-mpi-shifts s_0)
                          (syntax-srcloc$1 s_0)
@@ -12670,13 +12741,13 @@
      (for-loop_0 s_0 scs_0))))
 (define push-scope
   (lambda (s_0 sms_0)
-    (let ((smss/maybe-fallbacks65_0 #f))
+    (let ((smss/maybe-fallbacks70_0 #f))
       (let ((prev-result_0 #f))
         (let ((push_0
                (|#%name|
                 push
                 (lambda (smss/maybe-fallbacks_0)
-                  (if (eq? smss/maybe-fallbacks65_0 smss/maybe-fallbacks_0)
+                  (if (eq? smss/maybe-fallbacks70_0 smss/maybe-fallbacks_0)
                     prev-result_0
                     (let ((r_0
                            (let ((smss_0
@@ -12689,7 +12760,7 @@
                                   (hash-set smss_0 sms_0 #t)
                                   smss/maybe-fallbacks_0))))))
                       (begin
-                        (set! smss/maybe-fallbacks65_0 smss/maybe-fallbacks_0)
+                        (set! smss/maybe-fallbacks70_0 smss/maybe-fallbacks_0)
                         (set! prev-result_0 r_0)
                         r_0)))))))
           (let ((f_0 (|#%name| f (lambda (tail?_0 x_0) x_0))))
@@ -12698,14 +12769,14 @@
                     d->s
                     (lambda (s_1 d_0)
                       (if (syntax?$1 s_1)
-                        (let ((content*66_0 (re-modify-content s_1 d_0)))
-                          (let ((shifted-multi-scopes67_0
+                        (let ((content*71_0 (re-modify-content s_1 d_0)))
+                          (let ((shifted-multi-scopes72_0
                                  (push_0 (syntax-shifted-multi-scopes s_1))))
-                            (let ((content*66_1 content*66_0))
+                            (let ((content*71_1 content*71_0))
                               (syntax2.1
-                               content*66_1
+                               content*71_1
                                (syntax-scopes s_1)
-                               shifted-multi-scopes67_0
+                               shifted-multi-scopes72_0
                                (syntax-mpi-shifts s_1)
                                (syntax-srcloc$1 s_1)
                                (syntax-props s_1)
@@ -12805,7 +12876,7 @@
    #f
    |#%system-inspector|))
 (define effect_2326 (finish_1917 struct:propagation))
-(define propagation13.1
+(define propagation18.1
   (|#%name|
    propagation
    (record-constructor
@@ -12846,31 +12917,31 @@
       (let ((new-prop_0
              (if (shifted-multi-scope? sc_0)
                (if (propagation? prop_0)
-                 (let ((sms-ops69_0
+                 (let ((sms-ops74_0
                         (sms-op-compose
                          (propagation-sms-ops prop_0)
                          sc_0
                          op_0)))
-                   (propagation13.1
+                   (propagation18.1
                     (propagation-prev-scs prop_0)
                     (propagation-prev-smss prop_0)
                     (propagation-scope-ops prop_0)
-                    sms-ops69_0
+                    sms-ops74_0
                     (propagation-prev-mss prop_0)
                     (propagation-add-mpi-shifts prop_0)
                     (propagation-inspector prop_0)
                     (propagation-taint prop_0)))
                  (raise-argument-error 'struct-copy "propagation?" prop_0))
                (if (propagation? prop_0)
-                 (let ((scope-ops70_0
+                 (let ((scope-ops75_0
                         (scope-ops-update
                          (propagation-scope-ops prop_0)
                          sc_0
                          op_0)))
-                   (propagation13.1
+                   (propagation18.1
                     (propagation-prev-scs prop_0)
                     (propagation-prev-smss prop_0)
-                    scope-ops70_0
+                    scope-ops75_0
                     (propagation-sms-ops prop_0)
                     (propagation-prev-mss prop_0)
                     (propagation-add-mpi-shifts prop_0)
@@ -12887,7 +12958,7 @@
           (propagation-taint new-prop_0)
           new-prop_0))
       (if (shifted-multi-scope? sc_0)
-        (propagation13.1
+        (propagation18.1
          prev-scs_0
          prev-smss_0
          null
@@ -12896,7 +12967,7 @@
          #f
          #f
          prop_0)
-        (propagation13.1
+        (propagation18.1
          prev-scs_0
          prev-smss_0
          (list (cons sc_0 op_0))
@@ -12910,14 +12981,14 @@
     (if (propagation? prop_0)
       (let ((new-prop_0
              (if (propagation? prop_0)
-               (let ((scope-ops71_0
+               (let ((scope-ops76_0
                       (scope-ops-compose
                        (propagation-scope-ops prop_0)
                        ops_0)))
-                 (propagation13.1
+                 (propagation18.1
                   (propagation-prev-scs prop_0)
                   (propagation-prev-smss prop_0)
-                  scope-ops71_0
+                  scope-ops76_0
                   (propagation-sms-ops prop_0)
                   (propagation-prev-mss prop_0)
                   (propagation-add-mpi-shifts prop_0)
@@ -12933,7 +13004,7 @@
               #f)
           (propagation-taint new-prop_0)
           new-prop_0))
-      (propagation13.1
+      (propagation18.1
        prev-scs_0
        prev-smss_0
        ops_0
@@ -12955,28 +13026,28 @@
   (lambda (prop_0 add_0 inspector_0 prev-scs_0 prev-smss_0 prev-mss_0)
     (if (propagation? prop_0)
       (if (propagation? prop_0)
-        (let ((add-mpi-shifts72_0
+        (let ((add-mpi-shifts77_0
                (let ((base-add_0 (propagation-add-mpi-shifts prop_0)))
                  (if (if add_0 base-add_0 #f)
                    (|#%name|
-                    add-mpi-shifts72
+                    add-mpi-shifts77
                     (lambda (mss_0)
                       (|#%app| add_0 (|#%app| base-add_0 mss_0))))
                    (if add_0 add_0 base-add_0)))))
-          (let ((inspector73_0
+          (let ((inspector78_0
                  (let ((or-part_0 (propagation-inspector prop_0)))
                    (if or-part_0 or-part_0 inspector_0))))
-            (propagation13.1
+            (propagation18.1
              (propagation-prev-scs prop_0)
              (propagation-prev-smss prop_0)
              (propagation-scope-ops prop_0)
              (propagation-sms-ops prop_0)
              (propagation-prev-mss prop_0)
-             add-mpi-shifts72_0
-             inspector73_0
+             add-mpi-shifts77_0
+             inspector78_0
              (propagation-taint prop_0))))
         (raise-argument-error 'struct-copy "propagation?" prop_0))
-      (propagation13.1
+      (propagation18.1
        prev-scs_0
        prev-smss_0
        null
@@ -13054,7 +13125,7 @@
   (lambda (prop_0 t_0)
     (if (propagation? prop_0)
       (if (propagation? prop_0)
-        (propagation13.1
+        (propagation18.1
          (propagation-prev-scs prop_0)
          (propagation-prev-smss prop_0)
          (propagation-scope-ops prop_0)
@@ -13078,7 +13149,7 @@
                 #f)
               #f)
           prop_0
-          (propagation13.1
+          (propagation18.1
            prev-scs_0
            prev-smss_0
            (propagation-scope-ops prop_0)
@@ -13148,27 +13219,27 @@
                         #f)
                     new-taint_0
                     (if (propagation? base-prop_0)
-                      (let ((add-mpi-shifts77_0
+                      (let ((add-mpi-shifts82_0
                              (if (if add_0 base-add_0 #f)
                                (|#%name|
-                                add-mpi-shifts77
+                                add-mpi-shifts82
                                 (lambda (mss_0)
                                   (|#%app| add_0 (|#%app| base-add_0 mss_0))))
                                (if add_0 add_0 base-add_0))))
-                        (let ((inspector78_0
+                        (let ((inspector83_0
                                (let ((or-part_0
                                       (propagation-inspector base-prop_0)))
                                  (if or-part_0
                                    or-part_0
                                    (propagation-inspector prop_0)))))
-                          (propagation13.1
+                          (propagation18.1
                            (propagation-prev-scs base-prop_0)
                            (propagation-prev-smss base-prop_0)
                            new-ops_0
                            new-sms-ops_0
                            (propagation-prev-mss base-prop_0)
-                           add-mpi-shifts77_0
-                           inspector78_0
+                           add-mpi-shifts82_0
+                           inspector83_0
                            new-taint_0)))
                       (raise-argument-error
                        'struct-copy
@@ -13182,7 +13253,7 @@
         (if (shifted-to-label-phase? (shifted-multi-scope-phase sms_0))
           #f
           (let ((app_0
-                 (shifted-to-label-phase6.1
+                 (shifted-to-label-phase11.1
                   (phase- 0 (shifted-multi-scope-phase sms_0)))))
             (intern-shifted-multi-scope
              app_0
@@ -13191,7 +13262,7 @@
           (let ((from_0
                  (shifted-to-label-phase-from
                   (shifted-multi-scope-phase sms_0))))
-            (let ((app_0 (shifted-to-label-phase6.1 (phase+ delta_0 from_0))))
+            (let ((app_0 (shifted-to-label-phase11.1 (phase+ delta_0 from_0))))
               (intern-shifted-multi-scope
                app_0
                (shifted-multi-scope-multi-scope sms_0))))
@@ -13205,13 +13276,13 @@
    (lambda (s_0 phase_0)
      (if (eqv? phase_0 0)
        s_0
-       (let ((smss80_0 #f))
+       (let ((smss85_0 #f))
          (let ((prev-result_0 #f))
            (let ((shift-all_0
                   (|#%name|
                    shift-all
                    (lambda (smss_0)
-                     (if (eq? smss80_0 smss_0)
+                     (if (eq? smss85_0 smss_0)
                        prev-result_0
                        (let ((r_0
                               (fallback-map
@@ -13263,7 +13334,7 @@
                                        (unsafe-immutable-hash-iterate-first
                                         smss_1)))))))))
                          (begin
-                           (set! smss80_0 smss_0)
+                           (set! smss85_0 smss_0)
                            (set! prev-result_0 r_0)
                            r_0)))))))
              (let ((f_0 (|#%name| f (lambda (tail?_0 d_0) d_0))))
@@ -13272,15 +13343,15 @@
                        d->s
                        (lambda (s_1 d_0)
                          (if (syntax?$1 s_1)
-                           (let ((content*81_0 (re-modify-content s_1 d_0)))
-                             (let ((shifted-multi-scopes82_0
+                           (let ((content*86_0 (re-modify-content s_1 d_0)))
+                             (let ((shifted-multi-scopes87_0
                                     (shift-all_0
                                      (syntax-shifted-multi-scopes s_1))))
-                               (let ((content*81_1 content*81_0))
+                               (let ((content*86_1 content*86_0))
                                  (syntax2.1
-                                  content*81_1
+                                  content*86_1
                                   (syntax-scopes s_1)
-                                  shifted-multi-scopes82_0
+                                  shifted-multi-scopes87_0
                                   (syntax-mpi-shifts s_1)
                                   (syntax-srcloc$1 s_1)
                                   (syntax-props s_1)
@@ -13389,13 +13460,13 @@
           (lambda () (partition-scopes dest-scopes_0))
           (lambda (dest-smss_0 dest-scs_0)
             (let ((src-smss_1 src-smss_0) (src-scs_1 src-scs_0))
-              (let ((scs83_0 #f))
+              (let ((scs88_0 #f))
                 (let ((prev-result_0 #f))
                   (let ((swap-scs_0
                          (|#%name|
                           swap-scs
                           (lambda (scs_0)
-                            (if (eq? scs83_0 scs_0)
+                            (if (eq? scs88_0 scs_0)
                               prev-result_0
                               (let ((r_0
                                      (if (scope-set-subset? src-scs_1 scs_0)
@@ -13404,16 +13475,16 @@
                                         dest-scs_0)
                                        scs_0)))
                                 (begin
-                                  (set! scs83_0 scs_0)
+                                  (set! scs88_0 scs_0)
                                   (set! prev-result_0 r_0)
                                   r_0)))))))
-                    (let ((smss84_0 #f))
+                    (let ((smss89_0 #f))
                       (let ((prev-result_1 #f))
                         (let ((swap-smss_0
                                (|#%name|
                                 swap-smss
                                 (lambda (smss_0)
-                                  (if (eq? smss84_0 smss_0)
+                                  (if (eq? smss89_0 smss_0)
                                     prev-result_1
                                     (let ((r_0
                                            (fallback-update-first
@@ -13429,7 +13500,7 @@
                                                  dest-smss_0)
                                                 smss_1)))))
                                       (begin
-                                        (set! smss84_0 smss_0)
+                                        (set! smss89_0 smss_0)
                                         (set! prev-result_1 r_0)
                                         r_0)))))))
                           (let ((f_0 (|#%name| f (lambda (tail?_0 d_0) d_0))))
@@ -13438,22 +13509,22 @@
                                     d->s
                                     (lambda (s_1 d_0)
                                       (if (syntax?$1 s_1)
-                                        (let ((content*85_0
+                                        (let ((content*90_0
                                                (re-modify-content s_1 d_0)))
-                                          (let ((scopes86_0
+                                          (let ((scopes91_0
                                                  (swap-scs_0
                                                   (syntax-scopes s_1))))
-                                            (let ((shifted-multi-scopes87_0
+                                            (let ((shifted-multi-scopes92_0
                                                    (swap-smss_0
                                                     (syntax-shifted-multi-scopes
                                                      s_1))))
-                                              (let ((scopes86_1 scopes86_0)
-                                                    (content*85_1
-                                                     content*85_0))
+                                              (let ((scopes91_1 scopes91_0)
+                                                    (content*90_1
+                                                     content*90_0))
                                                 (syntax2.1
-                                                 content*85_1
-                                                 scopes86_1
-                                                 shifted-multi-scopes87_0
+                                                 content*90_1
+                                                 scopes91_1
+                                                 shifted-multi-scopes92_0
                                                  (syntax-mpi-shifts s_1)
                                                  (syntax-srcloc$1 s_1)
                                                  (syntax-props s_1)
@@ -13617,30 +13688,30 @@
 (define add-binding-in-scopes!.1
   (|#%name|
    add-binding-in-scopes!
-   (lambda (just-for-nominal?14_0 scopes16_0 sym17_0 binding18_0)
-     (let ((max-sc_0 (find-max-scope scopes16_0)))
+   (lambda (just-for-nominal?19_0 scopes21_0 sym22_0 binding23_0)
+     (let ((max-sc_0 (find-max-scope scopes21_0)))
        (let ((bt_0
               (binding-table-add
                (scope-binding-table max-sc_0)
-               scopes16_0
-               sym17_0
-               binding18_0
-               just-for-nominal?14_0)))
+               scopes21_0
+               sym22_0
+               binding23_0
+               just-for-nominal?19_0)))
          (begin
            (set-scope-binding-table! max-sc_0 bt_0)
-           (clear-resolve-cache! sym17_0)))))))
+           (clear-resolve-cache! sym22_0)))))))
 (define add-bulk-binding-in-scopes!.1
   (|#%name|
    add-bulk-binding-in-scopes!
-   (lambda (shadow-except20_0 scopes22_0 bulk-binding23_0)
-     (let ((max-sc_0 (find-max-scope scopes22_0)))
+   (lambda (shadow-except25_0 scopes27_0 bulk-binding28_0)
+     (let ((max-sc_0 (find-max-scope scopes27_0)))
        (let ((bt_0
-              (let ((temp88_0 (scope-binding-table max-sc_0)))
+              (let ((temp93_0 (scope-binding-table max-sc_0)))
                 (binding-table-add-bulk.1
-                 shadow-except20_0
-                 temp88_0
-                 scopes22_0
-                 bulk-binding23_0))))
+                 shadow-except25_0
+                 temp93_0
+                 scopes27_0
+                 bulk-binding28_0))))
          (begin
            (set-scope-binding-table! max-sc_0 bt_0)
            (clear-resolve-cache!)))))))
@@ -13666,25 +13737,25 @@
 (define resolve.1
   (|#%name|
    resolve
-   (lambda (ambiguous-value25_0
-            exactly?26_0
-            extra-shifts28_0
-            get-scopes?27_0
-            s33_0
-            phase34_0)
-     (let ((sym_0 (syntax-content s33_0)))
-       (let ((scs_0 (syntax-scopes s33_0)))
+   (lambda (ambiguous-value30_0
+            exactly?31_0
+            extra-shifts33_0
+            get-scopes?32_0
+            s38_0
+            phase39_0)
+     (let ((sym_0 (syntax-content s38_0)))
+       (let ((scs_0 (syntax-scopes s38_0)))
          (letrec*
           ((fallback-loop_0
             (|#%name|
              fallback-loop
              (lambda (smss_0)
                (let ((cond-val_0
-                      (if (not exactly?26_0)
-                        (if (not get-scopes?27_0)
+                      (if (not exactly?31_0)
+                        (if (not get-scopes?32_0)
                           (resolve-cache-get
                            sym_0
-                           phase34_0
+                           phase39_0
                            scs_0
                            (fallback-first smss_0))
                           #f)
@@ -13698,7 +13769,7 @@
                    (let ((reps_0
                           (representatives-at-phase
                            (fallback-first smss_0)
-                           phase34_0)))
+                           phase39_0)))
                      (let ((lst_0 (scope-set-elems scs_0)))
                        (call-with-values
                         (lambda ()
@@ -13734,9 +13805,9 @@
                                                    (table-with-bulk-bindings-bulk-bindings
                                                     table_0)))))
                                             (lambda (ht_0 bulk-bindings_0)
-                                              (let ((s_0 s33_0))
+                                              (let ((s_0 s38_0))
                                                 (let ((extra-shifts_0
-                                                       extra-shifts28_0))
+                                                       extra-shifts33_0))
                                                   (let ((s_1 s_0)
                                                         (ht_1 ht_0)
                                                         (bulk-bindings_1
@@ -13952,9 +14023,9 @@
                                                       (table-with-bulk-bindings-bulk-bindings
                                                        table_0)))))
                                                (lambda (ht_0 bulk-bindings_0)
-                                                 (let ((s_0 s33_0))
+                                                 (let ((s_0 s38_0))
                                                    (let ((extra-shifts_0
-                                                          extra-shifts28_0))
+                                                          extra-shifts33_0))
                                                      (let ((s_1 s_0)
                                                            (ht_1 ht_0)
                                                            (bulk-bindings_1
@@ -14144,16 +14215,16 @@
                              (if (pair? best-scopes_0)
                                (if (fallback? smss_0)
                                  (fallback-loop_0 (fallback-rest smss_0))
-                                 ambiguous-value25_0)
+                                 ambiguous-value30_0)
                                (if best-scopes_0
                                  (begin
                                    (resolve-cache-set!
                                     sym_0
-                                    phase34_0
+                                    phase39_0
                                     scs_0
                                     (fallback-first smss_0)
                                     best-binding_0)
-                                   (if (let ((or-part_0 (not exactly?26_0)))
+                                   (if (let ((or-part_0 (not exactly?31_0)))
                                          (if or-part_0
                                            or-part_0
                                            (let ((app_0
@@ -14164,21 +14235,21 @@
                                               app_0
                                               (scope-set-count
                                                best-scopes_0)))))
-                                     (if get-scopes?27_0
+                                     (if get-scopes?32_0
                                        best-scopes_0
                                        best-binding_0)
                                      #f))
                                  (begin
                                    (resolve-cache-set!
                                     sym_0
-                                    phase34_0
+                                    phase39_0
                                     scs_0
                                     (fallback-first smss_0)
                                     kw2450)
                                    (if (fallback? smss_0)
                                      (fallback-loop_0 (fallback-rest smss_0))
                                      #f))))))))))))))))
-          (fallback-loop_0 (syntax-shifted-multi-scopes s33_0))))))))
+          (fallback-loop_0 (syntax-shifted-multi-scopes s38_0))))))))
 (define representatives-at-phase
   (lambda (smss_0 phase_0)
     (letrec*
@@ -18028,16 +18099,16 @@
                 supermodule-name22_0
                 get-all-variables_0
                 get-portal-syntax-callback_0)))))))))
-(define finish_2793
+(define finish_2279
   (make-struct-type-install-properties
    '(module-instance)
-   8
+   9
    0
    #f
    (list (cons prop:authentic #t))
    (current-inspector)
    #f
-   '(0 1 3 6 7)
+   '(0 1 2 4 7 8)
    #f
    'module-instance))
 (define struct:module-instance
@@ -18048,13 +18119,13 @@
    (|#%nongenerative-uid| module-instance)
    #f
    #f
-   '(8 . 52)
+   '(9 . 104)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2382 (finish_2793 struct:module-instance))
+(define effect_2382 (finish_2279 struct:module-instance))
 (define module-instance48.1
   (|#%name|
    module-instance
@@ -18062,97 +18133,107 @@
     (make-record-constructor-descriptor struct:module-instance #f #f))))
 (define module-instance?
   (|#%name| module-instance? (record-predicate struct:module-instance)))
+(define module-instance-hash
+  (|#%name| module-instance-hash (record-accessor struct:module-instance 0)))
 (define module-instance-namespace
   (|#%name|
    module-instance-namespace
-   (record-accessor struct:module-instance 0)))
+   (record-accessor struct:module-instance 1)))
 (define module-instance-module
-  (|#%name| module-instance-module (record-accessor struct:module-instance 1)))
+  (|#%name| module-instance-module (record-accessor struct:module-instance 2)))
 (define module-instance-shifted-requires
   (|#%name|
    module-instance-shifted-requires
-   (record-accessor struct:module-instance 2)))
+   (record-accessor struct:module-instance 3)))
 (define module-instance-phase-level-to-state
   (|#%name|
    module-instance-phase-level-to-state
-   (record-accessor struct:module-instance 3)))
+   (record-accessor struct:module-instance 4)))
 (define module-instance-made-available?
   (|#%name|
    module-instance-made-available?
-   (record-accessor struct:module-instance 4)))
+   (record-accessor struct:module-instance 5)))
 (define module-instance-attached?
   (|#%name|
    module-instance-attached?
-   (record-accessor struct:module-instance 5)))
+   (record-accessor struct:module-instance 6)))
 (define module-instance-data-box
   (|#%name|
    module-instance-data-box
-   (record-accessor struct:module-instance 6)))
+   (record-accessor struct:module-instance 7)))
 (define module-instance-portal-syntaxes
   (|#%name|
    module-instance-portal-syntaxes
-   (record-accessor struct:module-instance 7)))
+   (record-accessor struct:module-instance 8)))
 (define set-module-instance-shifted-requires!
   (|#%name|
    set-module-instance-shifted-requires!
-   (record-mutator struct:module-instance 2)))
+   (record-mutator struct:module-instance 3)))
 (define set-module-instance-made-available?!
   (|#%name|
    set-module-instance-made-available?!
-   (record-mutator struct:module-instance 4)))
+   (record-mutator struct:module-instance 5)))
 (define set-module-instance-attached?!
   (|#%name|
    set-module-instance-attached?!
-   (record-mutator struct:module-instance 5)))
+   (record-mutator struct:module-instance 6)))
+(define effect_2660
+  (begin
+    (|#%call-with-values|
+     (lambda () (register-field0-eq-hash-code!.1 #f struct:module-instance))
+     print-values)
+    (void)))
 (define make-module-instance
   (lambda (m-ns_0 m_0 portal-syntaxes_0)
-    (let ((app_0 (make-small-hasheqv)))
-      (module-instance48.1
-       m-ns_0
-       m_0
-       #f
-       app_0
-       #f
-       #f
-       (box #f)
-       portal-syntaxes_0))))
+    (let ((app_0 (next-field0-hash!)))
+      (let ((app_1 (make-small-hasheqv)))
+        (module-instance48.1
+         app_0
+         m-ns_0
+         m_0
+         #f
+         app_1
+         #f
+         #f
+         (box #f)
+         portal-syntaxes_0)))))
 (define make-module-namespace.1
   (|#%name|
    make-module-namespace
-   (lambda (for-submodule?51_0
-            mpi49_0
-            portal-syntaxes52_0
-            root-expand-context50_0
-            ns57_0)
-     (let ((name_0 (1/module-path-index-resolve mpi49_0)))
+   (lambda (for-submodule?52_0
+            mpi50_0
+            portal-syntaxes53_0
+            root-expand-context51_0
+            ns58_0)
+     (let ((name_0 (1/module-path-index-resolve mpi50_0)))
        (let ((m-ns_0
               (let ((the-struct_0
-                     (new-namespace.1 #f root-expand-context50_0 ns57_0)))
+                     (new-namespace.1 #f root-expand-context51_0 ns58_0)))
                 (if (1/namespace? the-struct_0)
-                  (let ((source-name165_0
+                  (let ((source-name166_0
                          (resolved-module-path-root-name name_0)))
-                    (let ((submodule-declarations168_0
-                           (if for-submodule?51_0
-                             (namespace-submodule-declarations ns57_0)
+                    (let ((submodule-declarations169_0
+                           (if for-submodule?52_0
+                             (namespace-submodule-declarations ns58_0)
                              (make-small-hasheq))))
-                      (let ((available-module-instances169_0 (make-hasheqv)))
-                        (let ((available-cross-phase-module-instances170_0
+                      (let ((available-module-instances170_0 (make-hasheqv)))
+                        (let ((available-cross-phase-module-instances171_0
                                (box null)))
-                          (let ((module-instances171_0 (make-hasheqv)))
-                            (let ((declaration-inspector172_0
+                          (let ((module-instances172_0 (make-hasheqv)))
+                            (let ((declaration-inspector173_0
                                    (current-code-inspector)))
-                              (let ((module-instances171_1
-                                     module-instances171_0)
-                                    (available-cross-phase-module-instances170_1
-                                     available-cross-phase-module-instances170_0)
-                                    (available-module-instances169_1
-                                     available-module-instances169_0)
-                                    (submodule-declarations168_1
-                                     submodule-declarations168_0)
-                                    (source-name165_1 source-name165_0))
+                              (let ((module-instances172_1
+                                     module-instances172_0)
+                                    (available-cross-phase-module-instances171_1
+                                     available-cross-phase-module-instances171_0)
+                                    (available-module-instances170_1
+                                     available-module-instances170_0)
+                                    (submodule-declarations169_1
+                                     submodule-declarations169_0)
+                                    (source-name166_1 source-name166_0))
                                 (namespace1.1
-                                 mpi49_0
-                                 source-name165_1
+                                 mpi50_0
+                                 source-name166_1
                                  (namespace-root-expand-ctx the-struct_0)
                                  0
                                  0
@@ -18163,13 +18244,13 @@
                                  (namespace-module-instance-shifted-requires
                                   the-struct_0)
                                  (namespace-bulk-binding-registry the-struct_0)
-                                 submodule-declarations168_1
+                                 submodule-declarations169_1
                                  (namespace-root-namespace the-struct_0)
-                                 declaration-inspector172_0
+                                 declaration-inspector173_0
                                  (namespace-inspector the-struct_0)
-                                 available-module-instances169_1
-                                 available-cross-phase-module-instances170_1
-                                 module-instances171_1))))))))
+                                 available-module-instances170_1
+                                 available-cross-phase-module-instances171_1
+                                 module-instances172_1))))))))
                   (raise-argument-error
                    'struct-copy
                    "namespace?"
@@ -18183,67 +18264,67 @@
                (hash-set!
                 at-phase_0
                 name_0
-                (make-module-instance m-ns_0 #f portal-syntaxes52_0))
+                (make-module-instance m-ns_0 #f portal-syntaxes53_0))
                m-ns_0))))))))
 (define declare-module!.1
   (|#%name|
    declare-module!
-   (lambda (with-submodules?59_0 ns61_0 m62_0 mod-name63_0)
+   (lambda (with-submodules?60_0 ns62_0 m63_0 mod-name64_0)
      (let ((prior-m_0
-            (if with-submodules?59_0
+            (if with-submodules?60_0
               (hash-ref
                (module-registry-declarations
-                (namespace-module-registry$1 ns61_0))
-               mod-name63_0
+                (namespace-module-registry$1 ns62_0))
+               mod-name64_0
                #f)
               #f)))
        (let ((prior-mi_0
               (if prior-m_0
-                (if (not (eq? m62_0 prior-m_0))
-                  (let ((temp178_0 (namespace-phase ns61_0)))
+                (if (not (eq? m63_0 prior-m_0))
+                  (let ((temp179_0 (namespace-phase ns62_0)))
                     (namespace->module-instance.1
                      #f
                      #f
                      void
-                     ns61_0
-                     mod-name63_0
-                     temp178_0))
+                     ns62_0
+                     mod-name64_0
+                     temp179_0))
                   #f)
                 #f)))
          (begin
-           (if (if prior-m_0 (not (eq? m62_0 prior-m_0)) #f)
-             (check-redeclaration-ok prior-m_0 prior-mi_0 mod-name63_0)
+           (if (if prior-m_0 (not (eq? m63_0 prior-m_0)) #f)
+             (check-redeclaration-ok prior-m_0 prior-mi_0 mod-name64_0)
              (void))
-           (if with-submodules?59_0
+           (if with-submodules?60_0
              (hash-set!
               (module-registry-declarations
-               (namespace-module-registry$1 ns61_0))
-              mod-name63_0
-              m62_0)
-             (let ((small-ht_0 (namespace-submodule-declarations ns61_0)))
+               (namespace-module-registry$1 ns62_0))
+              mod-name64_0
+              m63_0)
+             (let ((small-ht_0 (namespace-submodule-declarations ns62_0)))
                (set-box!
                 small-ht_0
-                (hash-set (unbox small-ht_0) mod-name63_0 m62_0))))
-           (if with-submodules?59_0
+                (hash-set (unbox small-ht_0) mod-name64_0 m63_0))))
+           (if with-submodules?60_0
              (begin
                (let ((bulk-binding-registry_0
-                      (namespace-bulk-binding-registry ns61_0)))
-                 (let ((self_0 (module-self m62_0)))
-                   (let ((provides_0 (module-provides m62_0)))
+                      (namespace-bulk-binding-registry ns62_0)))
+                 (let ((self_0 (module-self m63_0)))
+                   (let ((provides_0 (module-provides m63_0)))
                      (let ((app_0
                             (bulk-binding-registry-table
                              bulk-binding-registry_0)))
                        (hash-set!
                         app_0
-                        mod-name63_0
+                        mod-name64_0
                         (bulk-provide13.1 self_0 provides_0))))))
-               (|#%app| (1/current-module-name-resolver) mod-name63_0 #f))
+               (|#%app| (1/current-module-name-resolver) mod-name64_0 #f))
              (void))
            (if prior-mi_0
              (let ((m-ns_0 (module-instance-namespace prior-mi_0)))
                (let ((states_0
                       (module-instance-phase-level-to-state prior-mi_0)))
-                 (let ((phase_0 (namespace-phase ns61_0)))
+                 (let ((phase_0 (namespace-phase ns62_0)))
                    (let ((visit?_0
                           (eq?
                            'started
@@ -18255,30 +18336,30 @@
                              (hash-ref (unbox states_0) phase_0 #f))))
                        (let ((at-phase_0
                               (hash-ref
-                               (namespace-module-instances ns61_0)
+                               (namespace-module-instances ns62_0)
                                phase_0)))
                          (begin
                            (hash-set!
                             at-phase_0
-                            mod-name63_0
-                            (make-module-instance m-ns_0 m62_0 #f))
+                            mod-name64_0
+                            (make-module-instance m-ns_0 m63_0 #f))
                            (set-module-instance-shifted-requires!
                             prior-mi_0
                             #f)
                            (hash-remove!
-                            (namespace-module-instance-shifted-requires ns61_0)
-                            mod-name63_0)
+                            (namespace-module-instance-shifted-requires ns62_0)
+                            mod-name64_0)
                            (if visit?_0
-                             (let ((temp180_0 (namespace-mpi m-ns_0)))
+                             (let ((temp181_0 (namespace-mpi m-ns_0)))
                                (namespace-module-visit!.1
                                 #f
                                 unsafe-undefined
-                                ns61_0
-                                temp180_0
+                                ns62_0
+                                temp181_0
                                 phase_0))
                              (void))
                            (if run?_0
-                             (let ((temp183_0 (namespace-mpi m-ns_0)))
+                             (let ((temp184_0 (namespace-mpi m-ns_0)))
                                (namespace-module-instantiate!.1
                                 #f
                                 #t
@@ -18288,8 +18369,8 @@
                                 null
                                 #f
                                 #f
-                                ns61_0
-                                temp183_0
+                                ns62_0
+                                temp184_0
                                 phase_0))
                              (void)))))))))
              (void))))))))
@@ -18342,35 +18423,35 @@
 (define namespace->module-instance.1
   (|#%name|
    namespace->module-instance
-   (lambda (check-available-at-phase-level66_0
-            complain-on-failure?65_0
-            unavailable-callback67_0
-            ns71_0
-            name72_0
-            0-phase73_0)
+   (lambda (check-available-at-phase-level67_0
+            complain-on-failure?66_0
+            unavailable-callback68_0
+            ns72_0
+            name73_0
+            0-phase74_0)
      (let ((mi_0
             (let ((or-part_0
                    (hash-ref
                     (hash-ref
-                     (namespace-module-instances ns71_0)
-                     0-phase73_0
+                     (namespace-module-instances ns72_0)
+                     0-phase74_0
                      hash2610)
-                    name72_0
+                    name73_0
                     #f)))
               (if or-part_0
                 or-part_0
                 (let ((or-part_1
                        (let ((c-ns_0
                               (let ((or-part_1
-                                     (namespace-root-namespace ns71_0)))
-                                (if or-part_1 or-part_1 ns71_0))))
+                                     (namespace-root-namespace ns72_0)))
+                                (if or-part_1 or-part_1 ns72_0))))
                          (hash-ref
                           (namespace-module-instances c-ns_0)
-                          name72_0
+                          name73_0
                           #f))))
                   (if or-part_1
                     or-part_1
-                    (if complain-on-failure?65_0
+                    (if complain-on-failure?66_0
                       (error
                        'require
                        (string-append
@@ -18378,65 +18459,65 @@
                         " reference to a module that is not instantiated\n"
                         "  module: ~a\n"
                         "  phase: ~a")
-                       name72_0
-                       0-phase73_0)
+                       name73_0
+                       0-phase74_0)
                       #f)))))))
-       (if (if mi_0 check-available-at-phase-level66_0 #f)
+       (if (if mi_0 check-available-at-phase-level67_0 #f)
          (check-availablilty
           mi_0
-          check-available-at-phase-level66_0
-          unavailable-callback67_0)
+          check-available-at-phase-level67_0
+          unavailable-callback68_0)
          mi_0)))))
 (define namespace-install-module-namespace!
   (lambda (ns_0 name_0 0-phase_0 m_0 existing-m-ns_0 run-phase_0)
     (let ((m-ns_0
            (if (1/namespace? ns_0)
-             (let ((mpi185_0 (namespace-mpi existing-m-ns_0)))
-               (let ((source-name186_0
+             (let ((mpi186_0 (namespace-mpi existing-m-ns_0)))
+               (let ((source-name187_0
                       (namespace-source-name existing-m-ns_0)))
-                 (let ((root-expand-ctx187_0
+                 (let ((root-expand-ctx188_0
                         (box
                          (unbox (namespace-root-expand-ctx existing-m-ns_0)))))
-                   (let ((phase188_0 (namespace-phase existing-m-ns_0)))
-                     (let ((0-phase189_0 (namespace-0-phase existing-m-ns_0)))
-                       (let ((phase-to-namespace190_0 (make-small-hasheqv)))
-                         (let ((phase-level-to-definitions191_0
+                   (let ((phase189_0 (namespace-phase existing-m-ns_0)))
+                     (let ((0-phase190_0 (namespace-0-phase existing-m-ns_0)))
+                       (let ((phase-to-namespace191_0 (make-small-hasheqv)))
+                         (let ((phase-level-to-definitions192_0
                                 (if (module-cross-phase-persistent? m_0)
                                   (namespace-phase-level-to-definitions
                                    existing-m-ns_0)
                                   (make-small-hasheqv))))
-                           (let ((declaration-inspector192_0
+                           (let ((declaration-inspector193_0
                                   (module-inspector m_0)))
-                             (let ((inspector193_0
+                             (let ((inspector194_0
                                     (namespace-inspector existing-m-ns_0)))
-                               (let ((declaration-inspector192_1
-                                      declaration-inspector192_0)
-                                     (phase-level-to-definitions191_1
-                                      phase-level-to-definitions191_0)
-                                     (phase-to-namespace190_1
-                                      phase-to-namespace190_0)
-                                     (0-phase189_1 0-phase189_0)
-                                     (phase188_1 phase188_0)
-                                     (root-expand-ctx187_1
-                                      root-expand-ctx187_0)
-                                     (source-name186_1 source-name186_0)
-                                     (mpi185_1 mpi185_0))
+                               (let ((declaration-inspector193_1
+                                      declaration-inspector193_0)
+                                     (phase-level-to-definitions192_1
+                                      phase-level-to-definitions192_0)
+                                     (phase-to-namespace191_1
+                                      phase-to-namespace191_0)
+                                     (0-phase190_1 0-phase190_0)
+                                     (phase189_1 phase189_0)
+                                     (root-expand-ctx188_1
+                                      root-expand-ctx188_0)
+                                     (source-name187_1 source-name187_0)
+                                     (mpi186_1 mpi186_0))
                                  (namespace1.1
-                                  mpi185_1
-                                  source-name186_1
-                                  root-expand-ctx187_1
-                                  phase188_1
-                                  0-phase189_1
-                                  phase-to-namespace190_1
-                                  phase-level-to-definitions191_1
+                                  mpi186_1
+                                  source-name187_1
+                                  root-expand-ctx188_1
+                                  phase189_1
+                                  0-phase190_1
+                                  phase-to-namespace191_1
+                                  phase-level-to-definitions192_1
                                   (namespace-module-registry$1 ns_0)
                                   (namespace-module-instance-shifted-requires
                                    ns_0)
                                   (namespace-bulk-binding-registry ns_0)
                                   (namespace-submodule-declarations ns_0)
                                   (namespace-root-namespace ns_0)
-                                  declaration-inspector192_1
-                                  inspector193_0
+                                  declaration-inspector193_1
+                                  inspector194_0
                                   (namespace-available-module-instances ns_0)
                                   (namespace-available-cross-phase-module-instances
                                    ns_0)
@@ -18526,42 +18607,42 @@
   (lambda (ns_0 name_0 0-phase_0 m_0 mpi_0)
     (let ((m-ns_0
            (if (1/namespace? ns_0)
-             (let ((source-name195_0
+             (let ((source-name196_0
                     (let ((or-part_0 (module-source-name m_0)))
                       (if or-part_0
                         or-part_0
                         (resolved-module-path-root-name
                          (1/module-path-index-resolve mpi_0))))))
-               (let ((root-expand-ctx196_0 (box #f)))
-                 (let ((phase-to-namespace199_0 (make-small-hasheqv)))
-                   (let ((phase-level-to-definitions200_0
+               (let ((root-expand-ctx197_0 (box #f)))
+                 (let ((phase-to-namespace200_0 (make-small-hasheqv)))
+                   (let ((phase-level-to-definitions201_0
                           (make-small-hasheqv)))
-                     (let ((declaration-inspector201_0 (module-inspector m_0)))
-                       (let ((inspector202_0
+                     (let ((declaration-inspector202_0 (module-inspector m_0)))
+                       (let ((inspector203_0
                               (make-inspector (module-inspector m_0))))
-                         (let ((declaration-inspector201_1
-                                declaration-inspector201_0)
-                               (phase-level-to-definitions200_1
-                                phase-level-to-definitions200_0)
-                               (phase-to-namespace199_1
-                                phase-to-namespace199_0)
-                               (root-expand-ctx196_1 root-expand-ctx196_0)
-                               (source-name195_1 source-name195_0))
+                         (let ((declaration-inspector202_1
+                                declaration-inspector202_0)
+                               (phase-level-to-definitions201_1
+                                phase-level-to-definitions201_0)
+                               (phase-to-namespace200_1
+                                phase-to-namespace200_0)
+                               (root-expand-ctx197_1 root-expand-ctx197_0)
+                               (source-name196_1 source-name196_0))
                            (namespace1.1
                             mpi_0
-                            source-name195_1
-                            root-expand-ctx196_1
+                            source-name196_1
+                            root-expand-ctx197_1
                             0-phase_0
                             0-phase_0
-                            phase-to-namespace199_1
-                            phase-level-to-definitions200_1
+                            phase-to-namespace200_1
+                            phase-level-to-definitions201_1
                             (namespace-module-registry$1 ns_0)
                             (namespace-module-instance-shifted-requires ns_0)
                             (namespace-bulk-binding-registry ns_0)
                             (namespace-submodule-declarations ns_0)
                             (namespace-root-namespace ns_0)
-                            declaration-inspector201_1
-                            inspector202_0
+                            declaration-inspector202_1
+                            inspector203_0
                             (namespace-available-module-instances ns_0)
                             (namespace-available-cross-phase-module-instances
                              ns_0)
@@ -18612,20 +18693,20 @@
 (define namespace->module-namespace.1
   (|#%name|
    namespace->module-namespace
-   (lambda (check-available-at-phase-level76_0
-            complain-on-failure?75_0
-            unavailable-callback77_0
-            ns81_0
-            name82_0
-            0-phase83_0)
+   (lambda (check-available-at-phase-level77_0
+            complain-on-failure?76_0
+            unavailable-callback78_0
+            ns82_0
+            name83_0
+            0-phase84_0)
      (let ((mi_0
             (namespace->module-instance.1
-             check-available-at-phase-level76_0
-             complain-on-failure?75_0
-             unavailable-callback77_0
-             ns81_0
-             name82_0
-             0-phase83_0)))
+             check-available-at-phase-level77_0
+             complain-on-failure?76_0
+             unavailable-callback78_0
+             ns82_0
+             name83_0
+             0-phase84_0)))
        (if mi_0 (module-instance-namespace mi_0) #f)))))
 (define namespace-record-module-instance-attached!
   (lambda (ns_0 mod-name_0 phase_0)
@@ -18648,37 +18729,37 @@
 (define namespace-module-instantiate!.1
   (|#%name|
    namespace-module-instantiate!
-   (lambda (minimum-inspector91_0
-            otherwise-available?87_0
-            recur?90_0
-            run-phase85_0
-            seen88_0
-            seen-list89_0
-            skip-run?86_0
-            transitive-record92_0
-            ns101_0
-            mpi102_0
-            instance-phase103_0)
+   (lambda (minimum-inspector92_0
+            otherwise-available?88_0
+            recur?91_0
+            run-phase86_0
+            seen89_0
+            seen-list90_0
+            skip-run?87_0
+            transitive-record93_0
+            ns102_0
+            mpi103_0
+            instance-phase104_0)
      (let ((run-phase_0
-            (if (eq? run-phase85_0 unsafe-undefined)
-              (namespace-phase ns101_0)
-              run-phase85_0)))
+            (if (eq? run-phase86_0 unsafe-undefined)
+              (namespace-phase ns102_0)
+              run-phase86_0)))
        (begin
-         (if (1/module-path-index? mpi102_0)
+         (if (1/module-path-index? mpi103_0)
            (void)
-           (error "not a module path index:" mpi102_0))
-         (let ((name_0 (1/module-path-index-resolve mpi102_0 #t)))
+           (error "not a module path index:" mpi103_0))
+         (let ((name_0 (1/module-path-index-resolve mpi103_0 #t)))
            (begin
-             (if (if transitive-record92_0 (pair? seen-list89_0) #f)
+             (if (if transitive-record93_0 (pair? seen-list90_0) #f)
                (hash-set!
-                transitive-record92_0
+                transitive-record93_0
                 name_0
                 (hash-set
-                 (hash-ref transitive-record92_0 name_0 hash2589)
-                 instance-phase103_0
+                 (hash-ref transitive-record93_0 name_0 hash2589)
+                 instance-phase104_0
                  #t))
                (void))
-             (let ((m_0 (namespace->module ns101_0 name_0)))
+             (let ((m_0 (namespace->module ns102_0 name_0)))
                (begin
                  (if m_0
                    (void)
@@ -18707,78 +18788,78 @@
                                        name_0
                                        instance-phase_0
                                        m_0
-                                       mpi102_0)))))
+                                       mpi103_0)))))
                              (run-module-instance!.1
-                              minimum-inspector91_0
-                              otherwise-available?87_0
-                              recur?90_0
+                              minimum-inspector92_0
+                              otherwise-available?88_0
+                              recur?91_0
                               run-phase_1
-                              seen88_0
-                              seen-list89_0
-                              skip-run?86_0
-                              transitive-record92_0
+                              seen89_0
+                              seen-list90_0
+                              skip-run?87_0
+                              transitive-record93_0
                               mi_0
                               ns_0))))))
                    (if (module-cross-phase-persistent? m_0)
                      (instantiate!_0
                       0
                       0
-                      (let ((or-part_0 (namespace-root-namespace ns101_0)))
-                        (if or-part_0 or-part_0 ns101_0)))
+                      (let ((or-part_0 (namespace-root-namespace ns102_0)))
+                        (if or-part_0 or-part_0 ns102_0)))
                      (instantiate!_0
-                      instance-phase103_0
+                      instance-phase104_0
                       run-phase_0
-                      ns101_0))))))))))))
+                      ns102_0))))))))))))
 (define namespace-module-visit!.1
   (|#%name|
    namespace-module-visit!
-   (lambda (transitive-record106_0
-            visit-phase105_0
-            ns109_0
-            mpi110_0
-            instance-phase111_0)
+   (lambda (transitive-record107_0
+            visit-phase106_0
+            ns110_0
+            mpi111_0
+            instance-phase112_0)
      (let ((visit-phase_0
-            (if (eq? visit-phase105_0 unsafe-undefined)
-              (namespace-phase ns109_0)
-              visit-phase105_0)))
-       (let ((temp228_0 (add1 visit-phase_0)))
+            (if (eq? visit-phase106_0 unsafe-undefined)
+              (namespace-phase ns110_0)
+              visit-phase106_0)))
+       (let ((temp229_0 (add1 visit-phase_0)))
          (namespace-module-instantiate!.1
           #f
           #t
           #t
-          temp228_0
+          temp229_0
           hash2610
           null
           #f
-          transitive-record106_0
-          ns109_0
-          mpi110_0
-          instance-phase111_0))))))
+          transitive-record107_0
+          ns110_0
+          mpi111_0
+          instance-phase112_0))))))
 (define namespace-module-make-available!.1
   (|#%name|
    namespace-module-make-available!
-   (lambda (transitive-record114_0
-            visit-phase113_0
-            ns117_0
-            mpi118_0
-            instance-phase119_0)
+   (lambda (transitive-record115_0
+            visit-phase114_0
+            ns118_0
+            mpi119_0
+            instance-phase120_0)
      (let ((visit-phase_0
-            (if (eq? visit-phase113_0 unsafe-undefined)
-              (namespace-phase ns117_0)
-              visit-phase113_0)))
-       (let ((temp233_0 (add1 visit-phase_0)))
+            (if (eq? visit-phase114_0 unsafe-undefined)
+              (namespace-phase ns118_0)
+              visit-phase114_0)))
+       (let ((temp234_0 (add1 visit-phase_0)))
          (namespace-module-instantiate!.1
           #f
           #t
           #t
-          temp233_0
+          temp234_0
           hash2610
           null
           #t
-          transitive-record114_0
-          ns117_0
-          mpi118_0
-          instance-phase119_0))))))
+          transitive-record115_0
+          ns118_0
+          mpi119_0
+          instance-phase120_0))))))
 (define namespace-module-get-portal-syntax-lookup
   (lambda (ns_0 mpi_0 phase-shift_0)
     (let ((name_0 (1/module-path-index-resolve mpi_0 #t)))
@@ -18872,68 +18953,68 @@
 (define run-module-instance!.1
   (|#%name|
    run-module-instance!
-   (lambda (minimum-inspector127_0
-            otherwise-available?123_0
-            recur?124_0
-            run-phase121_0
-            seen125_0
-            seen-list126_0
-            skip-run?122_0
-            transitive-record128_0
-            mi137_0
-            ns138_0)
+   (lambda (minimum-inspector128_0
+            otherwise-available?124_0
+            recur?125_0
+            run-phase122_0
+            seen126_0
+            seen-list127_0
+            skip-run?123_0
+            transitive-record129_0
+            mi138_0
+            ns139_0)
      (begin
        (if log-performance? (start-performance-region 'eval 'requires) (void))
        (begin0
-         (let ((m-ns_0 (module-instance-namespace mi137_0)))
+         (let ((m-ns_0 (module-instance-namespace mi138_0)))
            (let ((instance-phase_0 (namespace-0-phase m-ns_0)))
              (let ((run-phase-level_0
-                    (phase- run-phase121_0 instance-phase_0)))
-               (let ((m_0 (module-instance-module mi137_0)))
+                    (phase- run-phase122_0 instance-phase_0)))
+               (let ((m_0 (module-instance-module mi138_0)))
                  (let ((inspector_0 (if m_0 (module-inspector m_0) #f)))
                    (begin
-                     (if (if minimum-inspector127_0 inspector_0 #f)
+                     (if (if minimum-inspector128_0 inspector_0 #f)
                        (if (let ((or-part_0
-                                  (eq? inspector_0 minimum-inspector127_0)))
+                                  (eq? inspector_0 minimum-inspector128_0)))
                              (if or-part_0
                                or-part_0
                                (inspector-superior?
                                 inspector_0
-                                minimum-inspector127_0)))
+                                minimum-inspector128_0)))
                          (void)
                          (error
                           'require
                           "cannot import module with weaker code inspector\n  module: ~a"
                           (1/module-path-index-resolve
                            (namespace-mpi
-                            (module-instance-namespace mi137_0)))))
+                            (module-instance-namespace mi138_0)))))
                        (void))
-                     (if (if (if skip-run?122_0
-                               skip-run?122_0
+                     (if (if (if skip-run?123_0
+                               skip-run?123_0
                                (eq?
                                 'started
                                 (let ((small-ht_0
                                        (module-instance-phase-level-to-state
-                                        mi137_0)))
+                                        mi138_0)))
                                   (hash-ref
                                    (unbox small-ht_0)
                                    run-phase-level_0
                                    #f))))
                            (if (let ((or-part_0
-                                      (not otherwise-available?123_0)))
+                                      (not otherwise-available?124_0)))
                                  (if or-part_0
                                    or-part_0
-                                   (module-instance-made-available? mi137_0)))
-                             (let ((or-part_0 (not transitive-record128_0)))
+                                   (module-instance-made-available? mi138_0)))
+                             (let ((or-part_0 (not transitive-record129_0)))
                                (if or-part_0
                                  or-part_0
                                  (not
                                   (module-cross-phase-persistent?
-                                   (module-instance-module mi137_0)))))
+                                   (module-instance-module mi138_0)))))
                              #f)
                            #f)
                        (void)
-                       (let ((m_1 (module-instance-module mi137_0)))
+                       (let ((m_1 (module-instance-module mi138_0)))
                          (begin
                            (if m_1
                              (void)
@@ -18944,9 +19025,9 @@
                              (let ((bulk-binding-registry_0
                                     (namespace-bulk-binding-registry m-ns_0)))
                                (begin
-                                 (if recur?124_0
+                                 (if recur?125_0
                                    (begin
-                                     (if (hash-ref seen125_0 mi137_0 #f)
+                                     (if (hash-ref seen126_0 mi138_0 #f)
                                        (error
                                         'require
                                         (apply-string-append
@@ -18955,60 +19036,60 @@
                                           "import cycle detected during module instantiation\n"
                                           "  dependency chain:"
                                           (module-instances->indented-module-names
-                                           mi137_0
-                                           seen-list126_0))))
+                                           mi138_0
+                                           seen-list127_0))))
                                        (void))
                                      (let ((record-shifted-requires-at-name_0
                                             (if (module-instance-shifted-requires
-                                                 mi137_0)
+                                                 mi138_0)
                                               #f
                                               (let ((name_0
                                                      (1/module-path-index-resolve
                                                       mpi_0)))
                                                 (let ((shifted-requires_0
                                                        (build-module-instance-shifted-requires
-                                                        ns138_0
+                                                        ns139_0
                                                         m_1
                                                         mpi_0
                                                         name_0)))
                                                   (begin
                                                     (set-module-instance-shifted-requires!
-                                                     mi137_0
+                                                     mi138_0
                                                      shifted-requires_0)
                                                     (if (non-self-derived-module-path-index?
                                                          mpi_0)
                                                       name_0
                                                       #f)))))))
                                        (let ((new-seen_0
-                                              (hash-set seen125_0 mi137_0 #t)))
+                                              (hash-set seen126_0 mi138_0 #t)))
                                          (let ((recur-instantiate!_0
                                                 (|#%name|
                                                  recur-instantiate!
                                                  (lambda (req-mpi_0
                                                           req-phase_0
                                                           req-recur?_0)
-                                                   (let ((temp241_0
+                                                   (let ((temp242_0
                                                           (phase+
                                                            instance-phase_0
                                                            req-phase_0)))
-                                                     (let ((temp246_0
+                                                     (let ((temp247_0
                                                             (cons
-                                                             mi137_0
-                                                             seen-list126_0)))
-                                                       (let ((temp241_1
-                                                              temp241_0))
+                                                             mi138_0
+                                                             seen-list127_0)))
+                                                       (let ((temp242_1
+                                                              temp242_0))
                                                          (namespace-module-instantiate!.1
                                                           inspector_0
-                                                          otherwise-available?123_0
+                                                          otherwise-available?124_0
                                                           req-recur?_0
-                                                          run-phase121_0
+                                                          run-phase122_0
                                                           new-seen_0
-                                                          temp246_0
-                                                          skip-run?122_0
-                                                          transitive-record128_0
-                                                          ns138_0
+                                                          temp247_0
+                                                          skip-run?123_0
+                                                          transitive-record129_0
+                                                          ns139_0
                                                           req-mpi_0
-                                                          temp241_1))))))))
+                                                          temp242_1))))))))
                                            (begin
                                              (if (not
                                                   (module-flattened-requires
@@ -19016,7 +19097,7 @@
                                                (begin
                                                  (let ((lst_0
                                                         (module-instance-shifted-requires
-                                                         mi137_0)))
+                                                         mi138_0)))
                                                    (let ((lst_1
                                                           (module-recur-requires
                                                            m_1)))
@@ -19105,7 +19186,7 @@
                                                (begin
                                                  (let ((lst_0
                                                         (module-instance-shifted-requires
-                                                         mi137_0)))
+                                                         mi138_0)))
                                                    (letrec*
                                                     ((for-loop_0
                                                       (|#%name|
@@ -19159,11 +19240,11 @@
                                                  (void)))
                                              (if record-shifted-requires-at-name_0
                                                (namespace-save-shifted-requires!
-                                                ns138_0
+                                                ns139_0
                                                 m_1
                                                 record-shifted-requires-at-name_0
                                                 (module-instance-shifted-requires
-                                                 mi137_0))
+                                                 mi138_0))
                                                (void)))))))
                                    (void))
                                  (if (not instance-phase_0)
@@ -19187,16 +19268,16 @@
                                                              pos_0
                                                              instance-phase_0)))
                                                        (if (if (not
-                                                                skip-run?122_0)
+                                                                skip-run?123_0)
                                                              (eqv?
                                                               phase_0
-                                                              run-phase121_0)
+                                                              run-phase122_0)
                                                              #f)
                                                          (if (eq?
                                                               'started
                                                               (let ((small-ht_0
                                                                      (module-instance-phase-level-to-state
-                                                                      mi137_0)))
+                                                                      mi138_0)))
                                                                 (hash-ref
                                                                  (unbox
                                                                   small-ht_0)
@@ -19206,7 +19287,7 @@
                                                            (begin
                                                              (let ((small-ht_0
                                                                     (module-instance-phase-level-to-state
-                                                                     mi137_0)))
+                                                                     mi138_0)))
                                                                (set-box!
                                                                 small-ht_0
                                                                 (hash-set
@@ -19228,7 +19309,7 @@
                                                                          m_1)))
                                                                    (let ((data-box_0
                                                                           (module-instance-data-box
-                                                                           mi137_0)))
+                                                                           mi138_0)))
                                                                      (let ((prep_0
                                                                             (module-prepare-instance
                                                                              m_1)))
@@ -19253,14 +19334,14 @@
                                                                             mpi_0
                                                                             bulk-binding-registry_0
                                                                             insp_0))))))))))
-                                                         (if (if otherwise-available?123_0
+                                                         (if (if otherwise-available?124_0
                                                                (if (not
                                                                     (negative?
-                                                                     run-phase121_0))
+                                                                     run-phase122_0))
                                                                  (not
                                                                   (let ((small-ht_0
                                                                          (module-instance-phase-level-to-state
-                                                                          mi137_0)))
+                                                                          mi138_0)))
                                                                     (hash-ref
                                                                      (unbox
                                                                       small-ht_0)
@@ -19273,20 +19354,20 @@
                                                                   m_1)
                                                                (let ((bx_0
                                                                       (namespace-available-cross-phase-module-instances
-                                                                       ns138_0)))
+                                                                       ns139_0)))
                                                                  (set-box!
                                                                   bx_0
                                                                   (cons
-                                                                   mi137_0
+                                                                   mi138_0
                                                                    (unbox
                                                                     bx_0))))
                                                                (let ((ht_0
                                                                       (namespace-available-module-instances
-                                                                       ns138_0)))
+                                                                       ns139_0)))
                                                                  (let ((xform_0
                                                                         (lambda (l_0)
                                                                           (cons
-                                                                           mi137_0
+                                                                           mi138_0
                                                                            l_0))))
                                                                    (do-hash-update
                                                                     'hash-update!
@@ -19298,7 +19379,7 @@
                                                                     null))))
                                                              (let ((small-ht_0
                                                                     (module-instance-phase-level-to-state
-                                                                     mi137_0)))
+                                                                     mi138_0)))
                                                                (set-box!
                                                                 small-ht_0
                                                                 (hash-set
@@ -19311,21 +19392,21 @@
                                                    (values))))))
                                             (for-loop_0 start_1)))))
                                      (void)))
-                                 (if otherwise-available?123_0
+                                 (if otherwise-available?124_0
                                    (set-module-instance-made-available?!
-                                    mi137_0
+                                    mi138_0
                                     #t)
                                    (void))
                                  (if (not instance-phase_0)
                                    (|#%app|
                                     (module-force-bulk-binding m_1)
-                                    (namespace-bulk-binding-registry ns138_0))
+                                    (namespace-bulk-binding-registry ns139_0))
                                    (void))
-                                 (if skip-run?122_0
+                                 (if skip-run?123_0
                                    (void)
                                    (let ((small-ht_0
                                           (module-instance-phase-level-to-state
-                                           mi137_0)))
+                                           mi138_0)))
                                      (set-box!
                                       small-ht_0
                                       (hash-set
@@ -19337,29 +19418,29 @@
   (let ((namespace-visit-available-modules!_0
          (|#%name|
           namespace-visit-available-modules!
-          (lambda (ns141_0 run-phase140_0)
+          (lambda (ns142_0 run-phase141_0)
             (let ((run-phase_0
-                   (if (eq? run-phase140_0 unsafe-undefined)
-                     (namespace-phase ns141_0)
-                     run-phase140_0)))
+                   (if (eq? run-phase141_0 unsafe-undefined)
+                     (namespace-phase ns142_0)
+                     run-phase141_0)))
               (namespace-run-available-modules!
-               ns141_0
+               ns142_0
                (add1 run-phase_0)))))))
     (case-lambda
      ((ns_0) (namespace-visit-available-modules!_0 ns_0 unsafe-undefined))
-     ((ns_0 run-phase140_0)
-      (namespace-visit-available-modules!_0 ns_0 run-phase140_0)))))
+     ((ns_0 run-phase141_0)
+      (namespace-visit-available-modules!_0 ns_0 run-phase141_0)))))
 (define namespace-run-available-modules!
   (let ((namespace-run-available-modules!_0
          (|#%name|
           namespace-run-available-modules!
-          (lambda (ns143_0 run-phase142_0)
+          (lambda (ns144_0 run-phase143_0)
             (let ((run-phase_0
-                   (if (eq? run-phase142_0 unsafe-undefined)
-                     (namespace-phase ns143_0)
-                     run-phase142_0)))
+                   (if (eq? run-phase143_0 unsafe-undefined)
+                     (namespace-phase ns144_0)
+                     run-phase143_0)))
               (registry-call-with-lock
-               (namespace-module-registry$1 ns143_0)
+               (namespace-module-registry$1 ns144_0)
                (lambda ()
                  (letrec*
                   ((loop_0
@@ -19369,10 +19450,10 @@
                        (let ((cp-mis_0
                               (unbox
                                (namespace-available-cross-phase-module-instances
-                                ns143_0))))
+                                ns144_0))))
                          (let ((mis_0
                                 (hash-ref
-                                 (namespace-available-module-instances ns143_0)
+                                 (namespace-available-module-instances ns144_0)
                                  run-phase_0
                                  null)))
                            (if (if (null? cp-mis_0) (null? mis_0) #f)
@@ -19380,10 +19461,10 @@
                              (begin
                                (set-box!
                                 (namespace-available-cross-phase-module-instances
-                                 ns143_0)
+                                 ns144_0)
                                 null)
                                (hash-set!
-                                (namespace-available-module-instances ns143_0)
+                                (namespace-available-module-instances ns144_0)
                                 run-phase_0
                                 null)
                                (let ((lst_0 (reverse$1 cp-mis_0)))
@@ -19406,7 +19487,7 @@
                                                 #f
                                                 #f
                                                 mi_0
-                                                ns143_0)
+                                                ns144_0)
                                                (for-loop_0 rest_0))))
                                          (values))))))
                                   (for-loop_0 lst_0)))
@@ -19431,7 +19512,7 @@
                                                 #f
                                                 #f
                                                 mi_0
-                                                ns143_0)
+                                                ns144_0)
                                                (for-loop_0 rest_0))))
                                          (values))))))
                                   (for-loop_0 lst_0)))
@@ -19440,8 +19521,8 @@
                   (loop_0)))))))))
     (case-lambda
      ((ns_0) (namespace-run-available-modules!_0 ns_0 unsafe-undefined))
-     ((ns_0 run-phase142_0)
-      (namespace-run-available-modules!_0 ns_0 run-phase142_0)))))
+     ((ns_0 run-phase143_0)
+      (namespace-run-available-modules!_0 ns_0 run-phase143_0)))))
 (define namespace-primitive-module-visit!
   (lambda (ns_0 name_0)
     (let ((mi_0
@@ -19606,16 +19687,16 @@
 (define namespace-find-shifted-requires.1
   (|#%name|
    namespace-find-shifted-requires
-   (lambda (flattened?144_0 ns146_0 name147_0 requires148_0)
+   (lambda (flattened?145_0 ns147_0 name148_0 requires149_0)
      (let ((bx_0
             (hash-ref
-             (namespace-module-instance-shifted-requires ns146_0)
-             name147_0
+             (namespace-module-instance-shifted-requires ns147_0)
+             name148_0
              #f)))
        (let ((or-part_0 (if bx_0 (unbox bx_0) #f)))
          (if or-part_0
            or-part_0
-           (if (not flattened?144_0)
+           (if (not flattened?145_0)
              (reverse$1
               (letrec*
                ((for-loop_0
@@ -19657,7 +19738,7 @@
                                    (values fold-var_1))))
                             (for-loop_0 fold-var_1 rest_0))))
                       fold-var_0)))))
-               (for-loop_0 null requires148_0)))
+               (for-loop_0 null requires149_0)))
              (reverse$1
               (letrec*
                ((for-loop_0
@@ -19671,7 +19752,7 @@
                             (let ((fold-var_2 (values fold-var_1)))
                               (for-loop_0 fold-var_2 rest_0)))))
                       fold-var_0)))))
-               (for-loop_0 null requires148_0))))))))))
+               (for-loop_0 null requires149_0))))))))))
 (define namespace-shifted-requires-box
   (lambda (ns_0 name_0)
     (let ((or-part_0
@@ -19784,32 +19865,32 @@
 (define namespace-module-use->module+linklet-instances.1
   (|#%name|
    namespace-module-use->module+linklet-instances
-   (lambda (phase-shift152_0
-            resolution-cache153_0
-            shift-from150_0
-            shift-to151_0
-            ns158_0
-            mu159_0)
-     (let ((mod_0 (module-use-module mu159_0)))
+   (lambda (phase-shift153_0
+            resolution-cache154_0
+            shift-from151_0
+            shift-to152_0
+            ns159_0
+            mu160_0)
+     (let ((mod_0 (module-use-module mu160_0)))
        (let ((use-name_0
               (let ((or-part_0
-                     (if resolution-cache153_0
-                       (hash-ref resolution-cache153_0 mod_0 #f)
+                     (if resolution-cache154_0
+                       (hash-ref resolution-cache154_0 mod_0 #f)
                        #f)))
                 (if or-part_0
                   or-part_0
                   (let ((name_0
                          (1/module-path-index-resolve
-                          (if shift-from150_0
+                          (if shift-from151_0
                             (module-path-index-shift*
                              mod_0
-                             shift-from150_0
-                             shift-to151_0
+                             shift-from151_0
+                             shift-to152_0
                              #f)
                             mod_0))))
                     (begin
-                      (if resolution-cache153_0
-                        (hash-set! resolution-cache153_0 mod_0 name_0)
+                      (if resolution-cache154_0
+                        (hash-set! resolution-cache154_0 mod_0 name_0)
                         (void))
                       name_0))))))
          (let ((mi_0
@@ -19817,14 +19898,14 @@
                  #f
                  #t
                  void
-                 ns158_0
+                 ns159_0
                  use-name_0
-                 phase-shift152_0)))
+                 phase-shift153_0)))
            (let ((m-ns_0 (module-instance-namespace mi_0)))
              (let ((d_0
                     (let ((small-ht_0
                            (namespace-phase-level-to-definitions m-ns_0)))
-                      (let ((key_0 (module-use-phase mu159_0)))
+                      (let ((key_0 (module-use-phase mu160_0)))
                         (let ((small-ht_1 small-ht_0))
                           (hash-ref (unbox small-ht_1) key_0 #f))))))
                (if d_0
@@ -19836,7 +19917,7 @@
                          "  instance phase: ~a\n"
                          "  phase level: ~a\n"
                          "  found phase levels: ~a")))
-                   (let ((app_1 (module-use-phase mu159_0)))
+                   (let ((app_1 (module-use-phase mu160_0)))
                      (error
                       'eval
                       app_0
@@ -20160,7 +20241,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish950
+  (let ((finish959
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -20186,7 +20267,7 @@
             #f
             #f
             |#%system-inspector|)))
-      (let ((effect951 (finish950 struct:set!-transformer_0)))
+      (let ((effect960 (finish959 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -25004,7 +25085,7 @@
                                        (let ((app_0
                                               (module-path-index-resolved
                                                mpi_0)))
-                                         (module-path-index2.1
+                                         (module-path-index3.1
                                           (module-path-index-path mpi_0)
                                           interned-base_0
                                           app_0
@@ -51346,7 +51427,7 @@
   has-liberal-define-context-property?
   liberal-define-context-value)
  (make-struct-type-property 'liberal-define-context))
-(define finish_2095
+(define finish_2096
   (make-struct-type-install-properties
    '(liberal-define-context)
    0
@@ -51372,7 +51453,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2849 (finish_2095 struct:liberal-define-context))
+(define effect_2849 (finish_2096 struct:liberal-define-context))
 (define make-liberal-define-context
   (|#%name|
    make-liberal-define-context
@@ -53613,7 +53694,7 @@
      module*
      |#%declare|
      |#%stratified-body|)))
-(define finish_2794
+(define finish_2793
   (make-struct-type-install-properties
    '(internal-definition-context)
    7
@@ -53639,7 +53720,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2979 (finish_2794 struct:internal-definition-context))
+(define effect_2979 (finish_2793 struct:internal-definition-context))
 (define internal-definition-context1.1
   (|#%name|
    internal-definition-context

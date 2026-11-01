@@ -1,5 +1,6 @@
 #lang racket/base
 (require "../common/phase.rkt"
+         "../common/field0-hash.rkt"
          "../common/phase+space.rkt"
          "../common/small-hash.rkt"
          "../common/performance.rkt"
@@ -167,7 +168,8 @@
 ;; namespace. If a module instance is attached from one namespace to another,
 ;; it's really the `namespace` within the instance that is shared, not the
 ;; `module-instance` object.
-(struct module-instance (namespace
+(struct module-instance (hash                          ; field 0 => `eq-hash-code`
+                         namespace
                          module                        ; can be #f for the module being expanded
                          [shifted-requires #:mutable]  ; computed on demand; shifted from `module-requires` or `module-flattened-requires`
                          phase-level-to-state          ; phase-level -> #f, 'available, or 'started
@@ -177,8 +179,11 @@
                          portal-syntaxes)              ; for a module being expanded 
   #:authentic)
 
+(register-field0-eq-hash-code! struct:module-instance)
+
 (define (make-module-instance m-ns m portal-syntaxes)
-  (module-instance m-ns           ; namespace
+  (module-instance (next-field0-hash!)
+                   m-ns           ; namespace
                    m              ; module
                    #f             ; shifted-requires (not yet computed)
                    (make-small-hasheqv) ; phase-level-to-state

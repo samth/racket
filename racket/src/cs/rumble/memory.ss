@@ -3,7 +3,43 @@
 (define request-incremental? #f)
 (define disable-incremental? #f)
 
+;; Parses a size like "64M", "512k", or "1073741824" from an
+;; environment variable, returning #f if it's not set or not valid
+(define (getenv-size name)
+  (let ([s (getenv name)])
+    (and s
+         (let* ([len (string-length s)]
+                [last-ch (and (fx> len 0) (char-downcase (string-ref s (fx- len 1))))]
+                [scale (case last-ch
+                         [(#\k) 1024]
+                         [(#\m) (* 1024 1024)]
+                         [(#\g) (* 1024 1024 1024)]
+                         [else 1])]
+                [n (string->number (if (eqv? scale 1) s (substring s 0 (fx- len 1))) 10)])
+           (and n
+                (exact? n)
+                (integer? n)
+                (positive? n)
+                (* n scale))))))
+
+;; Allocation between minor collections, per allocating place. A
+;; larger nursery means fewer minor collections and less promotion of
+;; short-lived objects to older generations, which helps when
+;; compiling large programs (they allocate tens of GB), but a nursery
+;; that doesn't fit in cache slows down the allocating code itself.
+;; PLT_CS_NURSERY_SIZE overrides the default.
+(define nursery-bytes (or (getenv-size "PLT_CS_NURSERY_SIZE")
+                          (* 8 1024 1024)))
+
+;; A major collection is not triggered by memory use below this size
+;; (but explicit `(collect-garbage)` calls still happen). Programs
+;; that are known to grow to a large heap can avoid early major
+;; collections by setting PLT_CS_HEAP_SIZE, similar to a JVM's -Xms.
+(define min-heap-bytes (or (getenv-size "PLT_CS_HEAP_SIZE")
+                           (* 32 1024 1024)))
+
 (define (set-collect-handler!)
+  (collect-trip-bytes nursery-bytes)
   (collect-request-handler (lambda ()
                              ;; Handler is called in an unspecified thread with
                              ;; all other threads paused (at some point where interrupts
@@ -36,7 +72,7 @@
 (define (collect-trip-for-allocating-places! delta)
   (with-global-lock
    (set! allocating-places (+ allocating-places delta))
-   (collect-trip-bytes (* allocating-places (* 8 1024 1024)))))
+   (collect-trip-bytes (* allocating-places nursery-bytes))))
 
 ;; Replicate the counting that `(collect)` would do
 ;; so that we can report a generation to the notification
@@ -53,8 +89,8 @@
 ;; Trigger a GC when either the non-overhead or with-overhead counts
 ;; grows enough.
 (define GC-TRIGGER-FACTOR (* 8 1024)) ; this times the square root of memory use is added to memory use
-(define trigger-major-gc-allocated (* 32 1024 1024))
-(define trigger-major-gc-allocated+overhead (* 64 1024 1024))
+(define trigger-major-gc-allocated min-heap-bytes)
+(define trigger-major-gc-allocated+overhead (* 2 min-heap-bytes))
 (define non-full-gc-counter 0)
 
 ;; Called in any thread with all other threads paused. The Racket
@@ -156,8 +192,10 @@
             ;;  immediate major GC too soon. So, watch both.
             (let ([scale (lambda (n)
                            (+ n (inexact->exact (floor (* (sqrt (max 0 n)) GC-TRIGGER-FACTOR)))))])
-              (set! trigger-major-gc-allocated (scale (- post-allocated (bytes-finalized))))
-              (set! trigger-major-gc-allocated+overhead (scale post-allocated+overhead))))
+              (set! trigger-major-gc-allocated (max min-heap-bytes
+                                                    (scale (- post-allocated (bytes-finalized)))))
+              (set! trigger-major-gc-allocated+overhead (max (* 2 min-heap-bytes)
+                                                             (scale post-allocated+overhead)))))
           (update-eq-hash-code-table-size!)
           (update-struct-procs-table-sizes!)
           (poll-foreign-guardian)

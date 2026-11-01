@@ -566,6 +566,7 @@
           set-custodian-memory-use-proc!          ; not exported to Racket
           set-immediate-allocation-check-proc!    ; not exported to Racket
           set-incremental-collection-enabled!     ; not exported to Racket
+          set-gc-sizes!                           ; not exported to Racket
           unsafe-add-collect-callbacks
           unsafe-remove-collect-callbacks
 

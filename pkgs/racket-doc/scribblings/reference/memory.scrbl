@@ -224,6 +224,19 @@ Set the @envvar{PLT_INCREMENTAL_GC} environment variable
 to a value that starts with @litchar{0}, @litchar{n}, or @litchar{N} to
 disable incremental-mode requests (in all implementations of Racket).
 
+In the @tech{CS} implementation of Racket, set the
+@as-index{@envvar{PLT_GC_NURSERY_SIZE}} environment variable to a
+size in bytes to change how much each place allocates between minor
+collections; the default is 32 MB. A larger nursery means fewer minor
+collections, and fewer short-lived objects that survive into older
+generations, at the cost of more memory use. Set the
+@as-index{@envvar{PLT_GC_HEAP_SIZE}} environment variable to a size
+in bytes to keep allocation from triggering a major collection until
+memory use reaches that size. For both variables, the size is a
+positive integer optionally followed by @litchar{K}, @litchar{M}, or
+@litchar{G} (in either case) to multiply it by 1024, 1024@superscript{2},
+or 1024@superscript{3}; any other value is ignored.
+
 Each garbage collection logs a message (see @secref["logging"]) at the
 @racket['debug] level with topic @racket['GC]. In the @tech{CS} and @tech{3m}
 implementations of Racket, ``major'' collections are also logged at the

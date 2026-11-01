@@ -65,6 +65,23 @@
 (define trigger-major-gc-allocated+overhead (* 64 1024 1024))
 (define non-full-gc-counter 0)
 
+;; Allocation does not trigger a major GC until memory use reaches
+;; this many bytes (or twice that, counting overhead); see
+;; `set-gc-sizes!`
+(define min-heap-bytes 0)
+
+;; Called at startup with sizes from `PLT_GC_NURSERY_SIZE` and
+;; `PLT_GC_HEAP_SIZE`, where #f leaves the default
+(define (set-gc-sizes! nursery heap)
+  (with-global-lock
+   (when nursery
+     (set! nursery-bytes nursery)
+     (collect-trip-bytes (* allocating-places nursery-bytes)))
+   (when heap
+     (set! min-heap-bytes heap)
+     (set! trigger-major-gc-allocated (max trigger-major-gc-allocated heap))
+     (set! trigger-major-gc-allocated+overhead (max trigger-major-gc-allocated+overhead (* 2 heap))))))
+
 ;; Called in any thread with all other threads paused. The Racket
 ;; thread scheduler may be in atomic mode. In fact, the engine
 ;; and control layer may be in uninterrupted mode, so don't
@@ -164,8 +181,10 @@
             ;;  immediate major GC too soon. So, watch both.
             (let ([scale (lambda (n)
                            (+ n (inexact->exact (floor (* (sqrt (max 0 n)) GC-TRIGGER-FACTOR)))))])
-              (set! trigger-major-gc-allocated (scale (- post-allocated (bytes-finalized))))
-              (set! trigger-major-gc-allocated+overhead (scale post-allocated+overhead))))
+              (set! trigger-major-gc-allocated (max min-heap-bytes
+                                                    (scale (- post-allocated (bytes-finalized)))))
+              (set! trigger-major-gc-allocated+overhead (max (* 2 min-heap-bytes)
+                                                             (scale post-allocated+overhead)))))
           (update-eq-hash-code-table-size!)
           (update-struct-procs-table-sizes!)
           (poll-foreign-guardian)

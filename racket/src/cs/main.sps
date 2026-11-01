@@ -928,6 +928,27 @@
                 (#%memv (string-ref s 0) '(#\0 #\n #\N)))
        (set-incremental-collection-enabled! #f)))
 
+   (let ([getenv-size
+          ;; A positive number of bytes, optionally followed by K, M, or G;
+          ;; ignore anything else
+          (lambda (name)
+            (let* ([s (getenv name)]
+                   [len (if s (string-length s) 0)]
+                   [scale (and (fx> len 0)
+                               (case (char-downcase (string-ref s (fx- len 1)))
+                                 [(#\k) 1024]
+                                 [(#\m) (* 1024 1024)]
+                                 [(#\g) (* 1024 1024 1024)]
+                                 [else 1]))]
+                   [n (and scale
+                           (string->number (if (eqv? scale 1) s (substring s 0 (fx- len 1))) 10))])
+              (and n
+                   (exact-nonnegative-integer? n)
+                   (positive? n)
+                   (* n scale))))])
+     (set-gc-sizes! (getenv-size "PLT_GC_NURSERY_SIZE")
+                    (getenv-size "PLT_GC_HEAP_SIZE")))
+
    (when (getenv "PLTDISABLEGC")
      (collect-request-handler void))
 

@@ -11,6 +11,7 @@
          system-language+country
 
          locale-encoding-is-utf-8?
+         locale-encoding-is-ascii-compatible?
          locale-string-encoding/bytes
          sync-locale!)
 
@@ -23,6 +24,8 @@
                   'current-locale))
 
 (define-place-local installed-locale #f)
+;; Incremented every time a locale is installed:
+(define-place-local installed-generation 0)
 
 ;; in rktio mode
 ;; Any rktio function that depends on the locale should be called in
@@ -32,6 +35,7 @@
   (unless (or (not loc)
               (equal? installed-locale loc))
     (set! installed-locale (current-locale))
+    (set! installed-generation (add1 installed-generation))
     (rktio_set_locale rktio (string->bytes/utf-8 installed-locale))))
 
 (void (rktio_set_default_locale #""))
@@ -80,3 +84,32 @@
         (rktio_free c)
         (end-rktio))
       #\?)]))
+
+;; Encodings that are known to represent each ASCII character as the
+;; same single byte as ASCII:
+(define ascii-compatible-encodings
+  '(#"UTF-8" #"UTF8" #"ANSI_X3.4-1968" #"US-ASCII" #"ASCII" #"ISO-8859-1" #"ISO-8859-15"))
+
+;; #f or (vector locale generation ascii-compatible?) for the most
+;; recently checked locale; the encoding for a locale string can change
+;; only when a locale is installed (when "" refers to the environment)
+(define-place-local ascii-compatible-cache #f)
+
+(define (locale-encoding-is-ascii-compatible?)
+  (define loc (current-locale))
+  (define cache ascii-compatible-cache)
+  (cond
+    [(and cache
+          (eq? loc (vector-ref cache 0))
+          (eqv? installed-generation (vector-ref cache 1)))
+     (vector-ref cache 2)]
+    [else
+     (define-values (enc gen)
+       (rktioly
+        (let ([enc (locale-string-encoding/bytes)])
+          (values enc installed-generation))))
+     (define ok? (and (member (string->bytes/latin-1 (string-upcase (bytes->string/latin-1 enc)))
+                              ascii-compatible-encodings)
+                      #t))
+     (set! ascii-compatible-cache (vector loc gen ok?))
+     ok?]))

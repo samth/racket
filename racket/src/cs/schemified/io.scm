@@ -530,6 +530,47 @@
          'racket/primitive
          "procedure?"
          p_0)))))
+(define bad-list$1
+  (|#%name|
+   bad-list
+   (lambda (who_0 orig-l_0)
+     (raise-arguments-error who_0 "not a proper list" "in" orig-l_0))))
+(define member-impl
+  (lambda (who_0 v_0 orig-l_0 eql?_0)
+    (letrec*
+     ((loop_0
+       (|#%name|
+        loop
+        (lambda (ls_0 turtle_0)
+          (if (null? ls_0)
+            #f
+            (if (not (pair? ls_0))
+              (raise-arguments-error who_0 "not a proper list" "in" orig-l_0)
+              (if (|#%app| eql?_0 v_0 (car ls_0))
+                ls_0
+                (let ((ls_1 (cdr ls_0)))
+                  (if (null? ls_1)
+                    #f
+                    (if (if (not (pair? ls_1)) #t (eq? ls_1 turtle_0))
+                      (raise-arguments-error
+                       who_0
+                       "not a proper list"
+                       "in"
+                       orig-l_0)
+                      (if (|#%app| eql?_0 v_0 (car ls_1))
+                        ls_1
+                        (let ((app_0 (cdr ls_1)))
+                          (loop_0 app_0 (cdr turtle_0))))))))))))))
+     (loop_0 orig-l_0 orig-l_0))))
+(define member
+  (case-lambda
+   ((v_0 ls_0) (member-impl 'member v_0 ls_0 equal?))
+   ((v_0 ls_0 eql?_0)
+    (begin
+      (if (if (procedure? eql?_0) (procedure-arity-includes? eql?_0 2) #f)
+        (void)
+        (raise-argument-error 'member "(procedure-arity-includes/c 2)" eql?_0))
+      (member-impl 'member v_0 ls_0 eql?_0)))))
 (define 1/reverse
   (|#%name|
    reverse
@@ -3339,17 +3380,17 @@
 (define m+s-mutex (|#%name| m+s-mutex (record-accessor struct:m+s 0)))
 (define m+s-sleep (|#%name| m+s-sleep (record-accessor struct:m+s 1)))
 (define m+s-handle (|#%name| m+s-handle (record-accessor struct:m+s 2)))
-(define cell.2$3 (unsafe-make-place-local (make-mutex)))
+(define cell.2$4 (unsafe-make-place-local (make-mutex)))
 (define start-rktio
   (lambda ()
     (begin
       (unsafe-start-uninterruptible)
       (assert-push-lock-level! 'rktio)
-      (mutex-acquire (unsafe-place-local-ref cell.2$3)))))
+      (mutex-acquire (unsafe-place-local-ref cell.2$4)))))
 (define end-rktio
   (lambda ()
     (begin
-      (mutex-release (unsafe-place-local-ref cell.2$3))
+      (mutex-release (unsafe-place-local-ref cell.2$4))
       (assert-pop-lock-level! 'rktio)
       (unsafe-end-uninterruptible))))
 (define make-rktio-mutex+sleep
@@ -3357,7 +3398,7 @@
     (let ((app_0 (make-mutex)))
       (let ((app_1 (box #f)))
         (m+s1.1 app_0 app_1 (|#%app| rktio_get_signal_handle rktio_0))))))
-(define cell.3$1
+(define cell.3$2
   (unsafe-make-place-local
    (make-rktio-mutex+sleep (unsafe-place-local-ref cell.1))))
 (define start-rktio-sleep-relevant
@@ -3365,21 +3406,21 @@
     (begin
       (unsafe-start-uninterruptible)
       (assert-push-lock-level! 'rktio-sleep-relevant)
-      (mutex-acquire/wakeup-sleep (unsafe-place-local-ref cell.3$1)))))
+      (mutex-acquire/wakeup-sleep (unsafe-place-local-ref cell.3$2)))))
 (define end-rktio-sleep-relevant
   (lambda ()
     (begin
-      (let ((mutex+sleep_0 (unsafe-place-local-ref cell.3$1)))
+      (let ((mutex+sleep_0 (unsafe-place-local-ref cell.3$2)))
         (mutex-release (m+s-mutex mutex+sleep_0)))
       (assert-pop-lock-level! 'rktio-sleep-relevant)
       (unsafe-end-uninterruptible))))
 (define maybe-start-sleep-rktio
   (lambda ()
-    (maybe-mutex-acquire/start-sleep (unsafe-place-local-ref cell.3$1))))
+    (maybe-mutex-acquire/start-sleep (unsafe-place-local-ref cell.3$2))))
 (define end-sleep-rktio
   (lambda ()
     (begin
-      (mutex-release/end-sleep (unsafe-place-local-ref cell.3$1))
+      (mutex-release/end-sleep (unsafe-place-local-ref cell.3$2))
       (assert-pop-lock-level! 'rktio-sleep-relevant))))
 (define end-rktio+atomic (lambda () (begin (end-rktio) (unsafe-end-atomic))))
 (define end-rktio+uninterruptible
@@ -3464,9 +3505,9 @@
   (lambda ()
     (begin
       (unsafe-place-local-set! cell.1 (|#%app| rktio_init))
-      (unsafe-place-local-set! cell.2$3 (make-mutex))
+      (unsafe-place-local-set! cell.2$4 (make-mutex))
       (unsafe-place-local-set!
-       cell.3$1
+       cell.3$2
        (make-rktio-mutex+sleep (unsafe-place-local-ref cell.1))))))
 (define rktio-place-destroy!
   (lambda ()
@@ -3682,12 +3723,12 @@
 (define sandman-poll-ctx-poll?
   (lambda (poll-ctx_0) (|#%app| poll-ctx-poll? poll-ctx_0)))
 (define cell.1$12 (unsafe-make-place-local #f))
-(define cell.2$2 (unsafe-make-place-local #f))
+(define cell.2$3 (unsafe-make-place-local #f))
 (define sandman-set-background-sleep!
   (lambda (sleep_0 fd_0)
     (begin
       (unsafe-place-local-set! cell.1$12 sleep_0)
-      (unsafe-place-local-set! cell.2$2 fd_0))))
+      (unsafe-place-local-set! cell.2$3 fd_0))))
 (define effect_2180
   (begin
     (void
@@ -3739,7 +3780,7 @@
                                     (if sleep-secs_0 sleep-secs_0 0.0)
                                     ps_0
                                     app_1
-                                    (unsafe-place-local-ref cell.2$2))))
+                                    (unsafe-place-local-ref cell.2$3))))
                                (|#%app| (unsafe-place-local-ref cell.1$12))
                                (|#%app|
                                 rktio_end_sleep
@@ -10394,8 +10435,8 @@
              temp7_1
              'stderr)))))))
 (define cell.1$11 (unsafe-make-place-local (make-stdin)))
-(define cell.2$1 (unsafe-make-place-local (make-stdout)))
-(define cell.3 (unsafe-make-place-local (make-stderr)))
+(define cell.2$2 (unsafe-make-place-local (make-stdout)))
+(define cell.3$1 (unsafe-make-place-local (make-stderr)))
 (define 1/current-input-port
   (make-parameter
    (unsafe-place-local-ref cell.1$11)
@@ -10408,7 +10449,7 @@
    'current-input-port))
 (define 1/current-output-port
   (make-parameter
-   (unsafe-place-local-ref cell.2$1)
+   (unsafe-place-local-ref cell.2$2)
    (lambda (v_0)
      (begin
        (if (1/output-port? v_0)
@@ -10418,7 +10459,7 @@
    'current-output-port))
 (define 1/current-error-port
   (make-parameter
-   (unsafe-place-local-ref cell.3)
+   (unsafe-place-local-ref cell.3$1)
    (lambda (v_0)
      (begin
        (if (1/output-port? v_0)
@@ -10435,7 +10476,7 @@
          (open-input-fd.1 cust_0 unsafe-undefined in-fd_0 temp12_0)))
       (1/current-input-port (unsafe-place-local-ref cell.1$11))
       (unsafe-place-local-set!
-       cell.2$1
+       cell.2$2
        (let ((temp15_0 "stdout"))
          (let ((temp18_0
                 (|#%app|
@@ -10451,9 +10492,9 @@
               plumber_0
               out-fd_0
               temp15_1)))))
-      (1/current-output-port (unsafe-place-local-ref cell.2$1))
+      (1/current-output-port (unsafe-place-local-ref cell.2$2))
       (unsafe-place-local-set!
-       cell.3
+       cell.3$1
        (let ((temp20_0 "srderr"))
          (let ((temp23_0
                 (|#%app|
@@ -10469,8 +10510,8 @@
               plumber_0
               err-fd_0
               temp20_1)))))
-      (1/current-error-port (unsafe-place-local-ref cell.3)))))
-(define get-original-error-port (lambda () (unsafe-place-local-ref cell.3)))
+      (1/current-error-port (unsafe-place-local-ref cell.3$1)))))
+(define get-original-error-port (lambda () (unsafe-place-local-ref cell.3$1)))
 (define prepare-change
   (lambda (in_0)
     (let ((prepare-change_0
@@ -12967,11 +13008,11 @@
   (lambda (in_0)
     (if (eq? in_0 (unsafe-place-local-ref cell.1$11))
       (begin
-        (if (1/terminal-port? (unsafe-place-local-ref cell.2$1))
-          (1/flush-output (unsafe-place-local-ref cell.2$1))
+        (if (1/terminal-port? (unsafe-place-local-ref cell.2$2))
+          (1/flush-output (unsafe-place-local-ref cell.2$2))
           (void))
-        (if (1/terminal-port? (unsafe-place-local-ref cell.3))
-          (1/flush-output (unsafe-place-local-ref cell.3))
+        (if (1/terminal-port? (unsafe-place-local-ref cell.3$1))
+          (1/flush-output (unsafe-place-local-ref cell.3$1))
           (void)))
       (void))))
 (define do-read-bytes!
@@ -15899,6 +15940,7 @@
        (if v_0 (string->immutable-string v_0) #f)))
    'current-locale))
 (define cell.1$10 (unsafe-make-place-local #f))
+(define cell.2$1 (unsafe-make-place-local 0))
 (define sync-locale!
   (lambda ()
     (let ((loc_0 (1/current-locale)))
@@ -15909,6 +15951,9 @@
         (void)
         (begin
           (unsafe-place-local-set! cell.1$10 (1/current-locale))
+          (unsafe-place-local-set!
+           cell.2$1
+           (add1 (unsafe-place-local-ref cell.2$1)))
           (let ((app_0 (unsafe-place-local-ref cell.1)))
             (|#%app|
              rktio_set_locale
@@ -16007,6 +16052,45 @@
               (|#%app| rktio_free c_0)
               (end-rktio))
             '#\x3f)))))))
+(define ascii-compatible-encodings
+  '(#vu8(85 84 70 45 56)
+    #vu8(85 84 70 56)
+    #vu8(65 78 83 73 95 88 51 46 52 45 49 57 54 56)
+    #vu8(85 83 45 65 83 67 73 73)
+    #vu8(65 83 67 73 73)
+    #vu8(73 83 79 45 56 56 53 57 45 49)
+    #vu8(73 83 79 45 56 56 53 57 45 49 53)))
+(define cell.3 (unsafe-make-place-local #f))
+(define locale-encoding-is-ascii-compatible?
+  (lambda ()
+    (let ((loc_0 (1/current-locale)))
+      (let ((cache_0 (unsafe-place-local-ref cell.3)))
+        (if (if cache_0
+              (if (eq? loc_0 (vector-ref cache_0 0))
+                (let ((app_0 (unsafe-place-local-ref cell.2$1)))
+                  (eqv? app_0 (vector-ref cache_0 1)))
+                #f)
+              #f)
+          (vector-ref cache_0 2)
+          (call-with-values
+           (lambda ()
+             (begin
+               (start-rktio)
+               (begin0
+                 (let ((enc_0 (locale-string-encoding/bytes)))
+                   (values enc_0 (unsafe-place-local-ref cell.2$1)))
+                 (end-rktio))))
+           (lambda (enc_0 gen_0)
+             (let ((ok?_0
+                    (if (member
+                         (1/string->bytes/latin-1
+                          (string-upcase (1/bytes->string/latin-1 enc_0)))
+                         ascii-compatible-encodings)
+                      #t
+                      #f)))
+               (begin
+                 (unsafe-place-local-set! cell.3 (vector loc_0 gen_0 ok?_0))
+                 ok?_0)))))))))
 (define encoding->bytes
   (lambda (who_0 str_0)
     (if (equal? str_0 "")
@@ -17840,60 +17924,69 @@
                  end_0
                  (string-length str4_0)
                  str4_0)
-                (if (locale-encoding-is-utf-8?)
-                  (1/string->bytes/utf-8 str4_0 err-byte1_0 start2_0 end_0)
-                  (let ((c_0 #f))
-                    (let ((enc_0 (1/locale-string-encoding)))
-                      (dynamic-wind
-                       (lambda ()
-                         (set! c_0 (bytes-open-converter/cached-to enc_0)))
-                       (lambda ()
-                         (let ((in-bstr_0
-                                (string->bytes/ucs-4 str4_0 start2_0 end_0)))
-                           (letrec*
-                            ((loop_0
-                              (|#%name|
-                               loop
-                               (lambda (pos_0)
-                                 (call-with-values
-                                  (lambda ()
-                                    (1/bytes-convert c_0 in-bstr_0 pos_0))
-                                  (lambda (bstr_0 in-used_0 status_0)
-                                    (if (eq? status_0 'complete)
-                                      (if (eqv? pos_0 0) bstr_0 (list bstr_0))
-                                      (if (not err-byte1_0)
-                                        (raise-arguments-error
-                                         'string->bytes/locale
-                                         "string cannot be encoded for the current locale"
-                                         "string"
-                                         str4_0)
-                                        (let ((err-bstr_0 (bytes err-byte1_0)))
-                                          (if (eq? status_0 'aborts)
-                                            (if (eqv? pos_0 0)
-                                              (bytes-append bstr_0 err-bstr_0)
-                                              (list bstr_0 err-bstr_0))
-                                            (let ((r_0
-                                                   (loop_0
-                                                    (+ pos_0 in-used_0 4))))
+                (if (if (string-ascii? str4_0 start2_0 end_0)
+                      (locale-encoding-is-ascii-compatible?)
+                      #f)
+                  (1/string->bytes/latin-1 str4_0 #f start2_0 end_0)
+                  (if (locale-encoding-is-utf-8?)
+                    (1/string->bytes/utf-8 str4_0 err-byte1_0 start2_0 end_0)
+                    (let ((c_0 #f))
+                      (let ((enc_0 (1/locale-string-encoding)))
+                        (dynamic-wind
+                         (lambda ()
+                           (set! c_0 (bytes-open-converter/cached-to enc_0)))
+                         (lambda ()
+                           (let ((in-bstr_0
+                                  (string->bytes/ucs-4 str4_0 start2_0 end_0)))
+                             (letrec*
+                              ((loop_0
+                                (|#%name|
+                                 loop
+                                 (lambda (pos_0)
+                                   (call-with-values
+                                    (lambda ()
+                                      (1/bytes-convert c_0 in-bstr_0 pos_0))
+                                    (lambda (bstr_0 in-used_0 status_0)
+                                      (if (eq? status_0 'complete)
+                                        (if (eqv? pos_0 0)
+                                          bstr_0
+                                          (list bstr_0))
+                                        (if (not err-byte1_0)
+                                          (raise-arguments-error
+                                           'string->bytes/locale
+                                           "string cannot be encoded for the current locale"
+                                           "string"
+                                           str4_0)
+                                          (let ((err-bstr_0
+                                                 (bytes err-byte1_0)))
+                                            (if (eq? status_0 'aborts)
                                               (if (eqv? pos_0 0)
-                                                (apply-bytes-append
-                                                 0
-                                                 (cons
-                                                  bstr_0
-                                                  (cons err-bstr_0 r_0)))
-                                                (cons
+                                                (bytes-append
                                                  bstr_0
-                                                 (cons
-                                                  err-bstr_0
-                                                  r_0))))))))))))))
-                            (loop_0 0))))
-                       (lambda ()
-                         (let ((c_1 c_0))
-                           (cache-save!
-                            c_1
-                            enc_0
-                            cache-to
-                            set-cache-to!)))))))))))))
+                                                 err-bstr_0)
+                                                (list bstr_0 err-bstr_0))
+                                              (let ((r_0
+                                                     (loop_0
+                                                      (+ pos_0 in-used_0 4))))
+                                                (if (eqv? pos_0 0)
+                                                  (apply-bytes-append
+                                                   0
+                                                   (cons
+                                                    bstr_0
+                                                    (cons err-bstr_0 r_0)))
+                                                  (cons
+                                                   bstr_0
+                                                   (cons
+                                                    err-bstr_0
+                                                    r_0))))))))))))))
+                              (loop_0 0))))
+                         (lambda ()
+                           (let ((c_1 c_0))
+                             (cache-save!
+                              c_1
+                              enc_0
+                              cache-to
+                              set-cache-to!))))))))))))))
     (|#%name|
      string->bytes/locale
      (case-lambda
@@ -17947,64 +18040,78 @@
                  end_0
                  (unsafe-bytes-length in-bstr8_0)
                  in-bstr8_0)
-                (if (locale-encoding-is-utf-8?)
-                  (1/bytes->string/utf-8 in-bstr8_0 err-char5_0 start6_0 end_0)
-                  (let ((c_0 #f))
-                    (let ((enc_0 (1/locale-string-encoding)))
-                      (dynamic-wind
-                       (lambda ()
-                         (set! c_0 (bytes-open-converter/cached-from enc_0)))
-                       (lambda ()
-                         (letrec*
-                          ((loop_0
-                            (|#%name|
-                             loop
-                             (lambda (pos_0)
-                               (call-with-values
-                                (lambda ()
-                                  (1/bytes-convert c_0 in-bstr8_0 pos_0))
-                                (lambda (bstr_0 in-used_0 status_0)
-                                  (if (eq? status_0 'complete)
-                                    (if (eqv? pos_0 0)
-                                      (1/bytes->string/utf-8 bstr_0)
-                                      (list bstr_0))
-                                    (if (not err-char5_0)
-                                      (raise-arguments-error
-                                       'bytes->string/locale
-                                       "byte string is not a valid encoding for the current locale"
-                                       "byte string"
-                                       in-bstr8_0)
-                                      (let ((err-bstr_0
-                                             (1/string->bytes/utf-8
-                                              (string err-char5_0))))
-                                        (if (eq? status_0 'aborts)
-                                          (if (eqv? pos_0 0)
-                                            (1/bytes->string/utf-8
-                                             (bytes-append bstr_0 err-bstr_0))
-                                            (list bstr_0 err-bstr_0))
-                                          (let ((r_0
-                                                 (loop_0
-                                                  (+ pos_0 in-used_0 1))))
+                (if (if (eqv? start6_0 0)
+                      (if (eqv? end_0 (unsafe-bytes-length in-bstr8_0))
+                        (if (bytes-ascii? in-bstr8_0)
+                          (locale-encoding-is-ascii-compatible?)
+                          #f)
+                        #f)
+                      #f)
+                  (1/bytes->string/latin-1 in-bstr8_0)
+                  (if (locale-encoding-is-utf-8?)
+                    (1/bytes->string/utf-8
+                     in-bstr8_0
+                     err-char5_0
+                     start6_0
+                     end_0)
+                    (let ((c_0 #f))
+                      (let ((enc_0 (1/locale-string-encoding)))
+                        (dynamic-wind
+                         (lambda ()
+                           (set! c_0 (bytes-open-converter/cached-from enc_0)))
+                         (lambda ()
+                           (letrec*
+                            ((loop_0
+                              (|#%name|
+                               loop
+                               (lambda (pos_0)
+                                 (call-with-values
+                                  (lambda ()
+                                    (1/bytes-convert c_0 in-bstr8_0 pos_0))
+                                  (lambda (bstr_0 in-used_0 status_0)
+                                    (if (eq? status_0 'complete)
+                                      (if (eqv? pos_0 0)
+                                        (1/bytes->string/utf-8 bstr_0)
+                                        (list bstr_0))
+                                      (if (not err-char5_0)
+                                        (raise-arguments-error
+                                         'bytes->string/locale
+                                         "byte string is not a valid encoding for the current locale"
+                                         "byte string"
+                                         in-bstr8_0)
+                                        (let ((err-bstr_0
+                                               (1/string->bytes/utf-8
+                                                (string err-char5_0))))
+                                          (if (eq? status_0 'aborts)
                                             (if (eqv? pos_0 0)
                                               (1/bytes->string/utf-8
-                                               (apply-bytes-append
-                                                0
+                                               (bytes-append
+                                                bstr_0
+                                                err-bstr_0))
+                                              (list bstr_0 err-bstr_0))
+                                            (let ((r_0
+                                                   (loop_0
+                                                    (+ pos_0 in-used_0 1))))
+                                              (if (eqv? pos_0 0)
+                                                (1/bytes->string/utf-8
+                                                 (apply-bytes-append
+                                                  0
+                                                  (cons
+                                                   bstr_0
+                                                   (cons err-bstr_0 r_0))))
                                                 (cons
                                                  bstr_0
-                                                 (cons err-bstr_0 r_0))))
-                                              (cons
-                                               bstr_0
-                                               (cons
-                                                err-bstr_0
-                                                r_0))))))))))))))
-                          (loop_0 0)))
-                       (lambda ()
-                         (let ((c_1 c_0))
-                           (cache-save!
-                            c_1
-                            enc_0
-                            cache-from
-                            set-cache-from!)))))))))))))
+                                                 (cons
+                                                  err-bstr_0
+                                                  r_0))))))))))))))
+                            (loop_0 0)))
+                         (lambda ()
+                           (let ((c_1 c_0))
+                             (cache-save!
+                              c_1
+                              enc_0
+                              cache-from
+                              set-cache-from!))))))))))))))
     (|#%name|
      bytes->string/locale
      (case-lambda
@@ -18015,6 +18122,35 @@
        (bytes->string/locale_0 in-bstr_0 err-char_0 start6_0 unsafe-undefined))
       ((in-bstr_0 err-char5_0)
        (bytes->string/locale_0 in-bstr_0 err-char5_0 0 unsafe-undefined))))))
+(define string-ascii?
+  (lambda (str_0 start_0 end_0)
+    (letrec*
+     ((loop_0
+       (|#%name|
+        loop
+        (lambda (i_0)
+          (let ((or-part_0 (fx= i_0 end_0)))
+            (if or-part_0
+              or-part_0
+              (if (fx< (char->integer (string-ref str_0 i_0)) 128)
+                (loop_0 (fx+ i_0 1))
+                #f)))))))
+     (loop_0 start_0))))
+(define bytes-ascii?
+  (lambda (bstr_0)
+    (let ((len_0 (unsafe-bytes-length bstr_0)))
+      (letrec*
+       ((loop_0
+         (|#%name|
+          loop
+          (lambda (i_0)
+            (let ((or-part_0 (fx= i_0 len_0)))
+              (if or-part_0
+                or-part_0
+                (if (fx< (unsafe-bytes-ref bstr_0 i_0) 128)
+                  (loop_0 (fx+ i_0 1))
+                  #f)))))))
+       (loop_0 0)))))
 (define finish_2782
   (make-struct-type-install-properties
    '(path)

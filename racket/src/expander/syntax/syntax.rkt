@@ -5,6 +5,7 @@
          "../compile/serialize-property.rkt"
          "../compile/serialize-state.rkt"
          "../common/set.rkt"
+         "../common/scope-set.rkt"
          "../common/inline.rkt"
          "../namespace/inspector.rkt"
          "preserved.rkt"
@@ -218,7 +219,7 @@
 
 ;; ----------------------------------------
 
-(define empty-scopes (seteq))
+(define empty-scopes empty-scope-set)
 (define empty-shifted-multi-scopes (seteq))
 (define empty-mpi-shifts null)
 (define empty-props #hasheq())
@@ -367,7 +368,10 @@
   (syntax (if taint
               (modified-content content taint)
               content)
-          (vector*-ref context-triple 0)
+          ;; The deserializer cannot tell an empty set of scopes from other
+          ;; empty `seteq`s, so it produces an empty hash table in that case:
+          (let ([scs (vector*-ref context-triple 0)])
+            (if (scope-set? scs) scs empty-scope-set))
           (vector*-ref context-triple 1)
           (vector*-ref context-triple 2)
           srcloc

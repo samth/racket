@@ -4,6 +4,7 @@
          "serialize-property.rkt"
          "serialize-state.rkt"
          "../common/set.rkt"
+         "../common/scope-set.rkt"
          "../syntax/syntax.rkt"
          "../syntax/binding-table.rkt"
          "../syntax/scope.rkt"
@@ -878,8 +879,18 @@
                  [(#:seteq) (seteq)]
                  [(#:seteqv) (seteqv)]))
      (define len (vector*-ref vec (add1 pos)))
-     (for/fold ([s s] [pos (+ pos 2)]) ([i (in-range len)])
-       (decodes #:pos pos (k) (set-add s k)))]
+     (define-values (rev-elems new-pos)
+       (for/fold ([r null] [pos (+ pos 2)]) ([i (in-range len)])
+         (decodes #:pos pos (k) (cons k r))))
+     ;; A scope set is serialized as a non-empty `seteq` of scopes,
+     ;; in increasing order, so adding them in order is cheap
+     (values (if (and (pair? rev-elems)
+                      (eq? s (seteq))
+                      (andmap scope? rev-elems))
+                 (list->scope-set (reverse rev-elems))
+                 (for/fold ([s s]) ([k (in-list rev-elems)])
+                   (set-add s k)))
+             new-pos)]
     [(#:prefab)
      (define-values (key next-pos) (decodes #:pos (add1 pos) (k) k))
      (define len (vector*-ref vec next-pos))

@@ -5,6 +5,10 @@
 (define (s-exp<? a b)
   (string<? (format "~s" a) (format "~s" b)))
 
+;; Same order as sorting with `s-exp<?`, but prints each element once
+(define (sort-s-exps l)
+  (sort l string<? #:key (lambda (a) (format "~s" a)) #:cache-keys? #t))
+
 (define (format-time sec)
   (let ([d (seconds->date sec)])
     (format "~a-~a-~a ~a:~a:~a"

@@ -1057,8 +1057,8 @@
         [external-deps (remove-duplicates external-deps)])
     (define (path*->collects-relative/maybe-indirect dep)
       (if (and (pair? dep) (eq? 'indirect (car dep)))
-          (cons 'indirect (path*->collects-relative (cdr dep)))
-          (path*->collects-relative dep)))
+          (cons 'indirect (path*->collects-relative (cdr dep) collection-cache))
+          (path*->collects-relative dep collection-cache)))
     (with-compile-output dep-path
       (lambda (op tmp-path)
         (let ([deps (append
@@ -1075,7 +1075,7 @@
                               (get-dep-sha1s path
                                              deps up-to-date collection-cache read-src-syntax path->mode roots #hash()
                                              #:must-exist? #t))
-                        (sort deps s-exp<?))
+                        (sort-s-exps deps))
                  op)
           (newline op))))))
 

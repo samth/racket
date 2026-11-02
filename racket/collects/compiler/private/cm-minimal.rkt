@@ -895,7 +895,12 @@
           (load-cached-recompile-summary (managed-recompile-cache-dir) assume-compiled-sha1 path)])]
       [else code-or-bytes]))
 
-  (when (and code-or-bytes (not (bytes? code-or-bytes)) use-recompile-cache?)
+  ;; Only machine-specific code has target-machine info to summarize, and
+  ;; the summary is saved only when there's a cache and a source hash
+  (when (and code-or-bytes (not (bytes? code-or-bytes)) use-recompile-cache?
+             (current-compile-target-machine)
+             (managed-recompile-cache-dir)
+             assume-compiled-sha1)
     (save-cached-recompile (managed-recompile-cache-dir) assume-compiled-sha1 zo-name
                            (compiled-expression-summarize-target-machine code)))
 

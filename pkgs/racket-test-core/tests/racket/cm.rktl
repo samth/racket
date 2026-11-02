@@ -372,5 +372,20 @@ and the test makes sure that it does and that the first thread doesn't complete.
     (delete-directory/files compiled-dir-to-discard #:must-exist? #f)))
 
 ;; ----------------------------------------
+;; Compiling to machine-independent form (as with `PLT_COMPILE_ANY`)
+;; should not try to summarize target-machine information
+
+(let ([dir (make-temporary-directory)])
+  (with-output-to-file (build-path dir "a.rkt")
+    (lambda () (write '(module a '#%kernel (#%provide f) (define-values (f) (lambda (x) x))))))
+  (with-output-to-file (build-path dir "b.rkt")
+    (lambda () (write '(module b '#%kernel (#%require "a.rkt") (f 1)))))
+  (parameterize ([current-compile-target-machine #f])
+    (managed-compile-zo (build-path dir "b.rkt")))
+  (test #t file-exists? (build-path dir compiled-dir "a_rkt.zo"))
+  (test #t file-exists? (build-path dir compiled-dir "b_rkt.zo"))
+  (delete-directory/files dir))
+
+;; ----------------------------------------
 
 (report-errs)

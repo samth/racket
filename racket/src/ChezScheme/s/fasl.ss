@@ -387,13 +387,8 @@
     (put-u8 p (if (immutable-bytevector? x)
                   (constant fasl-type-immutable-bytevector)
                   (constant fasl-type-bytevector)))
-    (let ([n (bytevector-length x)])
-      (put-uptr p n)
-      (let wrf-bytevector-loop ([i 0])
-        (unless (fx= i n)
-          (let ([x (bytevector-u8-ref x i)])
-            (put-u8 p x)
-            (wrf-bytevector-loop (fx+ i 1))))))))
+    (put-uptr p (bytevector-length x))
+    (put-bytevector p x)))
 
 (define wrf-stencil-vector
    (lambda (x p t a?)

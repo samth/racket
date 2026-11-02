@@ -976,7 +976,7 @@
 
   (define (linklet-summarize-target-machine-info linklet)
     (unless (linklet? linklet)
-      (raise-argument-error 'linklet-add-target-machine-info "linklet?" linklet))
+      (raise-argument-error 'linklet-summarize-target-machine-info "linklet?" linklet))
     (linklet-unpack-exports-info! linklet)
     (linklet-exports-info linklet))
 

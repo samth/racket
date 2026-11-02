@@ -531,9 +531,11 @@
                                                          prop
                                                          (syntax-mpi-shifts sub-s)
                                                          s)]
-                                            [inspector (propagation-apply-inspector
-                                                        prop
-                                                        (syntax-inspector sub-s))]
+                                            [srcloc* (let ([insp (propagation-inspector prop)])
+                                                       (if (or (not insp)
+                                                               (syntax-inspector sub-s))
+                                                           (syntax-srcloc* sub-s)
+                                                           (srcloc*-with-inspector sub-s insp)))]
                                             [content* (if scope-propagations+taint
                                                           (modified-content sub-content scope-propagations+taint)
                                                           sub-content)])))]

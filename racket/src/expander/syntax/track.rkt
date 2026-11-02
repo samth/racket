@@ -35,10 +35,10 @@
                            (list id)
                            (cons id old-origin)))
         (struct-copy syntax new-stx
-                     [props (hash-set old-props 'origin origin)])]
+                     [srcloc* (srcloc*-with-props new-stx (hash-set old-props 'origin origin))])]
        [else
         (struct-copy syntax new-stx
-                     [props old-props])])]
+                     [srcloc* (srcloc*-with-props new-stx old-props)])])]
      [else
       ;; Merge properties
       (define old-props-with-origin
@@ -60,7 +60,7 @@
                                       v
                                       (cons/preserve v old-v))))]))
       (struct-copy syntax new-stx
-                   [props updated-props])])]))
+                   [srcloc* (srcloc*-with-props new-stx updated-props)])])]))
 
 (define (cons/preserve a b)
   (if (or (preserved-property-value? a)
@@ -78,10 +78,12 @@
     (define old-id (datum->syntax #f 'old))
     (define result-props (syntax-props
                           (syntax-track-origin
-                           (struct-copy syntax (datum->syntax #f 'new)
-                                        [props new-props])
-                           (struct-copy syntax (datum->syntax #f (list old-id))
-                                        [props old-props]))))
+                           (let ([s (datum->syntax #f 'new)])
+                             (struct-copy syntax s
+                                          [srcloc* (srcloc*-with-props s new-props)]))
+                           (let ([s (datum->syntax #f (list old-id))])
+                             (struct-copy syntax s
+                                          [srcloc* (srcloc*-with-props s old-props)])))))
     (unless (equal? result-props
                     (hash-update expected-props-except-origin 'origin
                                  (lambda (v)

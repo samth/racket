@@ -181,8 +181,9 @@
                         content*))
     (struct-copy syntax s
                  [mpi-shifts (shift-cons shift (syntax-mpi-shifts s))]
-                 [inspector (or (syntax-inspector s)
-                                inspector)]
+                 [srcloc* (if (or (syntax-inspector s) (not inspector))
+                              (syntax-srcloc* s)
+                              (srcloc*-with-inspector s inspector))]
                  [content* (if (datum-has-elements? content)
                                (modified-content
                                 content
@@ -330,8 +331,9 @@
                       (modified-content-content content*)
                       content*))
   (struct-copy syntax s
-               [inspector (or (syntax-inspector s)
-                              insp)]
+               [srcloc* (if (or (syntax-inspector s) (not insp))
+                            (syntax-srcloc* s)
+                            (srcloc*-with-inspector s insp))]
                [content* (if (datum-has-elements? content)
                              (modified-content
                               content

@@ -46,11 +46,11 @@
 (define (to-srcloc-stx v)
   (cond
    [(srcloc? v) (struct-copy syntax empty-syntax
-                             [srcloc v])]
+                             [srcloc* v])]
    [(pair? v) (to-srcloc-stx (list->vector v))]
    [(vector? v)
     (struct-copy syntax empty-syntax
-                 [srcloc (srcloc (vector-ref v 0)
+                 [srcloc* (srcloc (vector-ref v 0)
                                  (vector-ref v 1)
                                  (vector-ref v 2)
                                  (vector-ref v 3)

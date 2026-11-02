@@ -825,5 +825,5 @@
   (define srcloc (syntax-srcloc old-s))
   (if srcloc
       (struct-copy syntax new-s
-                   [srcloc srcloc])
+                   [srcloc* (srcloc*-with-srcloc new-s srcloc)])
       new-s))

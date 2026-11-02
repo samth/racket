@@ -27,7 +27,7 @@
                       (preserved-property-value val)
                       val))
      (struct-copy syntax s
-                  [props (hash-set (syntax-props s) key pval)])]
+                  [srcloc* (srcloc*-with-props s (hash-set (syntax-props s) key pval))])]
     [(s key val preserved?)
      (check who syntax? s)
      (when preserved?
@@ -40,7 +40,7 @@
                       (preserved-property-value val)
                       val))
      (struct-copy syntax s
-                  [props (hash-set (syntax-props s) key pval)])]))
+                  [srcloc* (srcloc*-with-props s (hash-set (syntax-props s) key pval))])]))
 
 (define/who (syntax-property-preserved? s key)
   (check who syntax? s)
@@ -59,7 +59,7 @@
   (check who syntax? s)
   (if (hash-has-key? (syntax-props s) key)
       (struct-copy syntax s
-                   [props (hash-remove (syntax-props s) key)])
+                   [srcloc* (srcloc*-with-props s (hash-remove (syntax-props s) key))])
       s))
 
 ;; internal use by expander:

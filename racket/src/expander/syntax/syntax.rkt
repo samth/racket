@@ -14,6 +14,13 @@
          "weaker-inspector.rkt")
 
 (provide
+ make-srcloc*
+ syntax-srcloc
+ syntax-props
+ syntax-inspector
+ srcloc*-with-srcloc
+ srcloc*-with-props
+ srcloc*-with-inspector
  (struct-out syntax) ; includes `syntax?`
  syntax-content
  syntax-taintness
@@ -54,9 +61,7 @@
                 scopes  ; scopes that apply at all phases
                 shifted-multi-scopes ; scopes with a distinct identity at each phase; maybe a fallback search
                 mpi-shifts ; chain of module-path-index substitutions
-                srcloc  ; source location
-                props   ; properties
-                inspector) ; inspector for access to protected bindings
+                srcloc*) ; source location, or `syntax-extra` for source location + properties + inspector
   #:authentic
   #:sealed
   ;; Custom printer:
@@ -224,14 +229,56 @@
 (define empty-mpi-shifts null)
 (define empty-props #hasheq())
 
+;; Properties and inspectors change much less often than scopes and
+;; content, and keeping them in a separate record keeps a syntax
+;; object at 5 fields (48 bytes instead of 64 on 64-bit platforms).
+;; The `srcloc*` field holds the source location directly when the
+;; properties are empty and there's no inspector.
+(struct syntax-extra (srcloc props inspector)
+  #:authentic
+  #:sealed)
+
+(define (make-srcloc* srcloc props inspector)
+  (if (and (not inspector)
+           (eqv? 0 (hash-count props)))
+      srcloc
+      (syntax-extra srcloc props inspector)))
+
+(define (syntax-srcloc s)
+  (define srcloc* (syntax-srcloc* s))
+  (if (syntax-extra? srcloc*) (syntax-extra-srcloc srcloc*) srcloc*))
+
+(define (syntax-props s)
+  (define srcloc* (syntax-srcloc* s))
+  (if (syntax-extra? srcloc*) (syntax-extra-props srcloc*) empty-props))
+
+(define (syntax-inspector s)
+  (define srcloc* (syntax-srcloc* s))
+  (and (syntax-extra? srcloc*) (syntax-extra-inspector srcloc*)))
+
+;; Results for a `srcloc*` field that change one part of `s`'s:
+(define (srcloc*-with-srcloc s srcloc)
+  (define srcloc* (syntax-srcloc* s))
+  (if (syntax-extra? srcloc*)
+      (syntax-extra srcloc (syntax-extra-props srcloc*) (syntax-extra-inspector srcloc*))
+      srcloc))
+(define (srcloc*-with-props s props)
+  (define srcloc* (syntax-srcloc* s))
+  (if (syntax-extra? srcloc*)
+      (make-srcloc* (syntax-extra-srcloc srcloc*) props (syntax-extra-inspector srcloc*))
+      (make-srcloc* srcloc* props #f)))
+(define (srcloc*-with-inspector s inspector)
+  (define srcloc* (syntax-srcloc* s))
+  (if (syntax-extra? srcloc*)
+      (make-srcloc* (syntax-extra-srcloc srcloc*) (syntax-extra-props srcloc*) inspector)
+      (make-srcloc* srcloc* empty-props inspector)))
+
 (define empty-syntax
   (syntax #f
           empty-scopes
           empty-shifted-multi-scopes
           empty-mpi-shifts
-          #f   ; srcloc
-          empty-props
-          #f)) ; inspector
+          #f)) ; srcloc*
 
 (define (identifier? s)
   (and (syntax? s) (symbol? (syntax-content s))))
@@ -245,6 +292,16 @@
 (define-place-local known-syntax-pairs (make-weak-hasheq))
 
 (define (immediate-datum->syntax stx-c content stx-l props insp)
+  (immediate-datum->syntax/srcloc* stx-c content (datum->syntax-srcloc* stx-c stx-l props insp)))
+
+(define (datum->syntax-srcloc* stx-c stx-l props insp)
+  (make-srcloc* (and stx-l (syntax-srcloc stx-l))
+                props
+                (and insp
+                     stx-c
+                     (weaker-inspector insp (syntax-inspector stx-c)))))
+
+(define (immediate-datum->syntax/srcloc* stx-c content srcloc*)
   (syntax (if (and stx-c
                    (syntax-taintness stx-c))
               (modified-content content
@@ -259,20 +316,17 @@
           (if stx-c
               (syntax-mpi-shifts stx-c)
               empty-mpi-shifts)
-          (and stx-l (syntax-srcloc stx-l))
-          props
-          (and insp
-               stx-c
-               (weaker-inspector insp (syntax-inspector stx-c)))))
+          srcloc*))
 
 (define (datum->syntax stx-c s [stx-l #f] [stx-p #f])
   (cond
    [(syntax? s) s]
    [else
-    (define insp (current-module-code-inspector))
+    ;; All new syntax objects share the same location, properties, and inspector:
+    (define srcloc* (datum->syntax-srcloc* stx-c stx-l empty-props (current-module-code-inspector)))
     (define (wrap content)
       (let ([content (datum-intern-literal content)])
-        (immediate-datum->syntax stx-c content stx-l empty-props insp)))
+        (immediate-datum->syntax/srcloc* stx-c content srcloc*)))
     (define result-s
       (non-syntax-map s
                       (lambda (tail? x) (cond
@@ -287,7 +341,7 @@
                       known-syntax-pairs))
     (if (and stx-p (not (eq? (syntax-props stx-p) empty-props)))
         (struct-copy syntax result-s
-                     [props (syntax-props stx-p)])
+                     [srcloc* (srcloc*-with-props result-s (syntax-props stx-p))])
         result-s)]))
 
 ;; `(syntax-map s f d->s)` walks over `s`:
@@ -374,12 +428,12 @@
             (if (scope-set? scs) scs empty-scope-set))
           (vector*-ref context-triple 1)
           (vector*-ref context-triple 2)
-          srcloc
-          (if props
-              (for/hasheq ([(k v) (in-immutable-hash props)])
-                (values k (preserved-property-value v)))
-              empty-props)
-          inspector))
+          (make-srcloc* srcloc
+                        (if props
+                            (for/hasheq ([(k v) (in-immutable-hash props)])
+                              (values k (preserved-property-value v)))
+                            empty-props)
+                        inspector)))
 
 (define (deserialize-datum->syntax content context-triple srcloc inspector)
   (define s (deserialize-syntax #f context-triple srcloc #f #f inspector))

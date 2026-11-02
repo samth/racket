@@ -96,11 +96,12 @@
 (define (read-to-syntax s-exp srcloc rep)
   (struct-copy syntax empty-syntax
                [content* (datum-intern-literal s-exp)]
-               [srcloc srcloc]
-               [props (case rep
-                        [(#\[) original-square-props]
-                        [(#\{) original-curly-props]
-                        [else original-props])]))
+               [srcloc* (make-srcloc* srcloc
+                                      (case rep
+                                        [(#\[) original-square-props]
+                                        [(#\{) original-curly-props]
+                                        [else original-props])
+                                      #f)]))
   
 (define original-props
   (syntax-props (syntax-property empty-syntax original-property-sym #t)))

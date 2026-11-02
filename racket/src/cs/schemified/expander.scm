@@ -8126,10 +8126,10 @@
   (|#%name|
    modified-content-scope-propagations+taint
    (record-accessor struct:modified-content 1)))
-(define finish_2357
+(define finish_2990
   (make-struct-type-install-properties
    '(syntax)
-   7
+   5
    0
    #f
    (list
@@ -8295,7 +8295,7 @@
                                (|#%app| ser-push!_0 'tag kw2641)
                                (let ((this-state_0
                                       (if (no-pair-syntax-in-cdr? content_0)
-                                        (syntax-state17.1
+                                        (syntax-state18.1
                                          #t
                                          context-triple_0
                                          (syntax-srcloc$1 s_0))
@@ -8339,9 +8339,10 @@
                            (if (if (eq?
                                     context-triple_0
                                     (syntax-state-context-triple stx-state_0))
-                                 (equal?
-                                  (syntax-srcloc$1 s_0)
-                                  (syntax-state-srcloc stx-state_0))
+                                 (let ((app_0 (syntax-srcloc$1 s_0)))
+                                   (equal?
+                                    app_0
+                                    (syntax-state-srcloc stx-state_0)))
                                  #f)
                              (void)
                              (set-syntax-state-all-sharing?! stx-state_0 #f))
@@ -8374,7 +8375,7 @@
                  (write-string ">" port_0)))))))))
    (current-inspector)
    #f
-   '(1 2 3 4 5 6)
+   '(1 2 3 4)
    #f
    'syntax))
 (define struct:syntax
@@ -8385,13 +8386,13 @@
    (|#%nongenerative-uid| syntax)
    #t
    #f
-   '(7 . 1)
+   '(5 . 1)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2447 (finish_2357 struct:syntax))
+(define effect_2447 (finish_2990 struct:syntax))
 (define syntax2.1
   (|#%name|
    syntax
@@ -8406,11 +8407,8 @@
   (|#%name| syntax-shifted-multi-scopes (record-accessor struct:syntax 2)))
 (define syntax-mpi-shifts
   (|#%name| syntax-mpi-shifts (record-accessor struct:syntax 3)))
-(define syntax-srcloc$1
-  (|#%name| syntax-srcloc (record-accessor struct:syntax 4)))
-(define syntax-props (|#%name| syntax-props (record-accessor struct:syntax 5)))
-(define syntax-inspector
-  (|#%name| syntax-inspector (record-accessor struct:syntax 6)))
+(define syntax-srcloc*
+  (|#%name| syntax-srcloc* (record-accessor struct:syntax 4)))
 (define set-syntax-content*!
   (|#%name| set-syntax-content*! (record-mutator struct:syntax 0)))
 (define-values
@@ -8449,15 +8447,98 @@
 (define empty-shifted-multi-scopes (seteq))
 (define empty-mpi-shifts null)
 (define empty-props hash2610)
+(define finish_2251
+  (make-struct-type-install-properties
+   '(syntax-extra)
+   3
+   0
+   #f
+   (list (cons prop:sealed #t) (cons prop:authentic #t))
+   (current-inspector)
+   #f
+   '(0 1 2)
+   #f
+   'syntax-extra))
+(define struct:syntax-extra
+  (|#%make-record-type-descriptor|
+   |#%racket-base-rtd|
+   'syntax-extra
+   #f
+   (|#%nongenerative-uid| syntax-extra)
+   #t
+   #f
+   '(3 . 0)
+   'make-struct-type
+   #f
+   #f
+   #f
+   |#%system-inspector|))
+(define effect_2740 (finish_2251 struct:syntax-extra))
+(define syntax-extra3.1
+  (|#%name|
+   syntax-extra
+   (record-constructor
+    (make-record-constructor-descriptor struct:syntax-extra #f #f))))
+(define syntax-extra?
+  (|#%name| syntax-extra? (record-predicate struct:syntax-extra)))
+(define syntax-extra-srcloc
+  (|#%name| syntax-extra-srcloc (record-accessor struct:syntax-extra 0)))
+(define syntax-extra-props
+  (|#%name| syntax-extra-props (record-accessor struct:syntax-extra 1)))
+(define syntax-extra-inspector
+  (|#%name| syntax-extra-inspector (record-accessor struct:syntax-extra 2)))
+(define make-srcloc*
+  (lambda (srcloc_0 props_0 inspector_0)
+    (if (if (not inspector_0) (eqv? 0 (hash-count props_0)) #f)
+      srcloc_0
+      (syntax-extra3.1 srcloc_0 props_0 inspector_0))))
+(define syntax-srcloc$1
+  (|#%name|
+   syntax-srcloc
+   (lambda (s_0)
+     (let ((srcloc*_0 (syntax-srcloc* s_0)))
+       (if (syntax-extra? srcloc*_0)
+         (syntax-extra-srcloc srcloc*_0)
+         srcloc*_0)))))
+(define syntax-props
+  (lambda (s_0)
+    (let ((srcloc*_0 (syntax-srcloc* s_0)))
+      (if (syntax-extra? srcloc*_0)
+        (syntax-extra-props srcloc*_0)
+        empty-props))))
+(define syntax-inspector
+  (lambda (s_0)
+    (let ((srcloc*_0 (syntax-srcloc* s_0)))
+      (if (syntax-extra? srcloc*_0) (syntax-extra-inspector srcloc*_0) #f))))
+(define srcloc*-with-srcloc
+  (lambda (s_0 srcloc_0)
+    (let ((srcloc*_0 (syntax-srcloc* s_0)))
+      (if (syntax-extra? srcloc*_0)
+        (syntax-extra3.1
+         srcloc_0
+         (syntax-extra-props srcloc*_0)
+         (syntax-extra-inspector srcloc*_0))
+        srcloc_0))))
+(define srcloc*-with-props
+  (lambda (s_0 props_0)
+    (let ((srcloc*_0 (syntax-srcloc* s_0)))
+      (if (syntax-extra? srcloc*_0)
+        (make-srcloc*
+         (syntax-extra-srcloc srcloc*_0)
+         props_0
+         (syntax-extra-inspector srcloc*_0))
+        (make-srcloc* srcloc*_0 props_0 #f)))))
+(define srcloc*-with-inspector
+  (lambda (s_0 inspector_0)
+    (let ((srcloc*_0 (syntax-srcloc* s_0)))
+      (if (syntax-extra? srcloc*_0)
+        (make-srcloc*
+         (syntax-extra-srcloc srcloc*_0)
+         (syntax-extra-props srcloc*_0)
+         inspector_0)
+        (make-srcloc* srcloc*_0 empty-props inspector_0)))))
 (define empty-syntax
-  (syntax2.1
-   #f
-   empty-scope-set
-   empty-shifted-multi-scopes
-   null
-   #f
-   empty-props
-   #f))
+  (syntax2.1 #f empty-scope-set empty-shifted-multi-scopes null #f))
 (define identifier?
   (lambda (s_0) (if (syntax?$1 s_0) (symbol? (syntax-content s_0)) #f)))
 (define syntax-identifier? (lambda (s_0) (symbol? (syntax-content s_0))))
@@ -8527,6 +8608,32 @@
 (define cell.1$8 (unsafe-make-place-local (make-weak-hasheq)))
 (define immediate-datum->syntax
   (lambda (stx-c_0 content_0 stx-l_0 props_0 insp_0)
+    (immediate-datum->syntax/srcloc*
+     stx-c_0
+     content_0
+     (datum->syntax-srcloc* stx-c_0 stx-l_0 props_0 insp_0))))
+(define datum->syntax-srcloc*
+  (lambda (stx-c_0 stx-l_0 props_0 insp_0)
+    (let ((app_0 (if stx-l_0 (syntax-srcloc$1 stx-l_0) #f)))
+      (make-srcloc*
+       app_0
+       props_0
+       (if insp_0
+         (if stx-c_0
+           (let ((b_0 (syntax-inspector stx-c_0)))
+             (if (eq? insp_0 b_0)
+               insp_0
+               (if (not insp_0)
+                 #f
+                 (if (not b_0)
+                   #f
+                   (if (inspector-superior? insp_0 b_0)
+                     b_0
+                     (if (inspector-superior? b_0 insp_0) insp_0 #f))))))
+           #f)
+         #f)))))
+(define immediate-datum->syntax/srcloc*
+  (lambda (stx-c_0 content_0 srcloc*_0)
     (let ((app_0
            (if (if stx-c_0 (syntax-taintness stx-c_0) #f)
              (modified-content1.1 content_0 (tainted-for-content content_0))
@@ -8536,50 +8643,34 @@
                (if stx-c_0
                  (syntax-shifted-multi-scopes stx-c_0)
                  empty-shifted-multi-scopes)))
-          (let ((app_3 (if stx-c_0 (syntax-mpi-shifts stx-c_0) null)))
-            (let ((app_4 (if stx-l_0 (syntax-srcloc$1 stx-l_0) #f)))
-              (syntax2.1
-               app_0
-               app_1
-               app_2
-               app_3
-               app_4
-               props_0
-               (if insp_0
-                 (if stx-c_0
-                   (let ((b_0 (syntax-inspector stx-c_0)))
-                     (if (eq? insp_0 b_0)
-                       insp_0
-                       (if (not insp_0)
-                         #f
-                         (if (not b_0)
-                           #f
-                           (if (inspector-superior? insp_0 b_0)
-                             b_0
-                             (if (inspector-superior? b_0 insp_0)
-                               insp_0
-                               #f))))))
-                   #f)
-                 #f)))))))))
+          (syntax2.1
+           app_0
+           app_1
+           app_2
+           (if stx-c_0 (syntax-mpi-shifts stx-c_0) null)
+           srcloc*_0))))))
 (define datum->syntax$1
   (let ((datum->syntax_0
          (|#%name|
           datum->syntax
-          (lambda (stx-c5_0 s6_0 stx-l3_0 stx-p4_0)
-            (if (syntax?$1 s6_0)
-              s6_0
-              (let ((insp_0 (current-module-code-inspector)))
+          (lambda (stx-c6_0 s7_0 stx-l4_0 stx-p5_0)
+            (if (syntax?$1 s7_0)
+              s7_0
+              (let ((srcloc*_0
+                     (datum->syntax-srcloc*
+                      stx-c6_0
+                      stx-l4_0
+                      empty-props
+                      (current-module-code-inspector))))
                 (let ((wrap_0
                        (|#%name|
                         wrap
                         (lambda (content_0)
                           (let ((content_1 (datum-intern-literal content_0)))
-                            (immediate-datum->syntax
-                             stx-c5_0
+                            (immediate-datum->syntax/srcloc*
+                             stx-c6_0
                              content_1
-                             stx-l3_0
-                             empty-props
-                             insp_0))))))
+                             srcloc*_0))))))
                   (let ((f_0
                          (|#%name|
                           f
@@ -8673,27 +8764,26 @@
                                                          (gf_0
                                                           #f
                                                           s_0)))))))))))))
-                                    (loop_0 #f s6_0 0))))))))
-                      (if (if stx-p4_0
-                            (not (eq? (syntax-props stx-p4_0) empty-props))
+                                    (loop_0 #f s7_0 0))))))))
+                      (if (if stx-p5_0
+                            (not (eq? (syntax-props stx-p5_0) empty-props))
                             #f)
                         (if (syntax?$1 result-s_0)
-                          (let ((props20_0 (syntax-props stx-p4_0)))
+                          (let ((srcloc*22_0
+                                 (srcloc*-with-props
+                                  result-s_0
+                                  (syntax-props stx-p5_0))))
                             (let ((app_0 (syntax-content* result-s_0)))
                               (let ((app_1 (syntax-scopes result-s_0)))
                                 (let ((app_2
                                        (syntax-shifted-multi-scopes
                                         result-s_0)))
-                                  (let ((app_3 (syntax-mpi-shifts result-s_0)))
-                                    (let ((app_4 (syntax-srcloc$1 result-s_0)))
-                                      (syntax2.1
-                                       app_0
-                                       app_1
-                                       app_2
-                                       app_3
-                                       app_4
-                                       props20_0
-                                       (syntax-inspector result-s_0))))))))
+                                  (syntax2.1
+                                   app_0
+                                   app_1
+                                   app_2
+                                   (syntax-mpi-shifts result-s_0)
+                                   srcloc*22_0)))))
                           (raise-argument-error
                            'struct-copy
                            "syntax?"
@@ -8703,9 +8793,9 @@
      datum->syntax
      (case-lambda
       ((stx-c_0 s_0) (datum->syntax_0 stx-c_0 s_0 #f #f))
-      ((stx-c_0 s_0 stx-l_0 stx-p4_0)
-       (datum->syntax_0 stx-c_0 s_0 stx-l_0 stx-p4_0))
-      ((stx-c_0 s_0 stx-l3_0) (datum->syntax_0 stx-c_0 s_0 stx-l3_0 #f))))))
+      ((stx-c_0 s_0 stx-l_0 stx-p5_0)
+       (datum->syntax_0 stx-c_0 s_0 stx-l_0 stx-p5_0))
+      ((stx-c_0 s_0 stx-l4_0) (datum->syntax_0 stx-c_0 s_0 stx-l4_0 #f))))))
 (define disallow-cycles
   (hasheq
    'cycle-fail
@@ -8744,7 +8834,7 @@
    #f
    |#%system-inspector|))
 (define effect_2710 (finish_2442 struct:syntax-state))
-(define syntax-state17.1
+(define syntax-state18.1
   (|#%name|
    syntax-state
    (record-constructor
@@ -8792,38 +8882,39 @@
              app_1
              app_2
              app_3
-             srcloc_0
-             (if props_0
-               (let ((table_0 hash2610))
-                 (let ((table_1 table_0))
-                   (letrec*
-                    ((for-loop_0
-                      (|#%name|
-                       for-loop
-                       (lambda (table_2 i_0)
-                         (if i_0
-                           (call-with-values
-                            (lambda ()
-                              (unsafe-immutable-hash-iterate-key+value
-                               props_0
-                               i_0))
-                            (lambda (k_0 v_0)
-                              (let ((val_0 (preserved-property-value1.1 v_0)))
-                                (let ((table_3
-                                       (let ((table_3
-                                              (hash-set table_2 k_0 val_0)))
-                                         (values table_3))))
-                                  (for-loop_0
-                                   table_3
-                                   (unsafe-immutable-hash-iterate-next
-                                    props_0
-                                    i_0))))))
-                           table_2)))))
-                    (for-loop_0
-                     table_1
-                     (unsafe-immutable-hash-iterate-first props_0)))))
-               empty-props)
-             inspector_0)))))))
+             (make-srcloc*
+              srcloc_0
+              (if props_0
+                (let ((table_0 hash2610))
+                  (let ((table_1 table_0))
+                    (letrec*
+                     ((for-loop_0
+                       (|#%name|
+                        for-loop
+                        (lambda (table_2 i_0)
+                          (if i_0
+                            (call-with-values
+                             (lambda ()
+                               (unsafe-immutable-hash-iterate-key+value
+                                props_0
+                                i_0))
+                             (lambda (k_0 v_0)
+                               (let ((val_0 (preserved-property-value1.1 v_0)))
+                                 (let ((table_3
+                                        (let ((table_3
+                                               (hash-set table_2 k_0 val_0)))
+                                          (values table_3))))
+                                   (for-loop_0
+                                    table_3
+                                    (unsafe-immutable-hash-iterate-next
+                                     props_0
+                                     i_0))))))
+                            table_2)))))
+                     (for-loop_0
+                      table_1
+                      (unsafe-immutable-hash-iterate-first props_0)))))
+                empty-props)
+              inspector_0))))))))
 (define deserialize-datum->syntax
   (lambda (content_0 context-triple_0 srcloc_0 inspector_0)
     (let ((s_0
@@ -10730,9 +10821,7 @@
                                (syntax-scopes sub-s_0)
                                (syntax-shifted-multi-scopes sub-s_0)
                                (syntax-mpi-shifts sub-s_0)
-                               (syntax-srcloc$1 sub-s_0)
-                               (syntax-props sub-s_0)
-                               (syntax-inspector sub-s_0)))
+                               (syntax-srcloc* sub-s_0)))
                             (raise-argument-error
                              'struct-copy
                              "syntax?"
@@ -10817,9 +10906,7 @@
                     (syntax-scopes s_0)
                     (syntax-shifted-multi-scopes s_0)
                     (syntax-mpi-shifts s_0)
-                    (syntax-srcloc$1 s_0)
-                    (syntax-props s_0)
-                    (syntax-inspector s_0)))
+                    (syntax-srcloc* s_0)))
                  (raise-argument-error 'struct-copy "syntax?" s_0))))))))))
 (define syntax-property$1
   (|#%name|
@@ -10843,20 +10930,19 @@
                 (preserved-property-value1.1 val_0)
                 val_0)))
          (if (syntax?$1 s_0)
-           (let ((props2_0 (hash-set (syntax-props s_0) key_0 pval_0)))
+           (let ((srcloc*2_0
+                  (srcloc*-with-props
+                   s_0
+                   (hash-set (syntax-props s_0) key_0 pval_0))))
              (let ((app_0 (syntax-content* s_0)))
                (let ((app_1 (syntax-scopes s_0)))
                  (let ((app_2 (syntax-shifted-multi-scopes s_0)))
-                   (let ((app_3 (syntax-mpi-shifts s_0)))
-                     (let ((app_4 (syntax-srcloc$1 s_0)))
-                       (syntax2.1
-                        app_0
-                        app_1
-                        app_2
-                        app_3
-                        app_4
-                        props2_0
-                        (syntax-inspector s_0))))))))
+                   (syntax2.1
+                    app_0
+                    app_1
+                    app_2
+                    (syntax-mpi-shifts s_0)
+                    srcloc*2_0)))))
            (raise-argument-error 'struct-copy "syntax?" s_0)))))
     ((s_0 key_0 val_0 preserved?_0)
      (begin
@@ -10878,20 +10964,19 @@
          (let ((pval_0
                 (if preserved?_0 (preserved-property-value1.1 val_0) val_0)))
            (if (syntax?$1 s_0)
-             (let ((props3_0 (hash-set (syntax-props s_0) key_0 pval_0)))
+             (let ((srcloc*3_0
+                    (srcloc*-with-props
+                     s_0
+                     (hash-set (syntax-props s_0) key_0 pval_0))))
                (let ((app_0 (syntax-content* s_0)))
                  (let ((app_1 (syntax-scopes s_0)))
                    (let ((app_2 (syntax-shifted-multi-scopes s_0)))
-                     (let ((app_3 (syntax-mpi-shifts s_0)))
-                       (let ((app_4 (syntax-srcloc$1 s_0)))
-                         (syntax2.1
-                          app_0
-                          app_1
-                          app_2
-                          app_3
-                          app_4
-                          props3_0
-                          (syntax-inspector s_0))))))))
+                     (syntax2.1
+                      app_0
+                      app_1
+                      app_2
+                      (syntax-mpi-shifts s_0)
+                      srcloc*3_0)))))
              (raise-argument-error 'struct-copy "syntax?" s_0)))))))))
 (define 1/syntax-property-preserved?
   (|#%name|
@@ -10948,20 +11033,19 @@
          (raise-argument-error 'syntax-property-remove "syntax?" s_0))
        (if (hash-has-key? (syntax-props s_0) key_0)
          (if (syntax?$1 s_0)
-           (let ((props7_0 (hash-remove (syntax-props s_0) key_0)))
+           (let ((srcloc*7_0
+                  (srcloc*-with-props
+                   s_0
+                   (hash-remove (syntax-props s_0) key_0))))
              (let ((app_0 (syntax-content* s_0)))
                (let ((app_1 (syntax-scopes s_0)))
                  (let ((app_2 (syntax-shifted-multi-scopes s_0)))
-                   (let ((app_3 (syntax-mpi-shifts s_0)))
-                     (let ((app_4 (syntax-srcloc$1 s_0)))
-                       (syntax2.1
-                        app_0
-                        app_1
-                        app_2
-                        app_3
-                        app_4
-                        props7_0
-                        (syntax-inspector s_0))))))))
+                   (syntax2.1
+                    app_0
+                    app_1
+                    app_2
+                    (syntax-mpi-shifts s_0)
+                    srcloc*7_0)))))
            (raise-argument-error 'struct-copy "syntax?" s_0))
          s_0)))))
 (define syntax-has-property?
@@ -12085,19 +12169,30 @@
                                                        (syntax-mpi-shifts
                                                         sub-s_0)
                                                        s_0)))
-                                                 (let ((inspector50_0
-                                                        (propagation-apply-inspector
-                                                         prop_0
-                                                         (syntax-inspector
-                                                          sub-s_0))))
+                                                 (let ((srcloc*50_0
+                                                        (let ((insp_0
+                                                               (propagation-inspector
+                                                                prop_0)))
+                                                          (if (let ((or-part_0
+                                                                     (not
+                                                                      insp_0)))
+                                                                (if or-part_0
+                                                                  or-part_0
+                                                                  (syntax-inspector
+                                                                   sub-s_0)))
+                                                            (syntax-srcloc*
+                                                             sub-s_0)
+                                                            (srcloc*-with-inspector
+                                                             sub-s_0
+                                                             insp_0)))))
                                                    (let ((content*51_0
                                                           (if scope-propagations+taint_0
                                                             (modified-content1.1
                                                              sub-content_0
                                                              scope-propagations+taint_0)
                                                             sub-content_0)))
-                                                     (let ((inspector50_1
-                                                            inspector50_0)
+                                                     (let ((srcloc*50_1
+                                                            srcloc*50_0)
                                                            (mpi-shifts49_1
                                                             mpi-shifts49_0)
                                                            (shifted-multi-scopes48_1
@@ -12109,10 +12204,7 @@
                                                         scopes47_1
                                                         shifted-multi-scopes48_1
                                                         mpi-shifts49_1
-                                                        (syntax-srcloc$1
-                                                         sub-s_0)
-                                                        (syntax-props sub-s_0)
-                                                        inspector50_1)))))))
+                                                        srcloc*50_1)))))))
                                            (raise-argument-error
                                             'struct-copy
                                             "syntax?"
@@ -12218,9 +12310,7 @@
                                                 (syntax-shifted-multi-scopes
                                                  sub-s_0)
                                                 (syntax-mpi-shifts sub-s_0)
-                                                (syntax-srcloc$1 sub-s_0)
-                                                (syntax-props sub-s_0)
-                                                (syntax-inspector sub-s_0)))
+                                                (syntax-srcloc* sub-s_0)))
                                              (raise-argument-error
                                               'struct-copy
                                               "syntax?"
@@ -12364,9 +12454,7 @@
                            (syntax-scopes s_0)
                            shifted-multi-scopes53_1
                            (syntax-mpi-shifts s_0)
-                           (syntax-srcloc$1 s_0)
-                           (syntax-props s_0)
-                           (syntax-inspector s_0)))))
+                           (syntax-srcloc* s_0)))))
                     (raise-argument-error 'struct-copy "syntax?" s_0))
                   (if (syntax?$1 s_0)
                     (let ((scopes55_0
@@ -12402,9 +12490,7 @@
                            scopes55_1
                            (syntax-shifted-multi-scopes s_0)
                            (syntax-mpi-shifts s_0)
-                           (syntax-srcloc$1 s_0)
-                           (syntax-props s_0)
-                           (syntax-inspector s_0)))))
+                           (syntax-srcloc* s_0)))))
                     (raise-argument-error 'struct-copy "syntax?" s_0)))))))))))
 (define add-scopes
   (lambda (s_0 scs_0)
@@ -12471,9 +12557,7 @@
                            (syntax-scopes s_0)
                            shifted-multi-scopes57_1
                            (syntax-mpi-shifts s_0)
-                           (syntax-srcloc$1 s_0)
-                           (syntax-props s_0)
-                           (syntax-inspector s_0)))))
+                           (syntax-srcloc* s_0)))))
                     (raise-argument-error 'struct-copy "syntax?" s_0))
                   (if (syntax?$1 s_0)
                     (let ((scopes59_0
@@ -12509,9 +12593,7 @@
                            scopes59_1
                            (syntax-shifted-multi-scopes s_0)
                            (syntax-mpi-shifts s_0)
-                           (syntax-srcloc$1 s_0)
-                           (syntax-props s_0)
-                           (syntax-inspector s_0)))))
+                           (syntax-srcloc* s_0)))))
                     (raise-argument-error 'struct-copy "syntax?" s_0)))))))))))
 (define remove-scopes
   (lambda (s_0 scs_0)
@@ -12579,9 +12661,7 @@
                          (syntax-scopes s_0)
                          shifted-multi-scopes61_1
                          (syntax-mpi-shifts s_0)
-                         (syntax-srcloc$1 s_0)
-                         (syntax-props s_0)
-                         (syntax-inspector s_0)))))
+                         (syntax-srcloc* s_0)))))
                   (raise-argument-error 'struct-copy "syntax?" s_0))
                 (if (syntax?$1 s_0)
                   (let ((scopes63_0 (scope-set-flip (syntax-scopes s_0) sc_2)))
@@ -12616,9 +12696,7 @@
                          scopes63_1
                          (syntax-shifted-multi-scopes s_0)
                          (syntax-mpi-shifts s_0)
-                         (syntax-srcloc$1 s_0)
-                         (syntax-props s_0)
-                         (syntax-inspector s_0)))))
+                         (syntax-srcloc* s_0)))))
                   (raise-argument-error 'struct-copy "syntax?" s_0))))))))))
 (define flip-scopes
   (lambda (s_0 scs_0)
@@ -12673,9 +12751,7 @@
                                (syntax-scopes s_1)
                                shifted-multi-scopes67_0
                                (syntax-mpi-shifts s_1)
-                               (syntax-srcloc$1 s_1)
-                               (syntax-props s_1)
-                               (syntax-inspector s_1)))))
+                               (syntax-srcloc* s_1)))))
                         (raise-argument-error 'struct-copy "syntax?" s_1))))))
               (letrec*
                ((loop_0
@@ -12977,8 +13053,6 @@
       (syntax-mpi-shifts parent-s_0)
       (let ((add_0 (propagation-add-mpi-shifts prop_0)))
         (if add_0 (|#%app| add_0 mss_0) mss_0)))))
-(define propagation-apply-inspector
-  (lambda (prop_0 i_0) (if i_0 i_0 (propagation-inspector prop_0))))
 (define propagation-set-taint
   (lambda (prop_0 t_0)
     (if (propagation? prop_0)
@@ -13211,9 +13285,7 @@
                                   (syntax-scopes s_1)
                                   shifted-multi-scopes81_0
                                   (syntax-mpi-shifts s_1)
-                                  (syntax-srcloc$1 s_1)
-                                  (syntax-props s_1)
-                                  (syntax-inspector s_1)))))
+                                  (syntax-srcloc* s_1)))))
                            (raise-argument-error
                             'struct-copy
                             "syntax?"
@@ -13384,9 +13456,7 @@
                                                  scopes85_1
                                                  shifted-multi-scopes86_0
                                                  (syntax-mpi-shifts s_1)
-                                                 (syntax-srcloc$1 s_1)
-                                                 (syntax-props s_1)
-                                                 (syntax-inspector s_1))))))
+                                                 (syntax-srcloc* s_1))))))
                                         (raise-argument-error
                                          'struct-copy
                                          "syntax?"
@@ -14651,9 +14721,11 @@
              (if (syntax?$1 s15_0)
                (let ((mpi-shifts79_0
                       (shift-cons shift_0 (syntax-mpi-shifts s15_0))))
-                 (let ((inspector80_0
-                        (let ((or-part_0 (syntax-inspector s15_0)))
-                          (if or-part_0 or-part_0 inspector14_0))))
+                 (let ((srcloc*80_0
+                        (if (let ((or-part_0 (syntax-inspector s15_0)))
+                              (if or-part_0 or-part_0 (not inspector14_0)))
+                          (syntax-srcloc* s15_0)
+                          (srcloc*-with-inspector s15_0 inspector14_0))))
                    (let ((content*81_0
                           (if (datum-has-elements? content_0)
                             (modified-content1.1
@@ -14669,16 +14741,14 @@
                               (syntax-shifted-multi-scopes s15_0)
                               (syntax-mpi-shifts s15_0)))
                             content*_0)))
-                     (let ((inspector80_1 inspector80_0)
+                     (let ((srcloc*80_1 srcloc*80_0)
                            (mpi-shifts79_1 mpi-shifts79_0))
                        (syntax2.1
                         content*81_0
                         (syntax-scopes s15_0)
                         (syntax-shifted-multi-scopes s15_0)
                         mpi-shifts79_1
-                        (syntax-srcloc$1 s15_0)
-                        (syntax-props s15_0)
-                        inspector80_1)))))
+                        srcloc*80_1)))))
                (raise-argument-error 'struct-copy "syntax?" s15_0)))))))))
 (define shift-cons
   (lambda (shift_0 shifts_0)
@@ -14950,9 +15020,11 @@
                (modified-content-content content*_0)
                content*_0)))
         (if (syntax?$1 s_0)
-          (let ((inspector113_0
-                 (let ((or-part_0 (syntax-inspector s_0)))
-                   (if or-part_0 or-part_0 insp_0))))
+          (let ((srcloc*113_0
+                 (if (let ((or-part_0 (syntax-inspector s_0)))
+                       (if or-part_0 or-part_0 (not insp_0)))
+                   (syntax-srcloc* s_0)
+                   (srcloc*-with-inspector s_0 insp_0))))
             (let ((content*114_0
                    (if (datum-has-elements? content_0)
                      (modified-content1.1
@@ -14967,15 +15039,13 @@
                        (syntax-shifted-multi-scopes s_0)
                        (syntax-mpi-shifts s_0)))
                      content*_0)))
-              (let ((inspector113_1 inspector113_0))
+              (let ((srcloc*113_1 srcloc*113_0))
                 (syntax2.1
                  content*114_0
                  (syntax-scopes s_0)
                  (syntax-shifted-multi-scopes s_0)
                  (syntax-mpi-shifts s_0)
-                 (syntax-srcloc$1 s_0)
-                 (syntax-props s_0)
-                 inspector113_1))))
+                 srcloc*113_1))))
           (raise-argument-error 'struct-copy "syntax?" s_0))))))
 (define 1/syntax-source-module
   (let ((syntax-source-module_0
@@ -15057,9 +15127,7 @@
                     app_1
                     app_2
                     mpi-shifts115_0
-                    (syntax-srcloc$1 the-struct_0)
-                    (syntax-props the-struct_0)
-                    (syntax-inspector the-struct_0))))))
+                    (syntax-srcloc* the-struct_0))))))
            (raise-argument-error 'struct-copy "syntax?" the-struct_0)))))))
 (define finish_3200
   (make-struct-type-install-properties
@@ -16742,44 +16810,42 @@
                                    (list id_0)
                                    (cons id_0 old-origin_0))))
                             (if (syntax?$1 new-stx2_0)
-                              (let ((props4_0
-                                     (hash-set old-props_0 'origin origin_0)))
+                              (let ((srcloc*4_0
+                                     (srcloc*-with-props
+                                      new-stx2_0
+                                      (hash-set
+                                       old-props_0
+                                       'origin
+                                       origin_0))))
                                 (let ((app_0 (syntax-content* new-stx2_0)))
                                   (let ((app_1 (syntax-scopes new-stx2_0)))
                                     (let ((app_2
                                            (syntax-shifted-multi-scopes
                                             new-stx2_0)))
-                                      (let ((app_3
-                                             (syntax-mpi-shifts new-stx2_0)))
-                                        (let ((app_4
-                                               (syntax-srcloc$1 new-stx2_0)))
-                                          (syntax2.1
-                                           app_0
-                                           app_1
-                                           app_2
-                                           app_3
-                                           app_4
-                                           props4_0
-                                           (syntax-inspector new-stx2_0))))))))
+                                      (syntax2.1
+                                       app_0
+                                       app_1
+                                       app_2
+                                       (syntax-mpi-shifts new-stx2_0)
+                                       srcloc*4_0)))))
                               (raise-argument-error
                                'struct-copy
                                "syntax?"
                                new-stx2_0))))
                         (if (syntax?$1 new-stx2_0)
-                          (let ((app_0 (syntax-content* new-stx2_0)))
-                            (let ((app_1 (syntax-scopes new-stx2_0)))
-                              (let ((app_2
-                                     (syntax-shifted-multi-scopes new-stx2_0)))
-                                (let ((app_3 (syntax-mpi-shifts new-stx2_0)))
-                                  (let ((app_4 (syntax-srcloc$1 new-stx2_0)))
-                                    (syntax2.1
-                                     app_0
-                                     app_1
-                                     app_2
-                                     app_3
-                                     app_4
-                                     old-props_0
-                                     (syntax-inspector new-stx2_0)))))))
+                          (let ((srcloc*5_0
+                                 (srcloc*-with-props new-stx2_0 old-props_0)))
+                            (let ((app_0 (syntax-content* new-stx2_0)))
+                              (let ((app_1 (syntax-scopes new-stx2_0)))
+                                (let ((app_2
+                                       (syntax-shifted-multi-scopes
+                                        new-stx2_0)))
+                                  (syntax2.1
+                                   app_0
+                                   app_1
+                                   app_2
+                                   (syntax-mpi-shifts new-stx2_0)
+                                   srcloc*5_0)))))
                           (raise-argument-error
                            'struct-copy
                            "syntax?"
@@ -16879,21 +16945,21 @@
                                    (unsafe-immutable-hash-iterate-first
                                     new-props_0))))))
                           (if (syntax?$1 new-stx2_0)
-                            (let ((app_0 (syntax-content* new-stx2_0)))
-                              (let ((app_1 (syntax-scopes new-stx2_0)))
-                                (let ((app_2
-                                       (syntax-shifted-multi-scopes
-                                        new-stx2_0)))
-                                  (let ((app_3 (syntax-mpi-shifts new-stx2_0)))
-                                    (let ((app_4 (syntax-srcloc$1 new-stx2_0)))
-                                      (syntax2.1
-                                       app_0
-                                       app_1
-                                       app_2
-                                       app_3
-                                       app_4
-                                       updated-props_0
-                                       (syntax-inspector new-stx2_0)))))))
+                            (let ((srcloc*6_0
+                                   (srcloc*-with-props
+                                    new-stx2_0
+                                    updated-props_0)))
+                              (let ((app_0 (syntax-content* new-stx2_0)))
+                                (let ((app_1 (syntax-scopes new-stx2_0)))
+                                  (let ((app_2
+                                         (syntax-shifted-multi-scopes
+                                          new-stx2_0)))
+                                    (syntax2.1
+                                     app_0
+                                     app_1
+                                     app_2
+                                     (syntax-mpi-shifts new-stx2_0)
+                                     srcloc*6_0)))))
                             (raise-argument-error
                              'struct-copy
                              "syntax?"
@@ -20099,7 +20165,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish953
+  (let ((finish941
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -20125,7 +20191,7 @@
             #f
             #f
             |#%system-inspector|)))
-      (let ((effect954 (finish953 struct:set!-transformer_0)))
+      (let ((effect942 (finish941 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -52243,27 +52309,30 @@
   (lambda (ctx_0 sym_0 s_0)
     (let ((insp_0 (current-module-code-inspector)))
       (let ((sym-s_0
-             (immediate-datum->syntax
-              s_0
-              sym_0
-              s_0
-              (if (hash-ref (syntax-props s_0) original-property-sym #f)
-                original-implicit-made-explicit-properties
-                implicit-made-explicit-properties)
-              insp_0)))
-        (let ((new-s_0
-               (immediate-datum->syntax
+             (let ((props_0
+                    (if (hash-ref (syntax-props s_0) original-property-sym #f)
+                      original-implicit-made-explicit-properties
+                      implicit-made-explicit-properties)))
+               (immediate-datum->syntax/srcloc*
                 s_0
-                (cons sym-s_0 s_0)
-                s_0
-                (syntax-props s_0)
-                insp_0)))
-          (begin
-            (let ((obs_0
-                   (expand-context/inner-observer
-                    (root-expand-context/outer-inner ctx_0))))
-              (if obs_0 (call-expand-observe obs_0 'tag2 new-s_0 s_0) (void)))
-            new-s_0))))))
+                sym_0
+                (datum->syntax-srcloc* s_0 s_0 props_0 insp_0)))))
+        (let ((content_0 (cons sym-s_0 s_0)))
+          (let ((new-s_0
+                 (let ((props_0 (syntax-props s_0)))
+                   (let ((content_1 content_0))
+                     (immediate-datum->syntax/srcloc*
+                      s_0
+                      content_1
+                      (datum->syntax-srcloc* s_0 s_0 props_0 insp_0))))))
+            (begin
+              (let ((obs_0
+                     (expand-context/inner-observer
+                      (root-expand-context/outer-inner ctx_0))))
+                (if obs_0
+                  (call-expand-observe obs_0 'tag2 new-s_0 s_0)
+                  (void)))
+              new-s_0)))))))
 (define dispatch.1
   (|#%name|
    dispatch
@@ -53448,18 +53517,16 @@
     (let ((srcloc_0 (syntax-srcloc$1 old-s_0)))
       (if srcloc_0
         (if (syntax?$1 new-s_0)
-          (let ((app_0 (syntax-content* new-s_0)))
-            (let ((app_1 (syntax-scopes new-s_0)))
-              (let ((app_2 (syntax-shifted-multi-scopes new-s_0)))
-                (let ((app_3 (syntax-mpi-shifts new-s_0)))
+          (let ((srcloc*257_0 (srcloc*-with-srcloc new-s_0 srcloc_0)))
+            (let ((app_0 (syntax-content* new-s_0)))
+              (let ((app_1 (syntax-scopes new-s_0)))
+                (let ((app_2 (syntax-shifted-multi-scopes new-s_0)))
                   (syntax2.1
                    app_0
                    app_1
                    app_2
-                   app_3
-                   srcloc_0
-                   (syntax-props new-s_0)
-                   (syntax-inspector new-s_0))))))
+                   (syntax-mpi-shifts new-s_0)
+                   srcloc*257_0)))))
           (raise-argument-error 'struct-copy "syntax?" new-s_0))
         new-s_0))))
 (define stop-ids->all-stop-ids
@@ -56418,21 +56485,18 @@
         (let ((app_0 (syntax-content* empty-syntax)))
           (let ((app_1 (syntax-scopes empty-syntax)))
             (let ((app_2 (syntax-shifted-multi-scopes empty-syntax)))
-              (let ((app_3 (syntax-mpi-shifts empty-syntax)))
-                (syntax2.1
-                 app_0
-                 app_1
-                 app_2
-                 app_3
-                 v_0
-                 (syntax-props empty-syntax)
-                 (syntax-inspector empty-syntax))))))
+              (syntax2.1
+               app_0
+               app_1
+               app_2
+               (syntax-mpi-shifts empty-syntax)
+               v_0))))
         (raise-argument-error 'struct-copy "syntax?" empty-syntax))
       (if (pair? v_0)
         (to-srcloc-stx (list->vector v_0))
         (if (vector? v_0)
           (if (syntax?$1 empty-syntax)
-            (let ((srcloc2_0
+            (let ((srcloc*2_0
                    (let ((app_0 (vector-ref v_0 0)))
                      (let ((app_1 (vector-ref v_0 1)))
                        (let ((app_2 (vector-ref v_0 2)))
@@ -56446,15 +56510,12 @@
               (let ((app_0 (syntax-content* empty-syntax)))
                 (let ((app_1 (syntax-scopes empty-syntax)))
                   (let ((app_2 (syntax-shifted-multi-scopes empty-syntax)))
-                    (let ((app_3 (syntax-mpi-shifts empty-syntax)))
-                      (syntax2.1
-                       app_0
-                       app_1
-                       app_2
-                       app_3
-                       srcloc2_0
-                       (syntax-props empty-syntax)
-                       (syntax-inspector empty-syntax)))))))
+                    (syntax2.1
+                     app_0
+                     app_1
+                     app_2
+                     (syntax-mpi-shifts empty-syntax)
+                     srcloc*2_0)))))
             (raise-argument-error 'struct-copy "syntax?" empty-syntax))
           v_0)))))
 (define 1/syntax-e
@@ -73049,21 +73110,20 @@
   (lambda (s-exp_0 srcloc_0 rep_0)
     (if (syntax?$1 empty-syntax)
       (let ((content*60_0 (datum-intern-literal s-exp_0)))
-        (let ((props62_0
-               (if (eqv? rep_0 '#\x5b)
-                 original-square-props
-                 (if (eqv? rep_0 '#\x7b)
-                   original-curly-props
-                   original-props))))
+        (let ((srcloc*61_0
+               (make-srcloc*
+                srcloc_0
+                (if (eqv? rep_0 '#\x5b)
+                  original-square-props
+                  (if (eqv? rep_0 '#\x7b) original-curly-props original-props))
+                #f)))
           (let ((content*60_1 content*60_0))
             (syntax2.1
              content*60_1
              (syntax-scopes empty-syntax)
              (syntax-shifted-multi-scopes empty-syntax)
              (syntax-mpi-shifts empty-syntax)
-             srcloc_0
-             props62_0
-             (syntax-inspector empty-syntax)))))
+             srcloc*61_0))))
       (raise-argument-error 'struct-copy "syntax?" empty-syntax))))
 (define original-props
   (syntax-props (syntax-property$1 empty-syntax original-property-sym #t)))

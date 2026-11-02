@@ -587,8 +587,65 @@
   (apply-scope s (generalize-scope sc) scope-set-remove set-remove propagation-remove))
 
 (define (remove-scopes s scs)
-  (for/fold ([s s]) ([sc (in-list scs)])
-    (remove-scope s sc)))
+  (cond
+    [(or (null? scs)
+         (null? (cdr scs))
+         ;; For an identifier, removing one at a time doesn't allocate
+         ;; when a scope is absent
+         (not (datum-has-elements? (let ([c (syntax-content* s)])
+                                     (if (modified-content? c)
+                                         (modified-content-content c)
+                                         c))))
+         (not (for/and ([sc (in-list scs)])
+                (and (scope? sc) (not (representative-scope? sc))))))
+     (for/fold ([s s]) ([sc (in-list scs)])
+       (remove-scope s sc))]
+    [else
+     ;; Remove all at once, so that the pending operations are built
+     ;; by one merge instead of one insertion per scope
+     (apply-scope-ops s (scopes->ops scs 'remove))]))
+
+;; Sorted operations (see "scope-set.rkt") to perform `op` on each of
+;; `scs`, which are not representative scopes and must be all add or all
+;; remove
+(define (scopes->ops scs op)
+  (define (sorted? scs)
+    (let loop ([prev (car scs)] [scs (cdr scs)])
+      (cond
+        [(null? scs) #t]
+        [(> (scope-id prev) (scope-id (car scs))) (loop (car scs) (cdr scs))]
+        [else #f])))
+  (define sorted-scs
+    (if (sorted? scs)
+        scs
+        (let loop ([l (sort scs > #:key scope-id)])
+          ;; drop duplicates
+          (cond
+            [(null? l) l]
+            [(and (pair? (cdr l)) (eq? (car l) (cadr l))) (loop (cdr l))]
+            [else (cons (car l) (loop (cdr l)))]))))
+  (for/list ([sc (in-list sorted-scs)])
+    (cons sc op)))
+
+;; Apply sorted add or remove operations on (non-multi) scopes
+(define (apply-scope-ops s ops)
+  (define content* (syntax-content* s))
+  (define content (if (modified-content? content*)
+                      (modified-content-content content*)
+                      content*))
+  (struct-copy syntax s
+               [scopes (scope-set-apply-ops (syntax-scopes s) ops)]
+               [content* (if (datum-has-elements? content)
+                             (let ([prop (propagation-ops (and (modified-content? content*)
+                                                               (modified-content-scope-propagations+taint content*))
+                                                          ops
+                                                          (syntax-scopes s)
+                                                          (syntax-shifted-multi-scopes s)
+                                                          (syntax-mpi-shifts s))])
+                               (if prop
+                                   (modified-content content prop)
+                                   content))
+                             content*)]))
 
 (define (set-flip s e)
   (if (set-member? s e)
@@ -673,6 +730,23 @@
                   prop)]
     [else
      (propagation prev-scs prev-smss (list (cons sc op)) #hasheq()
+                  prev-mss #f #f
+                  prop)]))
+
+(define (propagation-ops prop ops prev-scs prev-smss prev-mss)
+  (cond
+    [(propagation? prop)
+     (define new-prop
+       (struct-copy propagation prop
+                    [scope-ops (scope-ops-compose (propagation-scope-ops prop) ops)]))
+     (if (and (null? (propagation-scope-ops new-prop))
+              (zero? (hash-count (propagation-sms-ops new-prop)))
+              (not (propagation-inspector new-prop))
+              (not (propagation-add-mpi-shifts new-prop)))
+         (propagation-taint new-prop)
+         new-prop)]
+    [else
+     (propagation prev-scs prev-smss ops #hasheq()
                   prev-mss #f #f
                   prop)]))
 

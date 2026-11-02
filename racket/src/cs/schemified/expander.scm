@@ -12405,18 +12405,145 @@
                     (raise-argument-error 'struct-copy "syntax?" s_0)))))))))))
 (define remove-scopes
   (lambda (s_0 scs_0)
-    (letrec*
-     ((for-loop_0
-       (|#%name|
-        for-loop
-        (lambda (s_1 lst_0)
-          (if (pair? lst_0)
-            (let ((sc_0 (unsafe-car lst_0)))
-              (let ((rest_0 (unsafe-cdr lst_0)))
-                (let ((s_2 (let ((s_2 (remove-scope s_1 sc_0))) (values s_2))))
-                  (for-loop_0 s_2 rest_0))))
-            s_1)))))
-     (for-loop_0 s_0 scs_0))))
+    (if (let ((or-part_0 (null? scs_0)))
+          (if or-part_0
+            or-part_0
+            (let ((or-part_1 (null? (cdr scs_0))))
+              (if or-part_1
+                or-part_1
+                (let ((or-part_2
+                       (not
+                        (datum-has-elements?
+                         (let ((c_0 (syntax-content* s_0)))
+                           (if (modified-content? c_0)
+                             (modified-content-content c_0)
+                             c_0))))))
+                  (if or-part_2
+                    or-part_2
+                    (not
+                     (letrec*
+                      ((for-loop_0
+                        (|#%name|
+                         for-loop
+                         (lambda (result_0 lst_0)
+                           (if (pair? lst_0)
+                             (let ((sc_0 (unsafe-car lst_0)))
+                               (let ((rest_0 (unsafe-cdr lst_0)))
+                                 (let ((result_1
+                                        (if (scope? sc_0)
+                                          (not (representative-scope? sc_0))
+                                          #f)))
+                                   (let ((result_2 (values result_1)))
+                                     (if (if (not
+                                              (let ((x_0 (list sc_0)))
+                                                (not result_2)))
+                                           #t
+                                           #f)
+                                       (for-loop_0 result_2 rest_0)
+                                       result_2)))))
+                             result_0)))))
+                      (for-loop_0 #t scs_0)))))))))
+      (letrec*
+       ((for-loop_0
+         (|#%name|
+          for-loop
+          (lambda (s_1 lst_0)
+            (if (pair? lst_0)
+              (let ((sc_0 (unsafe-car lst_0)))
+                (let ((rest_0 (unsafe-cdr lst_0)))
+                  (let ((s_2
+                         (let ((s_2 (remove-scope s_1 sc_0))) (values s_2))))
+                    (for-loop_0 s_2 rest_0))))
+              s_1)))))
+       (for-loop_0 s_0 scs_0))
+      (apply-scope-ops s_0 (scopes->ops scs_0 'remove)))))
+(define scopes->ops
+  (lambda (scs_0 op_0)
+    (let ((sorted?_0
+           (|#%name|
+            sorted?
+            (lambda (scs_1)
+              (letrec*
+               ((loop_0
+                 (|#%name|
+                  loop
+                  (lambda (prev_0 scs_2)
+                    (if (null? scs_2)
+                      #t
+                      (if (>
+                           (scope-base-id prev_0)
+                           (let ((s_0 (car scs_2))) (scope-base-id s_0)))
+                        (let ((app_0 (car scs_2))) (loop_0 app_0 (cdr scs_2)))
+                        #f))))))
+               (let ((app_0 (car scs_1))) (loop_0 app_0 (cdr scs_1))))))))
+      (let ((sorted-scs_0
+             (if (sorted?_0 scs_0)
+               scs_0
+               (letrec*
+                ((loop_0
+                  (|#%name|
+                   loop
+                   (lambda (l_0)
+                     (if (null? l_0)
+                       l_0
+                       (if (if (pair? (cdr l_0))
+                             (let ((app_0 (car l_0))) (eq? app_0 (cadr l_0)))
+                             #f)
+                         (loop_0 (cdr l_0))
+                         (let ((app_0 (car l_0)))
+                           (cons app_0 (loop_0 (cdr l_0))))))))))
+                (loop_0
+                 (let ((scope-id58_0 scope-id))
+                   (sort.1 #f scope-id58_0 scs_0 >)))))))
+        (reverse$1
+         (letrec*
+          ((for-loop_0
+            (|#%name|
+             for-loop
+             (lambda (fold-var_0 lst_0)
+               (if (pair? lst_0)
+                 (let ((sc_0 (unsafe-car lst_0)))
+                   (let ((rest_0 (unsafe-cdr lst_0)))
+                     (let ((fold-var_1 (cons (cons sc_0 op_0) fold-var_0)))
+                       (let ((fold-var_2 (values fold-var_1)))
+                         (for-loop_0 fold-var_2 rest_0)))))
+                 fold-var_0)))))
+          (for-loop_0 null sorted-scs_0)))))))
+(define apply-scope-ops
+  (lambda (s_0 ops_0)
+    (let ((content*_0 (syntax-content* s_0)))
+      (let ((content_0
+             (if (modified-content? content*_0)
+               (modified-content-content content*_0)
+               content*_0)))
+        (if (syntax?$1 s_0)
+          (let ((scopes59_0 (scope-set-apply-ops (syntax-scopes s_0) ops_0)))
+            (let ((content*60_0
+                   (if (datum-has-elements? content_0)
+                     (let ((prop_0
+                            (propagation-ops
+                             (if (modified-content? content*_0)
+                               (modified-content-scope-propagations+taint
+                                content*_0)
+                               #f)
+                             ops_0
+                             (syntax-scopes s_0)
+                             (syntax-shifted-multi-scopes s_0)
+                             (syntax-mpi-shifts s_0))))
+                       (if prop_0
+                         (modified-content1.1 content_0 prop_0)
+                         content_0))
+                     content*_0)))
+              (let ((scopes59_1 scopes59_0))
+                (syntax2.1
+                 content*60_0
+                 scopes59_1
+                 (syntax-shifted-multi-scopes s_0)
+                 (syntax-mpi-shifts s_0)
+                 (syntax-srcloc$1 s_0)
+                 (syntax-props s_0)
+                 (syntax-inspector s_0)))))
+          (raise-argument-error 'struct-copy "syntax?" s_0))))))
 (define set-flip
   (lambda (s_0 e_0)
     (if (hash-ref s_0 e_0 #f) (hash-remove s_0 e_0) (hash-set s_0 e_0 #t))))
@@ -12432,12 +12559,12 @@
                      content*_0)))
               (if (shifted-multi-scope? sc_2)
                 (if (syntax?$1 s_0)
-                  (let ((shifted-multi-scopes56_0
+                  (let ((shifted-multi-scopes61_0
                          (fallback-update-first
                           (syntax-shifted-multi-scopes s_0)
                           (lambda (smss_0)
                             (set-flip (fallback-first smss_0) sc_2)))))
-                    (let ((content*57_0
+                    (let ((content*62_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
                                     (let ((prop_0
@@ -12462,20 +12589,20 @@
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
                              content*_0)))
-                      (let ((shifted-multi-scopes56_1
-                             shifted-multi-scopes56_0))
+                      (let ((shifted-multi-scopes61_1
+                             shifted-multi-scopes61_0))
                         (syntax2.1
-                         content*57_0
+                         content*62_0
                          (syntax-scopes s_0)
-                         shifted-multi-scopes56_1
+                         shifted-multi-scopes61_1
                          (syntax-mpi-shifts s_0)
                          (syntax-srcloc$1 s_0)
                          (syntax-props s_0)
                          (syntax-inspector s_0)))))
                   (raise-argument-error 'struct-copy "syntax?" s_0))
                 (if (syntax?$1 s_0)
-                  (let ((scopes58_0 (scope-set-flip (syntax-scopes s_0) sc_2)))
-                    (let ((content*59_0
+                  (let ((scopes63_0 (scope-set-flip (syntax-scopes s_0) sc_2)))
+                    (let ((content*64_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
                                     (let ((prop_0
@@ -12500,10 +12627,10 @@
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
                              content*_0)))
-                      (let ((scopes58_1 scopes58_0))
+                      (let ((scopes63_1 scopes63_0))
                         (syntax2.1
-                         content*59_0
-                         scopes58_1
+                         content*64_0
+                         scopes63_1
                          (syntax-shifted-multi-scopes s_0)
                          (syntax-mpi-shifts s_0)
                          (syntax-srcloc$1 s_0)
@@ -12526,13 +12653,13 @@
      (for-loop_0 s_0 scs_0))))
 (define push-scope
   (lambda (s_0 sms_0)
-    (let ((smss/maybe-fallbacks60_0 #f))
+    (let ((smss/maybe-fallbacks65_0 #f))
       (let ((prev-result_0 #f))
         (let ((push_0
                (|#%name|
                 push
                 (lambda (smss/maybe-fallbacks_0)
-                  (if (eq? smss/maybe-fallbacks60_0 smss/maybe-fallbacks_0)
+                  (if (eq? smss/maybe-fallbacks65_0 smss/maybe-fallbacks_0)
                     prev-result_0
                     (let ((r_0
                            (let ((smss_0
@@ -12545,7 +12672,7 @@
                                   (hash-set smss_0 sms_0 #t)
                                   smss/maybe-fallbacks_0))))))
                       (begin
-                        (set! smss/maybe-fallbacks60_0 smss/maybe-fallbacks_0)
+                        (set! smss/maybe-fallbacks65_0 smss/maybe-fallbacks_0)
                         (set! prev-result_0 r_0)
                         r_0)))))))
           (let ((f_0 (|#%name| f (lambda (tail?_0 x_0) x_0))))
@@ -12554,14 +12681,14 @@
                     d->s
                     (lambda (s_1 d_0)
                       (if (syntax?$1 s_1)
-                        (let ((content*61_0 (re-modify-content s_1 d_0)))
-                          (let ((shifted-multi-scopes62_0
+                        (let ((content*66_0 (re-modify-content s_1 d_0)))
+                          (let ((shifted-multi-scopes67_0
                                  (push_0 (syntax-shifted-multi-scopes s_1))))
-                            (let ((content*61_1 content*61_0))
+                            (let ((content*66_1 content*66_0))
                               (syntax2.1
-                               content*61_1
+                               content*66_1
                                (syntax-scopes s_1)
-                               shifted-multi-scopes62_0
+                               shifted-multi-scopes67_0
                                (syntax-mpi-shifts s_1)
                                (syntax-srcloc$1 s_1)
                                (syntax-props s_1)
@@ -12702,7 +12829,7 @@
       (let ((new-prop_0
              (if (shifted-multi-scope? sc_0)
                (if (propagation? prop_0)
-                 (let ((sms-ops64_0
+                 (let ((sms-ops69_0
                         (sms-op-compose
                          (propagation-sms-ops prop_0)
                          sc_0
@@ -12711,14 +12838,14 @@
                     (propagation-prev-scs prop_0)
                     (propagation-prev-smss prop_0)
                     (propagation-scope-ops prop_0)
-                    sms-ops64_0
+                    sms-ops69_0
                     (propagation-prev-mss prop_0)
                     (propagation-add-mpi-shifts prop_0)
                     (propagation-inspector prop_0)
                     (propagation-taint prop_0)))
                  (raise-argument-error 'struct-copy "propagation?" prop_0))
                (if (propagation? prop_0)
-                 (let ((scope-ops65_0
+                 (let ((scope-ops70_0
                         (scope-ops-update
                          (propagation-scope-ops prop_0)
                          sc_0
@@ -12726,7 +12853,7 @@
                    (propagation13.1
                     (propagation-prev-scs prop_0)
                     (propagation-prev-smss prop_0)
-                    scope-ops65_0
+                    scope-ops70_0
                     (propagation-sms-ops prop_0)
                     (propagation-prev-mss prop_0)
                     (propagation-add-mpi-shifts prop_0)
@@ -12761,6 +12888,43 @@
          #f
          #f
          prop_0)))))
+(define propagation-ops
+  (lambda (prop_0 ops_0 prev-scs_0 prev-smss_0 prev-mss_0)
+    (if (propagation? prop_0)
+      (let ((new-prop_0
+             (if (propagation? prop_0)
+               (let ((scope-ops71_0
+                      (scope-ops-compose
+                       (propagation-scope-ops prop_0)
+                       ops_0)))
+                 (propagation13.1
+                  (propagation-prev-scs prop_0)
+                  (propagation-prev-smss prop_0)
+                  scope-ops71_0
+                  (propagation-sms-ops prop_0)
+                  (propagation-prev-mss prop_0)
+                  (propagation-add-mpi-shifts prop_0)
+                  (propagation-inspector prop_0)
+                  (propagation-taint prop_0)))
+               (raise-argument-error 'struct-copy "propagation?" prop_0))))
+        (if (if (null? (propagation-scope-ops new-prop_0))
+              (if (zero? (hash-count (propagation-sms-ops new-prop_0)))
+                (if (not (propagation-inspector new-prop_0))
+                  (not (propagation-add-mpi-shifts new-prop_0))
+                  #f)
+                #f)
+              #f)
+          (propagation-taint new-prop_0)
+          new-prop_0))
+      (propagation13.1
+       prev-scs_0
+       prev-smss_0
+       ops_0
+       hash2610
+       prev-mss_0
+       #f
+       #f
+       prop_0))))
 (define propagation-add
   (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
     (propagation-op prop_0 sc_0 'add prev-scs_0 prev-smss_0 prev-mss_0)))
@@ -12774,15 +12938,15 @@
   (lambda (prop_0 add_0 inspector_0 prev-scs_0 prev-smss_0 prev-mss_0)
     (if (propagation? prop_0)
       (if (propagation? prop_0)
-        (let ((add-mpi-shifts66_0
+        (let ((add-mpi-shifts72_0
                (let ((base-add_0 (propagation-add-mpi-shifts prop_0)))
                  (if (if add_0 base-add_0 #f)
                    (|#%name|
-                    add-mpi-shifts66
+                    add-mpi-shifts72
                     (lambda (mss_0)
                       (|#%app| add_0 (|#%app| base-add_0 mss_0))))
                    (if add_0 add_0 base-add_0)))))
-          (let ((inspector67_0
+          (let ((inspector73_0
                  (let ((or-part_0 (propagation-inspector prop_0)))
                    (if or-part_0 or-part_0 inspector_0))))
             (propagation13.1
@@ -12791,8 +12955,8 @@
              (propagation-scope-ops prop_0)
              (propagation-sms-ops prop_0)
              (propagation-prev-mss prop_0)
-             add-mpi-shifts66_0
-             inspector67_0
+             add-mpi-shifts72_0
+             inspector73_0
              (propagation-taint prop_0))))
         (raise-argument-error 'struct-copy "propagation?" prop_0))
       (propagation13.1
@@ -12967,14 +13131,14 @@
                         #f)
                     new-taint_0
                     (if (propagation? base-prop_0)
-                      (let ((add-mpi-shifts71_0
+                      (let ((add-mpi-shifts77_0
                              (if (if add_0 base-add_0 #f)
                                (|#%name|
-                                add-mpi-shifts71
+                                add-mpi-shifts77
                                 (lambda (mss_0)
                                   (|#%app| add_0 (|#%app| base-add_0 mss_0))))
                                (if add_0 add_0 base-add_0))))
-                        (let ((inspector72_0
+                        (let ((inspector78_0
                                (let ((or-part_0
                                       (propagation-inspector base-prop_0)))
                                  (if or-part_0
@@ -12986,8 +13150,8 @@
                            new-ops_0
                            new-sms-ops_0
                            (propagation-prev-mss base-prop_0)
-                           add-mpi-shifts71_0
-                           inspector72_0
+                           add-mpi-shifts77_0
+                           inspector78_0
                            new-taint_0)))
                       (raise-argument-error
                        'struct-copy
@@ -13024,13 +13188,13 @@
    (lambda (s_0 phase_0)
      (if (eqv? phase_0 0)
        s_0
-       (let ((smss74_0 #f))
+       (let ((smss80_0 #f))
          (let ((prev-result_0 #f))
            (let ((shift-all_0
                   (|#%name|
                    shift-all
                    (lambda (smss_0)
-                     (if (eq? smss74_0 smss_0)
+                     (if (eq? smss80_0 smss_0)
                        prev-result_0
                        (let ((r_0
                               (fallback-map
@@ -13082,7 +13246,7 @@
                                        (unsafe-immutable-hash-iterate-first
                                         smss_1)))))))))
                          (begin
-                           (set! smss74_0 smss_0)
+                           (set! smss80_0 smss_0)
                            (set! prev-result_0 r_0)
                            r_0)))))))
              (let ((f_0 (|#%name| f (lambda (tail?_0 d_0) d_0))))
@@ -13091,15 +13255,15 @@
                        d->s
                        (lambda (s_1 d_0)
                          (if (syntax?$1 s_1)
-                           (let ((content*75_0 (re-modify-content s_1 d_0)))
-                             (let ((shifted-multi-scopes76_0
+                           (let ((content*81_0 (re-modify-content s_1 d_0)))
+                             (let ((shifted-multi-scopes82_0
                                     (shift-all_0
                                      (syntax-shifted-multi-scopes s_1))))
-                               (let ((content*75_1 content*75_0))
+                               (let ((content*81_1 content*81_0))
                                  (syntax2.1
-                                  content*75_1
+                                  content*81_1
                                   (syntax-scopes s_1)
-                                  shifted-multi-scopes76_0
+                                  shifted-multi-scopes82_0
                                   (syntax-mpi-shifts s_1)
                                   (syntax-srcloc$1 s_1)
                                   (syntax-props s_1)
@@ -13208,13 +13372,13 @@
           (lambda () (partition-scopes dest-scopes_0))
           (lambda (dest-smss_0 dest-scs_0)
             (let ((src-smss_1 src-smss_0) (src-scs_1 src-scs_0))
-              (let ((scs77_0 #f))
+              (let ((scs83_0 #f))
                 (let ((prev-result_0 #f))
                   (let ((swap-scs_0
                          (|#%name|
                           swap-scs
                           (lambda (scs_0)
-                            (if (eq? scs77_0 scs_0)
+                            (if (eq? scs83_0 scs_0)
                               prev-result_0
                               (let ((r_0
                                      (if (scope-set-subset? src-scs_1 scs_0)
@@ -13223,16 +13387,16 @@
                                         dest-scs_0)
                                        scs_0)))
                                 (begin
-                                  (set! scs77_0 scs_0)
+                                  (set! scs83_0 scs_0)
                                   (set! prev-result_0 r_0)
                                   r_0)))))))
-                    (let ((smss78_0 #f))
+                    (let ((smss84_0 #f))
                       (let ((prev-result_1 #f))
                         (let ((swap-smss_0
                                (|#%name|
                                 swap-smss
                                 (lambda (smss_0)
-                                  (if (eq? smss78_0 smss_0)
+                                  (if (eq? smss84_0 smss_0)
                                     prev-result_1
                                     (let ((r_0
                                            (fallback-update-first
@@ -13248,7 +13412,7 @@
                                                  dest-smss_0)
                                                 smss_1)))))
                                       (begin
-                                        (set! smss78_0 smss_0)
+                                        (set! smss84_0 smss_0)
                                         (set! prev-result_1 r_0)
                                         r_0)))))))
                           (let ((f_0 (|#%name| f (lambda (tail?_0 d_0) d_0))))
@@ -13257,22 +13421,22 @@
                                     d->s
                                     (lambda (s_1 d_0)
                                       (if (syntax?$1 s_1)
-                                        (let ((content*79_0
+                                        (let ((content*85_0
                                                (re-modify-content s_1 d_0)))
-                                          (let ((scopes80_0
+                                          (let ((scopes86_0
                                                  (swap-scs_0
                                                   (syntax-scopes s_1))))
-                                            (let ((shifted-multi-scopes81_0
+                                            (let ((shifted-multi-scopes87_0
                                                    (swap-smss_0
                                                     (syntax-shifted-multi-scopes
                                                      s_1))))
-                                              (let ((scopes80_1 scopes80_0)
-                                                    (content*79_1
-                                                     content*79_0))
+                                              (let ((scopes86_1 scopes86_0)
+                                                    (content*85_1
+                                                     content*85_0))
                                                 (syntax2.1
-                                                 content*79_1
-                                                 scopes80_1
-                                                 shifted-multi-scopes81_0
+                                                 content*85_1
+                                                 scopes86_1
+                                                 shifted-multi-scopes87_0
                                                  (syntax-mpi-shifts s_1)
                                                  (syntax-srcloc$1 s_1)
                                                  (syntax-props s_1)
@@ -13454,10 +13618,10 @@
    (lambda (shadow-except20_0 scopes22_0 bulk-binding23_0)
      (let ((max-sc_0 (find-max-scope scopes22_0)))
        (let ((bt_0
-              (let ((temp82_0 (scope-binding-table max-sc_0)))
+              (let ((temp88_0 (scope-binding-table max-sc_0)))
                 (binding-table-add-bulk.1
                  shadow-except20_0
-                 temp82_0
+                 temp88_0
                  scopes22_0
                  bulk-binding23_0))))
          (begin
@@ -19979,7 +20143,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish943
+  (let ((finish949
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -20001,11 +20165,11 @@
             #f
             '(1 . 0)
             'make-struct-type
-            (finish943 'proc)
-            (finish943 'arity)
+            (finish949 'proc)
+            (finish949 'arity)
             #f
             |#%system-inspector|)))
-      (let ((effect944 (finish943 struct:set!-transformer_0)))
+      (let ((effect950 (finish949 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer

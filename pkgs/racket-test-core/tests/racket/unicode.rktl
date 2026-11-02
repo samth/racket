@@ -1689,6 +1689,14 @@
   (with-handlers ([exn:fail:contract? void]) (bytes->string/locale #"xxx"))
   (with-handlers ([exn:fail:contract? void]) (string->bytes/locale "xxx")))
 
+;; Start and end positions are respected, including when conversion
+;; goes through a converter for the current locale
+(test "b" bytes->string/locale #"abc" #\? 1 2)
+(test "bc" bytes->string/locale #"abc" #f 1)
+(test "" bytes->string/locale #"abc" #f 2 2)
+(test "a?" bytes->string/locale #"xa\377y" #\? 1 3)
+(test #"b" string->bytes/locale "abc" #f 1 2)
+
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  String-upcase, etc.:

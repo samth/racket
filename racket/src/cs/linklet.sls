@@ -114,7 +114,8 @@
                 flush-output
                 read-bytes
                 path->complete-path
-                file-exists?)
+                file-exists?
+                processor-count)
           (only (thread)
                 current-process-milliseconds
                 ;; Used by cross-compiler:
@@ -146,6 +147,23 @@
                       (and (real? n)
                            n))))
              10000)))
+
+  ;; Number of OS threads to use for compiling the separately compiled
+  ;; `lambda`s of a large linklet in machine-code mode. Defaults to the
+  ;; processor count, capped at 8; PLT_CS_COMPILE_THREADS=1 disables
+  ;; parallel compilation.
+  (define compile-thread-count #f)
+  (define (get-compile-thread-count)
+    (or compile-thread-count
+        (let ([n (or (let ([s (getenv "PLT_CS_COMPILE_THREADS")])
+                       (and s
+                            (let ([n (string->number s)])
+                              (and (fixnum? n) (fx>= n 1) n))))
+                     (if (threaded?)
+                         (fxmax 1 (fxmin 8 (processor-count)))
+                         1))])
+          (set! compile-thread-count n)
+          n)))
 
   ;; For "main.sps" to select the default ".zo" directory name:
   (define platform-independent-zo-mode? (not (eq? linklet-compilation-mode 'mach)))
@@ -349,7 +367,9 @@
       (proc (lambda (v)
               (and (or (srcloc? v)
                        (and quoteds
-                            (hash-ref quoteds v #f)))
+                            (if (#%hashtable? quoteds)
+                                (#%eq-hashtable-ref quoteds v #f)
+                                (hash-ref quoteds v #f))))
                    (begin
                      (set! literals (cons v literals))
                      #t))))
@@ -395,6 +415,64 @@
     (let-values ([(o get) (open-bytevector-output-port)])
       (let ([literals (compile-to-port* (list s) quoteds o realm unsafe?)])
         (values (get) literals))))
+
+  ;; Compiles each `lambda` in `jobs`, a list of (cons wrapped-code annotation),
+  ;; and installs the resulting code bytevector and literals in the
+  ;; wrapped-code record. Compilation runs in `(get-compile-thread-count)`
+  ;; OS threads, including the current one. Each compilation is
+  ;; independent, and the Chez Scheme compiler already runs concurrently
+  ;; in places. The results do not depend on the order of compilation.
+  (define (compile-nested-in-parallel! jobs quoteds realm unsafe?)
+    (let* ([jobs (list->vector (reverse jobs))]
+           [n (vector-length jobs)]
+           ;; Use a Chez Scheme table so that worker threads don't use Racket-level locks:
+           [quoteds (and quoteds
+                         (let ([ht (make-eq-hashtable)])
+                           (hash-for-each quoteds (lambda (k v) (eq-hashtable-set! ht k v)))
+                           ht))]
+           [next (box 0)]
+           [failure (box #f)]
+           [work (lambda ()
+                   (guard (x [else (#%box-cas! failure #f x)])
+                     (let loop ()
+                       (let ([i (unbox next)])
+                         (when (and (fx< i n) (not (unbox failure)))
+                           (when (#%box-cas! next i (fx+ i 1))
+                             (let ([job (vector-ref jobs i)])
+                               (let-values ([(code literals) (compile*-to-bytevector (cdr job) quoteds realm unsafe?)])
+                                 (wrapped-code-literals-set! (car job) literals)
+                                 (wrapped-code-content-set! (car job) code))))
+                           (loop))))))]
+           [workers (fxmin (fx- (get-compile-thread-count) 1)
+                           (fx- n 1))])
+      (cond
+        [(fx<= workers 0) (work)]
+        [else
+         (let ([m (make-mutex)]
+               [c (make-condition)]
+               [running workers])
+           (let loop ([i 0])
+             (when (fx< i workers)
+               (fork-pthread (lambda ()
+                               (work)
+                               (mutex-acquire m)
+                               (set! running (fx- running 1))
+                               (condition-signal c)
+                               (mutex-release m)))
+               (loop (fx+ i 1))))
+           (work)
+           ;; Wait for the other threads. Interrupts must stay enabled:
+           ;; a thread blocked in `condition-wait` with interrupts
+           ;; disabled is not deactivated, so it would block a GC
+           ;; that the other threads are waiting for.
+           (mutex-acquire m)
+           (let loop ()
+             (unless (fx= running 0)
+               (condition-wait c m)
+               (loop)))
+           (mutex-release m))])
+      (let ([x (unbox failure)])
+        (when x (raise x)))))
 
   ;; returns code bytevector and literals vector
   (define (compile-to-bytevector s quoteds format realm unsafe?)
@@ -442,7 +520,7 @@
 
   (define-record-type wrapped-code
     (fields (mutable content) ; bytevector for 'lambda mode; annotation or (vector hash annotation) for 'jit mode
-            literals
+            (mutable literals) ; set late when compiled in parallel
             arity-mask
             name ; #f, symbol, or boxed (=> method) #f or symbol
             realm)
@@ -661,6 +739,7 @@
                                    (and (not serializable?)
                                         (#%memq 'quick options)))))
       (define serializable?-box (and serializable? (box #f)))
+      (define pending-nested-compiles '()) ; list of (cons wrapped-code annotation)
       (define sfd-cache (if serializable?
                             ;; For determinism: a fresh, non-weak cache per linklet
                             (make-hash)
@@ -745,11 +824,23 @@
                                               (let ([expr (show lambda-on? "lambda" (correlated->annotation expr-in serializable? sfd-cache))])
                                                 (if serializable?
                                                     (let ([quoteds (unbox serializable?-box)])
+                                                      (if (and (not cross-machine)
+                                                               (fx> (get-compile-thread-count) 1))
+                                                          ;; Compile later, in parallel with other `lambda`s:
+                                                          (let ([wc (make-wrapped-code #f #f arity-mask (extract-inferred-name expr-in name method?) realm)])
+                                                            (set! pending-nested-compiles (cons (cons wc expr) pending-nested-compiles))
+                                                            wc)
                                                       (let-values ([(code literals) (if cross-machine
                                                                                         (cross-compile cross-machine expr quoteds realm unsafe?)
                                                                                         (compile*-to-bytevector expr quoteds realm unsafe?))])
-                                                        (make-wrapped-code code literals arity-mask (extract-inferred-name expr-in name method?) realm)))
+                                                        (make-wrapped-code code literals arity-mask (extract-inferred-name expr-in name method?) realm))))
                                                     (compile* expr realm unsafe?)))))])))]))
+       (define nested-compiled-in-parallel?
+         (and (pair? pending-nested-compiles)
+              (performance-region
+               'compile-nested
+               (compile-nested-in-parallel! pending-nested-compiles (unbox serializable?-box) realm unsafe?)
+               #t)))
        (define impl-lam/interpable
          (let ([impl-lam (case (and jitify-mode?
                                     linklet-compilation-mode)

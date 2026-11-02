@@ -85,12 +85,12 @@
       (lambda ()
         (set! c (bytes-open-converter/cached-from enc)))
       (lambda ()
-        (let loop ([pos 0])
+        (let loop ([pos start])
           (define-values (bstr in-used status)
-            (bytes-convert c in-bstr pos))
+            (bytes-convert c in-bstr pos end))
           (cond
             [(eq? status 'complete)
-             (if (eqv? pos 0)
+             (if (eqv? pos start)
                  (bytes->string/utf-8 bstr)
                  (list bstr))]
             [(not err-char)
@@ -101,13 +101,13 @@
              (define err-bstr (string->bytes/utf-8 (string err-char)))
              (cond
                [(eq? status 'aborts)
-                (if (eqv? pos 0)
+                (if (eqv? pos start)
                     (bytes->string/utf-8 (bytes-append bstr err-bstr))
                     (list bstr err-bstr))]
                [else
                 ;; Skip the byte and try again
                 (define r (loop (+ pos in-used 1)))
-                (if (eqv? pos 0)
+                (if (eqv? pos start)
                     (bytes->string/utf-8 (apply bytes-append (cons bstr (cons err-bstr r))))
                     (cons bstr (cons err-bstr r)))])])))
       (lambda ()

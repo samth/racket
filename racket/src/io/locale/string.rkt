@@ -1,5 +1,6 @@
 #lang racket/base
-(require "../common/check.rkt"
+(require racket/fixnum
+         "../common/check.rkt"
          "../string/convert.rkt"
          "../string/utf-8-decode.rkt"
          "../converter/main.rkt"
@@ -17,6 +18,11 @@
   (check who exact-nonnegative-integer? end)
   (check-range who start end (string-length str) str)
   (cond
+    [(and (string-ascii? str start end)
+          (locale-encoding-is-ascii-compatible?))
+     ;; Every ASCII-compatible encoding, including UTF-8, maps these
+     ;; characters to the same bytes
+     (string->bytes/latin-1 str #f start end)]
     [(locale-encoding-is-utf-8?)
      (string->bytes/utf-8 str err-byte start end)]
     [else
@@ -63,6 +69,13 @@
   (check who exact-nonnegative-integer? end)
   (check-range who start end (bytes-length in-bstr) in-bstr)
   (cond
+    [(and (eqv? start 0)
+          (eqv? end (bytes-length in-bstr))
+          (bytes-ascii? in-bstr)
+          (locale-encoding-is-ascii-compatible?))
+     ;; Every ASCII-compatible encoding, including UTF-8, maps these
+     ;; bytes to the same characters
+     (bytes->string/latin-1 in-bstr)]
     [(locale-encoding-is-utf-8?)
      (bytes->string/utf-8 in-bstr err-char start end)]
     [else
@@ -99,3 +112,18 @@
                     (cons bstr (cons err-bstr r)))])])))
       (lambda ()
         (bytes-close-converter/cached-from c enc)))]))
+
+;; ----------------------------------------
+
+(define (string-ascii? str start end)
+  (let loop ([i start])
+    (or (fx= i end)
+        (and (fx< (char->integer (string-ref str i)) 128)
+             (loop (fx+ i 1))))))
+
+(define (bytes-ascii? bstr)
+  (define len (bytes-length bstr))
+  (let loop ([i 0])
+    (or (fx= i len)
+        (and (fx< (bytes-ref bstr i) 128)
+             (loop (fx+ i 1))))))

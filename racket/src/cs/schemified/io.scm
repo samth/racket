@@ -17962,10 +17962,10 @@
                              (lambda (pos_0)
                                (call-with-values
                                 (lambda ()
-                                  (1/bytes-convert c_0 in-bstr8_0 pos_0))
+                                  (1/bytes-convert c_0 in-bstr8_0 pos_0 end_0))
                                 (lambda (bstr_0 in-used_0 status_0)
                                   (if (eq? status_0 'complete)
-                                    (if (eqv? pos_0 0)
+                                    (if (eqv? pos_0 start6_0)
                                       (1/bytes->string/utf-8 bstr_0)
                                       (list bstr_0))
                                     (if (not err-char5_0)
@@ -17978,14 +17978,14 @@
                                              (1/string->bytes/utf-8
                                               (string err-char5_0))))
                                         (if (eq? status_0 'aborts)
-                                          (if (eqv? pos_0 0)
+                                          (if (eqv? pos_0 start6_0)
                                             (1/bytes->string/utf-8
                                              (bytes-append bstr_0 err-bstr_0))
                                             (list bstr_0 err-bstr_0))
                                           (let ((r_0
                                                  (loop_0
                                                   (+ pos_0 in-used_0 1))))
-                                            (if (eqv? pos_0 0)
+                                            (if (eqv? pos_0 start6_0)
                                               (1/bytes->string/utf-8
                                                (apply-bytes-append
                                                 0
@@ -17997,7 +17997,7 @@
                                                (cons
                                                 err-bstr_0
                                                 r_0))))))))))))))
-                          (loop_0 0)))
+                          (loop_0 start6_0)))
                        (lambda ()
                          (let ((c_1 c_0))
                            (cache-save!

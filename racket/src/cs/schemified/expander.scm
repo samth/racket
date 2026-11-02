@@ -87,6 +87,7 @@
 (define rx2199 (byte-regexp #vu8(34)))
 (define rx2194 (byte-regexp #vu8(0)))
 (define rx2668 (regexp "[.]"))
+(define kw3357 (string->keyword "seteq"))
 (define hash2725 (hash))
 (define hash2610 (hasheq))
 (define hash2589 (hasheqv))
@@ -123,7 +124,6 @@
 (define kw2821 (string->keyword "cons"))
 (define kw2525 (string->keyword "box"))
 (define kw2967 (string->keyword "vector"))
-(define kw3357 (string->keyword "seteq"))
 (define kw2333 (string->keyword "seteqv"))
 (define kw2473 (string->keyword "set"))
 (define kw2796 (string->keyword "hasheq"))
@@ -3840,6 +3840,600 @@
         "(or/c +inf.0 (and/c exact-integer? (>/c 5)))"
         c_0)))
    'print-value-columns))
+(define check-fxvector
+  (lambda (v_0)
+    (if (fxvector? v_0)
+      (void)
+      (1/raise-argument-error
+       'in-fxvector*
+       (string-append "fxvector" "?")
+       v_0))))
+(define not-an-fX.1
+  (|#%name|
+   not-an-fX
+   (lambda (who_0 v_0) (raise-argument-error who_0 "fixnum?" v_0))))
+(define-values
+ (prop:serialize serialize? serialize-ref)
+ (make-struct-type-property 'serialize))
+(define-values
+ (prop:serialize-fill! serialize-fill!? serialize-fill!-ref)
+ (make-struct-type-property 'serialize-fill!))
+(define-values
+ (prop:reach-scopes reach-scopes? reach-scopes-ref)
+ (make-struct-type-property 'reach-scopes))
+(define-values
+ (prop:scope-with-bindings scope-with-bindings? scope-with-bindings-ref)
+ (make-struct-type-property 'scope-with-bindings))
+(define-values
+ (prop:binding-reach-scopes binding-reach-scopes? binding-reach-scopes-ref)
+ (make-struct-type-property 'binding-reach-scopes))
+(define-values
+ (prop:binding-shift-report binding-shift-report? binding-shift-report-ref)
+ (make-struct-type-property 'binding-shift-report))
+(define finish_2503
+  (make-struct-type-install-properties
+   '(scope-base)
+   2
+   0
+   #f
+   (list (cons prop:authentic #t))
+   (current-inspector)
+   #f
+   '(0 1)
+   #f
+   'scope-base))
+(define struct:scope-base
+  (|#%make-record-type-descriptor|
+   |#%racket-base-rtd|
+   'scope-base
+   #f
+   (|#%nongenerative-uid| scope-base)
+   #f
+   #f
+   '(2 . 0)
+   'make-struct-type
+   #f
+   #f
+   #f
+   |#%system-inspector|))
+(define effect_1752 (finish_2503 struct:scope-base))
+(define scope-base1.1
+  (|#%name|
+   scope-base
+   (record-constructor
+    (make-record-constructor-descriptor struct:scope-base #f #f))))
+(define scope-base?
+  (|#%name| scope-base? (record-predicate struct:scope-base)))
+(define scope-base-id
+  (|#%name| scope-base-id (record-accessor struct:scope-base 0)))
+(define scope-base-key
+  (|#%name| scope-base-key (record-accessor struct:scope-base 1)))
+(define mix
+  (lambda (n_0)
+    (let ((h_0 (fx*/wraparound n_0 1540483477)))
+      (let ((h_1 (fxxor h_0 (unsafe-fxrshift h_0 17))))
+        (let ((h_2 (fx*/wraparound h_1 739982445)))
+          (let ((h_3 (fxxor h_2 (unsafe-fxrshift h_2 13))))
+            (let ((h_4 (fx*/wraparound h_3 695872825)))
+              (fxxor h_4 (unsafe-fxrshift h_4 16)))))))))
+(define make-scope-key
+  (lambda (id_0)
+    (if (fixnum? id_0)
+      (mix id_0)
+      (mix
+       (let ((app_0 (fx*/wraparound (mix (numerator id_0)) 31)))
+         (fx+/wraparound app_0 (denominator id_0)))))))
+(define finish_2290
+  (make-struct-type-install-properties
+   '(scope-set)
+   3
+   0
+   #f
+   (list
+    (cons prop:sealed #t)
+    (cons prop:authentic #t)
+    (cons
+     prop:reach-scopes
+     (lambda (s_0 extra-shifts_0 reach_0)
+       (begin
+         (let ((lst_0 (scope-set-elems s_0)))
+           (letrec*
+            ((for-loop_0
+              (|#%name|
+               for-loop
+               (lambda (lst_1)
+                 (if (pair? lst_1)
+                   (let ((sc_0 (unsafe-car lst_1)))
+                     (let ((rest_0 (unsafe-cdr lst_1)))
+                       (begin
+                         (|#%app| reach_0 sc_0 extra-shifts_0)
+                         (for-loop_0 rest_0))))
+                   (values))))))
+            (for-loop_0 lst_0)))
+         (void))))
+    (cons
+     prop:serialize
+     (lambda (s_0 ser-push!_0 state_0)
+       (begin
+         (|#%app| ser-push!_0 'tag kw3357)
+         (|#%app| ser-push!_0 'exact (scope-set-count s_0))
+         (let ((lst_0 (reverse$1 (scope-set-elems s_0))))
+           (letrec*
+            ((for-loop_0
+              (|#%name|
+               for-loop
+               (lambda (lst_1)
+                 (if (pair? lst_1)
+                   (let ((sc_0 (unsafe-car lst_1)))
+                     (let ((rest_0 (unsafe-cdr lst_1)))
+                       (begin (|#%app| ser-push!_0 sc_0) (for-loop_0 rest_0))))
+                   (values))))))
+            (for-loop_0 lst_0)))
+         (void))))
+    (cons
+     prop:equal+hash
+     (list
+      (lambda (a_0 b_0 eql?_0) (scope-set=? a_0 b_0))
+      (lambda (a_0 hc_0) (scope-set-code a_0))
+      (lambda (a_0 hc_0) (scope-set-code a_0)))))
+   (current-inspector)
+   #f
+   '(0 1 2)
+   #f
+   'scope-set))
+(define struct:scope-set
+  (|#%make-record-type-descriptor|
+   |#%racket-base-rtd|
+   'scope-set
+   #f
+   (|#%nongenerative-uid| scope-set)
+   #t
+   #f
+   '(3 . 0)
+   'make-struct-type
+   #f
+   #f
+   #f
+   |#%system-inspector|))
+(define effect_2528 (finish_2290 struct:scope-set))
+(define scope-set2.1
+  (|#%name|
+   scope-set
+   (record-constructor
+    (make-record-constructor-descriptor struct:scope-set #f #f))))
+(define scope-set? (|#%name| scope-set? (record-predicate struct:scope-set)))
+(define scope-set-elems
+  (|#%name| scope-set-elems (record-accessor struct:scope-set 0)))
+(define scope-set-count
+  (|#%name| scope-set-count (record-accessor struct:scope-set 1)))
+(define scope-set-code
+  (|#%name| scope-set-code (record-accessor struct:scope-set 2)))
+(define empty-scope-set (scope-set2.1 null 0 0))
+(define scope-set-max (lambda (s_0) (car (scope-set-elems s_0))))
+(define scope-set-member?
+  (lambda (s_0 sc_0)
+    (if (scope-base? sc_0)
+      (letrec*
+       ((loop_0
+         (|#%name|
+          loop
+          (lambda (l_0)
+            (if (null? l_0)
+              #f
+              (if (eq? (car l_0) sc_0)
+                #t
+                (if (let ((x_0 (scope-base-id sc_0)))
+                      (let ((y_0 (scope-base-id (car l_0))))
+                        (let ((x_1 x_0))
+                          (if (if (fixnum? x_1) (fixnum? y_0) #f)
+                            (unsafe-fx> x_1 y_0)
+                            (> x_1 y_0)))))
+                  #f
+                  (loop_0 (cdr l_0)))))))))
+       (loop_0 (scope-set-elems s_0)))
+      #f)))
+(define make-set
+  (lambda (l_0 count_0 code_0)
+    (if (null? l_0) empty-scope-set (scope-set2.1 l_0 count_0 code_0))))
+(define scope-set-add
+  (lambda (s_0 sc_0)
+    (let ((l_0 (scope-set-elems s_0)))
+      (letrec*
+       ((loop_0
+         (|#%name|
+          loop
+          (lambda (p_0)
+            (if (let ((or-part_0 (null? p_0)))
+                  (if or-part_0
+                    or-part_0
+                    (let ((x_0 (scope-base-id sc_0)))
+                      (let ((y_0 (scope-base-id (car p_0))))
+                        (let ((x_1 x_0))
+                          (if (if (fixnum? x_1) (fixnum? y_0) #f)
+                            (unsafe-fx> x_1 y_0)
+                            (> x_1 y_0)))))))
+              (let ((app_0 (prefix-onto l_0 p_0 (cons sc_0 p_0))))
+                (let ((app_1 (fx+ (scope-set-count s_0) 1)))
+                  (scope-set2.1
+                   app_0
+                   app_1
+                   (fxxor (scope-set-code s_0) (scope-base-key sc_0)))))
+              (if (eq? (car p_0) sc_0) s_0 (loop_0 (cdr p_0))))))))
+       (loop_0 l_0)))))
+(define scope-set-remove
+  (lambda (s_0 sc_0)
+    (if (not (scope-base? sc_0))
+      s_0
+      (let ((l_0 (scope-set-elems s_0)))
+        (letrec*
+         ((loop_0
+           (|#%name|
+            loop
+            (lambda (p_0)
+              (if (let ((or-part_0 (null? p_0)))
+                    (if or-part_0
+                      or-part_0
+                      (let ((x_0 (scope-base-id sc_0)))
+                        (let ((y_0 (scope-base-id (car p_0))))
+                          (let ((x_1 x_0))
+                            (if (if (fixnum? x_1) (fixnum? y_0) #f)
+                              (unsafe-fx> x_1 y_0)
+                              (> x_1 y_0)))))))
+                s_0
+                (if (eq? (car p_0) sc_0)
+                  (let ((l_1 (prefix-onto l_0 p_0 (cdr p_0))))
+                    (let ((count_0 (fx- (scope-set-count s_0) 1)))
+                      (let ((code_0
+                             (fxxor
+                              (scope-set-code s_0)
+                              (scope-base-key sc_0))))
+                        (let ((count_1 count_0) (l_2 l_1))
+                          (if (null? l_2)
+                            empty-scope-set
+                            (scope-set2.1 l_2 count_1 code_0))))))
+                  (loop_0 (cdr p_0))))))))
+         (loop_0 l_0))))))
+(define scope-set-flip
+  (lambda (s_0 sc_0)
+    (let ((l_0 (scope-set-elems s_0)))
+      (letrec*
+       ((loop_0
+         (|#%name|
+          loop
+          (lambda (p_0)
+            (if (let ((or-part_0 (null? p_0)))
+                  (if or-part_0
+                    or-part_0
+                    (let ((x_0 (scope-base-id sc_0)))
+                      (let ((y_0 (scope-base-id (car p_0))))
+                        (let ((x_1 x_0))
+                          (if (if (fixnum? x_1) (fixnum? y_0) #f)
+                            (unsafe-fx> x_1 y_0)
+                            (> x_1 y_0)))))))
+              (let ((app_0 (prefix-onto l_0 p_0 (cons sc_0 p_0))))
+                (let ((app_1 (fx+ (scope-set-count s_0) 1)))
+                  (scope-set2.1
+                   app_0
+                   app_1
+                   (fxxor (scope-set-code s_0) (scope-base-key sc_0)))))
+              (if (eq? (car p_0) sc_0)
+                (let ((l_1 (prefix-onto l_0 p_0 (cdr p_0))))
+                  (let ((count_0 (fx- (scope-set-count s_0) 1)))
+                    (let ((code_0
+                           (fxxor (scope-set-code s_0) (scope-base-key sc_0))))
+                      (let ((count_1 count_0) (l_2 l_1))
+                        (if (null? l_2)
+                          empty-scope-set
+                          (scope-set2.1 l_2 count_1 code_0))))))
+                (loop_0 (cdr p_0))))))))
+       (loop_0 l_0)))))
+(define prefix-onto
+  (lambda (l_0 p_0 tail_0)
+    (letrec*
+     ((loop_0
+       (|#%name|
+        loop
+        (lambda (l_1)
+          (if (eq? l_1 p_0)
+            tail_0
+            (let ((app_0 (car l_1))) (cons app_0 (loop_0 (cdr l_1)))))))))
+     (loop_0 l_0))))
+(define scope-set=?
+  (lambda (a_0 b_0)
+    (let ((or-part_0 (eq? a_0 b_0)))
+      (if or-part_0
+        or-part_0
+        (if (fx= (scope-set-code a_0) (scope-set-code b_0))
+          (if (fx= (scope-set-count a_0) (scope-set-count b_0))
+            (letrec*
+             ((loop_0
+               (|#%name|
+                loop
+                (lambda (la_0 lb_0)
+                  (let ((or-part_1 (eq? la_0 lb_0)))
+                    (if or-part_1
+                      or-part_1
+                      (if (let ((app_0 (car la_0))) (eq? app_0 (car lb_0)))
+                        (let ((app_0 (cdr la_0))) (loop_0 app_0 (cdr lb_0)))
+                        #f)))))))
+             (loop_0 (scope-set-elems a_0) (scope-set-elems b_0)))
+            #f)
+          #f)))))
+(define scope-set-subset?
+  (lambda (a_0 b_0)
+    (let ((or-part_0 (eq? a_0 b_0)))
+      (if or-part_0
+        or-part_0
+        (if (fx<= (scope-set-count a_0) (scope-set-count b_0))
+          (letrec*
+           ((loop_0
+             (|#%name|
+              loop
+              (lambda (la_0 na_0 lb_0 nb_0)
+                (if (eq? la_0 lb_0)
+                  #t
+                  (if (null? la_0)
+                    #t
+                    (if (fx< nb_0 na_0)
+                      #f
+                      (let ((x_0 (car la_0)))
+                        (let ((y_0 (car lb_0)))
+                          (if (eq? x_0 y_0)
+                            (let ((app_0 (cdr la_0)))
+                              (let ((app_1 (fx- na_0 1)))
+                                (let ((app_2 (cdr lb_0)))
+                                  (loop_0 app_0 app_1 app_2 (fx- nb_0 1)))))
+                            (if (let ((x_1 (scope-base-id x_0)))
+                                  (let ((y_1 (scope-base-id y_0)))
+                                    (if (if (fixnum? x_1) (fixnum? y_1) #f)
+                                      (unsafe-fx> x_1 y_1)
+                                      (> x_1 y_1))))
+                              #f
+                              (let ((app_0 (cdr lb_0)))
+                                (loop_0
+                                 la_0
+                                 na_0
+                                 app_0
+                                 (fx- nb_0 1))))))))))))))
+           (loop_0
+            (scope-set-elems a_0)
+            (scope-set-count a_0)
+            (scope-set-elems b_0)
+            (scope-set-count b_0)))
+          #f)))))
+(define scope-set-union
+  (lambda (a_0 b_0)
+    (if (eq? a_0 b_0)
+      a_0
+      (if (eqv? 0 (scope-set-count b_0))
+        a_0
+        (if (eqv? 0 (scope-set-count a_0))
+          b_0
+          (let ((lst_0 (scope-set-elems b_0)))
+            (letrec*
+             ((for-loop_0
+               (|#%name|
+                for-loop
+                (lambda (a_1 lst_1)
+                  (if (pair? lst_1)
+                    (let ((sc_0 (unsafe-car lst_1)))
+                      (let ((rest_0 (unsafe-cdr lst_1)))
+                        (let ((a_2
+                               (let ((a_2 (scope-set-add a_1 sc_0)))
+                                 (values a_2))))
+                          (for-loop_0 a_2 rest_0))))
+                    a_1)))))
+             (for-loop_0 a_0 lst_0))))))))
+(define scope-set-subtract
+  (lambda (a_0 b_0)
+    (if (eqv? 0 (scope-set-count b_0))
+      a_0
+      (let ((lst_0 (scope-set-elems b_0)))
+        (letrec*
+         ((for-loop_0
+           (|#%name|
+            for-loop
+            (lambda (a_1 lst_1)
+              (if (pair? lst_1)
+                (let ((sc_0 (unsafe-car lst_1)))
+                  (let ((rest_0 (unsafe-cdr lst_1)))
+                    (let ((a_2
+                           (let ((a_2 (scope-set-remove a_1 sc_0)))
+                             (values a_2))))
+                      (for-loop_0 a_2 rest_0))))
+                a_1)))))
+         (for-loop_0 a_0 lst_0))))))
+(define scope-set-intersect
+  (lambda (a_0 b_0)
+    (if (eq? a_0 b_0)
+      a_0
+      (let ((lst_0 (scope-set-elems a_0)))
+        (letrec*
+         ((for-loop_0
+           (|#%name|
+            for-loop
+            (lambda (a_1 lst_1)
+              (if (pair? lst_1)
+                (let ((sc_0 (unsafe-car lst_1)))
+                  (let ((rest_0 (unsafe-cdr lst_1)))
+                    (let ((a_2
+                           (let ((a_2
+                                  (if (scope-set-member? b_0 sc_0)
+                                    a_1
+                                    (scope-set-remove a_1 sc_0))))
+                             (values a_2))))
+                      (for-loop_0 a_2 rest_0))))
+                a_1)))))
+         (for-loop_0 a_0 lst_0))))))
+(define scope-set->list (lambda (s_0) (scope-set-elems s_0)))
+(define list->scope-set
+  (lambda (l_0)
+    (letrec*
+     ((for-loop_0
+       (|#%name|
+        for-loop
+        (lambda (s_0 lst_0)
+          (if (pair? lst_0)
+            (let ((sc_0 (unsafe-car lst_0)))
+              (let ((rest_0 (unsafe-cdr lst_0)))
+                (let ((s_1
+                       (let ((s_1 (scope-set-add s_0 sc_0))) (values s_1))))
+                  (for-loop_0 s_1 rest_0))))
+            s_0)))))
+     (for-loop_0 empty-scope-set l_0))))
+(define hash->scope-set (lambda (ht_0) (list->scope-set (hash-keys ht_0))))
+(define compose-op
+  (lambda (cur_0 new_0)
+    (if (eq? new_0 'add)
+      'add
+      (if (eq? new_0 'remove)
+        'remove
+        (if (eq? cur_0 'add)
+          'remove
+          (if (eq? cur_0 'remove) 'add (if (eq? cur_0 'flip) #f 'flip)))))))
+(define scope-ops-update
+  (lambda (ops_0 sc_0 op_0)
+    (letrec*
+     ((loop_0
+       (|#%name|
+        loop
+        (lambda (l_0)
+          (if (let ((or-part_0 (null? l_0)))
+                (if or-part_0
+                  or-part_0
+                  (let ((x_0 (scope-base-id sc_0)))
+                    (let ((y_0 (scope-base-id (caar l_0))))
+                      (let ((x_1 x_0))
+                        (if (if (fixnum? x_1) (fixnum? y_0) #f)
+                          (unsafe-fx> x_1 y_0)
+                          (> x_1 y_0)))))))
+            (prefix-onto ops_0 l_0 (cons (cons sc_0 op_0) l_0))
+            (if (eq? (caar l_0) sc_0)
+              (let ((new-op_0 (compose-op (cdar l_0) op_0)))
+                (if (eq? new-op_0 (cdar l_0))
+                  ops_0
+                  (if new-op_0
+                    (prefix-onto
+                     ops_0
+                     l_0
+                     (let ((app_0 (cons sc_0 new-op_0)))
+                       (cons app_0 (cdr l_0))))
+                    (prefix-onto ops_0 l_0 (cdr l_0)))))
+              (loop_0 (cdr l_0))))))))
+     (loop_0 ops_0))))
+(define scope-ops-compose
+  (lambda (base_0 new_0)
+    (if (null? new_0)
+      base_0
+      (if (null? base_0)
+        new_0
+        (letrec*
+         ((loop_0
+           (|#%name|
+            loop
+            (lambda (b_0 n_0)
+              (if (null? n_0)
+                b_0
+                (if (null? b_0)
+                  n_0
+                  (let ((bsc_0 (caar b_0)))
+                    (let ((nsc_0 (caar n_0)))
+                      (if (eq? bsc_0 nsc_0)
+                        (let ((op_0
+                               (let ((app_0 (cdar b_0)))
+                                 (compose-op app_0 (cdar n_0)))))
+                          (if op_0
+                            (let ((app_0
+                                   (if (eq? op_0 (cdar b_0))
+                                     (car b_0)
+                                     (cons bsc_0 op_0))))
+                              (cons
+                               app_0
+                               (let ((app_1 (cdr b_0)))
+                                 (loop_0 app_1 (cdr n_0)))))
+                            (let ((app_0 (cdr b_0)))
+                              (loop_0 app_0 (cdr n_0)))))
+                        (if (let ((x_0 (scope-base-id bsc_0)))
+                              (let ((y_0 (scope-base-id nsc_0)))
+                                (if (if (fixnum? x_0) (fixnum? y_0) #f)
+                                  (unsafe-fx> x_0 y_0)
+                                  (> x_0 y_0))))
+                          (let ((app_0 (car b_0)))
+                            (cons app_0 (loop_0 (cdr b_0) n_0)))
+                          (let ((app_0 (car n_0)))
+                            (cons app_0 (loop_0 b_0 (cdr n_0))))))))))))))
+         (loop_0 base_0 new_0))))))
+(define scope-set-apply-ops
+  (lambda (s_0 ops_0)
+    (if (null? ops_0)
+      s_0
+      (if (null? (cdr ops_0))
+        (let ((sc_0 (caar ops_0)))
+          (let ((tmp_0 (cdar ops_0)))
+            (if (eq? tmp_0 'add)
+              (scope-set-add s_0 sc_0)
+              (if (eq? tmp_0 'remove)
+                (scope-set-remove s_0 sc_0)
+                (scope-set-flip s_0 sc_0)))))
+        (let ((count_0 (scope-set-count s_0)))
+          (let ((code_0 (scope-set-code s_0)))
+            (let ((new-l_0
+                   (letrec*
+                    ((loop_0
+                      (|#%name|
+                       loop
+                       (lambda (l_0 ops_1)
+                         (if (null? ops_1)
+                           l_0
+                           (let ((op_0 (car ops_1)))
+                             (let ((sc_0 (car op_0)))
+                               (if (if (pair? l_0)
+                                     (let ((x_0 (scope-base-id (car l_0))))
+                                       (let ((y_0 (scope-base-id sc_0)))
+                                         (let ((x_1 x_0))
+                                           (if (if (fixnum? x_1)
+                                                 (fixnum? y_0)
+                                                 #f)
+                                             (unsafe-fx> x_1 y_0)
+                                             (> x_1 y_0)))))
+                                     #f)
+                                 (let ((rest_0 (loop_0 (cdr l_0) ops_1)))
+                                   (if (eq? rest_0 (cdr l_0))
+                                     l_0
+                                     (cons (car l_0) rest_0)))
+                                 (if (if (pair? l_0) (eq? (car l_0) sc_0) #f)
+                                   (if (eq? (cdr op_0) 'add)
+                                     (loop_0 l_0 (cdr ops_1))
+                                     (begin
+                                       (set! count_0 (fx- count_0 1))
+                                       (set! code_0
+                                         (let ((app_0 code_0))
+                                           (fxxor
+                                            app_0
+                                            (scope-base-key sc_0))))
+                                       (let ((app_0 (cdr l_0)))
+                                         (loop_0 app_0 (cdr ops_1)))))
+                                   (if (eq? (cdr op_0) 'remove)
+                                     (loop_0 l_0 (cdr ops_1))
+                                     (begin
+                                       (set! count_0 (fx+ count_0 1))
+                                       (set! code_0
+                                         (let ((app_0 code_0))
+                                           (fxxor
+                                            app_0
+                                            (scope-base-key sc_0))))
+                                       (cons
+                                        sc_0
+                                        (loop_0 l_0 (cdr ops_1))))))))))))))
+                    (loop_0 (scope-set-elems s_0) ops_0))))
+              (if (eq? new-l_0 (scope-set-elems s_0))
+                s_0
+                (let ((count_1 count_0))
+                  (let ((code_1 code_0))
+                    (let ((count_2 count_1))
+                      (if (null? new-l_0)
+                        empty-scope-set
+                        (scope-set2.1 new-l_0 count_2 code_1)))))))))))))
 (define the-empty-hash hash2725)
 (define the-empty-hasheq hash2610)
 (define the-empty-hasheqv hash2589)
@@ -3876,122 +4470,309 @@
             s_0)))))
      (for-loop_0 the-empty-hasheq l_0)))))
 (define seteqv (lambda () the-empty-hasheqv))
-(define set? (lambda (s_0) (hash? s_0)))
-(define set-empty? (lambda (s_0) (zero? (hash-count s_0))))
-(define set-member? (lambda (s_0 e_0) (hash-ref s_0 e_0 #f)))
-(define set-count (lambda (s_0) (hash-count s_0)))
-(define set-add (lambda (s_0 e_0) (hash-set s_0 e_0 #t)))
-(define set-remove (lambda (s_0 e_0) (hash-remove s_0 e_0)))
+(define set?
+  (lambda (s_0)
+    (let ((or-part_0 (hash? s_0))) (if or-part_0 or-part_0 (scope-set? s_0)))))
+(define set-empty?
+  (lambda (s_0)
+    (if (scope-set? s_0)
+      (eqv? 0 (scope-set-count s_0))
+      (zero? (hash-count s_0)))))
+(define set-member?
+  (lambda (s_0 e_0)
+    (if (scope-set? s_0) (scope-set-member? s_0 e_0) (hash-ref s_0 e_0 #f))))
+(define set-count
+  (lambda (s_0) (if (scope-set? s_0) (scope-set-count s_0) (hash-count s_0))))
+(define set-add
+  (lambda (s_0 e_0)
+    (if (scope-set? s_0) (scope-set-add s_0 e_0) (hash-set s_0 e_0 #t))))
+(define set-remove
+  (lambda (s_0 e_0)
+    (if (scope-set? s_0) (scope-set-remove s_0 e_0) (hash-remove s_0 e_0))))
 (define set-first
-  (lambda (s_0) (hash-iterate-key s_0 (hash-iterate-first s_0))))
-(define subset? (lambda (s1_0 s2_0) (hash-keys-subset? s1_0 s2_0)))
+  (lambda (s_0)
+    (if (scope-set? s_0)
+      (car (scope-set-elems s_0))
+      (hash-iterate-key s_0 (hash-iterate-first s_0)))))
+(define ->scope-set
+  (lambda (s_0) (if (scope-set? s_0) s_0 (list->scope-set (hash-keys s_0)))))
+(define subset?
+  (lambda (s1_0 s2_0)
+    (if (scope-set? s1_0)
+      (if (scope-set? s2_0)
+        (scope-set-subset? s1_0 s2_0)
+        (if (<= (scope-set-count s1_0) (hash-count s2_0))
+          (begin
+            (if (let ((or-part_0 (scope-set? s1_0)))
+                  (if or-part_0
+                    or-part_0
+                    (if (hash? s1_0) (immutable? s1_0) #f)))
+              (void)
+              (raise-argument-error 'in-set "set?" s1_0))
+            (letrec*
+             ((for-loop_0
+               (|#%name|
+                for-loop
+                (lambda (result_0 i_0)
+                  (if (if (scope-set? s1_0) (pair? i_0) i_0)
+                    (let ((k_0
+                           (if (scope-set? s1_0)
+                             (unsafe-car i_0)
+                             (unsafe-immutable-hash-iterate-key s1_0 i_0))))
+                      (let ((result_1
+                             (let ((result_1 (hash-ref s2_0 k_0 #f)))
+                               (values result_1))))
+                        (if (if (not (let ((x_0 (list k_0))) (not result_1)))
+                              #t
+                              #f)
+                          (for-loop_0
+                           result_1
+                           (if (scope-set? s1_0)
+                             (unsafe-cdr i_0)
+                             (unsafe-immutable-hash-iterate-next s1_0 i_0)))
+                          result_1)))
+                    result_0)))))
+             (for-loop_0
+              #t
+              (if (scope-set? s1_0)
+                (scope-set-elems s1_0)
+                (unsafe-immutable-hash-iterate-first s1_0)))))
+          #f))
+      (if (scope-set? s2_0)
+        (if (let ((app_0 (hash-count s1_0))) (<= app_0 (scope-set-count s2_0)))
+          (begin
+            (if (let ((or-part_0 (scope-set? s1_0)))
+                  (if or-part_0
+                    or-part_0
+                    (if (hash? s1_0) (immutable? s1_0) #f)))
+              (void)
+              (raise-argument-error 'in-set "set?" s1_0))
+            (letrec*
+             ((for-loop_0
+               (|#%name|
+                for-loop
+                (lambda (result_0 i_0)
+                  (if (if (scope-set? s1_0) (pair? i_0) i_0)
+                    (let ((k_0
+                           (if (scope-set? s1_0)
+                             (unsafe-car i_0)
+                             (unsafe-immutable-hash-iterate-key s1_0 i_0))))
+                      (let ((result_1
+                             (let ((result_1 (scope-set-member? s2_0 k_0)))
+                               (values result_1))))
+                        (if (if (not (let ((x_0 (list k_0))) (not result_1)))
+                              #t
+                              #f)
+                          (for-loop_0
+                           result_1
+                           (if (scope-set? s1_0)
+                             (unsafe-cdr i_0)
+                             (unsafe-immutable-hash-iterate-next s1_0 i_0)))
+                          result_1)))
+                    result_0)))))
+             (for-loop_0
+              #t
+              (if (scope-set? s1_0)
+                (scope-set-elems s1_0)
+                (unsafe-immutable-hash-iterate-first s1_0)))))
+          #f)
+        (hash-keys-subset? s1_0 s2_0)))))
 (define set=?
   (lambda (s1_0 s2_0)
-    (let ((or-part_0 (eq? s1_0 s2_0)))
-      (if or-part_0
-        or-part_0
-        (if (let ((app_0 (hash-count s1_0))) (= app_0 (hash-count s2_0)))
-          (hash-keys-subset? s1_0 s2_0)
+    (if (eq? s1_0 s2_0)
+      #t
+      (if (if (scope-set? s1_0) (scope-set? s2_0) #f)
+        (scope-set=? s1_0 s2_0)
+        (if (let ((app_0 (set-count s1_0))) (= app_0 (set-count s2_0)))
+          (subset? s1_0 s2_0)
           #f)))))
 (define set-subtract
   (lambda (s1_0 s2_0)
-    (letrec*
-     ((for-loop_0
-       (|#%name|
-        for-loop
-        (lambda (s1_1 i_0)
-          (if i_0
-            (let ((k_0 (unsafe-immutable-hash-iterate-key s2_0 i_0)))
-              (let ((s1_2 (let ((s1_2 (hash-remove s1_1 k_0))) (values s1_2))))
-                (for-loop_0
-                 s1_2
-                 (unsafe-immutable-hash-iterate-next s2_0 i_0))))
-            s1_1)))))
-     (for-loop_0 s1_0 (unsafe-immutable-hash-iterate-first s2_0)))))
+    (if (let ((or-part_0 (scope-set? s1_0)))
+          (if or-part_0 or-part_0 (scope-set? s2_0)))
+      (let ((app_0 (->scope-set s1_0)))
+        (scope-set-subtract app_0 (->scope-set s2_0)))
+      (begin
+        (if (let ((or-part_0 (scope-set? s2_0)))
+              (if or-part_0 or-part_0 (if (hash? s2_0) (immutable? s2_0) #f)))
+          (void)
+          (raise-argument-error 'in-set "set?" s2_0))
+        (letrec*
+         ((for-loop_0
+           (|#%name|
+            for-loop
+            (lambda (s1_1 i_0)
+              (if (if (scope-set? s2_0) (pair? i_0) i_0)
+                (let ((k_0
+                       (if (scope-set? s2_0)
+                         (unsafe-car i_0)
+                         (unsafe-immutable-hash-iterate-key s2_0 i_0))))
+                  (let ((s1_2
+                         (let ((s1_2 (hash-remove s1_1 k_0))) (values s1_2))))
+                    (for-loop_0
+                     s1_2
+                     (if (scope-set? s2_0)
+                       (unsafe-cdr i_0)
+                       (unsafe-immutable-hash-iterate-next s2_0 i_0)))))
+                s1_1)))))
+         (for-loop_0
+          s1_0
+          (if (scope-set? s2_0)
+            (scope-set-elems s2_0)
+            (unsafe-immutable-hash-iterate-first s2_0))))))))
 (define set-union
   (lambda (s1_0 s2_0)
-    (if (let ((app_0 (hash-count s1_0))) (< app_0 (hash-count s2_0)))
-      (set-union s2_0 s1_0)
-      (letrec*
-       ((for-loop_0
-         (|#%name|
-          for-loop
-          (lambda (s1_1 i_0)
-            (if i_0
-              (let ((k_0 (unsafe-immutable-hash-iterate-key s2_0 i_0)))
-                (let ((s1_2
-                       (let ((s1_2 (hash-set s1_1 k_0 #t))) (values s1_2))))
-                  (for-loop_0
-                   s1_2
-                   (unsafe-immutable-hash-iterate-next s2_0 i_0))))
-              s1_1)))))
-       (for-loop_0 s1_0 (unsafe-immutable-hash-iterate-first s2_0))))))
+    (if (let ((or-part_0 (scope-set? s1_0)))
+          (if or-part_0 or-part_0 (scope-set? s2_0)))
+      (let ((app_0 (->scope-set s1_0)))
+        (scope-set-union app_0 (->scope-set s2_0)))
+      (if (let ((app_0 (set-count s1_0))) (< app_0 (set-count s2_0)))
+        (set-union s2_0 s1_0)
+        (begin
+          (if (let ((or-part_0 (scope-set? s2_0)))
+                (if or-part_0
+                  or-part_0
+                  (if (hash? s2_0) (immutable? s2_0) #f)))
+            (void)
+            (raise-argument-error 'in-set "set?" s2_0))
+          (letrec*
+           ((for-loop_0
+             (|#%name|
+              for-loop
+              (lambda (s1_1 i_0)
+                (if (if (scope-set? s2_0) (pair? i_0) i_0)
+                  (let ((k_0
+                         (if (scope-set? s2_0)
+                           (unsafe-car i_0)
+                           (unsafe-immutable-hash-iterate-key s2_0 i_0))))
+                    (let ((s1_2
+                           (let ((s1_2 (hash-set s1_1 k_0 #t)))
+                             (values s1_2))))
+                      (for-loop_0
+                       s1_2
+                       (if (scope-set? s2_0)
+                         (unsafe-cdr i_0)
+                         (unsafe-immutable-hash-iterate-next s2_0 i_0)))))
+                  s1_1)))))
+           (for-loop_0
+            s1_0
+            (if (scope-set? s2_0)
+              (scope-set-elems s2_0)
+              (unsafe-immutable-hash-iterate-first s2_0)))))))))
 (define set-intersect
   (lambda (s1_0 s2_0)
-    (if (let ((app_0 (hash-count s1_0))) (< app_0 (hash-count s2_0)))
-      (set-intersect s2_0 s1_0)
+    (if (let ((or-part_0 (scope-set? s1_0)))
+          (if or-part_0 or-part_0 (scope-set? s2_0)))
+      (let ((app_0 (->scope-set s1_0)))
+        (scope-set-intersect app_0 (->scope-set s2_0)))
+      (if (let ((app_0 (set-count s1_0))) (< app_0 (set-count s2_0)))
+        (set-intersect s2_0 s1_0)
+        (begin
+          (if (let ((or-part_0 (scope-set? s2_0)))
+                (if or-part_0
+                  or-part_0
+                  (if (hash? s2_0) (immutable? s2_0) #f)))
+            (void)
+            (raise-argument-error 'in-set "set?" s2_0))
+          (letrec*
+           ((for-loop_0
+             (|#%name|
+              for-loop
+              (lambda (s_0 i_0)
+                (if (if (scope-set? s2_0) (pair? i_0) i_0)
+                  (let ((k_0
+                         (if (scope-set? s2_0)
+                           (unsafe-car i_0)
+                           (unsafe-immutable-hash-iterate-key s2_0 i_0))))
+                    (let ((s_1
+                           (let ((s_1
+                                  (if (hash-ref s1_0 k_0 #f)
+                                    s_0
+                                    (hash-remove s_0 k_0))))
+                             (values s_1))))
+                      (for-loop_0
+                       s_1
+                       (if (scope-set? s2_0)
+                         (unsafe-cdr i_0)
+                         (unsafe-immutable-hash-iterate-next s2_0 i_0)))))
+                  s_0)))))
+           (for-loop_0
+            s2_0
+            (if (scope-set? s2_0)
+              (scope-set-elems s2_0)
+              (unsafe-immutable-hash-iterate-first s2_0)))))))))
+(define set-partition
+  (lambda (s_0 pred_0 empty-y-set_0 empty-n-set_0)
+    (begin
+      (if (let ((or-part_0 (scope-set? s_0)))
+            (if or-part_0 or-part_0 (if (hash? s_0) (immutable? s_0) #f)))
+        (void)
+        (raise-argument-error 'in-set "set?" s_0))
       (letrec*
        ((for-loop_0
          (|#%name|
           for-loop
-          (lambda (s_0 i_0)
-            (if i_0
-              (let ((k_0 (unsafe-immutable-hash-iterate-key s2_0 i_0)))
-                (let ((s_1
-                       (let ((s_1
-                              (if (hash-ref s1_0 k_0 #f)
-                                s_0
-                                (hash-remove s_0 k_0))))
-                         (values s_1))))
-                  (for-loop_0
-                   s_1
-                   (unsafe-immutable-hash-iterate-next s2_0 i_0))))
-              s_0)))))
-       (for-loop_0 s2_0 (unsafe-immutable-hash-iterate-first s2_0))))))
-(define set-partition
-  (lambda (s_0 pred_0 empty-y-set_0 empty-n-set_0)
-    (letrec*
-     ((for-loop_0
-       (|#%name|
-        for-loop
-        (lambda (y_0 n_0 i_0)
-          (if i_0
-            (let ((v_0 (unsafe-immutable-hash-iterate-key s_0 i_0)))
-              (call-with-values
-               (lambda ()
-                 (call-with-values
-                  (lambda ()
-                    (if (|#%app| pred_0 v_0)
-                      (values (hash-set y_0 v_0 #t) n_0)
-                      (values y_0 (hash-set n_0 v_0 #t))))
-                  (lambda (y_1 n_1) (values y_1 n_1))))
-               (lambda (y_1 n_1)
-                 (for-loop_0
-                  y_1
-                  n_1
-                  (unsafe-immutable-hash-iterate-next s_0 i_0)))))
-            (values y_0 n_0))))))
-     (for-loop_0
-      empty-y-set_0
-      empty-n-set_0
-      (unsafe-immutable-hash-iterate-first s_0)))))
+          (lambda (y_0 n_0 i_0)
+            (if (if (scope-set? s_0) (pair? i_0) i_0)
+              (let ((v_0
+                     (if (scope-set? s_0)
+                       (unsafe-car i_0)
+                       (unsafe-immutable-hash-iterate-key s_0 i_0))))
+                (call-with-values
+                 (lambda ()
+                   (call-with-values
+                    (lambda ()
+                      (if (|#%app| pred_0 v_0)
+                        (values (set-add y_0 v_0) n_0)
+                        (values y_0 (set-add n_0 v_0))))
+                    (lambda (y_1 n_1) (values y_1 n_1))))
+                 (lambda (y_1 n_1)
+                   (for-loop_0
+                    y_1
+                    n_1
+                    (if (scope-set? s_0)
+                      (unsafe-cdr i_0)
+                      (unsafe-immutable-hash-iterate-next s_0 i_0))))))
+              (values y_0 n_0))))))
+       (for-loop_0
+        empty-y-set_0
+        empty-n-set_0
+        (if (scope-set? s_0)
+          (scope-set-elems s_0)
+          (unsafe-immutable-hash-iterate-first s_0)))))))
 (define set->list
   (lambda (s_0)
-    (reverse$1
-     (letrec*
-      ((for-loop_0
-        (|#%name|
-         for-loop
-         (lambda (fold-var_0 i_0)
-           (if i_0
-             (let ((k_0 (unsafe-immutable-hash-iterate-key s_0 i_0)))
-               (let ((fold-var_1 (cons k_0 fold-var_0)))
-                 (let ((fold-var_2 (values fold-var_1)))
-                   (for-loop_0
-                    fold-var_2
-                    (unsafe-immutable-hash-iterate-next s_0 i_0)))))
-             fold-var_0)))))
-      (for-loop_0 null (unsafe-immutable-hash-iterate-first s_0))))))
+    (if (scope-set? s_0)
+      (scope-set-elems s_0)
+      (reverse$1
+       (begin
+         (if (let ((or-part_0 (scope-set? s_0)))
+               (if or-part_0 or-part_0 (if (hash? s_0) (immutable? s_0) #f)))
+           (void)
+           (raise-argument-error 'in-set "set?" s_0))
+         (letrec*
+          ((for-loop_0
+            (|#%name|
+             for-loop
+             (lambda (fold-var_0 i_0)
+               (if (if (scope-set? s_0) (pair? i_0) i_0)
+                 (let ((k_0
+                        (if (scope-set? s_0)
+                          (unsafe-car i_0)
+                          (unsafe-immutable-hash-iterate-key s_0 i_0))))
+                   (let ((fold-var_1 (cons k_0 fold-var_0)))
+                     (let ((fold-var_2 (values fold-var_1)))
+                       (for-loop_0
+                        fold-var_2
+                        (if (scope-set? s_0)
+                          (unsafe-cdr i_0)
+                          (unsafe-immutable-hash-iterate-next s_0 i_0))))))
+                 fold-var_0)))))
+          (for-loop_0
+           null
+           (if (scope-set? s_0)
+             (scope-set-elems s_0)
+             (unsafe-immutable-hash-iterate-first s_0)))))))))
 (define list->set
   (lambda (l_0)
     (let ((table_0 hash2725))
@@ -4038,36 +4819,6 @@
 (define cell.2$9 (unsafe-make-place-local #f))
 (define cell.3$3 (unsafe-make-place-local #f))
 (define cell.4$2 (unsafe-make-place-local 0))
-(define check-fxvector
-  (lambda (v_0)
-    (if (fxvector? v_0)
-      (void)
-      (1/raise-argument-error
-       'in-fxvector*
-       (string-append "fxvector" "?")
-       v_0))))
-(define not-an-fX.1
-  (|#%name|
-   not-an-fX
-   (lambda (who_0 v_0) (raise-argument-error who_0 "fixnum?" v_0))))
-(define-values
- (prop:serialize serialize? serialize-ref)
- (make-struct-type-property 'serialize))
-(define-values
- (prop:serialize-fill! serialize-fill!? serialize-fill!-ref)
- (make-struct-type-property 'serialize-fill!))
-(define-values
- (prop:reach-scopes reach-scopes? reach-scopes-ref)
- (make-struct-type-property 'reach-scopes))
-(define-values
- (prop:scope-with-bindings scope-with-bindings? scope-with-bindings-ref)
- (make-struct-type-property 'scope-with-bindings))
-(define-values
- (prop:binding-reach-scopes binding-reach-scopes? binding-reach-scopes-ref)
- (make-struct-type-property 'binding-reach-scopes))
-(define-values
- (prop:binding-shift-report binding-shift-report? binding-shift-report-ref)
- (make-struct-type-property 'binding-shift-report))
 (define log-performance?
   (if (environment-variables-ref
        (current-environment-variables)
@@ -7902,14 +8653,14 @@
          d_0
          (modified-content-scope-propagations+taint content*_0))
         d_0))))
-(define empty-scopes (seteq))
+(define empty-scopes empty-scope-set)
 (define empty-shifted-multi-scopes (seteq))
 (define empty-mpi-shifts null)
 (define empty-props hash2610)
 (define empty-syntax
   (syntax2.1
    #f
-   empty-scopes
+   empty-scope-set
    empty-shifted-multi-scopes
    null
    #f
@@ -7988,7 +8739,7 @@
            (if (if stx-c_0 (syntax-taintness stx-c_0) #f)
              (modified-content1.1 content_0 (tainted-for-content content_0))
              content_0)))
-      (let ((app_1 (if stx-c_0 (syntax-scopes stx-c_0) empty-scopes)))
+      (let ((app_1 (if stx-c_0 (syntax-scopes stx-c_0) empty-scope-set)))
         (let ((app_2
                (if stx-c_0
                  (syntax-shifted-multi-scopes stx-c_0)
@@ -8239,7 +8990,7 @@
   (lambda (content_0 context-triple_0 srcloc_0 props_0 taint_0 inspector_0)
     (let ((app_0
            (if taint_0 (modified-content1.1 content_0 taint_0) content_0)))
-      (let ((app_1 (unsafe-vector*-ref context-triple_0 0)))
+      (let ((app_1 (->scope-set (unsafe-vector*-ref context-triple_0 0))))
         (let ((app_2 (unsafe-vector*-ref context-triple_0 1)))
           (let ((app_3 (unsafe-vector*-ref context-triple_0 2)))
             (syntax2.1
@@ -9507,7 +10258,7 @@
                                                                      (set=?
                                                                       an-scs_0
                                                                       scs28_0)
-                                                                     (hash-keys-subset?
+                                                                     (subset?
                                                                       an-scs_0
                                                                       scs28_0))))
                                                               (values
@@ -9556,9 +10307,9 @@
                                         (set=?
                                          (bulk-binding-at-scopes bba_0)
                                          scs28_0)
-                                        (let ((s1_0
-                                               (bulk-binding-at-scopes bba_0)))
-                                          (hash-keys-subset? s1_0 scs28_0)))
+                                        (subset?
+                                         (bulk-binding-at-scopes bba_0)
+                                         scs28_0))
                                     (let ((ht_1
                                            (bulk-binding-symbols
                                             (bulk-binding-at-bulk bba_0)
@@ -9633,63 +10384,80 @@
                            (if i_0
                              (let ((an-scs_0 (hash-iterate-key ht_1 i_0)))
                                (let ((table_3
-                                      (letrec*
-                                       ((for-loop_1
-                                         (|#%name|
-                                          for-loop
-                                          (lambda (table_3 i_1)
-                                            (if i_1
-                                              (let ((sc_0
-                                                     (unsafe-immutable-hash-iterate-key
-                                                      an-scs_0
-                                                      i_1)))
-                                                (let ((table_4
-                                                       (if (if (|#%app|
-                                                                interned-scope?39_0
-                                                                sc_0)
-                                                             (if (not
-                                                                  (hash-ref
-                                                                   scs35_0
-                                                                   sc_0
-                                                                   #f))
-                                                               (if exactly?32_0
-                                                                 (set=?
-                                                                  an-scs_0
-                                                                  (hash-set
-                                                                   scs35_0
-                                                                   sc_0
-                                                                   #t))
-                                                                 (let ((s2_0
-                                                                        (hash-set
-                                                                         scs35_0
-                                                                         sc_0
-                                                                         #t)))
-                                                                   (hash-keys-subset?
+                                      (begin
+                                        (if (let ((or-part_0
+                                                   (scope-set? an-scs_0)))
+                                              (if or-part_0
+                                                or-part_0
+                                                (if (hash? an-scs_0)
+                                                  (immutable? an-scs_0)
+                                                  #f)))
+                                          (void)
+                                          (raise-argument-error
+                                           'in-set
+                                           "set?"
+                                           an-scs_0))
+                                        (letrec*
+                                         ((for-loop_1
+                                           (|#%name|
+                                            for-loop
+                                            (lambda (table_3 i_1)
+                                              (if (if (scope-set? an-scs_0)
+                                                    (pair? i_1)
+                                                    i_1)
+                                                (let ((sc_0
+                                                       (if (scope-set?
+                                                            an-scs_0)
+                                                         (unsafe-car i_1)
+                                                         (unsafe-immutable-hash-iterate-key
+                                                          an-scs_0
+                                                          i_1))))
+                                                  (let ((table_4
+                                                         (if (if (|#%app|
+                                                                  interned-scope?39_0
+                                                                  sc_0)
+                                                               (if (not
+                                                                    (set-member?
+                                                                     scs35_0
+                                                                     sc_0))
+                                                                 (if exactly?32_0
+                                                                   (set=?
                                                                     an-scs_0
-                                                                    s2_0)))
+                                                                    (set-add
+                                                                     scs35_0
+                                                                     sc_0))
+                                                                   (subset?
+                                                                    an-scs_0
+                                                                    (set-add
+                                                                     scs35_0
+                                                                     sc_0)))
+                                                                 #f)
                                                                #f)
-                                                             #f)
-                                                         (let ((table_4
-                                                                (let ((key_0
-                                                                       (|#%app|
-                                                                        interned-scope-key40_0
-                                                                        sc_0)))
-                                                                  (hash-set
-                                                                   table_3
-                                                                   key_0
-                                                                   #t))))
-                                                           (values table_4))
-                                                         table_3)))
-                                                  (for-loop_1
-                                                   table_4
-                                                   (unsafe-immutable-hash-iterate-next
-                                                    an-scs_0
-                                                    i_1))))
-                                              table_3)))))
-                                       (for-loop_1
-                                        table_2
-                                        (unsafe-immutable-hash-iterate-first
-                                         an-scs_0)))))
+                                                           (let ((table_4
+                                                                  (let ((key_0
+                                                                         (|#%app|
+                                                                          interned-scope-key40_0
+                                                                          sc_0)))
+                                                                    (hash-set
+                                                                     table_3
+                                                                     key_0
+                                                                     #t))))
+                                                             (values table_4))
+                                                           table_3)))
+                                                    (for-loop_1
+                                                     table_4
+                                                     (if (scope-set? an-scs_0)
+                                                       (unsafe-cdr i_1)
+                                                       (unsafe-immutable-hash-iterate-next
+                                                        an-scs_0
+                                                        i_1)))))
+                                                table_3)))))
+                                         (for-loop_1
+                                          table_2
+                                          (if (scope-set? an-scs_0)
+                                            (scope-set-elems an-scs_0)
+                                            (unsafe-immutable-hash-iterate-first
+                                             an-scs_0)))))))
                                  (for-loop_0
                                   table_3
                                   (hash-iterate-next ht_1 i_0))))
@@ -9717,63 +10485,80 @@
                                        #f)
                                     (let ((an-scs_0
                                            (bulk-binding-at-scopes bba_0)))
-                                      (letrec*
-                                       ((for-loop_1
-                                         (|#%name|
-                                          for-loop
-                                          (lambda (table_3 i_0)
-                                            (if i_0
-                                              (let ((sc_0
-                                                     (unsafe-immutable-hash-iterate-key
-                                                      an-scs_0
-                                                      i_0)))
-                                                (let ((table_4
-                                                       (if (if (|#%app|
-                                                                interned-scope?39_0
-                                                                sc_0)
-                                                             (if (not
-                                                                  (hash-ref
-                                                                   scs35_0
-                                                                   sc_0
-                                                                   #f))
-                                                               (if exactly?32_0
-                                                                 (set=?
-                                                                  an-scs_0
-                                                                  (hash-set
-                                                                   scs35_0
-                                                                   sc_0
-                                                                   #t))
-                                                                 (let ((s2_0
-                                                                        (hash-set
-                                                                         scs35_0
-                                                                         sc_0
-                                                                         #t)))
-                                                                   (hash-keys-subset?
+                                      (begin
+                                        (if (let ((or-part_0
+                                                   (scope-set? an-scs_0)))
+                                              (if or-part_0
+                                                or-part_0
+                                                (if (hash? an-scs_0)
+                                                  (immutable? an-scs_0)
+                                                  #f)))
+                                          (void)
+                                          (raise-argument-error
+                                           'in-set
+                                           "set?"
+                                           an-scs_0))
+                                        (letrec*
+                                         ((for-loop_1
+                                           (|#%name|
+                                            for-loop
+                                            (lambda (table_3 i_0)
+                                              (if (if (scope-set? an-scs_0)
+                                                    (pair? i_0)
+                                                    i_0)
+                                                (let ((sc_0
+                                                       (if (scope-set?
+                                                            an-scs_0)
+                                                         (unsafe-car i_0)
+                                                         (unsafe-immutable-hash-iterate-key
+                                                          an-scs_0
+                                                          i_0))))
+                                                  (let ((table_4
+                                                         (if (if (|#%app|
+                                                                  interned-scope?39_0
+                                                                  sc_0)
+                                                               (if (not
+                                                                    (set-member?
+                                                                     scs35_0
+                                                                     sc_0))
+                                                                 (if exactly?32_0
+                                                                   (set=?
                                                                     an-scs_0
-                                                                    s2_0)))
+                                                                    (set-add
+                                                                     scs35_0
+                                                                     sc_0))
+                                                                   (subset?
+                                                                    an-scs_0
+                                                                    (set-add
+                                                                     scs35_0
+                                                                     sc_0)))
+                                                                 #f)
                                                                #f)
-                                                             #f)
-                                                         (let ((table_4
-                                                                (let ((key_0
-                                                                       (|#%app|
-                                                                        interned-scope-key40_0
-                                                                        sc_0)))
-                                                                  (hash-set
-                                                                   table_3
-                                                                   key_0
-                                                                   #t))))
-                                                           (values table_4))
-                                                         table_3)))
-                                                  (for-loop_1
-                                                   table_4
-                                                   (unsafe-immutable-hash-iterate-next
-                                                    an-scs_0
-                                                    i_0))))
-                                              table_3)))))
-                                       (for-loop_1
-                                        table_2
-                                        (unsafe-immutable-hash-iterate-first
-                                         an-scs_0))))
+                                                           (let ((table_4
+                                                                  (let ((key_0
+                                                                         (|#%app|
+                                                                          interned-scope-key40_0
+                                                                          sc_0)))
+                                                                    (hash-set
+                                                                     table_3
+                                                                     key_0
+                                                                     #t))))
+                                                             (values table_4))
+                                                           table_3)))
+                                                    (for-loop_1
+                                                     table_4
+                                                     (if (scope-set? an-scs_0)
+                                                       (unsafe-cdr i_0)
+                                                       (unsafe-immutable-hash-iterate-next
+                                                        an-scs_0
+                                                        i_0)))))
+                                                table_3)))))
+                                         (for-loop_1
+                                          table_2
+                                          (if (scope-set? an-scs_0)
+                                            (scope-set-elems an-scs_0)
+                                            (unsafe-immutable-hash-iterate-first
+                                             an-scs_0))))))
                                     table_2)))
                              (for-loop_0 table_3 rest_0))))
                        table_2)))))
@@ -9823,7 +10608,7 @@
                                                              (lambda (scopes_0
                                                                       binding_0)
                                                                (let ((table_6
-                                                                      (if (hash-keys-subset?
+                                                                      (if (subset?
                                                                            scopes_0
                                                                            reachable-scopes_0)
                                                                         (let ((table_6
@@ -9890,12 +10675,10 @@
                                   (let ((bba_0 (unsafe-car lst_1)))
                                     (let ((rest_0 (unsafe-cdr lst_1)))
                                       (let ((fold-var_1
-                                             (if (let ((s1_0
-                                                        (bulk-binding-at-scopes
-                                                         bba_0)))
-                                                   (hash-keys-subset?
-                                                    s1_0
-                                                    reachable-scopes_0))
+                                             (if (subset?
+                                                  (bulk-binding-at-scopes
+                                                   bba_0)
+                                                  reachable-scopes_0)
                                                (let ((fold-var_1
                                                       (cons
                                                        (if (bulk-binding-at?
@@ -10058,43 +10841,55 @@
            register-trigger_0
            reach-implicitly_0)
     (let ((reachable-scopes_0 (|#%app| get-reachable-scopes_0)))
-      (if (hash-keys-subset? scopes_0 reachable-scopes_0)
+      (if (subset? scopes_0 reachable-scopes_0)
         (|#%app| reach_0 v_0 bulk-shifts_0)
         (let ((table_0 hash2610))
           (let ((pending-scopes_0
                  (let ((table_1 table_0))
-                   (letrec*
-                    ((for-loop_0
-                      (|#%name|
-                       for-loop
-                       (lambda (table_2 i_0)
-                         (if i_0
-                           (let ((sc_0
-                                  (unsafe-immutable-hash-iterate-key
-                                   scopes_0
-                                   i_0)))
-                             (let ((table_3
-                                    (if (let ((or-part_0
-                                               (hash-ref
-                                                reachable-scopes_0
-                                                sc_0
-                                                #f)))
-                                          (if or-part_0
-                                            or-part_0
-                                            (implicitly-reachable? sc_0)))
-                                      table_2
-                                      (let ((table_3
-                                             (hash-set table_2 sc_0 #t)))
-                                        (values table_3)))))
-                               (for-loop_0
-                                table_3
-                                (unsafe-immutable-hash-iterate-next
-                                 scopes_0
-                                 i_0))))
-                           table_2)))))
-                    (for-loop_0
-                     table_1
-                     (unsafe-immutable-hash-iterate-first scopes_0))))))
+                   (begin
+                     (if (let ((or-part_0 (scope-set? scopes_0)))
+                           (if or-part_0
+                             or-part_0
+                             (if (hash? scopes_0) (immutable? scopes_0) #f)))
+                       (void)
+                       (raise-argument-error 'in-set "set?" scopes_0))
+                     (letrec*
+                      ((for-loop_0
+                        (|#%name|
+                         for-loop
+                         (lambda (table_2 i_0)
+                           (if (if (scope-set? scopes_0) (pair? i_0) i_0)
+                             (let ((sc_0
+                                    (if (scope-set? scopes_0)
+                                      (unsafe-car i_0)
+                                      (unsafe-immutable-hash-iterate-key
+                                       scopes_0
+                                       i_0))))
+                               (let ((table_3
+                                      (if (let ((or-part_0
+                                                 (set-member?
+                                                  reachable-scopes_0
+                                                  sc_0)))
+                                            (if or-part_0
+                                              or-part_0
+                                              (implicitly-reachable? sc_0)))
+                                        table_2
+                                        (let ((table_3
+                                               (hash-set table_2 sc_0 #t)))
+                                          (values table_3)))))
+                                 (for-loop_0
+                                  table_3
+                                  (if (scope-set? scopes_0)
+                                    (unsafe-cdr i_0)
+                                    (unsafe-immutable-hash-iterate-next
+                                     scopes_0
+                                     i_0)))))
+                             table_2)))))
+                      (for-loop_0
+                       table_1
+                       (if (scope-set? scopes_0)
+                         (scope-set-elems scopes_0)
+                         (unsafe-immutable-hash-iterate-first scopes_0))))))))
             (let ((check-trigger_0
                    (|#%name|
                     check-trigger
@@ -10102,54 +10897,93 @@
                       (if (zero? (hash-count pending-scopes_0))
                         (begin
                           (|#%app| reach_1 v_0 bulk-shifts_0)
-                          (letrec*
-                           ((for-loop_0
-                             (|#%name|
-                              for-loop
-                              (lambda (i_0)
-                                (if i_0
-                                  (let ((sc_0
-                                         (unsafe-immutable-hash-iterate-key
-                                          scopes_0
-                                          i_0)))
-                                    (begin
-                                      (if (implicitly-reachable? sc_0)
-                                        (if (not bulk-shifts_0)
-                                          (|#%app| reach_1 sc_0 bulk-shifts_0)
-                                          (|#%app| reach-implicitly_0 sc_0))
-                                        (void))
-                                      (for-loop_0
-                                       (unsafe-immutable-hash-iterate-next
-                                        scopes_0
-                                        i_0))))
-                                  (values))))))
-                           (for-loop_0
-                            (unsafe-immutable-hash-iterate-first scopes_0)))
+                          (begin
+                            (if (let ((or-part_0 (scope-set? scopes_0)))
+                                  (if or-part_0
+                                    or-part_0
+                                    (if (hash? scopes_0)
+                                      (immutable? scopes_0)
+                                      #f)))
+                              (void)
+                              (raise-argument-error 'in-set "set?" scopes_0))
+                            (letrec*
+                             ((for-loop_0
+                               (|#%name|
+                                for-loop
+                                (lambda (i_0)
+                                  (if (if (scope-set? scopes_0)
+                                        (pair? i_0)
+                                        i_0)
+                                    (let ((sc_0
+                                           (if (scope-set? scopes_0)
+                                             (unsafe-car i_0)
+                                             (unsafe-immutable-hash-iterate-key
+                                              scopes_0
+                                              i_0))))
+                                      (begin
+                                        (if (implicitly-reachable? sc_0)
+                                          (if (not bulk-shifts_0)
+                                            (|#%app|
+                                             reach_1
+                                             sc_0
+                                             bulk-shifts_0)
+                                            (|#%app| reach-implicitly_0 sc_0))
+                                          (void))
+                                        (for-loop_0
+                                         (if (scope-set? scopes_0)
+                                           (unsafe-cdr i_0)
+                                           (unsafe-immutable-hash-iterate-next
+                                            scopes_0
+                                            i_0)))))
+                                    (values))))))
+                             (for-loop_0
+                              (if (scope-set? scopes_0)
+                                (scope-set-elems scopes_0)
+                                (unsafe-immutable-hash-iterate-first
+                                 scopes_0)))))
                           (void))
                         (void))))))
               (begin
-                (let ((ht_0 pending-scopes_0))
-                  (letrec*
-                   ((for-loop_0
-                     (|#%name|
-                      for-loop
-                      (lambda (i_0)
-                        (if i_0
-                          (let ((sc_0
-                                 (unsafe-immutable-hash-iterate-key ht_0 i_0)))
-                            (begin
-                              (|#%app|
-                               register-trigger_0
-                               sc_0
-                               (lambda (reach_1)
-                                 (begin
-                                   (set! pending-scopes_0
-                                     (hash-remove pending-scopes_0 sc_0))
-                                   (check-trigger_0 reach_1))))
-                              (for-loop_0
-                               (unsafe-immutable-hash-iterate-next ht_0 i_0))))
-                          (values))))))
-                   (for-loop_0 (unsafe-immutable-hash-iterate-first ht_0))))
+                (let ((s_0 pending-scopes_0))
+                  (begin
+                    (if (let ((or-part_0 (scope-set? s_0)))
+                          (if or-part_0
+                            or-part_0
+                            (if (hash? s_0) (immutable? s_0) #f)))
+                      (void)
+                      (raise-argument-error 'in-set "set?" s_0))
+                    (letrec*
+                     ((for-loop_0
+                       (|#%name|
+                        for-loop
+                        (lambda (i_0)
+                          (if (if (scope-set? s_0) (pair? i_0) i_0)
+                            (let ((sc_0
+                                   (if (scope-set? s_0)
+                                     (unsafe-car i_0)
+                                     (unsafe-immutable-hash-iterate-key
+                                      s_0
+                                      i_0))))
+                              (begin
+                                (|#%app|
+                                 register-trigger_0
+                                 sc_0
+                                 (lambda (reach_1)
+                                   (begin
+                                     (set! pending-scopes_0
+                                       (hash-remove pending-scopes_0 sc_0))
+                                     (check-trigger_0 reach_1))))
+                                (for-loop_0
+                                 (if (scope-set? s_0)
+                                   (unsafe-cdr i_0)
+                                   (unsafe-immutable-hash-iterate-next
+                                    s_0
+                                    i_0)))))
+                            (values))))))
+                     (for-loop_0
+                      (if (scope-set? s_0)
+                        (scope-set-elems s_0)
+                        (unsafe-immutable-hash-iterate-first s_0))))))
                 (void)
                 (check-trigger_0 reach_0)))))))))
 (define taint-content
@@ -10810,12 +11644,12 @@
             s_0))))))
 (define cache-place-init!
   (lambda () (begin (resolve-cache-place-init!) (sets-place-init!))))
-(define finish_2872
+(define finish_2248
   (make-struct-type-install-properties
    '(scope)
-   3
+   2
    0
-   #f
+   struct:scope-base
    (list
     (cons prop:authentic #t)
     (cons
@@ -10852,8 +11686,7 @@
      prop:serialize
      (lambda (s_0 ser-push!_0 state_0)
        (begin
-         (if (let ((s_1 (serialize-state-reachable-scopes state_0)))
-               (hash-ref s_1 s_0 #f))
+         (if (set-member? (serialize-state-reachable-scopes state_0) s_0)
            (void)
            (error "internal error: found supposedly unreachable scope"))
          (if (eq? s_0 top-level-common-scope)
@@ -10866,50 +11699,54 @@
      (lambda (sc_0 port_0 mode_0)
        (begin
          (write-string "#<scope:" port_0)
-         (display (scope-id sc_0) port_0)
+         (display (scope-base-id sc_0) port_0)
          (write-string ":" port_0)
          (display (scope-kind sc_0) port_0)
          (write-string ">" port_0)))))
    (current-inspector)
    #f
-   '(0 1)
+   '(0)
    #f
    'scope))
 (define struct:scope
   (|#%make-record-type-descriptor|
    |#%racket-base-rtd|
    'scope
-   #f
+   struct:scope-base
    (|#%nongenerative-uid| scope)
    #f
    #f
-   '(3 . 4)
+   '(2 . 2)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2269 (finish_2872 struct:scope))
+(define effect_2269 (finish_2248 struct:scope))
 (define scope1.1
   (|#%name|
    scope
    (record-constructor
     (make-record-constructor-descriptor struct:scope #f #f))))
 (define scope? (|#%name| scope? (record-predicate struct:scope)))
-(define scope-id (|#%name| scope-id (record-accessor struct:scope 0)))
-(define scope-kind (|#%name| scope-kind (record-accessor struct:scope 1)))
+(define scope-kind (|#%name| scope-kind (record-accessor struct:scope 0)))
 (define scope-binding-table
-  (|#%name| scope-binding-table (record-accessor struct:scope 2)))
+  (|#%name| scope-binding-table (record-accessor struct:scope 1)))
 (define set-scope-binding-table!
-  (|#%name| set-scope-binding-table! (record-mutator struct:scope 2)))
+  (|#%name| set-scope-binding-table! (record-mutator struct:scope 1)))
 (define deserialize-scope
   (case-lambda
    (() top-level-common-scope)
    ((kind_0)
-    (scope1.1 (new-deserialize-scope-id!) kind_0 empty-binding-table))))
+    (let ((id_0 (new-deserialize-scope-id!)))
+      (scope1.1 id_0 (make-scope-key id_0) kind_0 empty-binding-table)))))
+(define scope-id (lambda (s_0) (scope-base-id s_0)))
+(define make-scope
+  (lambda (id_0 kind_0)
+    (scope1.1 id_0 (make-scope-key id_0) kind_0 empty-binding-table)))
 (define deserialize-scope-fill!
   (lambda (s_0 bt_0) (set-scope-binding-table! s_0 bt_0)))
-(define finish_3100
+(define finish_2692
   (make-struct-type-install-properties
    '(interned-scope)
    1
@@ -10921,8 +11758,7 @@
      prop:serialize
      (lambda (s_0 ser-push!_0 state_0)
        (begin
-         (if (let ((s_1 (serialize-state-reachable-scopes state_0)))
-               (hash-ref s_1 s_0 #f))
+         (if (set-member? (serialize-state-reachable-scopes state_0) s_0)
            (void)
            (error "internal error: found supposedly unreachable scope"))
          (|#%app| ser-push!_0 'tag kw2241)
@@ -10932,7 +11768,7 @@
      (lambda (sc_0 port_0 mode_0)
        (begin
          (write-string "#<scope:" port_0)
-         (display (scope-id sc_0) port_0)
+         (display (scope-base-id sc_0) port_0)
          (write-string ":" port_0)
          (display (scope-kind sc_0) port_0)
          (write-string " " port_0)
@@ -10957,7 +11793,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2498 (finish_3100 struct:interned-scope))
+(define effect_2498 (finish_2692 struct:interned-scope))
 (define interned-scope2.1
   (|#%name|
    interned-scope
@@ -10967,7 +11803,7 @@
   (|#%name| interned-scope? (record-predicate struct:interned-scope)))
 (define interned-scope-key
   (|#%name| interned-scope-key (record-accessor struct:interned-scope 0)))
-(define finish_2681
+(define finish_2415
   (make-struct-type-install-properties
    '(multi-scope)
    5
@@ -11037,22 +11873,16 @@
                                         (lambda (phase_0 sc_0)
                                           (let ((table_3
                                                  (if (let ((or-part_1
-                                                            (let ((s_0
-                                                                   (serialize-state-reachable-scopes
-                                                                    state_0)))
-                                                              (hash-ref
-                                                               s_0
-                                                               sc_0
-                                                               #f))))
+                                                            (set-member?
+                                                             (serialize-state-reachable-scopes
+                                                              state_0)
+                                                             sc_0)))
                                                        (if or-part_1
                                                          or-part_1
-                                                         (let ((s_0
-                                                                (serialize-state-implicitly-reachable-scopes
-                                                                 state_0)))
-                                                           (hash-ref
-                                                            s_0
-                                                            sc_0
-                                                            #f))))
+                                                         (set-member?
+                                                          (serialize-state-implicitly-reachable-scopes
+                                                           state_0)
+                                                          sc_0)))
                                                    (let ((table_3
                                                           (hash-set
                                                            table_2
@@ -11092,7 +11922,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_1895 (finish_2681 struct:multi-scope))
+(define effect_1895 (finish_2415 struct:multi-scope))
 (define multi-scope3.1
   (|#%name|
    multi-scope
@@ -11116,7 +11946,7 @@
       (let ((app_1 (box scopes_0)))
         (let ((app_2 (box (hasheqv))))
           (multi-scope3.1 app_0 name_0 app_1 app_2 (box (hash))))))))
-(define finish_1951
+(define finish_2616
   (make-struct-type-install-properties
    '(representative-scope)
    2
@@ -11134,8 +11964,7 @@
      (lambda (s_0 ser-push!_0 state_0)
        (begin
          (|#%app| ser-push!_0 'tag kw2073)
-         (if (let ((s_1 (serialize-state-reachable-scopes state_0)))
-               (hash-ref s_1 s_0 #f))
+         (if (set-member? (serialize-state-reachable-scopes state_0) s_0)
            (|#%app|
             ser-push!_0
             (binding-table-prune-to-reachable
@@ -11155,7 +11984,7 @@
      (lambda (sc_0 port_0 mode_0)
        (begin
          (write-string "#<scope:" port_0)
-         (display (scope-id sc_0) port_0)
+         (display (scope-base-id sc_0) port_0)
          (if (representative-scope-owner sc_0)
            (begin
              (write-string "=" port_0)
@@ -11185,7 +12014,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2683 (finish_1951 struct:representative-scope))
+(define effect_2683 (finish_2616 struct:representative-scope))
 (define representative-scope4.1
   (|#%name|
    representative-scope
@@ -11213,14 +12042,16 @@
    (record-mutator struct:representative-scope 1)))
 (define deserialize-representative-scope
   (lambda (kind_0 phase_0)
-    (let ((v_0
-           (representative-scope4.1
-            (new-deserialize-scope-id!)
-            kind_0
-            #f
-            #f
-            phase_0)))
-      v_0)))
+    (let ((id_0 (new-deserialize-scope-id!)))
+      (let ((v_0
+             (representative-scope4.1
+              id_0
+              (make-scope-key id_0)
+              kind_0
+              #f
+              #f
+              phase_0)))
+        v_0))))
 (define deserialize-representative-scope-fill!
   (lambda (s_0 bt_0 owner_0)
     (begin
@@ -11458,9 +12289,12 @@
         (if (> phase_0 0)
           (+ scope-id_0 (/ 1 (+ 2 phase_0)))
           (let ((app_0 1/2)) (+ scope-id_0 app_0 (/ 1 (- 2 phase_0)))))))))
-(define top-level-common-scope (scope1.1 0 'module empty-binding-table))
+(define top-level-common-scope
+  (scope1.1 0 (make-scope-key 0) 'module empty-binding-table))
 (define new-scope
-  (lambda (kind_0) (scope1.1 (new-scope-id!) kind_0 empty-binding-table)))
+  (lambda (kind_0)
+    (let ((id_0 (new-scope-id!)))
+      (scope1.1 id_0 (make-scope-key id_0) kind_0 empty-binding-table))))
 (define cell.2$4 (unsafe-make-place-local (make-ephemeron-hasheq)))
 (define cell.3$1 (unsafe-make-place-local (unsafe-make-uninterruptible-lock)))
 (define interned-scope-symbols
@@ -11512,11 +12346,13 @@
            (|#%name|
             make
             (lambda ()
-              (interned-scope2.1
-               (- (new-scope-id!))
-               'interned
-               empty-binding-table
-               sym_0)))))
+              (let ((id_0 (- (new-scope-id!))))
+                (interned-scope2.1
+                 id_0
+                 (make-scope-key id_0)
+                 'interned
+                 empty-binding-table
+                 sym_0))))))
       (let ((cond-val_0 (hash-ref (unsafe-place-local-ref cell.2$4) sym_0 #f)))
         (if cond-val_0
           cond-val_0
@@ -11544,23 +12380,37 @@
                   s_0)))))))))
 (define syntax-has-interned-scope?
   (lambda (s_0)
-    (let ((ht_0 (syntax-scopes s_0)))
-      (letrec*
-       ((for-loop_0
-         (|#%name|
-          for-loop
-          (lambda (result_0 i_0)
-            (if i_0
-              (let ((sc_0 (unsafe-immutable-hash-iterate-key ht_0 i_0)))
-                (let ((result_1 (interned-scope? sc_0)))
-                  (let ((result_2 (values result_1)))
-                    (if (if (not (let ((x_0 (list sc_0))) result_2)) #t #f)
-                      (for-loop_0
-                       result_2
-                       (unsafe-immutable-hash-iterate-next ht_0 i_0))
-                      result_2))))
-              result_0)))))
-       (for-loop_0 #f (unsafe-immutable-hash-iterate-first ht_0))))))
+    (let ((s_1 (syntax-scopes s_0)))
+      (begin
+        (if (let ((or-part_0 (scope-set? s_1)))
+              (if or-part_0 or-part_0 (if (hash? s_1) (immutable? s_1) #f)))
+          (void)
+          (raise-argument-error 'in-set "set?" s_1))
+        (letrec*
+         ((for-loop_0
+           (|#%name|
+            for-loop
+            (lambda (result_0 i_0)
+              (if (if (scope-set? s_1) (pair? i_0) i_0)
+                (let ((sc_0
+                       (if (scope-set? s_1)
+                         (unsafe-car i_0)
+                         (unsafe-immutable-hash-iterate-key s_1 i_0))))
+                  (let ((result_1 (interned-scope? sc_0)))
+                    (let ((result_2 (values result_1)))
+                      (if (if (not (let ((x_0 (list sc_0))) result_2)) #t #f)
+                        (for-loop_0
+                         result_2
+                         (if (scope-set? s_1)
+                           (unsafe-cdr i_0)
+                           (unsafe-immutable-hash-iterate-next s_1 i_0)))
+                        result_2))))
+                result_0)))))
+         (for-loop_0
+          #f
+          (if (scope-set? s_1)
+            (scope-set-elems s_1)
+            (unsafe-immutable-hash-iterate-first s_1))))))))
 (define new-multi-scope
   (let ((new-multi-scope_0
          (|#%name|
@@ -11586,21 +12436,24 @@
       (let ((or-part_0 (hash-ref scopes_0 phase_0 #f)))
         (if or-part_0
           or-part_0
-          (let ((s_0
-                 (representative-scope4.1
-                  (make-representative-scope-id (multi-scope-id ms_0) phase_0)
-                  'module
-                  empty-binding-table
-                  ms_0
-                  phase_0)))
-            (if (unsafe-box*-cas!
-                 (multi-scope-scopes ms_0)
-                 scopes_0
-                 (hash-set scopes_0 phase_0 s_0))
-              s_0
-              (multi-scope-to-scope-at-phase ms_0 phase_0))))))))
-(define scope>? (lambda (sc1_0 sc2_0) (> (scope-id sc1_0) (scope-id sc2_0))))
-(define scope<? (lambda (sc1_0 sc2_0) (< (scope-id sc1_0) (scope-id sc2_0))))
+          (let ((id_0
+                 (make-representative-scope-id (multi-scope-id ms_0) phase_0)))
+            (let ((s_0
+                   (representative-scope4.1
+                    id_0
+                    (make-scope-key id_0)
+                    'module
+                    empty-binding-table
+                    ms_0
+                    phase_0)))
+              (if (unsafe-box*-cas!
+                   (multi-scope-scopes ms_0)
+                   scopes_0
+                   (hash-set scopes_0 phase_0 s_0))
+                s_0
+                (multi-scope-to-scope-at-phase ms_0 phase_0)))))))))
+(define scope<?
+  (lambda (sc1_0 sc2_0) (< (scope-base-id sc1_0) (scope-base-id sc2_0))))
 (define shifted-multi-scope<?
   (lambda (sms1_0 sms2_0)
     (let ((ms1_0 (shifted-multi-scope-multi-scope sms1_0)))
@@ -11901,7 +12754,7 @@
 (define add-scope
   (lambda (s_0 sc_0)
     (let ((sc_1 (generalize-scope sc_0)))
-      (let ((op_0 set-add))
+      (let ((prop-op_0 propagation-add))
         (let ((sc_2 sc_1))
           (let ((content*_0 (syntax-content* s_0)))
             (let ((content_0
@@ -11914,20 +12767,28 @@
                          (fallback-update-first
                           (syntax-shifted-multi-scopes s_0)
                           (lambda (smss_0)
-                            (let ((s_1 (fallback-first smss_0)))
-                              (hash-set s_1 sc_2 #t))))))
+                            (set-add (fallback-first smss_0) sc_2)))))
                     (let ((content*53_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
-                                    (propagation-add
-                                     (if (modified-content? content*_0)
-                                       (modified-content-scope-propagations+taint
-                                        content*_0)
-                                       #f)
-                                     sc_2
-                                     (syntax-scopes s_0)
-                                     (syntax-shifted-multi-scopes s_0)
-                                     (syntax-mpi-shifts s_0))))
+                                    (let ((prop_0
+                                           (if (modified-content? content*_0)
+                                             (modified-content-scope-propagations+taint
+                                              content*_0)
+                                             #f)))
+                                      (let ((prev-scs_0 (syntax-scopes s_0)))
+                                        (let ((prev-smss_0
+                                               (syntax-shifted-multi-scopes
+                                                s_0)))
+                                          (let ((prev-mss_0
+                                                 (syntax-mpi-shifts s_0)))
+                                            (propagation-op
+                                             prop_0
+                                             sc_2
+                                             'add
+                                             prev-scs_0
+                                             prev-smss_0
+                                             prev-mss_0)))))))
                                (if prop_0
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
@@ -11944,21 +12805,28 @@
                          (syntax-inspector s_0)))))
                   (raise-argument-error 'struct-copy "syntax?" s_0))
                 (if (syntax?$1 s_0)
-                  (let ((scopes54_0
-                         (let ((s_1 (syntax-scopes s_0)))
-                           (hash-set s_1 sc_2 #t))))
+                  (let ((scopes54_0 (set-add (syntax-scopes s_0) sc_2)))
                     (let ((content*55_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
-                                    (propagation-add
-                                     (if (modified-content? content*_0)
-                                       (modified-content-scope-propagations+taint
-                                        content*_0)
-                                       #f)
-                                     sc_2
-                                     (syntax-scopes s_0)
-                                     (syntax-shifted-multi-scopes s_0)
-                                     (syntax-mpi-shifts s_0))))
+                                    (let ((prop_0
+                                           (if (modified-content? content*_0)
+                                             (modified-content-scope-propagations+taint
+                                              content*_0)
+                                             #f)))
+                                      (let ((prev-scs_0 (syntax-scopes s_0)))
+                                        (let ((prev-smss_0
+                                               (syntax-shifted-multi-scopes
+                                                s_0)))
+                                          (let ((prev-mss_0
+                                                 (syntax-mpi-shifts s_0)))
+                                            (propagation-op
+                                             prop_0
+                                             sc_2
+                                             'add
+                                             prev-scs_0
+                                             prev-smss_0
+                                             prev-mss_0)))))))
                                (if prop_0
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
@@ -11990,7 +12858,7 @@
 (define remove-scope
   (lambda (s_0 sc_0)
     (let ((sc_1 (generalize-scope sc_0)))
-      (let ((op_0 set-remove))
+      (let ((prop-op_0 propagation-remove))
         (let ((sc_2 sc_1))
           (let ((content*_0 (syntax-content* s_0)))
             (let ((content_0
@@ -12003,20 +12871,28 @@
                          (fallback-update-first
                           (syntax-shifted-multi-scopes s_0)
                           (lambda (smss_0)
-                            (let ((s_1 (fallback-first smss_0)))
-                              (hash-remove s_1 sc_2))))))
+                            (set-remove (fallback-first smss_0) sc_2)))))
                     (let ((content*57_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
-                                    (propagation-remove
-                                     (if (modified-content? content*_0)
-                                       (modified-content-scope-propagations+taint
-                                        content*_0)
-                                       #f)
-                                     sc_2
-                                     (syntax-scopes s_0)
-                                     (syntax-shifted-multi-scopes s_0)
-                                     (syntax-mpi-shifts s_0))))
+                                    (let ((prop_0
+                                           (if (modified-content? content*_0)
+                                             (modified-content-scope-propagations+taint
+                                              content*_0)
+                                             #f)))
+                                      (let ((prev-scs_0 (syntax-scopes s_0)))
+                                        (let ((prev-smss_0
+                                               (syntax-shifted-multi-scopes
+                                                s_0)))
+                                          (let ((prev-mss_0
+                                                 (syntax-mpi-shifts s_0)))
+                                            (propagation-op
+                                             prop_0
+                                             sc_2
+                                             'remove
+                                             prev-scs_0
+                                             prev-smss_0
+                                             prev-mss_0)))))))
                                (if prop_0
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
@@ -12033,21 +12909,28 @@
                          (syntax-inspector s_0)))))
                   (raise-argument-error 'struct-copy "syntax?" s_0))
                 (if (syntax?$1 s_0)
-                  (let ((scopes58_0
-                         (let ((s_1 (syntax-scopes s_0)))
-                           (hash-remove s_1 sc_2))))
+                  (let ((scopes58_0 (set-remove (syntax-scopes s_0) sc_2)))
                     (let ((content*59_0
                            (if (datum-has-elements? content_0)
                              (let ((prop_0
-                                    (propagation-remove
-                                     (if (modified-content? content*_0)
-                                       (modified-content-scope-propagations+taint
-                                        content*_0)
-                                       #f)
-                                     sc_2
-                                     (syntax-scopes s_0)
-                                     (syntax-shifted-multi-scopes s_0)
-                                     (syntax-mpi-shifts s_0))))
+                                    (let ((prop_0
+                                           (if (modified-content? content*_0)
+                                             (modified-content-scope-propagations+taint
+                                              content*_0)
+                                             #f)))
+                                      (let ((prev-scs_0 (syntax-scopes s_0)))
+                                        (let ((prev-smss_0
+                                               (syntax-shifted-multi-scopes
+                                                s_0)))
+                                          (let ((prev-mss_0
+                                                 (syntax-mpi-shifts s_0)))
+                                            (propagation-op
+                                             prop_0
+                                             sc_2
+                                             'remove
+                                             prev-scs_0
+                                             prev-smss_0
+                                             prev-mss_0)))))))
                                (if prop_0
                                  (modified-content1.1 content_0 prop_0)
                                  content_0))
@@ -12078,76 +12961,97 @@
      (for-loop_0 s_0 scs_0))))
 (define set-flip
   (lambda (s_0 e_0)
-    (if (hash-ref s_0 e_0 #f) (hash-remove s_0 e_0) (hash-set s_0 e_0 #t))))
+    (if (set-member? s_0 e_0) (set-remove s_0 e_0) (set-add s_0 e_0))))
 (define flip-scope
   (lambda (s_0 sc_0)
     (let ((sc_1 (generalize-scope sc_0)))
-      (let ((content*_0 (syntax-content* s_0)))
-        (let ((content_0
-               (if (modified-content? content*_0)
-                 (modified-content-content content*_0)
-                 content*_0)))
-          (if (shifted-multi-scope? sc_1)
-            (if (syntax?$1 s_0)
-              (let ((shifted-multi-scopes60_0
-                     (fallback-update-first
-                      (syntax-shifted-multi-scopes s_0)
-                      (lambda (smss_0)
-                        (set-flip (fallback-first smss_0) sc_1)))))
-                (let ((content*61_0
-                       (if (datum-has-elements? content_0)
-                         (let ((prop_0
-                                (propagation-flip
-                                 (if (modified-content? content*_0)
-                                   (modified-content-scope-propagations+taint
-                                    content*_0)
-                                   #f)
-                                 sc_1
-                                 (syntax-scopes s_0)
-                                 (syntax-shifted-multi-scopes s_0)
-                                 (syntax-mpi-shifts s_0))))
-                           (if prop_0
-                             (modified-content1.1 content_0 prop_0)
-                             content_0))
-                         content*_0)))
-                  (let ((shifted-multi-scopes60_1 shifted-multi-scopes60_0))
-                    (syntax2.1
-                     content*61_0
-                     (syntax-scopes s_0)
-                     shifted-multi-scopes60_1
-                     (syntax-mpi-shifts s_0)
-                     (syntax-srcloc$1 s_0)
-                     (syntax-props s_0)
-                     (syntax-inspector s_0)))))
-              (raise-argument-error 'struct-copy "syntax?" s_0))
-            (if (syntax?$1 s_0)
-              (let ((scopes62_0 (set-flip (syntax-scopes s_0) sc_1)))
-                (let ((content*63_0
-                       (if (datum-has-elements? content_0)
-                         (let ((prop_0
-                                (propagation-flip
-                                 (if (modified-content? content*_0)
-                                   (modified-content-scope-propagations+taint
-                                    content*_0)
-                                   #f)
-                                 sc_1
-                                 (syntax-scopes s_0)
-                                 (syntax-shifted-multi-scopes s_0)
-                                 (syntax-mpi-shifts s_0))))
-                           (if prop_0
-                             (modified-content1.1 content_0 prop_0)
-                             content_0))
-                         content*_0)))
-                  (let ((scopes62_1 scopes62_0))
-                    (syntax2.1
-                     content*63_0
-                     scopes62_1
-                     (syntax-shifted-multi-scopes s_0)
-                     (syntax-mpi-shifts s_0)
-                     (syntax-srcloc$1 s_0)
-                     (syntax-props s_0)
-                     (syntax-inspector s_0)))))
-              (raise-argument-error 'struct-copy "syntax?" s_0))))))))
+      (let ((prop-op_0 propagation-flip))
+        (let ((sc_2 sc_1))
+          (let ((content*_0 (syntax-content* s_0)))
+            (let ((content_0
+                   (if (modified-content? content*_0)
+                     (modified-content-content content*_0)
+                     content*_0)))
+              (if (shifted-multi-scope? sc_2)
+                (if (syntax?$1 s_0)
+                  (let ((shifted-multi-scopes60_0
+                         (fallback-update-first
+                          (syntax-shifted-multi-scopes s_0)
+                          (lambda (smss_0)
+                            (set-flip (fallback-first smss_0) sc_2)))))
+                    (let ((content*61_0
+                           (if (datum-has-elements? content_0)
+                             (let ((prop_0
+                                    (let ((prop_0
+                                           (if (modified-content? content*_0)
+                                             (modified-content-scope-propagations+taint
+                                              content*_0)
+                                             #f)))
+                                      (let ((prev-scs_0 (syntax-scopes s_0)))
+                                        (let ((prev-smss_0
+                                               (syntax-shifted-multi-scopes
+                                                s_0)))
+                                          (let ((prev-mss_0
+                                                 (syntax-mpi-shifts s_0)))
+                                            (propagation-op
+                                             prop_0
+                                             sc_2
+                                             'flip
+                                             prev-scs_0
+                                             prev-smss_0
+                                             prev-mss_0)))))))
+                               (if prop_0
+                                 (modified-content1.1 content_0 prop_0)
+                                 content_0))
+                             content*_0)))
+                      (let ((shifted-multi-scopes60_1
+                             shifted-multi-scopes60_0))
+                        (syntax2.1
+                         content*61_0
+                         (syntax-scopes s_0)
+                         shifted-multi-scopes60_1
+                         (syntax-mpi-shifts s_0)
+                         (syntax-srcloc$1 s_0)
+                         (syntax-props s_0)
+                         (syntax-inspector s_0)))))
+                  (raise-argument-error 'struct-copy "syntax?" s_0))
+                (if (syntax?$1 s_0)
+                  (let ((scopes62_0 (set-flip (syntax-scopes s_0) sc_2)))
+                    (let ((content*63_0
+                           (if (datum-has-elements? content_0)
+                             (let ((prop_0
+                                    (let ((prop_0
+                                           (if (modified-content? content*_0)
+                                             (modified-content-scope-propagations+taint
+                                              content*_0)
+                                             #f)))
+                                      (let ((prev-scs_0 (syntax-scopes s_0)))
+                                        (let ((prev-smss_0
+                                               (syntax-shifted-multi-scopes
+                                                s_0)))
+                                          (let ((prev-mss_0
+                                                 (syntax-mpi-shifts s_0)))
+                                            (propagation-op
+                                             prop_0
+                                             sc_2
+                                             'flip
+                                             prev-scs_0
+                                             prev-smss_0
+                                             prev-mss_0)))))))
+                               (if prop_0
+                                 (modified-content1.1 content_0 prop_0)
+                                 content_0))
+                             content*_0)))
+                      (let ((scopes62_1 scopes62_0))
+                        (syntax2.1
+                         content*63_0
+                         scopes62_1
+                         (syntax-shifted-multi-scopes s_0)
+                         (syntax-mpi-shifts s_0)
+                         (syntax-srcloc$1 s_0)
+                         (syntax-props s_0)
+                         (syntax-inspector s_0)))))
+                  (raise-argument-error 'struct-copy "syntax?" s_0))))))))))
 (define flip-scopes
   (lambda (s_0 scs_0)
     (letrec*
@@ -12175,12 +13079,12 @@
                     (let ((r_0
                            (let ((smss_0
                                   (fallback-first smss/maybe-fallbacks_0)))
-                             (if (zero? (hash-count smss_0))
-                               (hash-set smss_0 sms_0 #t)
-                               (if (hash-ref smss_0 sms_0 #f)
+                             (if (set-empty? smss_0)
+                               (set-add smss_0 sms_0)
+                               (if (set-member? smss_0 sms_0)
                                  smss/maybe-fallbacks_0
                                  (fallback-push
-                                  (hash-set smss_0 sms_0 #t)
+                                  (set-add smss_0 sms_0)
                                   smss/maybe-fallbacks_0))))))
                       (begin
                         (set! smss/maybe-fallbacks64_0 smss/maybe-fallbacks_0)
@@ -12265,10 +13169,10 @@
                                             (gf_0 #f s_2))))))))))))
                          (loop_1 #f s_1 0))))))))
                (loop_0 s_0)))))))))
-(define finish_2814
+(define finish_1917
   (make-struct-type-install-properties
    '(propagation)
-   7
+   8
    0
    #f
    (list
@@ -12281,7 +13185,7 @@
     (cons prop:propagation syntax-e$1))
    (current-inspector)
    #f
-   '(0 1 2 3 4 5 6)
+   '(0 1 2 3 4 5 6 7)
    #f
    'propagation))
 (define struct:propagation
@@ -12292,13 +13196,13 @@
    (|#%nongenerative-uid| propagation)
    #t
    #f
-   '(7 . 0)
+   '(8 . 0)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2326 (finish_2814 struct:propagation))
+(define effect_2326 (finish_1917 struct:propagation))
 (define propagation17.1
   (|#%name|
    propagation
@@ -12312,127 +13216,131 @@
   (|#%name| propagation-prev-smss (record-accessor struct:propagation 1)))
 (define propagation-scope-ops
   (|#%name| propagation-scope-ops (record-accessor struct:propagation 2)))
+(define propagation-sms-ops
+  (|#%name| propagation-sms-ops (record-accessor struct:propagation 3)))
 (define propagation-prev-mss
-  (|#%name| propagation-prev-mss (record-accessor struct:propagation 3)))
+  (|#%name| propagation-prev-mss (record-accessor struct:propagation 4)))
 (define propagation-add-mpi-shifts
-  (|#%name| propagation-add-mpi-shifts (record-accessor struct:propagation 4)))
+  (|#%name| propagation-add-mpi-shifts (record-accessor struct:propagation 5)))
 (define propagation-inspector
-  (|#%name| propagation-inspector (record-accessor struct:propagation 5)))
+  (|#%name| propagation-inspector (record-accessor struct:propagation 6)))
 (define propagation-taint
-  (|#%name| propagation-taint (record-accessor struct:propagation 6)))
-(define propagation-add
-  (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
+  (|#%name| propagation-taint (record-accessor struct:propagation 7)))
+(define sms-op-compose
+  (lambda (ops_0 sms_0 op_0)
+    (if (if (eq? op_0 'add) #t (eq? op_0 'remove))
+      (hash-set ops_0 sms_0 op_0)
+      (let ((current-op_0 (hash-ref ops_0 sms_0 #f)))
+        (if (eq? current-op_0 'add)
+          (hash-set ops_0 sms_0 'remove)
+          (if (eq? current-op_0 'remove)
+            (hash-set ops_0 sms_0 'add)
+            (if (eq? current-op_0 'flip)
+              (hash-remove ops_0 sms_0)
+              (hash-set ops_0 sms_0 'flip))))))))
+(define propagation-op
+  (lambda (prop_0 sc_0 op_0 prev-scs_0 prev-smss_0 prev-mss_0)
     (if (propagation? prop_0)
-      (if (propagation? prop_0)
-        (let ((scope-ops68_0
-               (hash-set (propagation-scope-ops prop_0) sc_0 'add)))
-          (propagation17.1
-           (propagation-prev-scs prop_0)
-           (propagation-prev-smss prop_0)
-           scope-ops68_0
-           (propagation-prev-mss prop_0)
-           (propagation-add-mpi-shifts prop_0)
-           (propagation-inspector prop_0)
-           (propagation-taint prop_0)))
-        (raise-argument-error 'struct-copy "propagation?" prop_0))
-      (propagation17.1
-       prev-scs_0
-       prev-smss_0
-       (hasheq sc_0 'add)
-       prev-mss_0
-       #f
-       #f
-       prop_0))))
-(define propagation-remove
-  (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
-    (if (propagation? prop_0)
-      (if (propagation? prop_0)
-        (let ((scope-ops69_0
-               (hash-set (propagation-scope-ops prop_0) sc_0 'remove)))
-          (propagation17.1
-           (propagation-prev-scs prop_0)
-           (propagation-prev-smss prop_0)
-           scope-ops69_0
-           (propagation-prev-mss prop_0)
-           (propagation-add-mpi-shifts prop_0)
-           (propagation-inspector prop_0)
-           (propagation-taint prop_0)))
-        (raise-argument-error 'struct-copy "propagation?" prop_0))
-      (propagation17.1
-       prev-scs_0
-       prev-smss_0
-       (hasheq sc_0 'remove)
-       prev-mss_0
-       #f
-       #f
-       prop_0))))
-(define propagation-flip
-  (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
-    (if (propagation? prop_0)
-      (let ((ops_0 (propagation-scope-ops prop_0)))
-        (let ((current-op_0 (hash-ref ops_0 sc_0 #f)))
-          (if (if (eq? current-op_0 'flip)
-                (if (= 1 (hash-count ops_0))
-                  (if (not (propagation-inspector prop_0))
-                    (not (propagation-add-mpi-shifts prop_0))
-                    #f)
+      (let ((new-prop_0
+             (if (shifted-multi-scope? sc_0)
+               (if (propagation? prop_0)
+                 (let ((sms-ops68_0
+                        (sms-op-compose
+                         (propagation-sms-ops prop_0)
+                         sc_0
+                         op_0)))
+                   (propagation17.1
+                    (propagation-prev-scs prop_0)
+                    (propagation-prev-smss prop_0)
+                    (propagation-scope-ops prop_0)
+                    sms-ops68_0
+                    (propagation-prev-mss prop_0)
+                    (propagation-add-mpi-shifts prop_0)
+                    (propagation-inspector prop_0)
+                    (propagation-taint prop_0)))
+                 (raise-argument-error 'struct-copy "propagation?" prop_0))
+               (if (propagation? prop_0)
+                 (let ((scope-ops69_0
+                        (scope-ops-update
+                         (propagation-scope-ops prop_0)
+                         sc_0
+                         op_0)))
+                   (propagation17.1
+                    (propagation-prev-scs prop_0)
+                    (propagation-prev-smss prop_0)
+                    scope-ops69_0
+                    (propagation-sms-ops prop_0)
+                    (propagation-prev-mss prop_0)
+                    (propagation-add-mpi-shifts prop_0)
+                    (propagation-inspector prop_0)
+                    (propagation-taint prop_0)))
+                 (raise-argument-error 'struct-copy "propagation?" prop_0)))))
+        (if (if (null? (propagation-scope-ops new-prop_0))
+              (if (zero? (hash-count (propagation-sms-ops new-prop_0)))
+                (if (not (propagation-inspector new-prop_0))
+                  (not (propagation-add-mpi-shifts new-prop_0))
                   #f)
                 #f)
-            (propagation-taint prop_0)
-            (if (propagation? prop_0)
-              (let ((scope-ops70_0
-                     (if (eq? current-op_0 'flip)
-                       (hash-remove ops_0 sc_0)
-                       (hash-set
-                        ops_0
-                        sc_0
-                        (if (eq? current-op_0 'add)
-                          'remove
-                          (if (eq? current-op_0 'remove) 'add 'flip))))))
-                (propagation17.1
-                 (propagation-prev-scs prop_0)
-                 (propagation-prev-smss prop_0)
-                 scope-ops70_0
-                 (propagation-prev-mss prop_0)
-                 (propagation-add-mpi-shifts prop_0)
-                 (propagation-inspector prop_0)
-                 (propagation-taint prop_0)))
-              (raise-argument-error 'struct-copy "propagation?" prop_0)))))
-      (propagation17.1
-       prev-scs_0
-       prev-smss_0
-       (hasheq sc_0 'flip)
-       prev-mss_0
-       #f
-       #f
-       prop_0))))
+              #f)
+          (propagation-taint new-prop_0)
+          new-prop_0))
+      (if (shifted-multi-scope? sc_0)
+        (propagation17.1
+         prev-scs_0
+         prev-smss_0
+         null
+         (hasheq sc_0 op_0)
+         prev-mss_0
+         #f
+         #f
+         prop_0)
+        (propagation17.1
+         prev-scs_0
+         prev-smss_0
+         (list (cons sc_0 op_0))
+         hash2610
+         prev-mss_0
+         #f
+         #f
+         prop_0)))))
+(define propagation-add
+  (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
+    (propagation-op prop_0 sc_0 'add prev-scs_0 prev-smss_0 prev-mss_0)))
+(define propagation-remove
+  (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
+    (propagation-op prop_0 sc_0 'remove prev-scs_0 prev-smss_0 prev-mss_0)))
+(define propagation-flip
+  (lambda (prop_0 sc_0 prev-scs_0 prev-smss_0 prev-mss_0)
+    (propagation-op prop_0 sc_0 'flip prev-scs_0 prev-smss_0 prev-mss_0)))
 (define propagation-mpi-shift
   (lambda (prop_0 add_0 inspector_0 prev-scs_0 prev-smss_0 prev-mss_0)
     (if (propagation? prop_0)
       (if (propagation? prop_0)
-        (let ((add-mpi-shifts71_0
+        (let ((add-mpi-shifts70_0
                (let ((base-add_0 (propagation-add-mpi-shifts prop_0)))
                  (if (if add_0 base-add_0 #f)
                    (|#%name|
-                    add-mpi-shifts71
+                    add-mpi-shifts70
                     (lambda (mss_0)
                       (|#%app| add_0 (|#%app| base-add_0 mss_0))))
                    (if add_0 add_0 base-add_0)))))
-          (let ((inspector72_0
+          (let ((inspector71_0
                  (let ((or-part_0 (propagation-inspector prop_0)))
                    (if or-part_0 or-part_0 inspector_0))))
             (propagation17.1
              (propagation-prev-scs prop_0)
              (propagation-prev-smss prop_0)
              (propagation-scope-ops prop_0)
+             (propagation-sms-ops prop_0)
              (propagation-prev-mss prop_0)
-             add-mpi-shifts71_0
-             inspector72_0
+             add-mpi-shifts70_0
+             inspector71_0
              (propagation-taint prop_0))))
         (raise-argument-error 'struct-copy "propagation?" prop_0))
       (propagation17.1
        prev-scs_0
        prev-smss_0
+       null
        hash2610
        prev-mss_0
        add_0
@@ -12443,34 +13351,8 @@
     (if (eq? (propagation-prev-scs prop_0) scs_0)
       (syntax-scopes parent-s_0)
       (let ((new-scs_0
-             (let ((ht_0 (propagation-scope-ops prop_0)))
-               (letrec*
-                ((for-loop_0
-                  (|#%name|
-                   for-loop
-                   (lambda (scs_1 i_0)
-                     (if i_0
-                       (call-with-values
-                        (lambda ()
-                          (unsafe-immutable-hash-iterate-key+value ht_0 i_0))
-                        (lambda (sc_0 op_0)
-                          (let ((scs_2
-                                 (if (not (shifted-multi-scope? sc_0))
-                                   (let ((scs_2
-                                          (if (eq? op_0 'add)
-                                            (hash-set scs_1 sc_0 #t)
-                                            (if (eq? op_0 'remove)
-                                              (hash-remove scs_1 sc_0)
-                                              (set-flip scs_1 sc_0)))))
-                                     (values scs_2))
-                                   scs_1)))
-                            (for-loop_0
-                             scs_2
-                             (unsafe-immutable-hash-iterate-next ht_0 i_0)))))
-                       scs_1)))))
-                (for-loop_0
-                 scs_0
-                 (unsafe-immutable-hash-iterate-first ht_0))))))
+             (let ((app_0 (->scope-set scs_0)))
+               (scope-set-apply-ops app_0 (propagation-scope-ops prop_0)))))
         (if (set=? new-scs_0 (syntax-scopes parent-s_0))
           (syntax-scopes parent-s_0)
           (cache-or-reuse-set new-scs_0))))))
@@ -12479,7 +13361,7 @@
     (if (eq? (propagation-prev-smss prop_0) smss_0)
       (syntax-shifted-multi-scopes parent-s_0)
       (let ((new-smss_0
-             (let ((ht_0 (propagation-scope-ops prop_0)))
+             (let ((ht_0 (propagation-sms-ops prop_0)))
                (letrec*
                 ((for-loop_0
                   (|#%name|
@@ -12491,18 +13373,16 @@
                           (unsafe-immutable-hash-iterate-key+value ht_0 i_0))
                         (lambda (sms_0 op_0)
                           (let ((smss_2
-                                 (if (shifted-multi-scope? sms_0)
-                                   (let ((smss_2
-                                          (fallback-update-first
-                                           smss_1
-                                           (lambda (smss_2)
-                                             (if (eq? op_0 'add)
-                                               (hash-set smss_2 sms_0 #t)
-                                               (if (eq? op_0 'remove)
-                                                 (hash-remove smss_2 sms_0)
-                                                 (set-flip smss_2 sms_0)))))))
-                                     (values smss_2))
-                                   smss_1)))
+                                 (let ((smss_2
+                                        (fallback-update-first
+                                         smss_1
+                                         (lambda (smss_2)
+                                           (if (eq? op_0 'add)
+                                             (set-add smss_2 sms_0)
+                                             (if (eq? op_0 'remove)
+                                               (set-remove smss_2 sms_0)
+                                               (set-flip smss_2 sms_0)))))))
+                                   (values smss_2))))
                             (for-loop_0
                              smss_2
                              (unsafe-immutable-hash-iterate-next ht_0 i_0)))))
@@ -12511,8 +13391,8 @@
                  smss_0
                  (unsafe-immutable-hash-iterate-first ht_0))))))
         (let ((parent-smss_0 (syntax-shifted-multi-scopes parent-s_0)))
-          (if (if (hash? new-smss_0)
-                (if (hash? parent-smss_0) (set=? new-smss_0 parent-smss_0) #f)
+          (if (if (set? new-smss_0)
+                (if (set? parent-smss_0) (set=? new-smss_0 parent-smss_0) #f)
                 #f)
             parent-smss_0
             (cache-or-reuse-hash new-smss_0)))))))
@@ -12532,6 +13412,7 @@
          (propagation-prev-scs prop_0)
          (propagation-prev-smss prop_0)
          (propagation-scope-ops prop_0)
+         (propagation-sms-ops prop_0)
          (propagation-prev-mss prop_0)
          (propagation-add-mpi-shifts prop_0)
          (propagation-inspector prop_0)
@@ -12555,6 +13436,7 @@
            prev-scs_0
            prev-smss_0
            (propagation-scope-ops prop_0)
+           (propagation-sms-ops prop_0)
            prev-mss_0
            (propagation-add-mpi-shifts prop_0)
            (propagation-inspector prop_0)
@@ -12562,110 +13444,90 @@
              'tainted/need-propagate
              base-prop_0)))
         (let ((new-ops_0
-               (let ((ops_0
-                      (let ((ops_0 (propagation-scope-ops base-prop_0)))
-                        ops_0)))
-                 (let ((ht_0 (propagation-scope-ops prop_0)))
-                   (letrec*
-                    ((for-loop_0
-                      (|#%name|
-                       for-loop
-                       (lambda (ops_1 i_0)
-                         (if i_0
-                           (call-with-values
-                            (lambda ()
-                              (unsafe-immutable-hash-iterate-key+value
-                               ht_0
-                               i_0))
-                            (lambda (sc_0 op_0)
-                              (let ((ops_2
-                                     (let ((ops_2
-                                            (if (eq? op_0 'add)
-                                              (hash-set ops_1 sc_0 'add)
-                                              (if (eq? op_0 'remove)
-                                                (hash-set ops_1 sc_0 'remove)
-                                                (let ((current-op_0
-                                                       (hash-ref
-                                                        ops_1
-                                                        sc_0
-                                                        #f)))
-                                                  (if (eq? current-op_0 'add)
-                                                    (hash-set
-                                                     ops_1
-                                                     sc_0
-                                                     'remove)
-                                                    (if (eq?
-                                                         current-op_0
-                                                         'remove)
-                                                      (hash-set
-                                                       ops_1
-                                                       sc_0
-                                                       'add)
-                                                      (if (eq?
-                                                           current-op_0
-                                                           'flip)
-                                                        (hash-remove
-                                                         ops_1
-                                                         sc_0)
-                                                        (hash-set
-                                                         ops_1
-                                                         sc_0
-                                                         'flip)))))))))
-                                       (values ops_2))))
-                                (for-loop_0
-                                 ops_2
-                                 (unsafe-immutable-hash-iterate-next
-                                  ht_0
-                                  i_0)))))
-                           ops_1)))))
-                    (for-loop_0
-                     ops_0
-                     (unsafe-immutable-hash-iterate-first ht_0)))))))
-          (let ((add_0 (propagation-add-mpi-shifts prop_0)))
-            (let ((base-add_0 (propagation-add-mpi-shifts base-prop_0)))
-              (let ((new-taint_0
-                     (if (let ((or-part_0 (propagation-taint prop_0)))
-                           (if or-part_0
-                             or-part_0
-                             (propagation-taint base-prop_0)))
-                       'tainted/need-propagate
-                       (propagation-taint base-prop_0))))
-                (if (if (zero? (hash-count new-ops_0))
-                      (if (not add_0)
-                        (if (not base-add_0)
-                          (if (not (propagation-inspector prop_0))
-                            (not (propagation-inspector base-prop_0))
+               (scope-ops-compose
+                (propagation-scope-ops base-prop_0)
+                (propagation-scope-ops prop_0))))
+          (let ((new-sms-ops_0
+                 (let ((ops_0
+                        (let ((ops_0 (propagation-sms-ops base-prop_0)))
+                          ops_0)))
+                   (let ((ht_0 (propagation-sms-ops prop_0)))
+                     (letrec*
+                      ((for-loop_0
+                        (|#%name|
+                         for-loop
+                         (lambda (ops_1 i_0)
+                           (if i_0
+                             (call-with-values
+                              (lambda ()
+                                (unsafe-immutable-hash-iterate-key+value
+                                 ht_0
+                                 i_0))
+                              (lambda (sms_0 op_0)
+                                (let ((ops_2
+                                       (let ((ops_2
+                                              (sms-op-compose
+                                               ops_1
+                                               sms_0
+                                               op_0)))
+                                         (values ops_2))))
+                                  (for-loop_0
+                                   ops_2
+                                   (unsafe-immutable-hash-iterate-next
+                                    ht_0
+                                    i_0)))))
+                             ops_1)))))
+                      (for-loop_0
+                       ops_0
+                       (unsafe-immutable-hash-iterate-first ht_0)))))))
+            (let ((add_0 (propagation-add-mpi-shifts prop_0)))
+              (let ((base-add_0 (propagation-add-mpi-shifts base-prop_0)))
+                (let ((new-taint_0
+                       (if (let ((or-part_0 (propagation-taint prop_0)))
+                             (if or-part_0
+                               or-part_0
+                               (propagation-taint base-prop_0)))
+                         'tainted/need-propagate
+                         (propagation-taint base-prop_0))))
+                  (if (if (null? new-ops_0)
+                        (if (zero? (hash-count new-sms-ops_0))
+                          (if (not add_0)
+                            (if (not base-add_0)
+                              (if (not (propagation-inspector prop_0))
+                                (not (propagation-inspector base-prop_0))
+                                #f)
+                              #f)
                             #f)
                           #f)
                         #f)
-                      #f)
-                  new-taint_0
-                  (if (propagation? base-prop_0)
-                    (let ((add-mpi-shifts75_0
-                           (if (if add_0 base-add_0 #f)
-                             (|#%name|
-                              add-mpi-shifts75
-                              (lambda (mss_0)
-                                (|#%app| add_0 (|#%app| base-add_0 mss_0))))
-                             (if add_0 add_0 base-add_0))))
-                      (let ((inspector76_0
-                             (let ((or-part_0
-                                    (propagation-inspector base-prop_0)))
-                               (if or-part_0
-                                 or-part_0
-                                 (propagation-inspector prop_0)))))
-                        (propagation17.1
-                         (propagation-prev-scs base-prop_0)
-                         (propagation-prev-smss base-prop_0)
-                         new-ops_0
-                         (propagation-prev-mss base-prop_0)
-                         add-mpi-shifts75_0
-                         inspector76_0
-                         new-taint_0)))
-                    (raise-argument-error
-                     'struct-copy
-                     "propagation?"
-                     base-prop_0)))))))))))
+                    new-taint_0
+                    (if (propagation? base-prop_0)
+                      (let ((add-mpi-shifts75_0
+                             (if (if add_0 base-add_0 #f)
+                               (|#%name|
+                                add-mpi-shifts75
+                                (lambda (mss_0)
+                                  (|#%app| add_0 (|#%app| base-add_0 mss_0))))
+                               (if add_0 add_0 base-add_0))))
+                        (let ((inspector76_0
+                               (let ((or-part_0
+                                      (propagation-inspector base-prop_0)))
+                                 (if or-part_0
+                                   or-part_0
+                                   (propagation-inspector prop_0)))))
+                          (propagation17.1
+                           (propagation-prev-scs base-prop_0)
+                           (propagation-prev-smss base-prop_0)
+                           new-ops_0
+                           new-sms-ops_0
+                           (propagation-prev-mss base-prop_0)
+                           add-mpi-shifts75_0
+                           inspector76_0
+                           new-taint_0)))
+                      (raise-argument-error
+                       'struct-copy
+                       "propagation?"
+                       base-prop_0))))))))))))
 (define shift-multi-scope
   (lambda (sms_0 delta_0)
     (if (eq? delta_0 0)
@@ -12711,49 +13573,70 @@
                                (lambda (smss_1)
                                  (let ((table_0 hash2610))
                                    (let ((table_1 table_0))
-                                     (letrec*
-                                      ((for-loop_0
-                                        (|#%name|
-                                         for-loop
-                                         (lambda (table_2 i_0)
-                                           (if i_0
-                                             (let ((sms_0
-                                                    (unsafe-immutable-hash-iterate-key
-                                                     smss_1
-                                                     i_0)))
-                                               (let ((table_3
-                                                      (let ((id*_0
-                                                             (shift-multi-scope
-                                                              sms_0
-                                                              phase_0)))
-                                                        (letrec*
-                                                         ((for-loop_1
-                                                           (|#%name|
-                                                            for-loop
-                                                            (lambda (table_3)
-                                                              (let ((table_4
-                                                                     (if id*_0
-                                                                       (let ((table_4
-                                                                              (hash-set
-                                                                               table_3
-                                                                               id*_0
-                                                                               #t)))
-                                                                         (values
-                                                                          table_4))
-                                                                       table_3)))
-                                                                table_4)))))
-                                                         (for-loop_1
-                                                          table_2)))))
-                                                 (for-loop_0
-                                                  table_3
-                                                  (unsafe-immutable-hash-iterate-next
-                                                   smss_1
-                                                   i_0))))
-                                             table_2)))))
-                                      (for-loop_0
-                                       table_1
-                                       (unsafe-immutable-hash-iterate-first
-                                        smss_1)))))))))
+                                     (begin
+                                       (if (let ((or-part_0
+                                                  (scope-set? smss_1)))
+                                             (if or-part_0
+                                               or-part_0
+                                               (if (hash? smss_1)
+                                                 (immutable? smss_1)
+                                                 #f)))
+                                         (void)
+                                         (raise-argument-error
+                                          'in-set
+                                          "set?"
+                                          smss_1))
+                                       (letrec*
+                                        ((for-loop_0
+                                          (|#%name|
+                                           for-loop
+                                           (lambda (table_2 i_0)
+                                             (if (if (scope-set? smss_1)
+                                                   (pair? i_0)
+                                                   i_0)
+                                               (let ((sms_0
+                                                      (if (scope-set? smss_1)
+                                                        (unsafe-car i_0)
+                                                        (unsafe-immutable-hash-iterate-key
+                                                         smss_1
+                                                         i_0))))
+                                                 (let ((table_3
+                                                        (let ((id*_0
+                                                               (shift-multi-scope
+                                                                sms_0
+                                                                phase_0)))
+                                                          (letrec*
+                                                           ((for-loop_1
+                                                             (|#%name|
+                                                              for-loop
+                                                              (lambda (table_3)
+                                                                (let ((table_4
+                                                                       (if id*_0
+                                                                         (let ((table_4
+                                                                                (hash-set
+                                                                                 table_3
+                                                                                 id*_0
+                                                                                 #t)))
+                                                                           (values
+                                                                            table_4))
+                                                                         table_3)))
+                                                                  table_4)))))
+                                                           (for-loop_1
+                                                            table_2)))))
+                                                   (for-loop_0
+                                                    table_3
+                                                    (if (scope-set? smss_1)
+                                                      (unsafe-cdr i_0)
+                                                      (unsafe-immutable-hash-iterate-next
+                                                       smss_1
+                                                       i_0)))))
+                                               table_2)))))
+                                        (for-loop_0
+                                         table_1
+                                         (if (scope-set? smss_1)
+                                           (scope-set-elems smss_1)
+                                           (unsafe-immutable-hash-iterate-first
+                                            smss_1)))))))))))
                          (begin
                            (set! smss78_0 smss_0)
                            (set! prev-result_0 r_0)
@@ -12851,7 +13734,7 @@
     (let ((ms_0 (shifted-multi-scope-multi-scope sms_0)))
       (let ((phase_0 (shifted-multi-scope-phase sms_0)))
         (if (shifted-to-label-phase? phase_0)
-          (hash-set phases_0 #f #t)
+          (set-add phases_0 #f)
           (let ((ht_0 (unbox (multi-scope-scopes ms_0))))
             (letrec*
              ((for-loop_0
@@ -12863,9 +13746,10 @@
                       (let ((phases_2
                              (let ((phases_2
                                     (if (not ph_0)
-                                      (hash-set phases_1 #f #t)
-                                      (let ((e_0 (phase- phase_0 ph_0)))
-                                        (hash-set phases_1 e_0 #t)))))
+                                      (set-add phases_1 #f)
+                                      (set-add
+                                       phases_1
+                                       (phase- phase_0 ph_0)))))
                                (values phases_2))))
                         (for-loop_0 phases_2 (hash-iterate-next ht_0 i_0))))
                     phases_1)))))
@@ -12877,30 +13761,47 @@
       (let ((table_0 hash2610))
         (let ((app_0
                (let ((table_1 table_0))
-                 (letrec*
-                  ((for-loop_0
-                    (|#%name|
-                     for-loop
-                     (lambda (table_2 i_0)
-                       (if i_0
-                         (let ((sc_0
-                                (unsafe-immutable-hash-iterate-key
-                                 src-scopes_0
-                                 i_0)))
-                           (let ((table_3
-                                  (let ((table_3
-                                         (let ((key_0 (generalize-scope sc_0)))
-                                           (hash-set table_2 key_0 #t))))
-                                    (values table_3))))
-                             (for-loop_0
-                              table_3
-                              (unsafe-immutable-hash-iterate-next
-                               src-scopes_0
-                               i_0))))
-                         table_2)))))
-                  (for-loop_0
-                   table_1
-                   (unsafe-immutable-hash-iterate-first src-scopes_0))))))
+                 (begin
+                   (if (let ((or-part_0 (scope-set? src-scopes_0)))
+                         (if or-part_0
+                           or-part_0
+                           (if (hash? src-scopes_0)
+                             (immutable? src-scopes_0)
+                             #f)))
+                     (void)
+                     (raise-argument-error 'in-set "set?" src-scopes_0))
+                   (letrec*
+                    ((for-loop_0
+                      (|#%name|
+                       for-loop
+                       (lambda (table_2 i_0)
+                         (if (if (scope-set? src-scopes_0) (pair? i_0) i_0)
+                           (let ((sc_0
+                                  (if (scope-set? src-scopes_0)
+                                    (unsafe-car i_0)
+                                    (unsafe-immutable-hash-iterate-key
+                                     src-scopes_0
+                                     i_0))))
+                             (let ((table_3
+                                    (let ((table_3
+                                           (let ((key_0
+                                                  (generalize-scope sc_0)))
+                                             (hash-set table_2 key_0 #t))))
+                                      (values table_3))))
+                               (for-loop_0
+                                table_3
+                                (if (scope-set? src-scopes_0)
+                                  (unsafe-cdr i_0)
+                                  (unsafe-immutable-hash-iterate-next
+                                   src-scopes_0
+                                   i_0)))))
+                           table_2)))))
+                    (for-loop_0
+                     table_1
+                     (if (scope-set? src-scopes_0)
+                       (scope-set-elems src-scopes_0)
+                       (unsafe-immutable-hash-iterate-first
+                        src-scopes_0))))))))
           (let ((app_1 (seteq)))
             (call-with-values
              (lambda ()
@@ -12909,36 +13810,56 @@
                (let ((app_2
                       (let ((table_1 hash2610))
                         (let ((table_2 table_1))
-                          (letrec*
-                           ((for-loop_0
-                             (|#%name|
-                              for-loop
-                              (lambda (table_3 i_0)
-                                (if i_0
-                                  (let ((sc_0
-                                         (unsafe-immutable-hash-iterate-key
-                                          dest-scopes_0
-                                          i_0)))
-                                    (let ((table_4
-                                           (let ((table_4
-                                                  (let ((key_0
-                                                         (generalize-scope
-                                                          sc_0)))
-                                                    (hash-set
-                                                     table_3
-                                                     key_0
-                                                     #t))))
-                                             (values table_4))))
-                                      (for-loop_0
-                                       table_4
-                                       (unsafe-immutable-hash-iterate-next
-                                        dest-scopes_0
-                                        i_0))))
-                                  table_3)))))
-                           (for-loop_0
-                            table_2
-                            (unsafe-immutable-hash-iterate-first
-                             dest-scopes_0)))))))
+                          (begin
+                            (if (let ((or-part_0 (scope-set? dest-scopes_0)))
+                                  (if or-part_0
+                                    or-part_0
+                                    (if (hash? dest-scopes_0)
+                                      (immutable? dest-scopes_0)
+                                      #f)))
+                              (void)
+                              (raise-argument-error
+                               'in-set
+                               "set?"
+                               dest-scopes_0))
+                            (letrec*
+                             ((for-loop_0
+                               (|#%name|
+                                for-loop
+                                (lambda (table_3 i_0)
+                                  (if (if (scope-set? dest-scopes_0)
+                                        (pair? i_0)
+                                        i_0)
+                                    (let ((sc_0
+                                           (if (scope-set? dest-scopes_0)
+                                             (unsafe-car i_0)
+                                             (unsafe-immutable-hash-iterate-key
+                                              dest-scopes_0
+                                              i_0))))
+                                      (let ((table_4
+                                             (let ((table_4
+                                                    (let ((key_0
+                                                           (generalize-scope
+                                                            sc_0)))
+                                                      (hash-set
+                                                       table_3
+                                                       key_0
+                                                       #t))))
+                                               (values table_4))))
+                                        (for-loop_0
+                                         table_4
+                                         (if (scope-set? dest-scopes_0)
+                                           (unsafe-cdr i_0)
+                                           (unsafe-immutable-hash-iterate-next
+                                            dest-scopes_0
+                                            i_0)))))
+                                    table_3)))))
+                             (for-loop_0
+                              table_2
+                              (if (scope-set? dest-scopes_0)
+                                (scope-set-elems dest-scopes_0)
+                                (unsafe-immutable-hash-iterate-first
+                                 dest-scopes_0)))))))))
                  (let ((app_3 (seteq)))
                    (call-with-values
                     (lambda ()
@@ -12954,9 +13875,7 @@
                                       (if (eq? scs81_0 scs_0)
                                         prev-result_0
                                         (let ((r_0
-                                               (if (hash-keys-subset?
-                                                    src-scs_1
-                                                    scs_0)
+                                               (if (subset? src-scs_1 scs_0)
                                                  (set-union
                                                   (set-subtract
                                                    scs_0
@@ -12979,7 +13898,7 @@
                                                      (fallback-update-first
                                                       smss_0
                                                       (lambda (smss_1)
-                                                        (if (hash-keys-subset?
+                                                        (if (subset?
                                                              src-smss_1
                                                              smss_1)
                                                           (set-union
@@ -13127,115 +14046,126 @@
 (define scope-set-at-fallback
   (lambda (s_0 smss_0 phase_0)
     (let ((scopes_0 (let ((scopes_0 (syntax-scopes s_0))) scopes_0)))
-      (letrec*
-       ((for-loop_0
-         (|#%name|
-          for-loop
-          (lambda (scopes_1 i_0)
-            (if i_0
-              (let ((sms_0 (unsafe-immutable-hash-iterate-key smss_0 i_0)))
-                (let ((scopes_2
-                       (if (let ((or-part_0 (not phase_0)))
-                             (if or-part_0
-                               or-part_0
-                               (not
-                                (shifted-to-label-phase?
-                                 (shifted-multi-scope-phase sms_0)))))
-                         (let ((scopes_2
-                                (let ((e_0
-                                       (multi-scope-to-scope-at-phase
-                                        (shifted-multi-scope-multi-scope sms_0)
-                                        (let ((ph_0
-                                               (shifted-multi-scope-phase
-                                                sms_0)))
-                                          (if (shifted-to-label-phase? ph_0)
-                                            (shifted-to-label-phase-from ph_0)
-                                            (phase- ph_0 phase_0))))))
-                                  (hash-set scopes_1 e_0 #t))))
-                           (values scopes_2))
-                         scopes_1)))
-                  (for-loop_0
-                   scopes_2
-                   (unsafe-immutable-hash-iterate-next smss_0 i_0))))
-              scopes_1)))))
-       (for-loop_0 scopes_0 (unsafe-immutable-hash-iterate-first smss_0))))))
-(define find-max-scope
-  (lambda (scopes_0)
-    (begin
-      (if (zero? (hash-count scopes_0))
-        (error "cannot bind in empty scope set")
-        (void))
-      (let ((max-sc_0 (let ((max-sc_0 (set-first scopes_0))) max-sc_0)))
+      (begin
+        (if (let ((or-part_0 (scope-set? smss_0)))
+              (if or-part_0
+                or-part_0
+                (if (hash? smss_0) (immutable? smss_0) #f)))
+          (void)
+          (raise-argument-error 'in-set "set?" smss_0))
         (letrec*
          ((for-loop_0
            (|#%name|
             for-loop
-            (lambda (max-sc_1 i_0)
-              (if i_0
-                (let ((sc_0 (unsafe-immutable-hash-iterate-key scopes_0 i_0)))
-                  (let ((max-sc_2
-                         (let ((max-sc_2
-                                (if (> (scope-id sc_0) (scope-id max-sc_1))
-                                  sc_0
-                                  max-sc_1)))
-                           (values max-sc_2))))
+            (lambda (scopes_1 i_0)
+              (if (if (scope-set? smss_0) (pair? i_0) i_0)
+                (let ((sms_0
+                       (if (scope-set? smss_0)
+                         (unsafe-car i_0)
+                         (unsafe-immutable-hash-iterate-key smss_0 i_0))))
+                  (let ((scopes_2
+                         (if (let ((or-part_0 (not phase_0)))
+                               (if or-part_0
+                                 or-part_0
+                                 (not
+                                  (shifted-to-label-phase?
+                                   (shifted-multi-scope-phase sms_0)))))
+                           (let ((scopes_2
+                                  (set-add
+                                   scopes_1
+                                   (multi-scope-to-scope-at-phase
+                                    (shifted-multi-scope-multi-scope sms_0)
+                                    (let ((ph_0
+                                           (shifted-multi-scope-phase sms_0)))
+                                      (if (shifted-to-label-phase? ph_0)
+                                        (shifted-to-label-phase-from ph_0)
+                                        (phase- ph_0 phase_0)))))))
+                             (values scopes_2))
+                           scopes_1)))
                     (for-loop_0
-                     max-sc_2
-                     (unsafe-immutable-hash-iterate-next scopes_0 i_0))))
-                max-sc_1)))))
+                     scopes_2
+                     (if (scope-set? smss_0)
+                       (unsafe-cdr i_0)
+                       (unsafe-immutable-hash-iterate-next smss_0 i_0)))))
+                scopes_1)))))
          (for-loop_0
-          max-sc_0
-          (unsafe-immutable-hash-iterate-first scopes_0)))))))
+          scopes_0
+          (if (scope-set? smss_0)
+            (scope-set-elems smss_0)
+            (unsafe-immutable-hash-iterate-first smss_0))))))))
+(define find-max-scope
+  (lambda (scopes_0)
+    (begin
+      (if (set-empty? scopes_0)
+        (error "cannot bind in empty scope set")
+        (void))
+      (car (scope-set-elems scopes_0)))))
 (define add-binding-in-scopes!.1
   (|#%name|
    add-binding-in-scopes!
-   (lambda (just-for-nominal?18_0 scopes20_0 sym21_0 binding22_0)
-     (let ((max-sc_0 (find-max-scope scopes20_0)))
-       (let ((bt_0
-              (binding-table-add
-               (scope-binding-table max-sc_0)
-               scopes20_0
-               sym21_0
-               binding22_0
-               just-for-nominal?18_0)))
-         (begin
-           (set-scope-binding-table! max-sc_0 bt_0)
-           (clear-resolve-cache! sym21_0)))))))
+   (lambda (just-for-nominal?18_0 in-scopes20_0 sym21_0 binding22_0)
+     (let ((scopes_0 (->scope-set in-scopes20_0)))
+       (let ((max-sc_0 (find-max-scope scopes_0)))
+         (let ((bt_0
+                (binding-table-add
+                 (scope-binding-table max-sc_0)
+                 scopes_0
+                 sym21_0
+                 binding22_0
+                 just-for-nominal?18_0)))
+           (begin
+             (set-scope-binding-table! max-sc_0 bt_0)
+             (clear-resolve-cache! sym21_0))))))))
 (define add-bulk-binding-in-scopes!.1
   (|#%name|
    add-bulk-binding-in-scopes!
-   (lambda (shadow-except24_0 scopes26_0 bulk-binding27_0)
-     (let ((max-sc_0 (find-max-scope scopes26_0)))
-       (let ((bt_0
-              (let ((temp86_0 (scope-binding-table max-sc_0)))
-                (binding-table-add-bulk.1
-                 shadow-except24_0
-                 temp86_0
-                 scopes26_0
-                 bulk-binding27_0))))
-         (begin
-           (set-scope-binding-table! max-sc_0 bt_0)
-           (clear-resolve-cache!)))))))
+   (lambda (shadow-except24_0 in-scopes26_0 bulk-binding27_0)
+     (let ((scopes_0 (->scope-set in-scopes26_0)))
+       (let ((max-sc_0 (find-max-scope scopes_0)))
+         (let ((bt_0
+                (let ((temp86_0 (scope-binding-table max-sc_0)))
+                  (binding-table-add-bulk.1
+                   shadow-except24_0
+                   temp86_0
+                   scopes_0
+                   bulk-binding27_0))))
+           (begin
+             (set-scope-binding-table! max-sc_0 bt_0)
+             (clear-resolve-cache!))))))))
 (define syntax-any-macro-scopes?
   (lambda (s_0)
-    (let ((ht_0 (syntax-scopes s_0)))
-      (letrec*
-       ((for-loop_0
-         (|#%name|
-          for-loop
-          (lambda (result_0 i_0)
-            (if i_0
-              (let ((sc_0 (unsafe-immutable-hash-iterate-key ht_0 i_0)))
-                (let ((result_1
-                       (let ((result_1 (eq? (scope-kind sc_0) 'macro)))
-                         (values result_1))))
-                  (if (if (not (let ((x_0 (list sc_0))) result_1)) #t #f)
-                    (for-loop_0
-                     result_1
-                     (unsafe-immutable-hash-iterate-next ht_0 i_0))
-                    result_1)))
-              result_0)))))
-       (for-loop_0 #f (unsafe-immutable-hash-iterate-first ht_0))))))
+    (let ((s_1 (syntax-scopes s_0)))
+      (begin
+        (if (let ((or-part_0 (scope-set? s_1)))
+              (if or-part_0 or-part_0 (if (hash? s_1) (immutable? s_1) #f)))
+          (void)
+          (raise-argument-error 'in-set "set?" s_1))
+        (letrec*
+         ((for-loop_0
+           (|#%name|
+            for-loop
+            (lambda (result_0 i_0)
+              (if (if (scope-set? s_1) (pair? i_0) i_0)
+                (let ((sc_0
+                       (if (scope-set? s_1)
+                         (unsafe-car i_0)
+                         (unsafe-immutable-hash-iterate-key s_1 i_0))))
+                  (let ((result_1
+                         (let ((result_1 (eq? (scope-kind sc_0) 'macro)))
+                           (values result_1))))
+                    (if (if (not (let ((x_0 (list sc_0))) result_1)) #t #f)
+                      (for-loop_0
+                       result_1
+                       (if (scope-set? s_1)
+                         (unsafe-cdr i_0)
+                         (unsafe-immutable-hash-iterate-next s_1 i_0)))
+                      result_1)))
+                result_0)))))
+         (for-loop_0
+          #f
+          (if (scope-set? s_1)
+            (scope-set-elems s_1)
+            (unsafe-immutable-hash-iterate-first s_1))))))))
 (define resolve.1
   (|#%name|
    resolve
@@ -13274,219 +14204,238 @@
                          phase38_0)))
                    (call-with-values
                     (lambda ()
-                      (letrec*
-                       ((for-loop_0
-                         (|#%name|
-                          for-loop
-                          (lambda (best-scopes_0 best-binding_0 i_0)
-                            (if i_0
-                              (let ((sc_0
-                                     (unsafe-immutable-hash-iterate-key
-                                      scopes_0
-                                      i_0)))
-                                (let ((table_0 (scope-binding-table sc_0)))
-                                  (call-with-values
-                                   (lambda ()
-                                     (call-with-values
-                                      (lambda ()
-                                        (if (hash? table_0)
-                                          (values
-                                           (hash-ref table_0 sym_0 hash2725)
-                                           null)
-                                          (let ((app_0
-                                                 (hash-ref
-                                                  (table-with-bulk-bindings-syms
-                                                   table_0)
-                                                  sym_0
-                                                  hash2725)))
+                      (begin
+                        (if (let ((or-part_0 (scope-set? scopes_0)))
+                              (if or-part_0
+                                or-part_0
+                                (if (hash? scopes_0)
+                                  (immutable? scopes_0)
+                                  #f)))
+                          (void)
+                          (raise-argument-error 'in-set "set?" scopes_0))
+                        (letrec*
+                         ((for-loop_0
+                           (|#%name|
+                            for-loop
+                            (lambda (best-scopes_0 best-binding_0 i_0)
+                              (if (if (scope-set? scopes_0) (pair? i_0) i_0)
+                                (let ((sc_0
+                                       (if (scope-set? scopes_0)
+                                         (unsafe-car i_0)
+                                         (unsafe-immutable-hash-iterate-key
+                                          scopes_0
+                                          i_0))))
+                                  (let ((table_0 (scope-binding-table sc_0)))
+                                    (call-with-values
+                                     (lambda ()
+                                       (call-with-values
+                                        (lambda ()
+                                          (if (hash? table_0)
                                             (values
-                                             app_0
-                                             (table-with-bulk-bindings-bulk-bindings
-                                              table_0)))))
-                                      (lambda (ht_0 bulk-bindings_0)
-                                        (let ((s_0 s37_0))
-                                          (let ((extra-shifts_0
-                                                 extra-shifts32_0))
-                                            (let ((s_1 s_0)
-                                                  (ht_1 ht_0)
-                                                  (bulk-bindings_1
-                                                   bulk-bindings_0))
-                                              (begin
-                                                #t
-                                                (letrec*
-                                                 ((for-loop_1
-                                                   (|#%name|
-                                                    for-loop
-                                                    (lambda (best-scopes_1
-                                                             best-binding_1
-                                                             i_1)
-                                                      (if (not (null? i_1))
-                                                        (let ((b-scopes_0
-                                                               (if (pair? i_1)
-                                                                 (bulk-binding-at-scopes
-                                                                  (car i_1))
-                                                                 (hash-iterate-key
-                                                                  ht_1
-                                                                  i_1))))
-                                                          (let ((binding_0
+                                             (hash-ref
+                                              table_0
+                                              sym_0
+                                              hash2725)
+                                             null)
+                                            (let ((app_0
+                                                   (hash-ref
+                                                    (table-with-bulk-bindings-syms
+                                                     table_0)
+                                                    sym_0
+                                                    hash2725)))
+                                              (values
+                                               app_0
+                                               (table-with-bulk-bindings-bulk-bindings
+                                                table_0)))))
+                                        (lambda (ht_0 bulk-bindings_0)
+                                          (let ((s_0 s37_0))
+                                            (let ((extra-shifts_0
+                                                   extra-shifts32_0))
+                                              (let ((s_1 s_0)
+                                                    (ht_1 ht_0)
+                                                    (bulk-bindings_1
+                                                     bulk-bindings_0))
+                                                (begin
+                                                  #t
+                                                  (letrec*
+                                                   ((for-loop_1
+                                                     (|#%name|
+                                                      for-loop
+                                                      (lambda (best-scopes_1
+                                                               best-binding_1
+                                                               i_1)
+                                                        (if (not (null? i_1))
+                                                          (let ((b-scopes_0
                                                                  (if (pair?
                                                                       i_1)
-                                                                   (let ((bulk_0
-                                                                          (bulk-binding-at-bulk
-                                                                           (car
-                                                                            i_1))))
-                                                                     (let ((b-info_0
-                                                                            (if (symbol-interned?
-                                                                                 sym_0)
-                                                                              (hash-ref
-                                                                               (bulk-binding-symbols
-                                                                                bulk_0
-                                                                                s_1
-                                                                                extra-shifts_0)
-                                                                               sym_0
-                                                                               #f)
-                                                                              #f)))
-                                                                       (if b-info_0
-                                                                         (|#%app|
-                                                                          (bulk-binding-class-create
-                                                                           (bulk-binding-ref
-                                                                            bulk_0))
-                                                                          bulk_0
-                                                                          b-info_0
-                                                                          sym_0)
-                                                                         #f)))
-                                                                   (hash-iterate-value
+                                                                   (bulk-binding-at-scopes
+                                                                    (car i_1))
+                                                                   (hash-iterate-key
                                                                     ht_1
                                                                     i_1))))
-                                                            (let ((b-scopes_1
-                                                                   b-scopes_0))
-                                                              (call-with-values
-                                                               (lambda ()
-                                                                 (if (if b-scopes_1
-                                                                       (if binding_0
-                                                                         (hash-keys-subset?
-                                                                          b-scopes_1
-                                                                          scopes_0)
-                                                                         #f)
-                                                                       #f)
-                                                                   (call-with-values
-                                                                    (lambda ()
-                                                                      (if (pair?
-                                                                           best-scopes_1)
-                                                                        (if (letrec*
-                                                                             ((for-loop_2
-                                                                               (|#%name|
-                                                                                for-loop
-                                                                                (lambda (result_0
-                                                                                         lst_0)
-                                                                                  (if (pair?
-                                                                                       lst_0)
-                                                                                    (let ((amb-scopes_0
-                                                                                           (unsafe-car
-                                                                                            lst_0)))
-                                                                                      (let ((rest_0
-                                                                                             (unsafe-cdr
-                                                                                              lst_0)))
-                                                                                        (let ((result_1
-                                                                                               (let ((result_1
-                                                                                                      (hash-keys-subset?
-                                                                                                       amb-scopes_0
-                                                                                                       b-scopes_1)))
-                                                                                                 (values
-                                                                                                  result_1))))
-                                                                                          (if (if (not
-                                                                                                   (let ((x_0
-                                                                                                          (list
-                                                                                                           amb-scopes_0)))
-                                                                                                     (not
-                                                                                                      result_1)))
-                                                                                                #t
-                                                                                                #f)
-                                                                                            (for-loop_2
-                                                                                             result_1
-                                                                                             rest_0)
-                                                                                            result_1))))
-                                                                                    result_0)))))
-                                                                             (for-loop_2
-                                                                              #t
-                                                                              best-scopes_1))
-                                                                          (values
-                                                                           b-scopes_1
-                                                                           binding_0)
-                                                                          (values
-                                                                           (cons
+                                                            (let ((binding_0
+                                                                   (if (pair?
+                                                                        i_1)
+                                                                     (let ((bulk_0
+                                                                            (bulk-binding-at-bulk
+                                                                             (car
+                                                                              i_1))))
+                                                                       (let ((b-info_0
+                                                                              (if (symbol-interned?
+                                                                                   sym_0)
+                                                                                (hash-ref
+                                                                                 (bulk-binding-symbols
+                                                                                  bulk_0
+                                                                                  s_1
+                                                                                  extra-shifts_0)
+                                                                                 sym_0
+                                                                                 #f)
+                                                                                #f)))
+                                                                         (if b-info_0
+                                                                           (|#%app|
+                                                                            (bulk-binding-class-create
+                                                                             (bulk-binding-ref
+                                                                              bulk_0))
+                                                                            bulk_0
+                                                                            b-info_0
+                                                                            sym_0)
+                                                                           #f)))
+                                                                     (hash-iterate-value
+                                                                      ht_1
+                                                                      i_1))))
+                                                              (let ((b-scopes_1
+                                                                     b-scopes_0))
+                                                                (call-with-values
+                                                                 (lambda ()
+                                                                   (if (if b-scopes_1
+                                                                         (if binding_0
+                                                                           (subset?
                                                                             b-scopes_1
-                                                                            best-scopes_1)
-                                                                           #f))
-                                                                        (if (not
+                                                                            scopes_0)
+                                                                           #f)
+                                                                         #f)
+                                                                     (call-with-values
+                                                                      (lambda ()
+                                                                        (if (pair?
                                                                              best-scopes_1)
-                                                                          (values
-                                                                           b-scopes_1
-                                                                           binding_0)
-                                                                          (if (hash-keys-subset?
-                                                                               b-scopes_1
+                                                                          (if (letrec*
+                                                                               ((for-loop_2
+                                                                                 (|#%name|
+                                                                                  for-loop
+                                                                                  (lambda (result_0
+                                                                                           lst_0)
+                                                                                    (if (pair?
+                                                                                         lst_0)
+                                                                                      (let ((amb-scopes_0
+                                                                                             (unsafe-car
+                                                                                              lst_0)))
+                                                                                        (let ((rest_0
+                                                                                               (unsafe-cdr
+                                                                                                lst_0)))
+                                                                                          (let ((result_1
+                                                                                                 (let ((result_1
+                                                                                                        (subset?
+                                                                                                         amb-scopes_0
+                                                                                                         b-scopes_1)))
+                                                                                                   (values
+                                                                                                    result_1))))
+                                                                                            (if (if (not
+                                                                                                     (let ((x_0
+                                                                                                            (list
+                                                                                                             amb-scopes_0)))
+                                                                                                       (not
+                                                                                                        result_1)))
+                                                                                                  #t
+                                                                                                  #f)
+                                                                                              (for-loop_2
+                                                                                               result_1
+                                                                                               rest_0)
+                                                                                              result_1))))
+                                                                                      result_0)))))
+                                                                               (for-loop_2
+                                                                                #t
+                                                                                best-scopes_1))
+                                                                            (values
+                                                                             b-scopes_1
+                                                                             binding_0)
+                                                                            (values
+                                                                             (cons
+                                                                              b-scopes_1
+                                                                              best-scopes_1)
+                                                                             #f))
+                                                                          (if (not
                                                                                best-scopes_1)
                                                                             (values
-                                                                             best-scopes_1
-                                                                             best-binding_1)
-                                                                            (if (hash-keys-subset?
-                                                                                 best-scopes_1
-                                                                                 b-scopes_1)
+                                                                             b-scopes_1
+                                                                             binding_0)
+                                                                            (if (subset?
+                                                                                 b-scopes_1
+                                                                                 best-scopes_1)
                                                                               (values
-                                                                               b-scopes_1
-                                                                               binding_0)
-                                                                              (values
-                                                                               (list
-                                                                                best-scopes_1
-                                                                                b-scopes_1)
-                                                                               #f))))))
-                                                                    (lambda (best-scopes_2
-                                                                             best-binding_2)
-                                                                      (values
-                                                                       best-scopes_2
-                                                                       best-binding_2)))
-                                                                   (values
-                                                                    best-scopes_1
-                                                                    best-binding_1)))
-                                                               (lambda (best-scopes_2
-                                                                        best-binding_2)
-                                                                 (for-loop_1
-                                                                  best-scopes_2
-                                                                  best-binding_2
-                                                                  (if (pair?
-                                                                       i_1)
-                                                                    (cdr i_1)
-                                                                    (let ((or-part_0
-                                                                           (hash-iterate-next
-                                                                            ht_1
-                                                                            i_1)))
-                                                                      (if or-part_0
-                                                                        or-part_0
-                                                                        bulk-bindings_1)))))))))
-                                                        (values
-                                                         best-scopes_1
-                                                         best-binding_1))))))
-                                                 (for-loop_1
-                                                  best-scopes_0
-                                                  best-binding_0
-                                                  (let ((or-part_0
-                                                         (hash-iterate-first
-                                                          ht_1)))
-                                                    (if or-part_0
-                                                      or-part_0
-                                                      bulk-bindings_1)))))))))))
-                                   (lambda (best-scopes_1 best-binding_1)
-                                     (for-loop_0
-                                      best-scopes_1
-                                      best-binding_1
-                                      (unsafe-immutable-hash-iterate-next
-                                       scopes_0
-                                       i_0))))))
-                              (values best-scopes_0 best-binding_0))))))
-                       (for-loop_0
-                        #f
-                        #f
-                        (unsafe-immutable-hash-iterate-first scopes_0))))
+                                                                               best-scopes_1
+                                                                               best-binding_1)
+                                                                              (if (subset?
+                                                                                   best-scopes_1
+                                                                                   b-scopes_1)
+                                                                                (values
+                                                                                 b-scopes_1
+                                                                                 binding_0)
+                                                                                (values
+                                                                                 (list
+                                                                                  best-scopes_1
+                                                                                  b-scopes_1)
+                                                                                 #f))))))
+                                                                      (lambda (best-scopes_2
+                                                                               best-binding_2)
+                                                                        (values
+                                                                         best-scopes_2
+                                                                         best-binding_2)))
+                                                                     (values
+                                                                      best-scopes_1
+                                                                      best-binding_1)))
+                                                                 (lambda (best-scopes_2
+                                                                          best-binding_2)
+                                                                   (for-loop_1
+                                                                    best-scopes_2
+                                                                    best-binding_2
+                                                                    (if (pair?
+                                                                         i_1)
+                                                                      (cdr i_1)
+                                                                      (let ((or-part_0
+                                                                             (hash-iterate-next
+                                                                              ht_1
+                                                                              i_1)))
+                                                                        (if or-part_0
+                                                                          or-part_0
+                                                                          bulk-bindings_1)))))))))
+                                                          (values
+                                                           best-scopes_1
+                                                           best-binding_1))))))
+                                                   (for-loop_1
+                                                    best-scopes_0
+                                                    best-binding_0
+                                                    (let ((or-part_0
+                                                           (hash-iterate-first
+                                                            ht_1)))
+                                                      (if or-part_0
+                                                        or-part_0
+                                                        bulk-bindings_1)))))))))))
+                                     (lambda (best-scopes_1 best-binding_1)
+                                       (for-loop_0
+                                        best-scopes_1
+                                        best-binding_1
+                                        (if (scope-set? scopes_0)
+                                          (unsafe-cdr i_0)
+                                          (unsafe-immutable-hash-iterate-next
+                                           scopes_0
+                                           i_0)))))))
+                                (values best-scopes_0 best-binding_0))))))
+                         (for-loop_0
+                          #f
+                          #f
+                          (if (scope-set? scopes_0)
+                            (scope-set-elems scopes_0)
+                            (unsafe-immutable-hash-iterate-first scopes_0))))))
                     (lambda (best-scopes_0 best-binding_0)
                       (if (pair? best-scopes_0)
                         (if (fallback? smss_0)
@@ -13503,10 +14452,8 @@
                             (if (let ((or-part_0 (not exactly?30_0)))
                                   (if or-part_0
                                     or-part_0
-                                    (let ((app_0 (hash-count scopes_0)))
-                                      (eqv?
-                                       app_0
-                                       (hash-count best-scopes_0)))))
+                                    (let ((app_0 (set-count scopes_0)))
+                                      (eqv? app_0 (set-count best-scopes_0)))))
                               (if get-scopes?31_0 best-scopes_0 best-binding_0)
                               #f))
                           (begin
@@ -13869,7 +14816,7 @@
               (if (not scs_0)
                 #f
                 (let ((other-scs_0 (syntax-scope-set other-id9_0 phase10_0)))
-                  (if (not (hash-keys-subset? scs_0 other-scs_0))
+                  (if (not (subset? scs_0 other-scs_0))
                     (identifier-binding.1
                      #f
                      id8_0
@@ -13890,7 +14837,7 @@
 (define identifier-binding-uses-scope?
   (lambda (id_0 scope_0 phase_0)
     (let ((scs_0 (resolve.1 #f #f null #t id_0 phase_0)))
-      (if scs_0 (hash-ref scs_0 scope_0 #f) #f))))
+      (if scs_0 (set-member? scs_0 scope_0) #f))))
 (define maybe-install-free=id!
   (lambda (val_0 id_0 phase_0)
     (if (1/rename-transformer? val_0)
@@ -15189,7 +16136,13 @@
                  post-expansion-scope_0
                  outside-scope_0
                  initial-scopes4_0)))
-           (let ((top-level-bind-scope_0 (new-scope 'module)))
+           (let ((top-level-bind-scope_0
+                  (let ((id_0 (new-scope-id!)))
+                    (scope1.1
+                     id_0
+                     (make-scope-key id_0)
+                     'module
+                     empty-binding-table))))
              (let ((all-scopes-stx_0
                     (if all-scopes-stx7_0
                       all-scopes-stx7_0
@@ -15340,7 +16293,13 @@
                     app_0
                     (let ((stx_0 (vector-ref vec_0 1)))
                       (syntax-mpi-shifts stx_0))))))
-            (let ((top-level-bind-scope_0 (new-scope 'module)))
+            (let ((top-level-bind-scope_0
+                   (let ((id_0 (new-scope-id!)))
+                     (scope1.1
+                      id_0
+                      (make-scope-key id_0)
+                      'module
+                      empty-binding-table))))
               (let ((all-scopes-stx_0 (vector-ref vec_0 2)))
                 (let ((use-site-scopes_0
                        (box (extract-scope-list (vector-ref vec_0 3)))))
@@ -15437,9 +16396,7 @@
     (map_2353 generalize-scope (set->list (syntax-scope-set stx_0 0)))))
 (define syntax-with-one-scope?
   (lambda (stx_0)
-    (if (syntax?$1 stx_0)
-      (= 1 (let ((s_0 (syntax-scope-set stx_0 0))) (hash-count s_0)))
-      #f)))
+    (if (syntax?$1 stx_0) (= 1 (set-count (syntax-scope-set stx_0 0))) #f)))
 (define extract-scope
   (lambda (stx_0)
     (let ((s_0 (syntax-scope-set stx_0 0)))
@@ -19496,7 +20453,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish926
+  (let ((finish910
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -19522,7 +20479,7 @@
             #f
             #f
             |#%system-inspector|)))
-      (let ((effect927 (finish926 struct:set!-transformer_0)))
+      (let ((effect911 (finish910 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -20839,205 +21796,235 @@
                                                                                  covered-scope-sets_0)))
                                                                           (call-with-values
                                                                            (lambda ()
-                                                                             (letrec*
-                                                                              ((for-loop_1
-                                                                                (|#%name|
-                                                                                 for-loop
-                                                                                 (lambda (bindings_0
-                                                                                          covered-scope-sets_1
-                                                                                          i_0)
-                                                                                   (if i_0
-                                                                                     (let ((sc_0
-                                                                                            (unsafe-immutable-hash-iterate-key
-                                                                                             s-scs_0
-                                                                                             i_0)))
-                                                                                       (let ((table_0
-                                                                                              (scope-binding-table
-                                                                                               sc_0)))
-                                                                                         (call-with-values
-                                                                                          (lambda ()
-                                                                                            (call-with-values
-                                                                                             (lambda ()
-                                                                                               (if (hash?
-                                                                                                    table_0)
-                                                                                                 (values
-                                                                                                  (hash-ref
-                                                                                                   table_0
-                                                                                                   sym_0
-                                                                                                   hash2725)
-                                                                                                  null)
-                                                                                                 (let ((app_0
-                                                                                                        (hash-ref
-                                                                                                         (table-with-bulk-bindings-syms
-                                                                                                          table_0)
-                                                                                                         sym_0
-                                                                                                         hash2725)))
+                                                                             (begin
+                                                                               (if (let ((or-part_0
+                                                                                          (scope-set?
+                                                                                           s-scs_0)))
+                                                                                     (if or-part_0
+                                                                                       or-part_0
+                                                                                       (if (hash?
+                                                                                            s-scs_0)
+                                                                                         (immutable?
+                                                                                          s-scs_0)
+                                                                                         #f)))
+                                                                                 (void)
+                                                                                 (raise-argument-error
+                                                                                  'in-set
+                                                                                  "set?"
+                                                                                  s-scs_0))
+                                                                               (letrec*
+                                                                                ((for-loop_1
+                                                                                  (|#%name|
+                                                                                   for-loop
+                                                                                   (lambda (bindings_0
+                                                                                            covered-scope-sets_1
+                                                                                            i_0)
+                                                                                     (if (if (scope-set?
+                                                                                              s-scs_0)
+                                                                                           (pair?
+                                                                                            i_0)
+                                                                                           i_0)
+                                                                                       (let ((sc_0
+                                                                                              (if (scope-set?
+                                                                                                   s-scs_0)
+                                                                                                (unsafe-car
+                                                                                                 i_0)
+                                                                                                (unsafe-immutable-hash-iterate-key
+                                                                                                 s-scs_0
+                                                                                                 i_0))))
+                                                                                         (let ((table_0
+                                                                                                (scope-binding-table
+                                                                                                 sc_0)))
+                                                                                           (call-with-values
+                                                                                            (lambda ()
+                                                                                              (call-with-values
+                                                                                               (lambda ()
+                                                                                                 (if (hash?
+                                                                                                      table_0)
                                                                                                    (values
-                                                                                                    app_0
-                                                                                                    (table-with-bulk-bindings-bulk-bindings
-                                                                                                     table_0)))))
-                                                                                             (lambda (ht_0
-                                                                                                      bulk-bindings_0)
-                                                                                               (let ((s_1
-                                                                                                      s_0))
-                                                                                                 (let ((extra-shifts_0
-                                                                                                        null))
-                                                                                                   (let ((s_2
-                                                                                                          s_1)
-                                                                                                         (ht_1
-                                                                                                          ht_0)
-                                                                                                         (bulk-bindings_1
-                                                                                                          bulk-bindings_0))
-                                                                                                     (begin
-                                                                                                       #t
-                                                                                                       (letrec*
-                                                                                                        ((for-loop_2
-                                                                                                          (|#%name|
-                                                                                                           for-loop
-                                                                                                           (lambda (bindings_1
-                                                                                                                    covered-scope-sets_2
-                                                                                                                    i_1)
-                                                                                                             (if (not
-                                                                                                                  (null?
-                                                                                                                   i_1))
-                                                                                                               (let ((scs_0
-                                                                                                                      (if (pair?
-                                                                                                                           i_1)
-                                                                                                                        (bulk-binding-at-scopes
-                                                                                                                         (car
-                                                                                                                          i_1))
-                                                                                                                        (hash-iterate-key
-                                                                                                                         ht_1
-                                                                                                                         i_1))))
-                                                                                                                 (let ((b_0
+                                                                                                    (hash-ref
+                                                                                                     table_0
+                                                                                                     sym_0
+                                                                                                     hash2725)
+                                                                                                    null)
+                                                                                                   (let ((app_0
+                                                                                                          (hash-ref
+                                                                                                           (table-with-bulk-bindings-syms
+                                                                                                            table_0)
+                                                                                                           sym_0
+                                                                                                           hash2725)))
+                                                                                                     (values
+                                                                                                      app_0
+                                                                                                      (table-with-bulk-bindings-bulk-bindings
+                                                                                                       table_0)))))
+                                                                                               (lambda (ht_0
+                                                                                                        bulk-bindings_0)
+                                                                                                 (let ((s_1
+                                                                                                        s_0))
+                                                                                                   (let ((extra-shifts_0
+                                                                                                          null))
+                                                                                                     (let ((s_2
+                                                                                                            s_1)
+                                                                                                           (ht_1
+                                                                                                            ht_0)
+                                                                                                           (bulk-bindings_1
+                                                                                                            bulk-bindings_0))
+                                                                                                       (begin
+                                                                                                         #t
+                                                                                                         (letrec*
+                                                                                                          ((for-loop_2
+                                                                                                            (|#%name|
+                                                                                                             for-loop
+                                                                                                             (lambda (bindings_1
+                                                                                                                      covered-scope-sets_2
+                                                                                                                      i_1)
+                                                                                                               (if (not
+                                                                                                                    (null?
+                                                                                                                     i_1))
+                                                                                                                 (let ((scs_0
                                                                                                                         (if (pair?
                                                                                                                              i_1)
-                                                                                                                          (let ((bulk_0
-                                                                                                                                 (bulk-binding-at-bulk
-                                                                                                                                  (car
-                                                                                                                                   i_1))))
-                                                                                                                            (let ((b-info_0
-                                                                                                                                   (if (symbol-interned?
-                                                                                                                                        sym_0)
-                                                                                                                                     (hash-ref
-                                                                                                                                      (bulk-binding-symbols
-                                                                                                                                       bulk_0
-                                                                                                                                       s_2
-                                                                                                                                       extra-shifts_0)
-                                                                                                                                      sym_0
-                                                                                                                                      #f)
-                                                                                                                                     #f)))
-                                                                                                                              (if b-info_0
-                                                                                                                                (|#%app|
-                                                                                                                                 (bulk-binding-class-create
-                                                                                                                                  (bulk-binding-ref
-                                                                                                                                   bulk_0))
-                                                                                                                                 bulk_0
-                                                                                                                                 b-info_0
-                                                                                                                                 sym_0)
-                                                                                                                                #f)))
-                                                                                                                          (hash-iterate-value
+                                                                                                                          (bulk-binding-at-scopes
+                                                                                                                           (car
+                                                                                                                            i_1))
+                                                                                                                          (hash-iterate-key
                                                                                                                            ht_1
                                                                                                                            i_1))))
-                                                                                                                   (let ((scs_1
-                                                                                                                          scs_0))
-                                                                                                                     (call-with-values
-                                                                                                                      (lambda ()
-                                                                                                                        (if (if scs_1
-                                                                                                                              (if b_0
-                                                                                                                                (not
-                                                                                                                                 (hash-ref
-                                                                                                                                  covered-scope-sets_2
-                                                                                                                                  scs_1
-                                                                                                                                  #f))
-                                                                                                                                #f)
-                                                                                                                              #f)
-                                                                                                                          (let ((bindings_2
-                                                                                                                                 (cons
-                                                                                                                                  (let ((app_0
-                                                                                                                                         (syntax-e$1
-                                                                                                                                          s_0)))
-                                                                                                                                    (let ((app_1
-                                                                                                                                           (scope-set->context
-                                                                                                                                            scs_1)))
-                                                                                                                                      (let ((app_2
-                                                                                                                                             (hash-keys-subset?
-                                                                                                                                              scs_1
-                                                                                                                                              s-scs_0)))
-                                                                                                                                        (let ((app_3
-                                                                                                                                               (classify-binding_0
-                                                                                                                                                b_0)))
-                                                                                                                                          (hasheq
-                                                                                                                                           'name
-                                                                                                                                           app_0
-                                                                                                                                           'context
-                                                                                                                                           app_1
-                                                                                                                                           'match?
-                                                                                                                                           app_2
-                                                                                                                                           'via
-                                                                                                                                           (scope-id
-                                                                                                                                            sc_0)
-                                                                                                                                           app_3
-                                                                                                                                           (extract-binding_0
-                                                                                                                                            b_0))))))
-                                                                                                                                  bindings_1)))
-                                                                                                                            (let ((covered-scope-sets_3
-                                                                                                                                   (hash-set
+                                                                                                                   (let ((b_0
+                                                                                                                          (if (pair?
+                                                                                                                               i_1)
+                                                                                                                            (let ((bulk_0
+                                                                                                                                   (bulk-binding-at-bulk
+                                                                                                                                    (car
+                                                                                                                                     i_1))))
+                                                                                                                              (let ((b-info_0
+                                                                                                                                     (if (symbol-interned?
+                                                                                                                                          sym_0)
+                                                                                                                                       (hash-ref
+                                                                                                                                        (bulk-binding-symbols
+                                                                                                                                         bulk_0
+                                                                                                                                         s_2
+                                                                                                                                         extra-shifts_0)
+                                                                                                                                        sym_0
+                                                                                                                                        #f)
+                                                                                                                                       #f)))
+                                                                                                                                (if b-info_0
+                                                                                                                                  (|#%app|
+                                                                                                                                   (bulk-binding-class-create
+                                                                                                                                    (bulk-binding-ref
+                                                                                                                                     bulk_0))
+                                                                                                                                   bulk_0
+                                                                                                                                   b-info_0
+                                                                                                                                   sym_0)
+                                                                                                                                  #f)))
+                                                                                                                            (hash-iterate-value
+                                                                                                                             ht_1
+                                                                                                                             i_1))))
+                                                                                                                     (let ((scs_1
+                                                                                                                            scs_0))
+                                                                                                                       (call-with-values
+                                                                                                                        (lambda ()
+                                                                                                                          (if (if scs_1
+                                                                                                                                (if b_0
+                                                                                                                                  (not
+                                                                                                                                   (set-member?
                                                                                                                                     covered-scope-sets_2
-                                                                                                                                    scs_1
-                                                                                                                                    #t)))
-                                                                                                                              (let ((bindings_3
-                                                                                                                                     bindings_2))
-                                                                                                                                (values
-                                                                                                                                 bindings_3
-                                                                                                                                 covered-scope-sets_3))))
-                                                                                                                          (values
-                                                                                                                           bindings_1
-                                                                                                                           covered-scope-sets_2)))
-                                                                                                                      (lambda (bindings_2
-                                                                                                                               covered-scope-sets_3)
-                                                                                                                        (for-loop_2
-                                                                                                                         bindings_2
-                                                                                                                         covered-scope-sets_3
-                                                                                                                         (if (pair?
+                                                                                                                                    scs_1))
+                                                                                                                                  #f)
+                                                                                                                                #f)
+                                                                                                                            (let ((bindings_2
+                                                                                                                                   (cons
+                                                                                                                                    (let ((app_0
+                                                                                                                                           (syntax-e$1
+                                                                                                                                            s_0)))
+                                                                                                                                      (let ((app_1
+                                                                                                                                             (scope-set->context
+                                                                                                                                              scs_1)))
+                                                                                                                                        (let ((app_2
+                                                                                                                                               (subset?
+                                                                                                                                                scs_1
+                                                                                                                                                s-scs_0)))
+                                                                                                                                          (let ((app_3
+                                                                                                                                                 (classify-binding_0
+                                                                                                                                                  b_0)))
+                                                                                                                                            (hasheq
+                                                                                                                                             'name
+                                                                                                                                             app_0
+                                                                                                                                             'context
+                                                                                                                                             app_1
+                                                                                                                                             'match?
+                                                                                                                                             app_2
+                                                                                                                                             'via
+                                                                                                                                             (scope-base-id
+                                                                                                                                              sc_0)
+                                                                                                                                             app_3
+                                                                                                                                             (extract-binding_0
+                                                                                                                                              b_0))))))
+                                                                                                                                    bindings_1)))
+                                                                                                                              (let ((covered-scope-sets_3
+                                                                                                                                     (set-add
+                                                                                                                                      covered-scope-sets_2
+                                                                                                                                      scs_1)))
+                                                                                                                                (let ((bindings_3
+                                                                                                                                       bindings_2))
+                                                                                                                                  (values
+                                                                                                                                   bindings_3
+                                                                                                                                   covered-scope-sets_3))))
+                                                                                                                            (values
+                                                                                                                             bindings_1
+                                                                                                                             covered-scope-sets_2)))
+                                                                                                                        (lambda (bindings_2
+                                                                                                                                 covered-scope-sets_3)
+                                                                                                                          (for-loop_2
+                                                                                                                           bindings_2
+                                                                                                                           covered-scope-sets_3
+                                                                                                                           (if (pair?
+                                                                                                                                i_1)
+                                                                                                                             (cdr
                                                                                                                               i_1)
-                                                                                                                           (cdr
-                                                                                                                            i_1)
-                                                                                                                           (let ((or-part_0
-                                                                                                                                  (hash-iterate-next
-                                                                                                                                   ht_1
-                                                                                                                                   i_1)))
-                                                                                                                             (if or-part_0
-                                                                                                                               or-part_0
-                                                                                                                               bulk-bindings_1)))))))))
-                                                                                                               (values
-                                                                                                                bindings_1
-                                                                                                                covered-scope-sets_2))))))
-                                                                                                        (for-loop_2
-                                                                                                         bindings_0
-                                                                                                         covered-scope-sets_1
-                                                                                                         (let ((or-part_0
-                                                                                                                (hash-iterate-first
-                                                                                                                 ht_1)))
-                                                                                                           (if or-part_0
-                                                                                                             or-part_0
-                                                                                                             bulk-bindings_1)))))))))))
-                                                                                          (lambda (bindings_1
-                                                                                                   covered-scope-sets_2)
-                                                                                            (for-loop_1
-                                                                                             bindings_1
-                                                                                             covered-scope-sets_2
-                                                                                             (unsafe-immutable-hash-iterate-next
-                                                                                              s-scs_0
-                                                                                              i_0))))))
-                                                                                     (values
-                                                                                      bindings_0
-                                                                                      covered-scope-sets_1))))))
-                                                                              (for-loop_1
-                                                                               null
-                                                                               covered-scope-sets_0
-                                                                               (unsafe-immutable-hash-iterate-first
-                                                                                s-scs_0))))
+                                                                                                                             (let ((or-part_0
+                                                                                                                                    (hash-iterate-next
+                                                                                                                                     ht_1
+                                                                                                                                     i_1)))
+                                                                                                                               (if or-part_0
+                                                                                                                                 or-part_0
+                                                                                                                                 bulk-bindings_1)))))))))
+                                                                                                                 (values
+                                                                                                                  bindings_1
+                                                                                                                  covered-scope-sets_2))))))
+                                                                                                          (for-loop_2
+                                                                                                           bindings_0
+                                                                                                           covered-scope-sets_1
+                                                                                                           (let ((or-part_0
+                                                                                                                  (hash-iterate-first
+                                                                                                                   ht_1)))
+                                                                                                             (if or-part_0
+                                                                                                               or-part_0
+                                                                                                               bulk-bindings_1)))))))))))
+                                                                                            (lambda (bindings_1
+                                                                                                     covered-scope-sets_2)
+                                                                                              (for-loop_1
+                                                                                               bindings_1
+                                                                                               covered-scope-sets_2
+                                                                                               (if (scope-set?
+                                                                                                    s-scs_0)
+                                                                                                 (unsafe-cdr
+                                                                                                  i_0)
+                                                                                                 (unsafe-immutable-hash-iterate-next
+                                                                                                  s-scs_0
+                                                                                                  i_0)))))))
+                                                                                       (values
+                                                                                        bindings_0
+                                                                                        covered-scope-sets_1))))))
+                                                                                (for-loop_1
+                                                                                 null
+                                                                                 covered-scope-sets_0
+                                                                                 (if (scope-set?
+                                                                                      s-scs_0)
+                                                                                   (scope-set-elems
+                                                                                    s-scs_0)
+                                                                                   (unsafe-immutable-hash-iterate-first
+                                                                                    s-scs_0))))))
                                                                            (lambda (bindings_0
                                                                                     covered-scopess_0)
                                                                              bindings_0)))
@@ -21046,145 +22033,177 @@
                                                                   app_0
                                                                   (if all-bindings?_0
                                                                     (reverse$1
-                                                                     (letrec*
-                                                                      ((for-loop_1
-                                                                        (|#%name|
-                                                                         for-loop
-                                                                         (lambda (fold-var_1
-                                                                                  i_0)
-                                                                           (if i_0
-                                                                             (let ((sc_0
-                                                                                    (unsafe-immutable-hash-iterate-key
-                                                                                     s-scs_0
-                                                                                     i_0)))
-                                                                               (let ((fold-var_2
-                                                                                      (let ((sym-ht_0
-                                                                                             (let ((table_0
-                                                                                                    (scope-binding-table
-                                                                                                     sc_0)))
-                                                                                               (if (hash?
-                                                                                                    table_0)
-                                                                                                 table_0
-                                                                                                 (table-with-bulk-bindings-syms
-                                                                                                  table_0)))))
-                                                                                        (begin
-                                                                                          #t
-                                                                                          (letrec*
-                                                                                           ((for-loop_2
-                                                                                             (|#%name|
-                                                                                              for-loop
-                                                                                              (lambda (fold-var_2
+                                                                     (begin
+                                                                       (if (let ((or-part_0
+                                                                                  (scope-set?
+                                                                                   s-scs_0)))
+                                                                             (if or-part_0
+                                                                               or-part_0
+                                                                               (if (hash?
+                                                                                    s-scs_0)
+                                                                                 (immutable?
+                                                                                  s-scs_0)
+                                                                                 #f)))
+                                                                         (void)
+                                                                         (raise-argument-error
+                                                                          'in-set
+                                                                          "set?"
+                                                                          s-scs_0))
+                                                                       (letrec*
+                                                                        ((for-loop_1
+                                                                          (|#%name|
+                                                                           for-loop
+                                                                           (lambda (fold-var_1
+                                                                                    i_0)
+                                                                             (if (if (scope-set?
+                                                                                      s-scs_0)
+                                                                                   (pair?
+                                                                                    i_0)
+                                                                                   i_0)
+                                                                               (let ((sc_0
+                                                                                      (if (scope-set?
+                                                                                           s-scs_0)
+                                                                                        (unsafe-car
+                                                                                         i_0)
+                                                                                        (unsafe-immutable-hash-iterate-key
+                                                                                         s-scs_0
+                                                                                         i_0))))
+                                                                                 (let ((fold-var_2
+                                                                                        (let ((sym-ht_0
+                                                                                               (let ((table_0
+                                                                                                      (scope-binding-table
+                                                                                                       sc_0)))
+                                                                                                 (if (hash?
+                                                                                                      table_0)
+                                                                                                   table_0
+                                                                                                   (table-with-bulk-bindings-syms
+                                                                                                    table_0)))))
+                                                                                          (begin
+                                                                                            #t
+                                                                                            (letrec*
+                                                                                             ((for-loop_2
+                                                                                               (|#%name|
+                                                                                                for-loop
+                                                                                                (lambda (fold-var_2
+                                                                                                         state_0)
+                                                                                                  (if (car
                                                                                                        state_0)
-                                                                                                (if (car
-                                                                                                     state_0)
-                                                                                                  (let ((o-sym_0
-                                                                                                         (vector-ref
-                                                                                                          (car
-                                                                                                           state_0)
-                                                                                                          1)))
-                                                                                                    (let ((scs_0
-                                                                                                           (let ((app_1
-                                                                                                                  (vector-ref
-                                                                                                                   (car
-                                                                                                                    state_0)
-                                                                                                                   2)))
-                                                                                                             (hash-iterate-key
-                                                                                                              app_1
-                                                                                                              (cdr
-                                                                                                               state_0)))))
-                                                                                                      (let ((b_0
+                                                                                                    (let ((o-sym_0
+                                                                                                           (vector-ref
+                                                                                                            (car
+                                                                                                             state_0)
+                                                                                                            1)))
+                                                                                                      (let ((scs_0
                                                                                                              (let ((app_1
                                                                                                                     (vector-ref
                                                                                                                      (car
                                                                                                                       state_0)
                                                                                                                      2)))
-                                                                                                               (hash-iterate-value
+                                                                                                               (hash-iterate-key
                                                                                                                 app_1
                                                                                                                 (cdr
                                                                                                                  state_0)))))
-                                                                                                        (let ((scs_1
-                                                                                                               scs_0)
-                                                                                                              (o-sym_1
-                                                                                                               o-sym_0))
-                                                                                                          (let ((fold-var_3
-                                                                                                                 (if (eq?
-                                                                                                                      o-sym_1
-                                                                                                                      sym_0)
-                                                                                                                   fold-var_2
-                                                                                                                   (let ((fold-var_3
-                                                                                                                          (cons
-                                                                                                                           (let ((app_1
-                                                                                                                                  (scope-set->context
-                                                                                                                                   scs_1)))
-                                                                                                                             (let ((app_2
-                                                                                                                                    (classify-binding_0
-                                                                                                                                     b_0)))
-                                                                                                                               (hasheq
-                                                                                                                                'name
-                                                                                                                                o-sym_1
-                                                                                                                                'context
-                                                                                                                                app_1
-                                                                                                                                'match?
-                                                                                                                                #f
-                                                                                                                                app_2
-                                                                                                                                (extract-binding_0
-                                                                                                                                 b_0))))
-                                                                                                                           fold-var_2)))
-                                                                                                                     (values
-                                                                                                                      fold-var_3)))))
-                                                                                                            (for-loop_2
-                                                                                                             fold-var_3
-                                                                                                             (let ((ht_0
-                                                                                                                    (vector-ref
-                                                                                                                     (car
-                                                                                                                      state_0)
-                                                                                                                     2)))
-                                                                                                               (let ((i_1
-                                                                                                                      (hash-iterate-next
-                                                                                                                       ht_0
-                                                                                                                       (cdr
-                                                                                                                        state_0))))
-                                                                                                                 (if i_1
-                                                                                                                   (cons
-                                                                                                                    (car
-                                                                                                                     state_0)
-                                                                                                                    i_1)
-                                                                                                                   (next-state-in-full-binding-table
-                                                                                                                    sym-ht_0
-                                                                                                                    (hash-iterate-next
-                                                                                                                     sym-ht_0
-                                                                                                                     (vector-ref
+                                                                                                        (let ((b_0
+                                                                                                               (let ((app_1
+                                                                                                                      (vector-ref
+                                                                                                                       (car
+                                                                                                                        state_0)
+                                                                                                                       2)))
+                                                                                                                 (hash-iterate-value
+                                                                                                                  app_1
+                                                                                                                  (cdr
+                                                                                                                   state_0)))))
+                                                                                                          (let ((scs_1
+                                                                                                                 scs_0)
+                                                                                                                (o-sym_1
+                                                                                                                 o-sym_0))
+                                                                                                            (let ((fold-var_3
+                                                                                                                   (if (eq?
+                                                                                                                        o-sym_1
+                                                                                                                        sym_0)
+                                                                                                                     fold-var_2
+                                                                                                                     (let ((fold-var_3
+                                                                                                                            (cons
+                                                                                                                             (let ((app_1
+                                                                                                                                    (scope-set->context
+                                                                                                                                     scs_1)))
+                                                                                                                               (let ((app_2
+                                                                                                                                      (classify-binding_0
+                                                                                                                                       b_0)))
+                                                                                                                                 (hasheq
+                                                                                                                                  'name
+                                                                                                                                  o-sym_1
+                                                                                                                                  'context
+                                                                                                                                  app_1
+                                                                                                                                  'match?
+                                                                                                                                  #f
+                                                                                                                                  app_2
+                                                                                                                                  (extract-binding_0
+                                                                                                                                   b_0))))
+                                                                                                                             fold-var_2)))
+                                                                                                                       (values
+                                                                                                                        fold-var_3)))))
+                                                                                                              (for-loop_2
+                                                                                                               fold-var_3
+                                                                                                               (let ((ht_0
+                                                                                                                      (vector-ref
+                                                                                                                       (car
+                                                                                                                        state_0)
+                                                                                                                       2)))
+                                                                                                                 (let ((i_1
+                                                                                                                        (hash-iterate-next
+                                                                                                                         ht_0
+                                                                                                                         (cdr
+                                                                                                                          state_0))))
+                                                                                                                   (if i_1
+                                                                                                                     (cons
                                                                                                                       (car
                                                                                                                        state_0)
-                                                                                                                      0))))))))))))
-                                                                                                  fold-var_2)))))
-                                                                                           (for-loop_2
-                                                                                            fold-var_1
-                                                                                            (letrec*
-                                                                                             ((loop_0
-                                                                                               (|#%name|
-                                                                                                loop
-                                                                                                (lambda (sym-i_0)
-                                                                                                  (if sym-i_0
-                                                                                                    (next-state-in-full-binding-table
-                                                                                                     sym-ht_0
-                                                                                                     sym-i_0)
-                                                                                                    '(#f
-                                                                                                      .
-                                                                                                      #f))))))
-                                                                                             (loop_0
-                                                                                              (hash-iterate-first
-                                                                                               sym-ht_0)))))))))
-                                                                                 (for-loop_1
-                                                                                  fold-var_2
-                                                                                  (unsafe-immutable-hash-iterate-next
-                                                                                   s-scs_0
-                                                                                   i_0))))
-                                                                             fold-var_1)))))
-                                                                      (for-loop_1
-                                                                       null
-                                                                       (unsafe-immutable-hash-iterate-first
-                                                                        s-scs_0))))
+                                                                                                                      i_1)
+                                                                                                                     (next-state-in-full-binding-table
+                                                                                                                      sym-ht_0
+                                                                                                                      (hash-iterate-next
+                                                                                                                       sym-ht_0
+                                                                                                                       (vector-ref
+                                                                                                                        (car
+                                                                                                                         state_0)
+                                                                                                                        0))))))))))))
+                                                                                                    fold-var_2)))))
+                                                                                             (for-loop_2
+                                                                                              fold-var_1
+                                                                                              (letrec*
+                                                                                               ((loop_0
+                                                                                                 (|#%name|
+                                                                                                  loop
+                                                                                                  (lambda (sym-i_0)
+                                                                                                    (if sym-i_0
+                                                                                                      (next-state-in-full-binding-table
+                                                                                                       sym-ht_0
+                                                                                                       sym-i_0)
+                                                                                                      '(#f
+                                                                                                        .
+                                                                                                        #f))))))
+                                                                                               (loop_0
+                                                                                                (hash-iterate-first
+                                                                                                 sym-ht_0)))))))))
+                                                                                   (for-loop_1
+                                                                                    fold-var_2
+                                                                                    (if (scope-set?
+                                                                                         s-scs_0)
+                                                                                      (unsafe-cdr
+                                                                                       i_0)
+                                                                                      (unsafe-immutable-hash-iterate-next
+                                                                                       s-scs_0
+                                                                                       i_0)))))
+                                                                               fold-var_1)))))
+                                                                        (for-loop_1
+                                                                         null
+                                                                         (if (scope-set?
+                                                                              s-scs_0)
+                                                                           (scope-set-elems
+                                                                            s-scs_0)
+                                                                           (unsafe-immutable-hash-iterate-first
+                                                                            s-scs_0))))))
                                                                     null)))))
                                                           (if (null?
                                                                bindings_0)
@@ -21206,37 +22225,54 @@
   (lambda (scs_0)
     (let ((temp1_0
            (reverse$1
-            (letrec*
-             ((for-loop_0
-               (|#%name|
-                for-loop
-                (lambda (fold-var_0 i_0)
-                  (if i_0
-                    (let ((sc_0 (unsafe-immutable-hash-iterate-key scs_0 i_0)))
-                      (let ((fold-var_1
-                             (let ((fold-var_1
-                                    (cons
-                                     (if (interned-scope? sc_0)
-                                       (vector
-                                        (scope-id sc_0)
-                                        (scope-kind sc_0)
-                                        (interned-scope-key sc_0))
-                                       (if (representative-scope? sc_0)
+            (begin
+              (if (let ((or-part_0 (scope-set? scs_0)))
+                    (if or-part_0
+                      or-part_0
+                      (if (hash? scs_0) (immutable? scs_0) #f)))
+                (void)
+                (raise-argument-error 'in-set "set?" scs_0))
+              (letrec*
+               ((for-loop_0
+                 (|#%name|
+                  for-loop
+                  (lambda (fold-var_0 i_0)
+                    (if (if (scope-set? scs_0) (pair? i_0) i_0)
+                      (let ((sc_0
+                             (if (scope-set? scs_0)
+                               (unsafe-car i_0)
+                               (unsafe-immutable-hash-iterate-key scs_0 i_0))))
+                        (let ((fold-var_1
+                               (let ((fold-var_1
+                                      (cons
+                                       (if (interned-scope? sc_0)
                                          (vector
-                                          (scope-id sc_0)
+                                          (scope-base-id sc_0)
                                           (scope-kind sc_0)
-                                          (multi-scope-name
-                                           (representative-scope-owner sc_0)))
-                                         (vector
-                                          (scope-id sc_0)
-                                          (scope-kind sc_0))))
-                                     fold-var_0)))
-                               (values fold-var_1))))
-                        (for-loop_0
-                         fold-var_1
-                         (unsafe-immutable-hash-iterate-next scs_0 i_0))))
-                    fold-var_0)))))
-             (for-loop_0 null (unsafe-immutable-hash-iterate-first scs_0))))))
+                                          (interned-scope-key sc_0))
+                                         (if (representative-scope? sc_0)
+                                           (vector
+                                            (scope-base-id sc_0)
+                                            (scope-kind sc_0)
+                                            (multi-scope-name
+                                             (representative-scope-owner
+                                              sc_0)))
+                                           (vector
+                                            (scope-base-id sc_0)
+                                            (scope-kind sc_0))))
+                                       fold-var_0)))
+                                 (values fold-var_1))))
+                          (for-loop_0
+                           fold-var_1
+                           (if (scope-set? scs_0)
+                             (unsafe-cdr i_0)
+                             (unsafe-immutable-hash-iterate-next scs_0 i_0)))))
+                      fold-var_0)))))
+               (for-loop_0
+                null
+                (if (scope-set? scs_0)
+                  (scope-set-elems scs_0)
+                  (unsafe-immutable-hash-iterate-first scs_0))))))))
       (let ((temp3_0 (lambda (v_0) (vector-ref v_0 0))))
         (let ((temp1_1 temp1_0)) (sort.1 #f temp3_0 temp1_1 <))))))
 (define raise-ambiguous-error
@@ -21509,7 +22545,7 @@
                     (loop_0 info_0 0))))
               (string-append
                app_0
-               (if (zero? (hash-count common-scopes_0))
+               (if (set-empty? common-scopes_0)
                  ""
                  (string-append
                   "\n  common scopes...:"
@@ -21525,10 +22561,9 @@
                                     (let ((s_1 (unsafe-car lst_1)))
                                       (let ((rest_0 (unsafe-cdr lst_1)))
                                         (let ((fold-var_1
-                                               (if (hash-ref
+                                               (if (set-member?
                                                     common-scopes_0
-                                                    s_1
-                                                    #f)
+                                                    s_1)
                                                  (let ((fold-var_1
                                                         (cons s_1 fold-var_0)))
                                                    (values fold-var_1))
@@ -21562,7 +22597,7 @@
                          (loop_0 app_0 (cdr scopes_1))))))))))
             (loop_0
              null
-             (if (zero? (hash-count common-scopes_0))
+             (if (set-empty? common-scopes_0)
                scopes_0
                (let ((app_0
                       (reverse$1
@@ -21576,10 +22611,9 @@
                                  (let ((rest_0 (unsafe-cdr lst_0)))
                                    (let ((fold-var_1
                                           (if (not
-                                               (hash-ref
+                                               (set-member?
                                                 common-scopes_0
-                                                s_0
-                                                #f))
+                                                s_0))
                                             (let ((fold-var_1
                                                    (cons s_0 fold-var_0)))
                                               (values fold-var_1))
@@ -27308,34 +28342,46 @@
                                (void)))))))
                   (let ((len_0 (unsafe-vector*-ref vec_0 (add1 pos_0))))
                     (let ((pos_1 (let ((pos_1 (+ pos_0 2))) pos_1)))
-                      (letrec*
-                       ((for-loop_0
-                         (|#%name|
-                          for-loop
-                          (lambda (s_1 pos_2 pos_3)
-                            (if (< pos_3 len_0)
-                              (call-with-values
-                               (lambda ()
+                      (call-with-values
+                       (lambda ()
+                         (letrec*
+                          ((for-loop_0
+                            (|#%name|
+                             for-loop
+                             (lambda (s_1 pos_2 pos_3)
+                               (if (< pos_3 len_0)
                                  (call-with-values
                                   (lambda ()
                                     (call-with-values
                                      (lambda ()
-                                       (decode
-                                        vec_0
-                                        pos_2
-                                        mpis_0
-                                        inspector_0
-                                        bulk-binding-registry_0
-                                        shared_0))
-                                     (lambda (k_0 next-pos_0)
-                                       (values
-                                        (hash-set s_1 k_0 #t)
-                                        next-pos_0))))
-                                  (lambda (s_2 pos_4) (values s_2 pos_4))))
-                               (lambda (s_2 pos_4)
-                                 (for-loop_0 s_2 pos_4 (+ pos_3 1))))
-                              (values s_1 pos_2))))))
-                       (for-loop_0 s_0 pos_1 0)))))
+                                       (call-with-values
+                                        (lambda ()
+                                          (decode
+                                           vec_0
+                                           pos_2
+                                           mpis_0
+                                           inspector_0
+                                           bulk-binding-registry_0
+                                           shared_0))
+                                        (lambda (k_0 next-pos_0)
+                                          (values
+                                           (set-add s_1 k_0)
+                                           next-pos_0))))
+                                     (lambda (s_2 pos_4) (values s_2 pos_4))))
+                                  (lambda (s_2 pos_4)
+                                    (for-loop_0 s_2 pos_4 (+ pos_3 1))))
+                                 (values s_1 pos_2))))))
+                          (for-loop_0 s_0 pos_1 0)))
+                       (lambda (new-s_0 new-pos_0)
+                         (values
+                          (if (if (positive? len_0)
+                                (if (hash-eq? new-s_0)
+                                  (scope? (set-first new-s_0))
+                                  #f)
+                                #f)
+                            (->scope-set new-s_0)
+                            new-s_0)
+                          new-pos_0))))))
                 (if (unsafe-fx< index_0 17)
                   (call-with-values
                    (lambda ()
@@ -27401,10 +28447,12 @@
                       shared_0))
                    (lambda (kind_0 next-pos_0)
                      (values
-                      (scope1.1
-                       (new-deserialize-scope-id!)
-                       kind_0
-                       empty-binding-table)
+                      (let ((id_0 (new-deserialize-scope-id!)))
+                        (scope1.1
+                         id_0
+                         (make-scope-key id_0)
+                         kind_0
+                         empty-binding-table))
                       next-pos_0)))
                   (call-with-values
                    (lambda ()
@@ -28090,8 +29138,7 @@
                               (if (scope-with-bindings? v_1)
                                 (begin
                                   (set! reachable-scopes_0
-                                    (let ((s_0 reachable-scopes_0))
-                                      (hash-set s_0 v_1 #t)))
+                                    (set-add reachable-scopes_0 v_1))
                                   (|#%app|
                                    (reach-scopes-ref v_1)
                                    v_1
@@ -28133,13 +29180,12 @@
                                         xform_0
                                         null)))
                                    (lambda (sc_0)
-                                     (if (let ((s_0 reachable-scopes_0))
-                                           (hash-ref s_0 sc_0 #f))
+                                     (if (set-member? reachable-scopes_0 sc_0)
                                        (void)
                                        (set! implicitly-reachable-scopes_0
-                                         (let ((s_0
-                                                implicitly-reachable-scopes_0))
-                                           (hash-set s_0 sc_0 #t)))))
+                                         (set-add
+                                          implicitly-reachable-scopes_0
+                                          sc_0))))
                                    report-shifts_0))
                                 (if (reach-scopes? v_1)
                                   (|#%app|
@@ -29502,56 +30548,85 @@
    (lambda (exactly?2_0 only-interned?1_0 s5_0 phase6_0)
      (let ((s-scs_0 (syntax-scope-set s5_0 phase6_0)))
        (let ((syms_0 (let ((syms_0 (seteq))) syms_0)))
-         (letrec*
-          ((for-loop_0
-            (|#%name|
-             for-loop
-             (lambda (syms_1 i_0)
-               (if i_0
-                 (let ((sc_0 (unsafe-immutable-hash-iterate-key s-scs_0 i_0)))
-                   (let ((syms_2
-                          (let ((syms_2
-                                 (set-union
-                                  syms_1
-                                  (let ((temp13_0 (scope-binding-table sc_0)))
-                                    (binding-table-symbols.1
-                                     exactly?2_0
-                                     only-interned?1_0
-                                     temp13_0
-                                     s-scs_0
-                                     s5_0
-                                     null)))))
-                            (values syms_2))))
-                     (for-loop_0
-                      syms_2
-                      (unsafe-immutable-hash-iterate-next s-scs_0 i_0))))
-                 syms_1)))))
-          (for-loop_0
-           syms_0
-           (unsafe-immutable-hash-iterate-first s-scs_0))))))))
+         (begin
+           (if (let ((or-part_0 (scope-set? s-scs_0)))
+                 (if or-part_0
+                   or-part_0
+                   (if (hash? s-scs_0) (immutable? s-scs_0) #f)))
+             (void)
+             (raise-argument-error 'in-set "set?" s-scs_0))
+           (letrec*
+            ((for-loop_0
+              (|#%name|
+               for-loop
+               (lambda (syms_1 i_0)
+                 (if (if (scope-set? s-scs_0) (pair? i_0) i_0)
+                   (let ((sc_0
+                          (if (scope-set? s-scs_0)
+                            (unsafe-car i_0)
+                            (unsafe-immutable-hash-iterate-key s-scs_0 i_0))))
+                     (let ((syms_2
+                            (let ((syms_2
+                                   (set-union
+                                    syms_1
+                                    (let ((temp13_0
+                                           (scope-binding-table sc_0)))
+                                      (binding-table-symbols.1
+                                       exactly?2_0
+                                       only-interned?1_0
+                                       temp13_0
+                                       s-scs_0
+                                       s5_0
+                                       null)))))
+                              (values syms_2))))
+                       (for-loop_0
+                        syms_2
+                        (if (scope-set? s-scs_0)
+                          (unsafe-cdr i_0)
+                          (unsafe-immutable-hash-iterate-next s-scs_0 i_0)))))
+                   syms_1)))))
+            (for-loop_0
+             syms_0
+             (if (scope-set? s-scs_0)
+               (scope-set-elems s-scs_0)
+               (unsafe-immutable-hash-iterate-first s-scs_0))))))))))
 (define syntax-mapped-phases
   (lambda (s_0)
     (let ((smss_0 (fallback-first (syntax-shifted-multi-scopes s_0))))
-      (letrec*
-       ((for-loop_0
-         (|#%name|
-          for-loop
-          (lambda (phases_0 i_0)
-            (if i_0
-              (let ((sms_0 (unsafe-immutable-hash-iterate-key smss_0 i_0)))
-                (let ((phases_1
-                       (let ((phases_1
-                              (shifted-multi-scope-add-binding-phases
-                               sms_0
-                               phases_0)))
-                         (values phases_1))))
-                  (for-loop_0
-                   phases_1
-                   (unsafe-immutable-hash-iterate-next smss_0 i_0))))
-              phases_0)))))
-       (for-loop_0
-        the-empty-hasheqv
-        (unsafe-immutable-hash-iterate-first smss_0))))))
+      (begin
+        (if (let ((or-part_0 (scope-set? smss_0)))
+              (if or-part_0
+                or-part_0
+                (if (hash? smss_0) (immutable? smss_0) #f)))
+          (void)
+          (raise-argument-error 'in-set "set?" smss_0))
+        (letrec*
+         ((for-loop_0
+           (|#%name|
+            for-loop
+            (lambda (phases_0 i_0)
+              (if (if (scope-set? smss_0) (pair? i_0) i_0)
+                (let ((sms_0
+                       (if (scope-set? smss_0)
+                         (unsafe-car i_0)
+                         (unsafe-immutable-hash-iterate-key smss_0 i_0))))
+                  (let ((phases_1
+                         (let ((phases_1
+                                (shifted-multi-scope-add-binding-phases
+                                 sms_0
+                                 phases_0)))
+                           (values phases_1))))
+                    (for-loop_0
+                     phases_1
+                     (if (scope-set? smss_0)
+                       (unsafe-cdr i_0)
+                       (unsafe-immutable-hash-iterate-next smss_0 i_0)))))
+                phases_0)))))
+         (for-loop_0
+          the-empty-hasheqv
+          (if (scope-set? smss_0)
+            (scope-set-elems smss_0)
+            (unsafe-immutable-hash-iterate-first smss_0))))))))
 (define syntax-mapped-interned-scope-symbols.1
   (|#%name|
    syntax-mapped-interned-scope-symbols
@@ -29559,37 +30634,54 @@
      (let ((s-scs_0 (syntax-scope-set s10_0 phase11_0)))
        (let ((sym_0 (syntax-e$1 s10_0)))
          (let ((syms_0 (let ((syms_0 (seteq))) syms_0)))
-           (letrec*
-            ((for-loop_0
-              (|#%name|
-               for-loop
-               (lambda (syms_1 i_0)
-                 (if i_0
-                   (let ((sc_0
-                          (unsafe-immutable-hash-iterate-key s-scs_0 i_0)))
-                     (let ((syms_2
-                            (let ((syms_2
-                                   (set-union
-                                    syms_1
-                                    (let ((temp19_0
-                                           (scope-binding-table sc_0)))
-                                      (binding-table-interned-scope-keys.1
-                                       exactly?8_0
-                                       temp19_0
-                                       s-scs_0
-                                       sym_0
-                                       s10_0
-                                       null
-                                       interned-scope?
-                                       interned-scope-key)))))
-                              (values syms_2))))
-                       (for-loop_0
-                        syms_2
-                        (unsafe-immutable-hash-iterate-next s-scs_0 i_0))))
-                   syms_1)))))
-            (for-loop_0
-             syms_0
-             (unsafe-immutable-hash-iterate-first s-scs_0)))))))))
+           (begin
+             (if (let ((or-part_0 (scope-set? s-scs_0)))
+                   (if or-part_0
+                     or-part_0
+                     (if (hash? s-scs_0) (immutable? s-scs_0) #f)))
+               (void)
+               (raise-argument-error 'in-set "set?" s-scs_0))
+             (letrec*
+              ((for-loop_0
+                (|#%name|
+                 for-loop
+                 (lambda (syms_1 i_0)
+                   (if (if (scope-set? s-scs_0) (pair? i_0) i_0)
+                     (let ((sc_0
+                            (if (scope-set? s-scs_0)
+                              (unsafe-car i_0)
+                              (unsafe-immutable-hash-iterate-key
+                               s-scs_0
+                               i_0))))
+                       (let ((syms_2
+                              (let ((syms_2
+                                     (set-union
+                                      syms_1
+                                      (let ((temp19_0
+                                             (scope-binding-table sc_0)))
+                                        (binding-table-interned-scope-keys.1
+                                         exactly?8_0
+                                         temp19_0
+                                         s-scs_0
+                                         sym_0
+                                         s10_0
+                                         null
+                                         interned-scope?
+                                         interned-scope-key)))))
+                                (values syms_2))))
+                         (for-loop_0
+                          syms_2
+                          (if (scope-set? s-scs_0)
+                            (unsafe-cdr i_0)
+                            (unsafe-immutable-hash-iterate-next
+                             s-scs_0
+                             i_0)))))
+                     syms_1)))))
+              (for-loop_0
+               syms_0
+               (if (scope-set? s-scs_0)
+                 (scope-set-elems s-scs_0)
+                 (unsafe-immutable-hash-iterate-first s-scs_0)))))))))))
 (define finish_3291
   (make-struct-type-install-properties
    '(requires+provides)
@@ -34141,13 +35233,10 @@
                                                                                 sym_0
                                                                                 (if (adjust-only?
                                                                                      adjust50_0)
-                                                                                  (if (let ((s_0
-                                                                                             (adjust-only-syms
-                                                                                              adjust50_0)))
-                                                                                        (hash-ref
-                                                                                         s_0
-                                                                                         sym_0
-                                                                                         #f))
+                                                                                  (if (set-member?
+                                                                                       (adjust-only-syms
+                                                                                        adjust50_0)
+                                                                                       sym_0)
                                                                                     (if (hash-set!
                                                                                          done-syms_0
                                                                                          sym_0
@@ -34169,13 +35258,10 @@
                                                                                     (if (adjust-all-except?
                                                                                          adjust50_0)
                                                                                       (if (not
-                                                                                           (if (let ((s_0
-                                                                                                      (adjust-all-except-syms
-                                                                                                       adjust50_0)))
-                                                                                                 (hash-ref
-                                                                                                  s_0
-                                                                                                  sym_0
-                                                                                                  #f))
+                                                                                           (if (set-member?
+                                                                                                (adjust-all-except-syms
+                                                                                                 adjust50_0)
+                                                                                                sym_0)
                                                                                              (hash-set!
                                                                                               done-syms_0
                                                                                               sym_0
@@ -34355,7 +35441,7 @@
                                              (if (if need-syms_0
                                                    (not
                                                     (let ((app_0
-                                                           (hash-count
+                                                           (set-count
                                                             need-syms_0)))
                                                       (=
                                                        app_0
@@ -34363,35 +35449,66 @@
                                                         done-syms_0))))
                                                    #f)
                                                (begin
-                                                 (letrec*
-                                                  ((for-loop_0
-                                                    (|#%name|
-                                                     for-loop
-                                                     (lambda (i_0)
-                                                       (if i_0
-                                                         (let ((sym_0
-                                                                (unsafe-immutable-hash-iterate-key
-                                                                 need-syms_0
-                                                                 i_0)))
-                                                           (begin
-                                                             (if (hash-ref
-                                                                  done-syms_0
-                                                                  sym_0
-                                                                  #f)
-                                                               (void)
-                                                               (raise-syntax-error$1
-                                                                who60_0
-                                                                "not in nested spec"
-                                                                orig-s78_0
-                                                                sym_0))
-                                                             (for-loop_0
-                                                              (unsafe-immutable-hash-iterate-next
-                                                               need-syms_0
-                                                               i_0))))
-                                                         (values))))))
-                                                  (for-loop_0
-                                                   (unsafe-immutable-hash-iterate-first
-                                                    need-syms_0)))
+                                                 (begin
+                                                   (if (let ((or-part_0
+                                                              (scope-set?
+                                                               need-syms_0)))
+                                                         (if or-part_0
+                                                           or-part_0
+                                                           (if (hash?
+                                                                need-syms_0)
+                                                             (immutable?
+                                                              need-syms_0)
+                                                             #f)))
+                                                     (void)
+                                                     (raise-argument-error
+                                                      'in-set
+                                                      "set?"
+                                                      need-syms_0))
+                                                   (letrec*
+                                                    ((for-loop_0
+                                                      (|#%name|
+                                                       for-loop
+                                                       (lambda (i_0)
+                                                         (if (if (scope-set?
+                                                                  need-syms_0)
+                                                               (pair? i_0)
+                                                               i_0)
+                                                           (let ((sym_0
+                                                                  (if (scope-set?
+                                                                       need-syms_0)
+                                                                    (unsafe-car
+                                                                     i_0)
+                                                                    (unsafe-immutable-hash-iterate-key
+                                                                     need-syms_0
+                                                                     i_0))))
+                                                             (begin
+                                                               (if (hash-ref
+                                                                    done-syms_0
+                                                                    sym_0
+                                                                    #f)
+                                                                 (void)
+                                                                 (raise-syntax-error$1
+                                                                  who60_0
+                                                                  "not in nested spec"
+                                                                  orig-s78_0
+                                                                  sym_0))
+                                                               (for-loop_0
+                                                                (if (scope-set?
+                                                                     need-syms_0)
+                                                                  (unsafe-cdr
+                                                                   i_0)
+                                                                  (unsafe-immutable-hash-iterate-next
+                                                                   need-syms_0
+                                                                   i_0)))))
+                                                           (values))))))
+                                                    (for-loop_0
+                                                     (if (scope-set?
+                                                          need-syms_0)
+                                                       (scope-set-elems
+                                                        need-syms_0)
+                                                       (unsafe-immutable-hash-iterate-first
+                                                        need-syms_0)))))
                                                  (void))
                                                (void)))))))))))))))))))
            (if log-performance? (end-performance-region) (void))))))))
@@ -35445,7 +36562,7 @@
 (define correlated-column (lambda (s_0) (syntax-column s_0)))
 (define correlated-position (lambda (s_0) (syntax-position s_0)))
 (define correlated-span (lambda (s_0) (syntax-span s_0)))
-(define finish_2248
+(define finish_2249
   (make-struct-type-install-properties
    '(correlated-linklet)
    3
@@ -35471,7 +36588,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2738 (finish_2248 struct:correlated-linklet))
+(define effect_2738 (finish_2249 struct:correlated-linklet))
 (define correlated-linklet1.1
   (|#%name|
    correlated-linklet
@@ -36612,11 +37729,11 @@
         (let ((app_0 (seteq post-expansion-sc_0)))
           (values
            app_0
-           (let ((s_0
-                  (list->seteq
-                   (root-expand-context/inner-module-scopes
-                    (root-expand-context/outer-inner root-ctx_0)))))
-             (hash-remove s_0 post-expansion-sc_0))))))))
+           (set-remove
+            (list->seteq
+             (root-expand-context/inner-module-scopes
+              (root-expand-context/outer-inner root-ctx_0)))
+            post-expansion-sc_0)))))))
 (define extract-namespace-scopes
   (lambda (ns_0)
     (call-with-values
@@ -37312,8 +38429,7 @@
                  (let ((extra-inspectors_0
                         (header-import-sym-to-extra-inspectors header12_0)))
                    (let ((xform_0
-                          (lambda (s_0)
-                            (hash-set s_0 extra-inspector16_0 #t))))
+                          (lambda (s_0) (set-add s_0 extra-inspector16_0))))
                      (let ((default_0 hash2610))
                        (do-hash-update
                         'hash-update!
@@ -37735,37 +38851,53 @@
   (lambda (extra-inspectors_0 guard-insp_0)
     (if (not extra-inspectors_0)
       #f
-      (if (hash? extra-inspectors_0)
-        (letrec*
-         ((for-loop_0
-           (|#%name|
-            for-loop
-            (lambda (result_0 i_0)
-              (if i_0
-                (let ((extra-insp_0
-                       (unsafe-immutable-hash-iterate-key
-                        extra-inspectors_0
-                        i_0)))
-                  (let ((result_1
-                         (let ((result_1
-                                (inspector-superior?
-                                 extra-insp_0
-                                 guard-insp_0)))
-                           (values result_1))))
-                    (if (if (not
-                             (let ((x_0 (list extra-insp_0))) (not result_1)))
-                          #t
-                          #f)
-                      (for-loop_0
-                       result_1
-                       (unsafe-immutable-hash-iterate-next
-                        extra-inspectors_0
-                        i_0))
-                      result_1)))
-                result_0)))))
-         (for-loop_0
-          #t
-          (unsafe-immutable-hash-iterate-first extra-inspectors_0)))
+      (if (set? extra-inspectors_0)
+        (begin
+          (if (let ((or-part_0 (scope-set? extra-inspectors_0)))
+                (if or-part_0
+                  or-part_0
+                  (if (hash? extra-inspectors_0)
+                    (immutable? extra-inspectors_0)
+                    #f)))
+            (void)
+            (raise-argument-error 'in-set "set?" extra-inspectors_0))
+          (letrec*
+           ((for-loop_0
+             (|#%name|
+              for-loop
+              (lambda (result_0 i_0)
+                (if (if (scope-set? extra-inspectors_0) (pair? i_0) i_0)
+                  (let ((extra-insp_0
+                         (if (scope-set? extra-inspectors_0)
+                           (unsafe-car i_0)
+                           (unsafe-immutable-hash-iterate-key
+                            extra-inspectors_0
+                            i_0))))
+                    (let ((result_1
+                           (let ((result_1
+                                  (inspector-superior?
+                                   extra-insp_0
+                                   guard-insp_0)))
+                             (values result_1))))
+                      (if (if (not
+                               (let ((x_0 (list extra-insp_0)))
+                                 (not result_1)))
+                            #t
+                            #f)
+                        (for-loop_0
+                         result_1
+                         (if (scope-set? extra-inspectors_0)
+                           (unsafe-cdr i_0)
+                           (unsafe-immutable-hash-iterate-next
+                            extra-inspectors_0
+                            i_0)))
+                        result_1)))
+                  result_0)))))
+           (for-loop_0
+            #t
+            (if (scope-set? extra-inspectors_0)
+              (scope-set-elems extra-inspectors_0)
+              (unsafe-immutable-hash-iterate-first extra-inspectors_0)))))
         (if (procedure? extra-inspectors_0)
           (|#%app| extra-inspectors_0 guard-insp_0)
           (error
@@ -37777,7 +38909,7 @@
     (if (let ((or-part_0 (not extra-inspectors-1_0)))
           (if or-part_0 or-part_0 (not extra-inspectors-2_0)))
       #f
-      (if (if (hash? extra-inspectors-1_0) (hash? extra-inspectors-2_0) #f)
+      (if (if (set? extra-inspectors-1_0) (set? extra-inspectors-2_0) #f)
         (set-union extra-inspectors-1_0 extra-inspectors-2_0)
         (lambda (guard-insp_0)
           (if (extra-inspectors-allow? extra-inspectors-1_0 guard-insp_0)
@@ -43699,36 +44831,34 @@
                   (let ((app_0 (sub1 (correlated-length v_0))))
                     (=
                      app_0
-                     (let ((table_0 hash2725))
-                       (let ((s_0
-                              (let ((table_1 table_0))
-                                (let ((lst_0 (cdr (correlated->list v_0))))
-                                  (letrec*
-                                   ((for-loop_0
-                                     (|#%name|
-                                      for-loop
-                                      (lambda (table_2 lst_1)
-                                        (if (pair? lst_1)
-                                          (let ((prop+val_0
-                                                 (unsafe-car lst_1)))
-                                            (let ((rest_0 (unsafe-cdr lst_1)))
-                                              (let ((table_3
-                                                     (let ((table_3
-                                                            (let ((key_0
-                                                                   (correlated-e
-                                                                    (list-ref
-                                                                     (correlated->list
-                                                                      prop+val_0)
-                                                                     1))))
-                                                              (hash-set
-                                                               table_2
-                                                               key_0
-                                                               #t))))
-                                                       (values table_3))))
-                                                (for-loop_0 table_3 rest_0))))
-                                          table_2)))))
-                                   (for-loop_0 table_1 lst_0))))))
-                         (hash-count s_0)))))
+                     (set-count
+                      (let ((table_0 hash2725))
+                        (let ((table_1 table_0))
+                          (let ((lst_0 (cdr (correlated->list v_0))))
+                            (letrec*
+                             ((for-loop_0
+                               (|#%name|
+                                for-loop
+                                (lambda (table_2 lst_1)
+                                  (if (pair? lst_1)
+                                    (let ((prop+val_0 (unsafe-car lst_1)))
+                                      (let ((rest_0 (unsafe-cdr lst_1)))
+                                        (let ((table_3
+                                               (let ((table_3
+                                                      (let ((key_0
+                                                             (correlated-e
+                                                              (list-ref
+                                                               (correlated->list
+                                                                prop+val_0)
+                                                               1))))
+                                                        (hash-set
+                                                         table_2
+                                                         key_0
+                                                         #t))))
+                                                 (values table_3))))
+                                          (for-loop_0 table_3 rest_0))))
+                                    table_2)))))
+                             (for-loop_0 table_1 lst_0))))))))
                   #f)
                 #f)
               #f)))))))
@@ -43924,36 +45054,34 @@
                   (let ((app_0 (sub1 (correlated-length v_0))))
                     (=
                      app_0
-                     (let ((table_0 hash2725))
-                       (let ((s_0
-                              (let ((table_1 table_0))
-                                (let ((lst_0 (cdr (correlated->list v_0))))
-                                  (letrec*
-                                   ((for-loop_0
-                                     (|#%name|
-                                      for-loop
-                                      (lambda (table_2 lst_1)
-                                        (if (pair? lst_1)
-                                          (let ((prop+val_0
-                                                 (unsafe-car lst_1)))
-                                            (let ((rest_0 (unsafe-cdr lst_1)))
-                                              (let ((table_3
-                                                     (let ((table_3
-                                                            (let ((key_0
-                                                                   (correlated-e
-                                                                    (list-ref
-                                                                     (correlated->list
-                                                                      prop+val_0)
-                                                                     1))))
-                                                              (hash-set
-                                                               table_2
-                                                               key_0
-                                                               #t))))
-                                                       (values table_3))))
-                                                (for-loop_0 table_3 rest_0))))
-                                          table_2)))))
-                                   (for-loop_0 table_1 lst_0))))))
-                         (hash-count s_0)))))
+                     (set-count
+                      (let ((table_0 hash2725))
+                        (let ((table_1 table_0))
+                          (let ((lst_0 (cdr (correlated->list v_0))))
+                            (letrec*
+                             ((for-loop_0
+                               (|#%name|
+                                for-loop
+                                (lambda (table_2 lst_1)
+                                  (if (pair? lst_1)
+                                    (let ((prop+val_0 (unsafe-car lst_1)))
+                                      (let ((rest_0 (unsafe-cdr lst_1)))
+                                        (let ((table_3
+                                               (let ((table_3
+                                                      (let ((key_0
+                                                             (correlated-e
+                                                              (list-ref
+                                                               (correlated->list
+                                                                prop+val_0)
+                                                               1))))
+                                                        (hash-set
+                                                         table_2
+                                                         key_0
+                                                         #t))))
+                                                 (values table_3))))
+                                          (for-loop_0 table_3 rest_0))))
+                                    table_2)))))
+                             (for-loop_0 table_1 lst_0))))))))
                   #f)
                 #f)
               #f)))))))
@@ -44087,9 +45215,7 @@
                    (let ((l_0 (map_2353 correlated-e (correlated->list v_0))))
                      (if (andmap_2814 exact-nonnegative-integer? l_0)
                        (if (let ((app_0 (length l_0)))
-                             (=
-                              app_0
-                              (let ((s_0 (list->set l_0))) (hash-count s_0))))
+                             (= app_0 (set-count (list->set l_0))))
                          l_0
                          #f)
                        #f))
@@ -50817,13 +51943,11 @@
   (lambda () (let ((app_0 (seteq))) (reference-record1.1 app_0 (seteq) #f))))
 (define reference-record-used!
   (lambda (rr_0 key_0)
-    (if (let ((s_0 (reference-record-already-bound rr_0)))
-          (hash-ref s_0 key_0 #f))
+    (if (set-member? (reference-record-already-bound rr_0) key_0)
       (void)
       (set-reference-record-reference-before-bound!
        rr_0
-       (let ((s_0 (reference-record-reference-before-bound rr_0)))
-         (hash-set s_0 key_0 #t))))))
+       (set-add (reference-record-reference-before-bound rr_0) key_0)))))
 (define reference-records-all-used!
   (lambda (rrs_0)
     (begin
@@ -50862,8 +51986,7 @@
                  (let ((key_0 (unsafe-car lst_0)))
                    (let ((rest_0 (unsafe-cdr lst_0)))
                      (let ((ab_2
-                            (let ((ab_2 (hash-set ab_1 key_0 #t)))
-                              (values ab_2))))
+                            (let ((ab_2 (set-add ab_1 key_0))) (values ab_2))))
                        (for-loop_0 ab_2 rest_0))))
                  ab_1)))))
           (for-loop_0 ab_0 keys_0))))
@@ -50881,7 +52004,7 @@
                  (let ((key_0 (unsafe-car lst_0)))
                    (let ((rest_0 (unsafe-cdr lst_0)))
                      (let ((rbb_2
-                            (let ((rbb_2 (hash-remove rbb_1 key_0)))
+                            (let ((rbb_2 (set-remove rbb_1 key_0)))
                               (values rbb_2))))
                        (for-loop_0 rbb_2 rest_0))))
                  rbb_1)))))
@@ -50892,8 +52015,7 @@
       (if or-part_0
         or-part_0
         (positive?
-         (let ((s_0 (reference-record-reference-before-bound rr_0)))
-           (hash-count s_0)))))))
+         (set-count (reference-record-reference-before-bound rr_0)))))))
 (define reference-record-clear!
   (lambda (rr_0)
     (begin
@@ -51821,7 +52943,13 @@
              (if obs_0
                (call-expand-observe obs_0 'enter-macro s38_0 s38_0)
                (void)))
-           (let ((intro-scope_0 (new-scope 'macro)))
+           (let ((intro-scope_0
+                  (let ((id_0 (new-scope-id!)))
+                    (scope1.1
+                     id_0
+                     (make-scope-key id_0)
+                     'macro
+                     empty-binding-table))))
              (let ((intro-s_0 (flip-scope s38_0 intro-scope_0)))
                (let ((use-scopes_0
                       (maybe-create-use-site-scope ctx40_0 binding41_0)))
@@ -51998,7 +53126,13 @@
                (root-expand-context/outer-frame-id ctx_0)
                (binding-frame-id binding_0))))
           #f)
-      (let ((sc_0 (new-scope 'use-site)))
+      (let ((sc_0
+             (let ((id_0 (new-scope-id!)))
+               (scope1.1
+                id_0
+                (make-scope-key id_0)
+                'use-site
+                empty-binding-table))))
         (let ((b_0 (root-expand-context/outer-use-site-scopes ctx_0)))
           (begin
             (set-box! b_0 (cons sc_0 (unbox b_0)))
@@ -52055,7 +53189,13 @@
             current-expand-context
             ctx_0
             (1/rename-transformer-target t_0))))
-      (let ((intro-scope_0 (new-scope 'macro)))
+      (let ((intro-scope_0
+             (let ((id_1 (new-scope-id!)))
+               (scope1.1
+                id_1
+                (make-scope-key id_1)
+                'macro
+                empty-binding-table))))
         (let ((intro-id_0 (add-scope target-id_0 intro-scope_0)))
           (syntax-track-origin$1
            (transfer-srcloc intro-id_0 id_0)
@@ -53041,7 +54181,7 @@
          6
          s
          'parent-ctx))))))
-(define finish_2692
+(define finish_2693
   (make-struct-type-install-properties
    '(env-mixin)
    4
@@ -53067,7 +54207,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2352 (finish_2692 struct:env-mixin))
+(define effect_2352 (finish_2693 struct:env-mixin))
 (define env-mixin2.1
   (|#%name|
    env-mixin
@@ -53158,8 +54298,20 @@
                                     (root-expand-context/outer-frame-id ctx_0)
                                     #f)))
                              (if or-part_1 or-part_1 (gensym)))))))
-                  (let ((outside-edge_0 (new-scope 'intdef-outside)))
-                    (let ((inside-edge_0 (new-scope 'intdef)))
+                  (let ((outside-edge_0
+                         (let ((id_0 (new-scope-id!)))
+                           (scope1.1
+                            id_0
+                            (make-scope-key id_0)
+                            'intdef-outside
+                            empty-binding-table))))
+                    (let ((inside-edge_0
+                           (let ((id_0 (new-scope-id!)))
+                             (scope1.1
+                              id_0
+                              (make-scope-key id_0)
+                              'intdef
+                              empty-binding-table))))
                       (let ((def-ctx-scopes_0
                              (expand-context/outer-def-ctx-scopes ctx_0)))
                         (begin
@@ -53203,7 +54355,13 @@
                      (get-current-expand-context.1
                       #f
                       'syntax-local-make-definition-context-introducer)))
-                (let ((scope_0 (new-scope name5_0)))
+                (let ((scope_0
+                       (let ((id_0 (new-scope-id!)))
+                         (scope1.1
+                          id_0
+                          (make-scope-key id_0)
+                          name5_0
+                          empty-binding-table))))
                   (let ((def-ctx-scopes_0
                          (expand-context/outer-def-ctx-scopes ctx_0)))
                     (begin
@@ -54468,7 +55626,13 @@
           make-syntax-introducer
           (lambda (as-use-site?3_0)
             (do-make-syntax-introducer
-             (new-scope (if as-use-site?3_0 'use-site 'macro)))))))
+             (let ((kind_0 (if as-use-site?3_0 'use-site 'macro)))
+               (let ((id_0 (new-scope-id!)))
+                 (scope1.1
+                  id_0
+                  (make-scope-key id_0)
+                  kind_0
+                  empty-binding-table))))))))
     (|#%name|
      make-syntax-introducer
      (case-lambda
@@ -54565,7 +55729,7 @@
                               (if base-s6_0 base-s6_0 empty-syntax)
                               phase_0)))
                         (let ((use-base-scs_0
-                               (if (hash-keys-subset? base-scs_0 ext-scs_0)
+                               (if (subset? base-scs_0 ext-scs_0)
                                  base-scs_0
                                  (let ((or-part_0
                                         (if (identifier? base-s6_0)
@@ -54959,7 +56123,13 @@
                                                            name_0)))
                                                      (add-scope
                                                       app_0
-                                                      (new-scope 'macro)))))
+                                                      (let ((id_0
+                                                             (new-scope-id!)))
+                                                        (scope1.1
+                                                         id_0
+                                                         (make-scope-key id_0)
+                                                         'macro
+                                                         empty-binding-table))))))
                                                fold-var_0)))
                                          (values fold-var_1))))
                                   (for-loop_0 fold-var_1 (+ pos_0 1)))
@@ -55174,7 +56344,15 @@
          (|#%name|
           syntax-local-lift-require
           (lambda (s44_0 use-s45_0 new-scope?43_0)
-            (let ((sc_0 (if new-scope?43_0 (new-scope 'lifted-require) #f)))
+            (let ((sc_0
+                   (if new-scope?43_0
+                     (let ((id_0 (new-scope-id!)))
+                       (scope1.1
+                        id_0
+                        (make-scope-key id_0)
+                        'lifted-require
+                        empty-binding-table))
+                     #f)))
               (let ((temp111_0 (datum->syntax$1 #f s44_0)))
                 (let ((temp112_0 "could not find target context"))
                   (let ((temp114_0
@@ -57318,40 +58496,59 @@
                              root-ctx_0))))
                       (let ((other-namespace-scopes_0
                              (reverse$1
-                              (let ((ht_0
+                              (let ((s_0
                                      (syntax-scope-set
                                       (root-expand-context/inner-all-scopes-stx
                                        (root-expand-context/outer-inner
                                         root-ctx_0))
                                       0)))
-                                (letrec*
-                                 ((for-loop_0
-                                   (|#%name|
-                                    for-loop
-                                    (lambda (fold-var_0 i_0)
-                                      (if i_0
-                                        (let ((sc_0
-                                               (unsafe-immutable-hash-iterate-key
-                                                ht_0
-                                                i_0)))
-                                          (let ((fold-var_1
-                                                 (if (equal? sc_0 post-scope_0)
-                                                   fold-var_0
-                                                   (let ((fold-var_1
-                                                          (cons
-                                                           sc_0
-                                                           fold-var_0)))
-                                                     (values fold-var_1)))))
-                                            (for-loop_0
-                                             fold-var_1
-                                             (unsafe-immutable-hash-iterate-next
-                                              ht_0
-                                              i_0))))
-                                        fold-var_0)))))
-                                 (for-loop_0
-                                  null
-                                  (unsafe-immutable-hash-iterate-first
-                                   ht_0)))))))
+                                (begin
+                                  (if (let ((or-part_0 (scope-set? s_0)))
+                                        (if or-part_0
+                                          or-part_0
+                                          (if (hash? s_0)
+                                            (immutable? s_0)
+                                            #f)))
+                                    (void)
+                                    (raise-argument-error 'in-set "set?" s_0))
+                                  (letrec*
+                                   ((for-loop_0
+                                     (|#%name|
+                                      for-loop
+                                      (lambda (fold-var_0 i_0)
+                                        (if (if (scope-set? s_0)
+                                              (pair? i_0)
+                                              i_0)
+                                          (let ((sc_0
+                                                 (if (scope-set? s_0)
+                                                   (unsafe-car i_0)
+                                                   (unsafe-immutable-hash-iterate-key
+                                                    s_0
+                                                    i_0))))
+                                            (let ((fold-var_1
+                                                   (if (equal?
+                                                        sc_0
+                                                        post-scope_0)
+                                                     fold-var_0
+                                                     (let ((fold-var_1
+                                                            (cons
+                                                             sc_0
+                                                             fold-var_0)))
+                                                       (values fold-var_1)))))
+                                              (for-loop_0
+                                               fold-var_1
+                                               (if (scope-set? s_0)
+                                                 (unsafe-cdr i_0)
+                                                 (unsafe-immutable-hash-iterate-next
+                                                  s_0
+                                                  i_0)))))
+                                          fold-var_0)))))
+                                   (for-loop_0
+                                    null
+                                    (if (scope-set? s_0)
+                                      (scope-set-elems s_0)
+                                      (unsafe-immutable-hash-iterate-first
+                                       s_0)))))))))
                         (let ((add-ns-scopes_0
                                (|#%name|
                                 add-ns-scopes
@@ -73544,7 +74741,13 @@
                 (values binding_0 insp-of-t_0)))))
          (values #f #f)))
      (lambda (binding_0 insp-of-t_0)
-       (let ((intro-scope_0 (new-scope 'macro)))
+       (let ((intro-scope_0
+              (let ((id_0 (new-scope-id!)))
+                (scope1.1
+                 id_0
+                 (make-scope-key id_0)
+                 'macro
+                 empty-binding-table))))
          (let ((use-scopes_0 (maybe-create-use-site-scope ctx_0 binding_0)))
            (let ((scope-arg_0
                   (|#%name|
@@ -73729,7 +74932,7 @@
          (void)
          (raise-argument-error 'syntax-taint "syntax?" s_0))
        (syntax-taint$1 s_0)))))
-(define finish_2682
+(define finish_2681
   (make-struct-type-install-properties
    '(serialized-syntax)
    5
@@ -73755,7 +74958,7 @@
    #f
    #f
    'prefab))
-(define effect_2423 (finish_2682 struct:serialized-syntax))
+(define effect_2423 (finish_2681 struct:serialized-syntax))
 (define serialized-syntax1.1
   (|#%name|
    serialized-syntax
@@ -75248,7 +76451,7 @@
                                    (hash-iterate-key+value prims_0 i_0))
                                  (lambda (sym_0 val_0)
                                    (let ((table_3
-                                          (if (hash-ref skip-syms_0 sym_0 #f)
+                                          (if (set-member? skip-syms_0 sym_0)
                                             table_2
                                             (let ((table_3
                                                    (let ((val_1
@@ -78075,7 +79278,13 @@
               (expand-context/inner-observer
                (root-expand-context/outer-inner ctx6_0))))
          (if obs_0 (call-expand-observe obs_0 'enter-block bodys5_0) (void)))
-       (let ((inside-sc_0 (new-scope 'intdef)))
+       (let ((inside-sc_0
+              (let ((id_0 (new-scope-id!)))
+                (scope1.1
+                 id_0
+                 (make-scope-key id_0)
+                 'intdef
+                 empty-binding-table))))
          (let ((init-bodys_0
                 (reverse$1
                  (letrec*
@@ -79959,7 +81168,13 @@
                 (root-expand-context/outer-inner ctx_0))))
           (if or-part_0 or-part_0 (null? idss_0)))
       (values idss_0 ctx_0)
-      (let ((sc_0 (new-scope 'local)))
+      (let ((sc_0
+             (let ((id_0 (new-scope-id!)))
+               (scope1.1
+                id_0
+                (make-scope-key id_0)
+                'local
+                empty-binding-table))))
         (let ((new-idss_0
                (reverse$1
                 (letrec*
@@ -80109,7 +81324,12 @@
            (if (not
                 (expand-context/inner-parsing-expanded?
                  (root-expand-context/outer-inner ctx_0)))
-             (new-scope 'local)
+             (let ((id_0 (new-scope-id!)))
+               (scope1.1
+                id_0
+                (make-scope-key id_0)
+                'local
+                empty-binding-table))
              #f)))
       (let ((phase_0
              (expand-context/inner-phase
@@ -81540,7 +82760,12 @@
                       (if (not
                            (expand-context/inner-parsing-expanded?
                             (root-expand-context/outer-inner ctx_0)))
-                        (new-scope 'local)
+                        (let ((id_0 (new-scope-id!)))
+                          (scope1.1
+                           id_0
+                           (make-scope-key id_0)
+                           'local
+                           empty-binding-table))
                         #f)))
                  (begin
                    (if (if syntaxes?2_0 (not sc_0) #f)
@@ -81551,7 +82776,14 @@
                      (void))
                    (let ((body-sc_0
                           (if sc_0
-                            (if rec?3_0 (new-scope 'letrec-body) #f)
+                            (if rec?3_0
+                              (let ((id_0 (new-scope-id!)))
+                                (scope1.1
+                                 id_0
+                                 (make-scope-key id_0)
+                                 'letrec-body
+                                 empty-binding-table))
+                              #f)
                             #f)))
                      (let ((phase_0
                             (expand-context/inner-phase
@@ -88605,7 +89837,13 @@
                        s13_0
                        initial-require218_0))
                     (let ((module-name-sym_0 (syntax-e$1 id:module-name217_0)))
-                      (let ((outside-scope_0 (new-scope 'module)))
+                      (let ((outside-scope_0
+                             (let ((id_0 (new-scope-id!)))
+                               (scope1.1
+                                id_0
+                                (make-scope-key id_0)
+                                'module
+                                empty-binding-table))))
                         (let ((inside-scope_0
                                (new-multi-scope module-name-sym_0)))
                           (let ((self_0
@@ -94766,7 +96004,7 @@
                                      all-exp-forms_0)))
                                (rebuild.1 #t s_0 temp46_0))))))))))))))))
     (void)))
-(define effect_2617
+(define effect_3140
   (begin
     (void
      (add-core-form!*
@@ -94810,7 +96048,13 @@
                   (lambda (|#%require47_0| req48_0)
                     (values #t |#%require47_0| req48_0))))
                (lambda (ok?_0 |#%require47_0| req48_0)
-                 (let ((sc_0 (new-scope 'macro)))
+                 (let ((sc_0
+                        (let ((id_0 (new-scope-id!)))
+                          (scope1.1
+                           id_0
+                           (make-scope-key id_0)
+                           'macro
+                           empty-binding-table))))
                    (let ((ns_0
                           (expand-context/inner-namespace
                            (root-expand-context/outer-inner ctx_0))))

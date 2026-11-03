@@ -436,9 +436,12 @@
     (define (lock-parking lock)
       (or (#%vector-ref lock 2)
           (let ([pk (make-parking (make-mutex) (make-condition) (make-condition) 0 0)])
-            (if (#%vector-cas! lock 2 #f pk)
-                pk
-                (#%vector-ref lock 2)))))
+            ;; `vector-cas!` can fail spuriously, so retry while the
+            ;; slot is still #f
+            (let loop ()
+              (if (#%vector-cas! lock 2 #f pk)
+                  pk
+                  (or (#%vector-ref lock 2) (loop)))))))
     ;; Counts for reporting through `vm-eval`; updates from different
     ;; locks can race, so they are approximate. A "late" wakeup is a
     ;; timed wait that expires after the thread could have proceeded,
@@ -500,10 +503,17 @@
           (unless (#%vector-cas! lock 0 1 0)
             (#%$app/no-inline lock-release/slow lock))))
       (define (lock-release/slow lock)
-        ;; slot 0 must be 3, and only the holder changes it from there;
-        ;; whoever set 3 installed the parking state first
-        (#%vector-set! lock 0 0)
-        (wake-parked (#%vector-ref lock 2)))
+        (cond
+          [(eq? 1 (#%vector-ref lock 0))
+           ;; the CAS in `fast-release` failed spuriously (as it can with
+           ;; LL/SC on Arm), or a parking thread is changing 1 to 3
+           (unless (#%vector-cas! lock 0 1 0)
+             (lock-release/slow lock))]
+          [else
+           ;; slot 0 must be 3, and only the holder changes it from there;
+           ;; whoever set 3 installed the parking state first
+           (#%vector-set! lock 0 0)
+           (wake-parked (#%vector-ref lock 2))]))
       (define (park-and-acquire lock)
         (let ([pk (lock-parking lock)])
           (let loop ()

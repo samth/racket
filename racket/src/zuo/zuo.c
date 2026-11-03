@@ -384,6 +384,24 @@ static void zuo_panic(const char *s) {
   exit(1);
 }
 
+/* Treat a zero-size request as a minimal allocation, since malloc(0)
+   is allowed to return NULL without indicating an allocation failure. */
+static void *zuo_malloc(size_t size) {
+  void *p = malloc(size ? size : 1);
+  if (p == NULL) {
+    fprintf(stderr, "out of memory\n");
+    abort();
+  }
+  return p;
+}
+
+static char *zuo_strdup(const char *s) {
+  size_t len = strlen(s) + 1;
+  char *p = zuo_malloc(len);
+  memcpy(p, s, len);
+  return p;
+}
+
 static void zuo_check_sanity(void) {
   if (sizeof(zuo_int32_t) != 4)
     zuo_panic("wrong int32 size");
@@ -437,7 +455,7 @@ static void *malloc_or_recycle(zuo_int_t min_size, zuo_int_t *size) {
       return result;
     }
   }
-  return malloc(*size);
+  return zuo_malloc(*size);
 }
 
 static zuo_t *zuo_new(int tag, zuo_int_t size) {
@@ -454,7 +472,7 @@ static zuo_t *zuo_new(int tag, zuo_int_t size) {
 
   if (allocation_offset + size > heap_size) {
     old_space_t *new_old_spaces;
-    new_old_spaces = malloc(sizeof(old_space_t));
+    new_old_spaces = zuo_malloc(sizeof(old_space_t));
     new_old_spaces->space = to_space;
     new_old_spaces->size = heap_size;
     new_old_spaces->next = old_spaces;
@@ -592,7 +610,7 @@ static void zuo_finish_gc(void *old_space, zuo_int_t old_heap_size, old_space_t 
     sp = next_free_spaces;
   }
 
-  sp = malloc(sizeof(old_space_t));
+  sp = zuo_malloc(sizeof(old_space_t));
   sp->space = old_space;
   sp->size = old_heap_size;
   sp->next = old_old_spaces;
@@ -732,7 +750,7 @@ typedef struct {
 
 static void zuo_ensure_image_room(zuo_fasl_stream_out_t *stream) {
   if (stream->image_size == stream->image_offset) {
-    zuo_int32_t *new_image = malloc(stream->image_size * 2 * sizeof(zuo_int32_t));
+    zuo_int32_t *new_image = zuo_malloc(stream->image_size * 2 * sizeof(zuo_int32_t));
     memcpy(new_image, stream->image, (stream->image_offset) * sizeof(zuo_int32_t));
     free(stream->image);
     stream->image = new_image;
@@ -742,8 +760,8 @@ static void zuo_ensure_image_room(zuo_fasl_stream_out_t *stream) {
 
 static void zuo_ensure_map_room(zuo_fasl_stream_out_t *stream) {
   if (stream->map_size == stream->map_offset) {
-    zuo_t **new_objs = malloc(stream->map_size * 2 * sizeof(zuo_t*));
-    zuo_int32_t *new_map = malloc(stream->map_size * 2 * sizeof(zuo_int32_t));
+    zuo_t **new_objs = zuo_malloc(stream->map_size * 2 * sizeof(zuo_t*));
+    zuo_int32_t *new_map = zuo_malloc(stream->map_size * 2 * sizeof(zuo_int32_t));
     memcpy(new_objs, stream->objs, (stream->map_offset) * sizeof(zuo_t*));
     memcpy(new_map, stream->map, (stream->map_offset) * sizeof(zuo_int32_t));
     free(stream->objs);
@@ -928,17 +946,17 @@ static char *zuo_fasl_dump(zuo_int_t *_len) {
 
   stream.heap = to_space;
   stream.heap_size = allocation_offset;
-  stream.shadow_heap = malloc(allocation_offset);
+  stream.shadow_heap = zuo_malloc(allocation_offset);
   memset(stream.shadow_heap, 0, allocation_offset);
 
   stream.map_size = 1024;
   stream.map_offset = 0;
-  stream.map = malloc(stream.map_size * sizeof(zuo_int32_t));
-  stream.objs = malloc(stream.map_size * sizeof(zuo_t*));
+  stream.map = zuo_malloc(stream.map_size * sizeof(zuo_int32_t));
+  stream.objs = zuo_malloc(stream.map_size * sizeof(zuo_t*));
 
   stream.image_size = 4096;
   stream.image_offset = 0;
-  stream.image = malloc(stream.image_size * sizeof(zuo_int32_t));
+  stream.image = zuo_malloc(stream.image_size * sizeof(zuo_int32_t));
 
   zuo_fasl_roots(&stream.stream);
 
@@ -953,7 +971,7 @@ static char *zuo_fasl_dump(zuo_int_t *_len) {
   }
 
   total_size = header_size + stream.map_offset + stream.image_offset;
-  dump = malloc(total_size * sizeof(zuo_int32_t));
+  dump = zuo_malloc(total_size * sizeof(zuo_int32_t));
 
   ((zuo_fasl_header_t *)dump)->magic = zuo_magic();
   ((zuo_fasl_header_t *)dump)->map_size = stream.map_offset;
@@ -1015,7 +1033,7 @@ static void zuo_fasl_restore(char *dump_in, zuo_int_t len) {
     stream.heap_size += ALLOC_ALIGN(sz);
   }
 
-  stream.heap = malloc(stream.heap_size * alloc_factor);
+  stream.heap = zuo_malloc(stream.heap_size * alloc_factor);
 
   zuo_fasl_roots(&stream.stream);
 
@@ -1505,7 +1523,7 @@ typedef struct {
 static void out_init(zuo_out_t *out) {
   out->size = 32;
   out->len = 0;
-  out->s = malloc(out->size);
+  out->s = zuo_malloc(out->size);
 }
 
 static void out_done(zuo_out_t *out) {
@@ -1515,7 +1533,7 @@ static void out_done(zuo_out_t *out) {
 static void out_char(zuo_out_t *out, int c) {
   if (out->len == out->size) {
     zuo_int_t new_size = out->size * 2;
-    char *s = malloc(new_size);
+    char *s = zuo_malloc(new_size);
     memcpy(s, out->s, out->size);
     free(out->s);
     out->s = s;
@@ -2039,13 +2057,13 @@ static zuo_t *zuo_in(const unsigned char *s, zuo_int_t *_o, zuo_t *where, int sk
     } else if ((c == '"') || ((c == '#') && (s[(*_o)+1] == '"'))) {
       zuo_int_t sz = 32;
       zuo_int_t len = 0;
-      char *s2 = malloc(sz);
+      char *s2 = zuo_malloc(sz);
       if (c == '#')
         (*_o)++;
       (*_o)++;
       while (1) {
         if (sz == len) {
-          char *s3 = malloc(sz * 2);
+          char *s3 = zuo_malloc(sz * 2);
           memcpy(s3, s2, sz);
           free(s2);
           s2 = s3;
@@ -2187,7 +2205,7 @@ static zuo_t *zuo_in(const unsigned char *s, zuo_int_t *_o, zuo_t *where, int sk
           break;
       }
       len = (*_o) - start;
-      s2 = malloc(len+1);
+      s2 = zuo_malloc(len+1);
       memcpy(s2, s + start, len);
       s2[len] = 0;
       sym = zuo_symbol(s2);
@@ -2572,7 +2590,7 @@ static zuo_t *zuo_build_string(zuo_t *chars) {
       zuo_fail_arg("string", "integer in [0, 255]", a);
     len++;
   }
-  s = malloc(len);
+  s = zuo_malloc(len);
   len = 0;
   for (l = chars; l != z.o_null; l = _zuo_cdr(l))
     s[len++] = ZUO_INT_I(_zuo_car(l));
@@ -3488,7 +3506,7 @@ static wchar_t *zuo_to_wide(char *a) {
   int walen, alen = strlen(a);
 
   walen = MultiByteToWideChar(CP_UTF8, 0, a, alen, NULL, 0);
-  wa = malloc((walen+1) * sizeof(wchar_t));
+  wa = zuo_malloc((walen+1) * sizeof(wchar_t));
   MultiByteToWideChar(CP_UTF8, 0, a, alen, wa, walen);
   wa[walen] = 0;
 
@@ -3500,7 +3518,7 @@ static char *zuo_from_wide(const wchar_t *wa) {
   int alen, walen = wcslen(wa);
 
   alen = WideCharToMultiByte(CP_UTF8, 0, wa, walen, NULL, 0, NULL, NULL);
-  a = malloc(alen+1);
+  a = zuo_malloc(alen+1);
   alen = WideCharToMultiByte(CP_UTF8, 0, wa, walen, a, alen, NULL, NULL);
   a[alen] = 0;
 
@@ -3583,7 +3601,7 @@ static void *zuo_envvars_block(zuo_t *envvars) {
     count++;
   }
 
-  r = (char **)malloc((count+1) * sizeof(char*) + len);
+  r = (char **)zuo_malloc((count+1) * sizeof(char*) + len);
   s = (char *)(r + (count+1));
   c = 0;
   for (l = envvars; l != z.o_null; l = _zuo_cdr(l)) {
@@ -3605,7 +3623,7 @@ static void *zuo_envvars_block(zuo_t *envvars) {
 #ifdef ZUO_WINDOWS
   zuo_t *l;
   zuo_int_t r_size = 256, r_len = 0, namelen, vallen, slen;
-  wchar_t *r = malloc(r_size * sizeof(wchar_t)), *name, *val;
+  wchar_t *r = zuo_malloc(r_size * sizeof(wchar_t)), *name, *val;
 
   for (l = envvars; l != z.o_null; l = _zuo_cdr(l)) {
     zuo_t *a = _zuo_car(l);
@@ -3617,7 +3635,7 @@ static void *zuo_envvars_block(zuo_t *envvars) {
 
     if (r_len + slen >= r_size) {
       zuo_int_t new_size = 2 * (r_size + r_len);
-      wchar_t *new_r = malloc(new_size * sizeof(wchar_t));
+      wchar_t *new_r = zuo_malloc(new_size * sizeof(wchar_t));
       memcpy(new_r, r, r_size * sizeof(wchar_t));
       free(r);
       r = new_r;
@@ -3723,7 +3741,7 @@ static char *zuo_getcwd(void) {
   char *s;
   int len = 256;
 
-  s = malloc(len);
+  s = zuo_malloc(len);
   while (1) {
     int bigger;
 #ifdef ZUO_UNIX
@@ -3747,7 +3765,7 @@ static char *zuo_getcwd(void) {
     if (bigger) {
       free(s);
       len *= 2;
-      s = malloc(len);
+      s = zuo_malloc(len);
     } else
       break;
   }
@@ -3773,7 +3791,7 @@ static char *zuo_getcwd(void) {
           && (stat_buf1.st_dev == stat_buf2.st_dev)
           && (stat_buf1.st_ino == stat_buf2.st_ino)) {
         free(dir);
-        dir = strdup(pwd);
+        dir = zuo_strdup(pwd);
       }
     }
   }
@@ -4163,7 +4181,7 @@ static zuo_t *zuo_finish_runtime_env(zuo_t *ht) {
     wchar_t *wa;
     char *a;
     size = GetSystemDirectoryW(NULL, 0);
-    wa = (wchar_t *)malloc((size + 1) * sizeof(wchar_t));
+    wa = (wchar_t *)zuo_malloc((size + 1) * sizeof(wchar_t));
     GetSystemDirectoryW(wa, size + 1);
     a = zuo_from_wide(wa);
     ht = zuo_hash_set(ht, zuo_symbol("sys-dir"), zuo_string(a));
@@ -4626,7 +4644,7 @@ static zuo_t *zuo_fd_poll(zuo_t *fds_i, zuo_t *timeout_i) {
     zuo_int_t i;
     int ready;
 
-    fds = malloc(sizeof(struct pollfd) * len);
+    fds = zuo_malloc(sizeof(struct pollfd) * len);
     for (l = fds_i, i = 0; l != z.o_null; l = _zuo_cdr(l), i++) {
       zuo_handle_t *h = (zuo_handle_t *)_zuo_car(l);
       fds[i].fd = h->u.h.u.handle;
@@ -4663,7 +4681,7 @@ static zuo_t *zuo_fd_poll(zuo_t *fds_i, zuo_t *timeout_i) {
     zuo_int_t i = 0;
     DWORD r;
 
-    fds = malloc(sizeof(HANDLE) * len);
+    fds = zuo_malloc(sizeof(HANDLE) * len);
 
     for (l = fds_i; l != z.o_null; l = _zuo_cdr(l)) {
       zuo_handle_t *h = (zuo_handle_t *)_zuo_car(l);
@@ -4725,7 +4743,7 @@ static char *zuo_string_to_c(zuo_t *obj) {
   check_string("string->c", obj);
 
   len = ZUO_STRING_LEN(obj);
-  s = malloc(len + 1);
+  s = zuo_malloc(len + 1);
   memcpy(s, ZUO_STRING_PTR(obj), len);
   s[len] = 0;
 
@@ -5328,7 +5346,7 @@ static zuo_t *zuo_readlink(zuo_t *link_path) {
 #ifdef ZUO_UNIX
   {
     int len, buf_len = 256;
-    char *buffer = malloc(buf_len);
+    char *buffer = zuo_malloc(buf_len);
     zuo_t *str;
 
     while (1) {
@@ -5339,7 +5357,7 @@ static zuo_t *zuo_readlink(zuo_t *link_path) {
         /* maybe too small */
         free(buffer);
         buf_len *= 2;
-        buffer = malloc(buf_len);
+        buffer = zuo_malloc(buf_len);
       } else
         break;
     }
@@ -5419,7 +5437,7 @@ static zuo_t *zuo_cp(zuo_t *src_path, zuo_t *dest_path, zuo_t *options) {
       if (fchmod(dest_fd, st_buf.st_mode) != 0)
         zuo_fail1w_errno(who, "destination permissions update failed", dest_path);
 
-    buf = malloc(4096);
+    buf = zuo_malloc(4096);
 
     while (1) {
       EINTR_RETRY(amt = read(src_fd, buf, 4096));
@@ -5435,6 +5453,7 @@ static zuo_t *zuo_cp(zuo_t *src_path, zuo_t *dest_path, zuo_t *options) {
       }
     }
 
+    free(buf);
     EINTR_RETRY(close(src_fd));
     EINTR_RETRY(close(dest_fd));
   }
@@ -5684,7 +5703,7 @@ static zuo_t *zuo_cleanable_cancel(zuo_t *p) {
 static char *zuo_string_to_shell_c(const char *s) {
   zuo_intptr_t sz = 32, i = 0;
   int quoting = 0;
-  unsigned char *p = malloc(sz);
+  unsigned char *p = zuo_malloc(sz);
 
   if (*s == 0) {
     p[i++] = '"';
@@ -5696,7 +5715,7 @@ static char *zuo_string_to_shell_c(const char *s) {
     s++;
 
     if (i + 6 >= sz) {
-      unsigned char *p2 = malloc(sz * 2);
+      unsigned char *p2 = zuo_malloc(sz * 2);
       memcpy(p2, p, i);
       free(p);
       p = p2;
@@ -5743,7 +5762,7 @@ static char **zuo_shell_to_strings_c(char *buf, int skip_exe, zuo_intptr_t *_len
   zuo_intptr_t i = 0, j = 0, arg_start = 0, cmd = 0;
   int in_quote = 0, in_squote = 0, did_create = 0;
   int maxargs = 32;
-  char **command = (char **)malloc((maxargs + 1) * sizeof(char *));
+  char **command = (char **)zuo_malloc((maxargs + 1) * sizeof(char *));
 
   ZUO_UNUSED(skip_exe);
 
@@ -5787,7 +5806,7 @@ static char **zuo_shell_to_strings_c(char *buf, int skip_exe, zuo_intptr_t *_len
       if ((j > arg_start) || did_create) {
         buf[j++] = 0;
         if (cmd == maxargs) {
-          char **new_command = (char **)malloc((2*maxargs + 1) * sizeof(char *));
+          char **new_command = (char **)zuo_malloc((2*maxargs + 1) * sizeof(char *));
           memcpy(new_command, command, cmd * sizeof(char *));
           free(command);
           command = new_command;
@@ -5818,7 +5837,7 @@ static char *zuo_string_to_shell_c(const char *s) {
   int ds;
   int has_space = 0, has_quote = 0, was_slash = 0;
 
-  if (!*s) return _strdup("\"\""); /* quote an empty argument */
+  if (!*s) return zuo_strdup("\"\""); /* quote an empty argument */
 
   /* Protect some non-space characters that are treated as split points by `.bat`
      file processing of arguments into `%0`, `%1`, etc. We don't treat those
@@ -5844,7 +5863,7 @@ static char *zuo_string_to_shell_c(const char *s) {
     char *p;
     int wrote_slash = 0;
 
-    naya = malloc(strlen(s) + 3 + 3*has_quote + was_slash);
+    naya = zuo_malloc(strlen(s) + 3 + 3*has_quote + was_slash);
     naya[0] = '"';
     for (p = naya + 1; *s; s++) {
       if (*s == '"') {
@@ -5873,7 +5892,7 @@ static char *zuo_string_to_shell_c(const char *s) {
     return naya;
   }
 
-  return _strdup(s);
+  return zuo_strdup(s);
 }
 
 /* This command-line parser is meant to be consistent with the MSVC
@@ -5886,7 +5905,7 @@ static char *zuo_string_to_shell_c(const char *s) {
 static char **zuo_shell_to_strings_c(char *buf, int starts_exe, zuo_intptr_t *_len) {
   int pos = 0;
   int maxargs = 32;
-  char **command = (char **)malloc((maxargs + 1) * sizeof(char *));
+  char **command = (char **)zuo_malloc((maxargs + 1) * sizeof(char *));
   unsigned char *parse, *created, *write;
   int findquote = 0; /* i.e., inside a quoted block? */
 
@@ -5933,7 +5952,7 @@ static char **zuo_shell_to_strings_c(char *buf, int starts_exe, zuo_intptr_t *_l
       command[pos++] = (char *)created;
       if (pos == maxargs) {
 	char **c2;
-	c2 = (char **)malloc(((2 * maxargs) + 1) * sizeof(char *));
+	c2 = (char **)zuo_malloc(((2 * maxargs) + 1) * sizeof(char *));
 	memcpy(c2, command, maxargs * sizeof(char *));
 	maxargs *= 2;
       }
@@ -6043,7 +6062,7 @@ static zuo_t *zuo_process(zuo_t *command_and_args)
     }
   }
 
-  argv = malloc(sizeof(char*) * (argc + 1));
+  argv = zuo_malloc(sizeof(char*) * (argc + 1));
 
 #ifdef ZUO_UNIX
   if (!zuo_path_is_absolute(ZUO_STRING_PTR(command))
@@ -6242,7 +6261,7 @@ static zuo_t *zuo_process(zuo_t *command_and_args)
         len += strlen(argv[i]) + 1;
       }
 
-      cmdline = malloc(len);
+      cmdline = zuo_malloc(len);
 
       len = 0;
       for (i = 0; i < argc; i++) {
@@ -6428,7 +6447,7 @@ static zuo_t *zuo_process_wait(zuo_t *pids_i) {
 #ifdef ZUO_WINDOWS
   /* loop until on of the handles is marked as done */
   while (1) {
-    HANDLE *a = malloc(sizeof(HANDLE) * zuo_length_int(pids_i));
+    HANDLE *a = zuo_malloc(sizeof(HANDLE) * zuo_length_int(pids_i));
     zuo_int_t i = 0;
 
     for (l = pids_i; l != z.o_null; l = _zuo_cdr(l)) {
@@ -6973,7 +6992,7 @@ static zuo_t *zuo_string_sha256(zuo_t *str) {
 static char *zuo_self_path_c(const char *exec_file)
 {
   ssize_t len, blen = 256;
-  char *s = malloc(blen);
+  char *s = zuo_malloc(blen);
 
   ZUO_UNUSED(exec_file);
 
@@ -6982,7 +7001,7 @@ static char *zuo_self_path_c(const char *exec_file)
     if (len == (blen-1)) {
       free(s);
       blen *= 2;
-      s = malloc(blen);
+      s = zuo_malloc(blen);
     } else if (len < 0) {
       zuo_fail("failed to get self");
     } else
@@ -7021,7 +7040,7 @@ static char *zuo_self_path_c(const char *exec_file)
   r = sysctl(mib, 4, NULL, &len, NULL, 0);
   if (r < 0)
     zuo_fail("failed to get self");
-  s = malloc(len);
+  s = zuo_malloc(len);
   r = sysctl(mib, 4, s, &len, NULL, 0);
   if (r < 0)
     zuo_fail("failed to get self");
@@ -7040,9 +7059,7 @@ static char *zuo_self_path_c(const char *exec_file)
 
   if (getexecpath(path, sizeof(path)) == -1)
     zuo_fail("failed to get self");
-  s = strdup(path);
-  if (s == NULL)
-    zuo_fail("failed to get self");
+  s = zuo_strdup(path);
 
   return s;
 }
@@ -7055,7 +7072,7 @@ static char *zuo_self_path_c(const char *exec_file)
 static char *zuo_self_path_c(const char *exec_file)
 {
   uint32_t size = 1024;
-  char *s = malloc(size);
+  char *s = zuo_malloc(size);
   int r;
 
   ZUO_UNUSED(exec_file);
@@ -7065,7 +7082,7 @@ static char *zuo_self_path_c(const char *exec_file)
     return s;
   else {
     free(s);
-    s = malloc(size);
+    s = zuo_malloc(size);
     r = _NSGetExecutablePath(s, &size);
     if (!r)
       return s;
@@ -7085,7 +7102,7 @@ static char *zuo_self_path_c(const char *exec_file)
   ZUO_UNUSED(exec_file);
 
   while (1) {
-    path = (wchar_t *)malloc(sz * sizeof(wchar_t));
+    path = (wchar_t *)zuo_malloc(sz * sizeof(wchar_t));
     r = GetModuleFileNameW(NULL, path, sz);
     if ((r == sz)
         && (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
@@ -7115,13 +7132,13 @@ static char *zuo_self_path_c(const char *exec_file)
 {
   if (zuo_path_is_absolute(exec_file)) {
     /* Absolute path */
-    return strdup(exec_file);
+    return zuo_strdup(exec_file);
   } else if (has_slash(exec_file)) {
     /* Relative path with a directory: */
     return zuo_string_to_c(zuo_path_to_complete_path(zuo_string(exec_file)));
   } else {
     /* We have to find the executable by searching PATH: */
-    char *path = strdup(getenv("PATH")), *p;
+    char *path = zuo_strdup(getenv("PATH")), *p;
     zuo_t *m;
     int more;
 
@@ -7152,7 +7169,7 @@ static char *zuo_self_path_c(const char *exec_file)
 	break;
     }
 
-    return strdup(exec_file);
+    return zuo_strdup(exec_file);
   }
 }
 
@@ -7619,7 +7636,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 }
 #  else
 int wmain(int argc, wchar_t **w_argv) {
-  char **argv = (char **)malloc(argc * sizeof(char *));
+  char **argv = (char **)zuo_malloc(argc * sizeof(char *));
   int i;
   for (i = 0; i < argc; i++)
     argv[i] = zuo_from_wide(w_argv[i]);

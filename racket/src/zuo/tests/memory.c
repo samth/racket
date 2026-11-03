@@ -1,12 +1,41 @@
-/* Internal counter and environment tests. Run through memory.zuo, or compile
+/* Internal boundary and allocation tests. Run through memory.zuo, or compile
    with -fsanitize=address,undefined and run each named case separately. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+static int fail_allocation;
+static int watch_copy;
+static int copy_allocations, copy_frees;
+static void *copy_buffer;
+
+static void *test_malloc(size_t size) {
+  void *p;
+  if (fail_allocation)
+    return NULL;
+  p = malloc(size);
+  if (watch_copy && (size == 4096)) {
+    copy_buffer = p;
+    copy_allocations++;
+  }
+  return p;
+}
+
+static void test_free(void *p) {
+  if (watch_copy && p && (p == copy_buffer)) {
+    copy_frees++;
+    copy_buffer = NULL;
+  }
+  free(p);
+}
+
+#define malloc test_malloc
+#define free test_free
 #define main zuo_original_main
 #include "../zuo.c"
 #undef main
+#undef malloc
+#undef free
 
 #define z zuo_roots.image
 #define Z zuo_roots.runtime
@@ -74,6 +103,30 @@ int main(int argc, char **argv) {
     b = (zuo_handle_t *)zuo_handle(0, zuo_handle_closed_status);
     (void)b;
     return 2;
+  } else if (!strcmp(argv[1], "out-of-memory")) {
+    /* Force the next heap allocation to fail, without a large allocation
+       or address-space limit that conflicts with AddressSanitizer. */
+    to_space = NULL;
+    fail_allocation = 1;
+    (void)zuo_integer(0);
+    return 2;
+  } else if (!strcmp(argv[1], "copy-buffer")) {
+    char src[] = "/tmp/zuo-memory-src-XXXXXX", dest[] = "/tmp/zuo-memory-dest-XXXXXX";
+    int src_fd = mkstemp(src), dest_fd = mkstemp(dest);
+    zuo_t *src_path, *dest_path;
+    check((src_fd >= 0) && (dest_fd >= 0));
+    check(write(src_fd, "hello", 5) == 5);
+    check(close(src_fd) == 0);
+    check(close(dest_fd) == 0);
+    src_path = zuo_string(src);
+    dest_path = zuo_string(dest);
+    watch_copy = 1;
+    (void)zuo_cp(src_path, dest_path, z.o_empty_hash);
+    (void)zuo_cp(src_path, dest_path, z.o_empty_hash);
+    watch_copy = 0;
+    check(unlink(src) == 0);
+    check(unlink(dest) == 0);
+    check((copy_allocations == 2) && (copy_frees == 2));
   } else
     return 2;
   return 0;

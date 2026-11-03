@@ -3,7 +3,7 @@
 (require "harness.zuo")
 (require zuo/thread)
 
-;; These internal tests use Unix environment entries and counter boundaries.
+;; These internal tests use Unix environment entries and allocation hooks.
 (when (eq? (hash-ref (runtime-env) 'system-type) 'unix)
   (alert "memory")
   (define src-dir (build-path (car (split-path (quote-module-path))) ".."))
@@ -35,4 +35,5 @@
   (try "probe-counter" 0 "probe 2147483648:")
   (try "symbol-limit" 1 "symbol id space exhausted")
   (try "handle-limit" 1 "handle id space exhausted")
-  (void))
+  (try "out-of-memory" 6 "out of memory")
+  (try "copy-buffer" 0 ""))

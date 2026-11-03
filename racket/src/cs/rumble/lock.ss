@@ -82,6 +82,8 @@
 ;;              and readers spin, sleep briefly, then park until the
 ;;              writer finishes
 ;;   seqpark3b - `seqpark2b` with the same per-lock parking
+;;   seqpark4 - `seqpark3`, but readers park right after spinning
+;;   seqpark4t - `seqpark3`, but a writer reads the lock before its CAS
 ;; Every variant except `master` and the `seqpark` variants skips locking until the place forks a
 ;; pthread; setting PLT_HASH_ALWAYS_LOCK at run time disables that.
 (meta define hash-lock-variant
@@ -113,7 +115,7 @@
     (eq? #t (#%vector-ref (place-registers) PARALLEL-PTHREADS-INDEX)))
 
   (define-syntax (lock-needed? stx)
-    (if (memq hash-lock-variant '(master seqpark seqpark2 seqpark2b seqpark3 seqpark3b))
+    (if (memq hash-lock-variant '(master seqpark seqpark2 seqpark2b seqpark3 seqpark3b seqpark4 seqpark4t))
         #'#t
         #'(place-in-parallel?)))
 
@@ -156,7 +158,7 @@
               (mutable revoked))
       (nongenerative rumble-biased-lock-1))
     (define-syntax-rule (nonscheduler-lock? l) (blk? l))]
-   [(memq hash-lock-variant '(seqpark2 seqpark2b seqpark3 seqpark3b))
+   [(memq hash-lock-variant '(seqpark2 seqpark2b seqpark3 seqpark3b seqpark4 seqpark4t))
     (define-syntax-rule (nonscheduler-lock? l) (#%vector? l))]
    [else
     (define-syntax-rule (nonscheduler-lock? l) (box? l))])
@@ -166,7 +168,7 @@
      [(eq? hash-lock-variant 'bias) (make-blk (box #f) (get-thread-id) #f #f)]
      [(memq hash-lock-variant '(seq seqflag seqpark)) (box 0)]
      [(memq hash-lock-variant '(seqpark2 seqpark2b)) (vector 0 0)]
-     [(memq hash-lock-variant '(seqpark3 seqpark3b)) (vector 0 0 #f)]
+     [(memq hash-lock-variant '(seqpark3 seqpark3b seqpark4 seqpark4t)) (vector 0 0 #f)]
      [else (box #f)]))
 
   (define-syntax-rule (define-box-lock-ops lock-acquire lock-release fast-acquire fast-release)
@@ -422,7 +424,7 @@
              v)]
           [else e])))]
 
-   [(memq hash-lock-variant '(seqpark3 seqpark3b))
+   [(memq hash-lock-variant '(seqpark3 seqpark3b seqpark4 seqpark4t))
     ;; A vector of three slots. Slot 0 is the writer lock: 0 when
     ;; unlocked, 1 when locked, and (for `seqpark3`) 3 when locked with
     ;; some thread possibly parked. Slot 1 is a seqlock counter that the
@@ -464,12 +466,24 @@
       (mutex-release (parking-mutex pk)))
     (define-syntax-rule (begin-write lock)
       (#%vector-set! lock 1 (fx+ (#%vector-ref lock 1) 1)))
-    (define-syntax-rule (fast-acquire lock)
-      (begin
-        (unless (#%vector-cas! lock 0 0 1)
-          (#%$app/no-inline lock-acquire/slow lock))
-        (memory-order-acquire)
-        (begin-write lock)))
+    (define-syntax fast-acquire
+      (lambda (stx)
+        (syntax-case stx ()
+          [(_ lock)
+           (if (memq hash-lock-variant '(seqpark4t))
+               ;; read before the CAS, so that waiting writers don't
+               ;; keep taking the cache line away from the holder
+               #'(begin
+                   (unless (and (eq? 0 (#%vector-ref lock 0))
+                                (#%vector-cas! lock 0 0 1))
+                     (#%$app/no-inline lock-acquire/slow lock))
+                   (memory-order-acquire)
+                   (begin-write lock))
+               #'(begin
+                   (unless (#%vector-cas! lock 0 0 1)
+                     (#%$app/no-inline lock-acquire/slow lock))
+                   (memory-order-acquire)
+                   (begin-write lock)))])))
     (define (lock-acquire/slow lock)
       (let loop ([n 0])
         (cond
@@ -477,7 +491,7 @@
           [(fx< n 100) (loop (fx+ n 1))]
           [else (park-and-acquire lock)])))
     (meta-cond
-     [(eq? hash-lock-variant 'seqpark3)
+     [(memq hash-lock-variant '(seqpark3 seqpark4 seqpark4t))
       ;; Release with a CAS that notices a parked thread
       (define-syntax-rule (fast-release lock)
         (begin
@@ -573,7 +587,10 @@
         (cond
           [(fxeven? (#%vector-ref l 1)) (void)]
           [(fx< n 100) (loop (fx+ n 1) sleep-ns)]
-          [(fx< sleep-ns 50000)
+          [(and (fx< sleep-ns 50000)
+                (meta-cond
+                 [(eq? hash-lock-variant 'seqpark4) #f]
+                 [else #t]))
            (#%sleep (#%make-time 'time-duration sleep-ns 0))
            (loop 0 (fx* sleep-ns 2))]
           [else

@@ -32,6 +32,8 @@
 (check (string-ref "0123" 2) 50)
 (check-fail (string-ref "0123" 4) "out of bounds")
 (check-fail (string-ref "0123" -1) "out of bounds")
+(check-fail (string-ref "" 0) "out of bounds")
+(check-fail (string-ref "a" 9223372036854775807) "out of bounds")
 
 (check (substring "0123" 0 0) "")
 (check (substring "0123" 0 1) "0")
@@ -52,6 +54,13 @@
 (check (string-u32-ref "__\000\004\004\000!" 2) (+ (* 256 4) (* 256 256 4)))
 (check (string-u32-ref "__\003\000\000\003!" 2) (+ 3 (* 256 256 256 3)))
 (check (string-u32-ref "__\377\000\000\377!" 2) (+ 255 (* 256 256 256 255)))
+
+(check-fail (string-u32-ref "abcd" -1) "out of bounds")
+(check-fail (string-u32-ref "abcd" 1) "out of bounds")
+(check-fail (string-u32-ref "abc" 0) "out of bounds")
+(check-fail (string-u32-ref "" 0) "out of bounds")
+(check-fail (string-u32-ref "abcd" 9223372036854775805) "out of bounds")
+(check-fail (string-u32-ref "abcd" 9223372036854775807) "out of bounds")
 
 (check (char "0") 48)
 (check (char "\377") 255)
@@ -89,6 +98,16 @@
       (unless (= j (string-length s)) (j-loop (+ j 1))))
     (unless (= i (string-length s)) (i-loop (+ i 1)))))
 
+(when (eq? (hash-ref (runtime-env) 'system-type) 'unix)
+  (check (shell->strings "\\") '("\\"))
+  (check (shell->strings "a\\") '("a\\"))
+  (check (shell->strings "a b\\") '("a" "b\\"))
+  (check (shell->strings "a\\\n") '("a")))
+
+(check-arg-fail (string-sha256 100000000000) not-string)
+(check-arg-fail (string-sha256 #f) not-string)
+(check-arg-fail (string-sha256 'apple) not-string)
+(check (string-sha256 "") "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
 (check (string-sha256 "hello\n") "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03")
 
 (check (string->integer "10") 10)

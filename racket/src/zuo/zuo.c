@@ -2582,7 +2582,7 @@ static zuo_int_t check_string_ref_index(const char *who, zuo_t *obj, zuo_t *i, i
   check_string(who, obj);
   check_integer(who, i);
   idx = ZUO_INT_I(i);
-  if ((idx < 0) || ((idx + width) > ZUO_STRING_LEN(obj)))
+  if ((idx < 0) || (idx > (ZUO_STRING_LEN(obj) - width)))
     zuo_fail1w(who, "index out of bounds for string", i);
   return idx;
 }
@@ -5769,7 +5769,7 @@ static char **zuo_shell_to_strings_c(char *buf, int skip_exe, zuo_intptr_t *_len
       int next_c = ((unsigned char *)buf)[i+1];
       if (next_c != '\n')
         buf[j++] = c;
-      i += 2;
+      i += (next_c == 0) ? 1 : 2;
     } else if (isspace(c) || (c == 0)) {
       if ((j > arg_start) || did_create) {
         buf[j++] = 0;
@@ -6929,6 +6929,7 @@ static zuo_t *zuo_string_sha256(zuo_t *str) {
   char digest_hex[2 * ZUO_SHA256_DIGEST_SIZE];
   int i;
 
+  check_string("string-sha256", str);
   zuo_sha256_init(&context);
   zuo_sha256_update(&context, (zuo_uint8_t *)ZUO_STRING_PTR(str), ZUO_STRING_LEN(str));
   zuo_sha256_final(&context, digest);

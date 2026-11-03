@@ -1551,7 +1551,13 @@
         [(_ ?x ?b succ fail)
          (let ([x ?x])
            (let loop ([b ?b])
-             (if (fixnum? b)
+             ;; `b` can be #f when a reader without a lock walks onto
+             ;; an entry that a concurrent `eq-hashtable-delete!` unlinked.
+             ;; Such a reader also relies on the store--store fence that
+             ;; every pointer store gets on a weakly ordered platform, so
+             ;; that a new entry or value is initialized before it is
+             ;; published.
+             (if (or (fixnum? b) (not b))
                  fail
                  (let ([keyval ($tlc-keyval b)])
                    (if (eq? (car keyval) x)

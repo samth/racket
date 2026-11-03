@@ -6,7 +6,8 @@
          "../common/performance.rkt"
          "contract.rkt"
          "parse-module-path.rkt"
-         "intern.rkt")
+         "intern.rkt"
+         "field0-hash.rkt")
 
 (provide module-path?
          
@@ -54,7 +55,8 @@
 
 ;; ----------------------------------------
 
-(struct resolved-module-path (name)
+(struct resolved-module-path (hash ; field 0 => `eq-hash-code`
+                              name)
   #:authentic
   #:property prop:equal+hash
   ;; Although equal resolved module paths are `eq?` externally,
@@ -78,6 +80,8 @@
   (lambda (r ser-push! state)
     (ser-push! 'tag '#:resolved-module-path)
     (ser-push! (resolved-module-path-name r))))
+
+(register-field0-eq-hash-code! struct:resolved-module-path)
 
 (define (deserialize-resolved-module-path n)
   (make-resolved-module-path n))
@@ -136,7 +140,7 @@
                            "                    (and/c path? complete-path?))\n"
                            "              (non-empty-listof symbol?)))")
                           p))
-  (weak-intern! resolved-module-paths (resolved-module-path p)))
+  (weak-intern! resolved-module-paths (resolved-module-path (next-field0-hash!) p)))
 
 (define (resolved-module-path->module-path r)
   (define name (resolved-module-path-name r))

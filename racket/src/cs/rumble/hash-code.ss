@@ -30,6 +30,75 @@
     (eq-hashtable-set! codes p 0)
     (eq-hashtable-delete! codes p)))
 
+;; Instances of a record type in `field0-hash-rtds` (exact types, not
+;; subtypes) have an immutable fixnum, ratio, or interned symbol in
+;; field 0 that can serve as the instance's `eq-hash-code` (it doesn't
+;; have to be unique, just well distributed). That avoids registering
+;; every such instance in `codes`, which is relatively expensive.
+;; Rumble uses this for keywords, parameters, and prompt tags, and the
+;; expander uses it (via `unsafe-set-struct-type-field0-eq-hash-code!`)
+;; for scopes and other structs that it uses heavily as `hasheq` keys.
+;;
+;; The list is global, not place-local: the expander is instantiated
+;; once per process and its struct types are shared by all places, as
+;; are many of its hash tables (e.g., for primitive modules), so every
+;; place must hash a given instance the same way. Registration must
+;; happen before any instance of the type is hashed, which is why
+;; rumble and the expander register at startup. Registration takes
+;; the global lock, but readers don't need it: the list is extended
+;; only by storing a new pair, which Chez Scheme publishes with a
+;; store-store fence on weakly ordered machines.
+(define field0-hash-rtds '())
+
+;; Checking the list costs a load and compare per element, which adds
+;; up for the most frequently hashed types, so up to two types are
+;; checked first: parameters (looked up in a parameterization's
+;; `hasheq` on every parameter access) and the type that the expander
+;; registers with `hot? = #t` (scopes).
+(define hot-field0-hash-rtd-1 #f)
+(define hot-field0-hash-rtd-2 #f)
+
+(define unsafe-set-struct-type-field0-eq-hash-code!
+  (case-lambda
+   [(rtd) (unsafe-set-struct-type-field0-eq-hash-code! rtd #f)]
+   [(rtd hot?)
+    (with-global-lock*
+     (cond
+       [(and hot? (not hot-field0-hash-rtd-1))
+        (set! hot-field0-hash-rtd-1 rtd)]
+       [(and hot? (not hot-field0-hash-rtd-2))
+        (set! hot-field0-hash-rtd-2 rtd)]
+       [(#%memq rtd field0-hash-rtds) (void)]
+       [else
+        ;; Later registrations are checked first
+        (set! field0-hash-rtds (cons rtd field0-hash-rtds))]))]))
+
+;; For field 0 of rumble records that use `field0-hash-rtds`
+(define field0-hash-counter 0)
+(define (next-field0-hash!)
+  ;; Races are harmless, since a hash code doesn't have to be unique
+  (let ([n field0-hash-counter])
+    (set! field0-hash-counter (if (fx= n (most-positive-fixnum)) 0 (fx+ n 1)))
+    n))
+
+(define (field0-hash-code x)
+  ;; Only exact record types are registered, so checking `eq?` on the
+  ;; record's own rtd suffices, which is much cheaper than `record?`
+  (let ([rtd (#%$record-type-descriptor x)])
+    (and (or (eq? rtd hot-field0-hash-rtd-1)
+             (eq? rtd hot-field0-hash-rtd-2)
+             (let loop ([rtds field0-hash-rtds])
+               (and (pair? rtds)
+                    (or (eq? rtd (car rtds))
+                        (loop (cdr rtds))))))
+         (let ([v (#%$record-ref x 0)])
+           (cond
+             [(fixnum? v) (fxand v (most-positive-fixnum))]
+             [(ratnum? v) (let ([n (#3%$ratio-numerator v)])
+                            (and (fixnum? n) (fxand n (most-positive-fixnum))))]
+             [(and (symbol? v) (not (gensym? v))) (symbol-hash v)]
+             [else #f])))))
+
 (define (eq-hash-code x)
   (cond
    [(and (symbol? x)
@@ -40,6 +109,8 @@
     (symbol-hash x)]
    [(number? x) (number-hash x)]
    [(char? x) (char->integer x)]
+   [(and (#%$record? x) (field0-hash-code x))
+    => (lambda (n) n)]
    [else
     (let ([p (eq-hashtable-try-atomic-cell codes x counter)])
       (cond

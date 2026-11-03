@@ -1050,7 +1050,7 @@
 
 ;; Polls without the scheduler lock until work is available, the
 ;; worker's state changes, or WORKER-SPIN-MSECS pass
-(define WORKER-SPIN-MSECS 2.0)
+(define WORKER-SPIN-MSECS 1.0)
 (define (spin-for-work w s)
   (define state (worker-state w))
   (define until (+ (current-inexact-monotonic-milliseconds) WORKER-SPIN-MSECS))

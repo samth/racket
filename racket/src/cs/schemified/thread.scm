@@ -13648,11 +13648,11 @@
                                 (loop_0 #f))))))))))
                  (loop_0 #f)))))))
       (set-worker-pthread! w_0 th_0))))
-(define WORKER-SPIN-MSECS 2.0)
+(define WORKER-SPIN-MSECS 1.0)
 (define spin-for-work
   (lambda (w_0 s_0)
     (let ((state_0 (worker-state w_0)))
-      (let ((until_0 (+ (current-inexact-monotonic-milliseconds) 2.0)))
+      (let ((until_0 (+ (current-inexact-monotonic-milliseconds) 1.0)))
         (letrec*
          ((loop_0
            (|#%name|

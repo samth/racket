@@ -107,8 +107,8 @@ static const char *zuo_lib_path = ZUO_LIB_PATH;
 
 static const char *zuo_file_logging = NULL;
 static int zuo_logging = 0;
-static int zuo_probe_each = 0;
-static int zuo_probe_counter = 0;
+static zuo_uint_t zuo_probe_each = 0;
+static zuo_uint_t zuo_probe_counter = 0;
 
 static void zuo_configure(void) {
   const char *s;
@@ -121,8 +121,12 @@ static void zuo_configure(void) {
     zuo_logging = 1;
 
   if ((s = getenv("ZUO_PROBE_EACH"))) {
-    while (isdigit(*s)) {
-      zuo_probe_each = (zuo_probe_each * 10) + (s[0] - '0');
+    while (isdigit((unsigned char)*s)) {
+      unsigned int digit = s[0] - '0';
+      if (zuo_probe_each > (~(zuo_uint_t)0 - digit) / 10)
+        zuo_probe_each = ~(zuo_uint_t)0;
+      else
+        zuo_probe_each = (zuo_probe_each * 10) + digit;
       s++;
     }
   }
@@ -1075,6 +1079,9 @@ static zuo_t *zuo_trie_node(void) {
 
 static zuo_t *zuo_make_symbol_from_string(zuo_t *str) {
   zuo_symbol_t *obj = (zuo_symbol_t *)zuo_new(zuo_symbol_tag, sizeof(zuo_symbol_t));
+  /* Symbol ids and the image header use signed 32-bit integers. */
+  if (zuo_symbol_count == 0x7fffffff)
+    zuo_panic("symbol id space exhausted");
   obj->id = zuo_symbol_count++;
   obj->str = str;
   return (zuo_t *)obj;
@@ -1152,6 +1159,8 @@ static zuo_t *zuo_closure(zuo_t *lambda, zuo_t *env) {
 
 static zuo_t *zuo_handle(zuo_raw_handle_t handle, zuo_handle_status_t status) {
   zuo_handle_t *obj = (zuo_handle_t *)zuo_new(zuo_handle_tag, sizeof(zuo_handle_t));
+  if (zuo_handle_count == 0x7fffffff)
+    zuo_panic("handle id space exhausted");
   obj->id = zuo_handle_count++;
   obj->u.h.u.handle = handle;
   obj->u.h.status = status;
@@ -3226,7 +3235,7 @@ static void interp_step(void) {
   if (zuo_probe_each) {
     zuo_probe_counter++;
     if ((zuo_probe_counter % zuo_probe_each) == 0) {
-      fprintf(stderr, "probe %d:\n", zuo_probe_counter);
+      fprintf(stderr, "probe %llu:\n", (unsigned long long)zuo_probe_counter);
       zuo_stack_trace();
     }
   }
@@ -3517,6 +3526,8 @@ static zuo_t *zuo_get_envvars(void) {
       p = ea[i];
       for (j = 0; p[j] && p[j] != '='; j++) {
       }
+      if (!p[j])
+        continue;
       pr = zuo_cons(zuo_cons(zuo_sized_string(p, j), zuo_string(p+j+1)),
                     z.o_null);
       if (last == NULL) first = pr; else ZUO_CDR(last) = pr;
@@ -3541,8 +3552,8 @@ static zuo_t *zuo_get_envvars(void) {
       p = zuo_from_wide(e + start);
       for (j = 0; p[j] && p[j] != '='; j++) {
       }
-      p[j] = 0;
-      if (p[0] != 0) {
+      if (p[j] && (p[0] != 0)) {
+        p[j] = 0;
         pr = zuo_cons(zuo_cons(zuo_string(p), zuo_string(p+j+1)),
                       z.o_null);
         if (last == NULL) first = pr; else ZUO_CDR(last) = pr;
@@ -4356,6 +4367,8 @@ static zuo_raw_handle_t zuo_fd_open_input_handle(zuo_t *path, zuo_t *options) {
     check_options_consumed(who, options);
     if (zuo_file_logging) {
       FILE *lf = fopen(zuo_file_logging, "ab");
+      if (lf == NULL)
+        zuo_fail1w(who, "cannot open module log file", zuo_string(zuo_file_logging));
       zuo_fwrite(lf, path);
       fprintf(lf, "\n");
       fclose(lf);

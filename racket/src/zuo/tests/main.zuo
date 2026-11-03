@@ -23,6 +23,7 @@
 (require "shell.zuo")
 (require "config.zuo")
 (require "c.zuo")
+(require "memory.zuo")
 (require "cycle.zuo")
 (require "build.zuo")
 (require "make.zuo")

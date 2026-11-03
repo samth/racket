@@ -7,6 +7,19 @@
 (define zuo.exe (hash-ref (runtime-env) 'exe))
 (define answer.txt (build-path tmp-dir "answer.txt"))
 
+;; An unusable module log must report an error instead of dereferencing
+;; the failed fopen result. Use a regular file as the parent directory.
+(let ()
+  (define log-parent (build-path tmp-dir "module-log-parent.txt"))
+  (display-to-file "" log-parent :truncate)
+  (run-zuo* (list "-M" (build-path log-parent "log.txt")
+                  (build-path (car (split-path (quote-module-path))) "example.zuo"))
+            ""
+            (lambda (status out err)
+              (check status 1)
+              (check (contains? err "cannot open module log file"))))
+  (rm log-parent))
+
 ;; check process without redirection, inculding multiple processes
 (let ()
   (define echo-to-file.zuo (build-path tmp-dir "echo-to-file.zuo"))

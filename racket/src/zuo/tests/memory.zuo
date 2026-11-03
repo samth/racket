@@ -1,0 +1,38 @@
+#lang zuo
+
+(require "harness.zuo")
+(require zuo/thread)
+
+;; These internal tests use Unix environment entries and counter boundaries.
+(when (eq? (hash-ref (runtime-env) 'system-type) 'unix)
+  (alert "memory")
+  (define src-dir (build-path (car (split-path (quote-module-path))) ".."))
+  (define config-file (build-path src-dir "Makefile"))
+  (define config (if (file-exists? config-file) (config-file->hash config-file) (hash)))
+  (define exe (build-path tmp-dir "memory-tests"))
+  (call-in-main-thread
+   (lambda ()
+     (c-compile exe (list (build-path src-dir "tests" "memory.c")) config)))
+
+  (define (try mode status message)
+    (define p (process exe mode (hash 'stdout 'pipe 'stderr 'pipe)))
+    (define out (hash-ref p 'stdout))
+    (define err (hash-ref p 'stderr))
+    (define output (fd-read out eof))
+    (define errors (fd-read err eof))
+    (fd-close out)
+    (fd-close err)
+    (process-wait (hash-ref p 'process))
+    (define result (process-status (hash-ref p 'process)))
+    (check (list mode result) (list mode status))
+    (check output "")
+    (check (contains? errors message))
+    (check (not (contains? errors "runtime error:")))
+    (check (not (contains? errors "AddressSanitizer:"))))
+
+  (try "environment" 0 "")
+  (try "probe-parse" 0 "")
+  (try "probe-counter" 0 "probe 2147483648:")
+  (try "symbol-limit" 1 "symbol id space exhausted")
+  (try "handle-limit" 1 "handle id space exhausted")
+  (void))

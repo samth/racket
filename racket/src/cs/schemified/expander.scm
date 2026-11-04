@@ -9574,10 +9574,10 @@
    like-ambiguous-binding?
    (record-predicate struct:like-ambiguous-binding)))
 (define empty-binding-table hash2610)
-(define finish_2494
+(define finish_2600
   (make-struct-type-install-properties
    '(table-with-bulk-bindings)
-   3
+   4
    0
    #f
    (list
@@ -9604,13 +9604,13 @@
    (|#%nongenerative-uid| table-with-bulk-bindings)
    #f
    #f
-   '(3 . 0)
+   '(4 . 8)
    'make-struct-type
    #f
    #f
    #f
    |#%system-inspector|))
-(define effect_2950 (finish_2494 struct:table-with-bulk-bindings))
+(define effect_2950 (finish_2600 struct:table-with-bulk-bindings))
 (define table-with-bulk-bindings1.1
   (|#%name|
    table-with-bulk-bindings
@@ -9635,9 +9635,17 @@
   (|#%name|
    table-with-bulk-bindings-bulk-bindings
    (record-accessor struct:table-with-bulk-bindings 2)))
+(define table-with-bulk-bindings-index
+  (|#%name|
+   table-with-bulk-bindings-index
+   (record-accessor struct:table-with-bulk-bindings 3)))
+(define set-table-with-bulk-bindings-index!
+  (|#%name|
+   set-table-with-bulk-bindings-index!
+   (record-mutator struct:table-with-bulk-bindings 3)))
 (define deserialize-table-with-bulk-bindings
   (lambda (syms_0 bulk-bindings_0)
-    (table-with-bulk-bindings1.1 syms_0 syms_0 bulk-bindings_0)))
+    (table-with-bulk-bindings1.1 syms_0 syms_0 bulk-bindings_0 0)))
 (define finish_2866
   (make-struct-type-install-properties
    '(bulk-binding-at)
@@ -9866,7 +9874,8 @@
             (table-with-bulk-bindings1.1
              new-syms_0
              new-syms/serialize_0
-             (table-with-bulk-bindings-bulk-bindings bt_0))
+             (table-with-bulk-bindings-bulk-bindings bt_0)
+             (table-with-bulk-bindings-index bt_0))
             (raise-argument-error
              'struct-copy
              "table-with-bulk-bindings?"
@@ -9903,9 +9912,107 @@
             new-syms/serialize_0
             (cons
              (bulk-binding-at2.1 scopes7_0 bulk8_0)
-             (table-with-bulk-bindings-bulk-bindings bt6_0)))))
-       (let ((temp55_0 (table-with-bulk-bindings1.1 bt6_0 bt6_0 null)))
+             (table-with-bulk-bindings-bulk-bindings bt6_0))
+            0)))
+       (let ((temp55_0 (table-with-bulk-bindings1.1 bt6_0 bt6_0 null 0)))
          (binding-table-add-bulk.1 #f temp55_0 scopes7_0 bulk8_0))))))
+(define bulk-bindings-for
+  (lambda (table_0 sym_0 s_0 extra-shifts_0)
+    (let ((bbs_0 (table-with-bulk-bindings-bulk-bindings table_0)))
+      (if (let ((or-part_0 (null? bbs_0)))
+            (if or-part_0 or-part_0 (null? (cdr bbs_0))))
+        bbs_0
+        (let ((index_0 (table-with-bulk-bindings-index table_0)))
+          (if (hash? index_0)
+            (if (symbol-interned? sym_0) (hash-ref index_0 sym_0 null) null)
+            (let ((work_0 (+ index_0 (length bbs_0))))
+              (if (if (> work_0 1024)
+                    (if (not
+                         (let ((app_0 (integer-length work_0)))
+                           (= app_0 (integer-length index_0))))
+                      (>=
+                       work_0
+                       (letrec*
+                        ((for-loop_0
+                          (|#%name|
+                           for-loop
+                           (lambda (result_0 lst_0)
+                             (if (pair? lst_0)
+                               (let ((bba_0 (unsafe-car lst_0)))
+                                 (let ((rest_0 (unsafe-cdr lst_0)))
+                                   (let ((result_1
+                                          (let ((result_1
+                                                 (+
+                                                  result_0
+                                                  (hash-count
+                                                   (bulk-binding-symbols
+                                                    (bulk-binding-at-bulk
+                                                     bba_0)
+                                                    s_0
+                                                    extra-shifts_0)))))
+                                            (values result_1))))
+                                     (for-loop_0 result_1 rest_0))))
+                               result_0)))))
+                        (for-loop_0 0 bbs_0)))
+                      #f)
+                    #f)
+                (let ((new-index_0 (make-hasheq)))
+                  (begin
+                    (let ((lst_0 (reverse$1 bbs_0)))
+                      (letrec*
+                       ((for-loop_0
+                         (|#%name|
+                          for-loop
+                          (lambda (lst_1)
+                            (if (pair? lst_1)
+                              (let ((bba_0 (unsafe-car lst_1)))
+                                (let ((rest_0 (unsafe-cdr lst_1)))
+                                  (begin
+                                    (begin
+                                      (let ((ht_0
+                                             (bulk-binding-symbols
+                                              (bulk-binding-at-bulk bba_0)
+                                              s_0
+                                              extra-shifts_0)))
+                                        (letrec*
+                                         ((for-loop_1
+                                           (|#%name|
+                                            for-loop
+                                            (lambda (i_0)
+                                              (if i_0
+                                                (let ((sym_1
+                                                       (hash-iterate-key
+                                                        ht_0
+                                                        i_0)))
+                                                  (begin
+                                                    (hash-set!
+                                                     new-index_0
+                                                     sym_1
+                                                     (cons
+                                                      bba_0
+                                                      (hash-ref
+                                                       new-index_0
+                                                       sym_1
+                                                       null)))
+                                                    (for-loop_1
+                                                     (hash-iterate-next
+                                                      ht_0
+                                                      i_0))))
+                                                (values))))))
+                                         (for-loop_1
+                                          (hash-iterate-first ht_0))))
+                                      (void))
+                                    (for-loop_0 rest_0))))
+                              (values))))))
+                       (for-loop_0 lst_0)))
+                    (void)
+                    (set-table-with-bulk-bindings-index! table_0 new-index_0)
+                    (if (symbol-interned? sym_0)
+                      (hash-ref new-index_0 sym_0 null)
+                      null)))
+                (begin
+                  (set-table-with-bulk-bindings-index! table_0 work_0)
+                  bbs_0)))))))))
 (define remove-matching-bindings.1
   (|#%name|
    remove-matching-bindings
@@ -10472,7 +10579,8 @@
                          (table-with-bulk-bindings1.1
                           new-syms_0
                           new-syms_0
-                          new-bulk-bindings_0)
+                          new-bulk-bindings_0
+                          0)
                          new-syms_0)))
                   (begin
                     (hash-set!
@@ -13629,7 +13737,9 @@
                                                   table_0
                                                   sym_0
                                                   hash2725)
-                                                 null)
+                                                 null
+                                                 s38_0
+                                                 extra-shifts33_0)
                                                 (let ((app_0
                                                        (hash-ref
                                                         (table-with-bulk-bindings-syms
@@ -13638,185 +13748,182 @@
                                                         hash2725)))
                                                   (values
                                                    app_0
-                                                   (table-with-bulk-bindings-bulk-bindings
-                                                    table_0)))))
-                                            (lambda (ht_0 bulk-bindings_0)
-                                              (let ((s_0 s38_0))
-                                                (let ((extra-shifts_0
-                                                       extra-shifts33_0))
-                                                  (let ((s_1 s_0)
-                                                        (ht_1 ht_0)
-                                                        (bulk-bindings_1
-                                                         bulk-bindings_0))
-                                                    (begin
-                                                      #t
-                                                      (letrec*
-                                                       ((for-loop_1
-                                                         (|#%name|
-                                                          for-loop
-                                                          (lambda (best-scopes_1
-                                                                   best-binding_1
-                                                                   i_0)
-                                                            (if (not
-                                                                 (null? i_0))
-                                                              (let ((b-scopes_0
-                                                                     (if (pair?
-                                                                          i_0)
-                                                                       (bulk-binding-at-scopes
-                                                                        (car
-                                                                         i_0))
-                                                                       (hash-iterate-key
-                                                                        ht_1
-                                                                        i_0))))
-                                                                (let ((binding_0
-                                                                       (if (pair?
-                                                                            i_0)
-                                                                         (let ((bulk_0
-                                                                                (bulk-binding-at-bulk
-                                                                                 (car
-                                                                                  i_0))))
-                                                                           (let ((b-info_0
-                                                                                  (if (symbol-interned?
-                                                                                       sym_0)
-                                                                                    (hash-ref
-                                                                                     (bulk-binding-symbols
-                                                                                      bulk_0
-                                                                                      s_1
-                                                                                      extra-shifts_0)
-                                                                                     sym_0
-                                                                                     #f)
-                                                                                    #f)))
-                                                                             (if b-info_0
-                                                                               (|#%app|
-                                                                                (bulk-binding-class-create
-                                                                                 (bulk-binding-ref
-                                                                                  bulk_0))
+                                                   (bulk-bindings-for
+                                                    table_0
+                                                    sym_0
+                                                    s38_0
+                                                    extra-shifts33_0)
+                                                   s38_0
+                                                   extra-shifts33_0))))
+                                            (lambda (ht_0
+                                                     bulk-bindings_0
+                                                     s_0
+                                                     extra-shifts_0)
+                                              (begin
+                                                #t
+                                                (letrec*
+                                                 ((for-loop_1
+                                                   (|#%name|
+                                                    for-loop
+                                                    (lambda (best-scopes_1
+                                                             best-binding_1
+                                                             i_0)
+                                                      (if (not (null? i_0))
+                                                        (let ((b-scopes_0
+                                                               (if (pair? i_0)
+                                                                 (bulk-binding-at-scopes
+                                                                  (car i_0))
+                                                                 (hash-iterate-key
+                                                                  ht_0
+                                                                  i_0))))
+                                                          (let ((binding_0
+                                                                 (if (pair?
+                                                                      i_0)
+                                                                   (let ((bulk_0
+                                                                          (bulk-binding-at-bulk
+                                                                           (car
+                                                                            i_0))))
+                                                                     (let ((b-info_0
+                                                                            (if (symbol-interned?
+                                                                                 sym_0)
+                                                                              (hash-ref
+                                                                               (bulk-binding-symbols
                                                                                 bulk_0
-                                                                                b-info_0
-                                                                                sym_0)
-                                                                               #f)))
-                                                                         (hash-iterate-value
-                                                                          ht_1
-                                                                          i_0))))
-                                                                  (let ((b-scopes_1
-                                                                         b-scopes_0))
-                                                                    (call-with-values
-                                                                     (lambda ()
-                                                                       (if (if b-scopes_1
-                                                                             (if binding_0
-                                                                               (scope-set-subset-of-union?
-                                                                                b-scopes_1
-                                                                                scs_0
-                                                                                reps_0)
+                                                                                s_0
+                                                                                extra-shifts_0)
+                                                                               sym_0
                                                                                #f)
-                                                                             #f)
-                                                                         (call-with-values
-                                                                          (lambda ()
-                                                                            (if (pair?
-                                                                                 best-scopes_1)
-                                                                              (if (letrec*
-                                                                                   ((for-loop_2
-                                                                                     (|#%name|
-                                                                                      for-loop
-                                                                                      (lambda (result_0
-                                                                                               lst_2)
-                                                                                        (if (pair?
-                                                                                             lst_2)
-                                                                                          (let ((amb-scopes_0
-                                                                                                 (unsafe-car
-                                                                                                  lst_2)))
-                                                                                            (let ((rest_1
-                                                                                                   (unsafe-cdr
-                                                                                                    lst_2)))
-                                                                                              (let ((result_1
-                                                                                                     (let ((result_1
-                                                                                                            (scope-set-subset?
-                                                                                                             amb-scopes_0
-                                                                                                             b-scopes_1)))
-                                                                                                       (values
-                                                                                                        result_1))))
-                                                                                                (if (if (not
-                                                                                                         (let ((x_0
-                                                                                                                (list
-                                                                                                                 amb-scopes_0)))
-                                                                                                           (not
-                                                                                                            result_1)))
-                                                                                                      #t
-                                                                                                      #f)
-                                                                                                  (for-loop_2
-                                                                                                   result_1
-                                                                                                   rest_1)
+                                                                              #f)))
+                                                                       (if b-info_0
+                                                                         (|#%app|
+                                                                          (bulk-binding-class-create
+                                                                           (bulk-binding-ref
+                                                                            bulk_0))
+                                                                          bulk_0
+                                                                          b-info_0
+                                                                          sym_0)
+                                                                         #f)))
+                                                                   (hash-iterate-value
+                                                                    ht_0
+                                                                    i_0))))
+                                                            (let ((b-scopes_1
+                                                                   b-scopes_0))
+                                                              (call-with-values
+                                                               (lambda ()
+                                                                 (if (if b-scopes_1
+                                                                       (if binding_0
+                                                                         (scope-set-subset-of-union?
+                                                                          b-scopes_1
+                                                                          scs_0
+                                                                          reps_0)
+                                                                         #f)
+                                                                       #f)
+                                                                   (call-with-values
+                                                                    (lambda ()
+                                                                      (if (pair?
+                                                                           best-scopes_1)
+                                                                        (if (letrec*
+                                                                             ((for-loop_2
+                                                                               (|#%name|
+                                                                                for-loop
+                                                                                (lambda (result_0
+                                                                                         lst_2)
+                                                                                  (if (pair?
+                                                                                       lst_2)
+                                                                                    (let ((amb-scopes_0
+                                                                                           (unsafe-car
+                                                                                            lst_2)))
+                                                                                      (let ((rest_1
+                                                                                             (unsafe-cdr
+                                                                                              lst_2)))
+                                                                                        (let ((result_1
+                                                                                               (let ((result_1
+                                                                                                      (scope-set-subset?
+                                                                                                       amb-scopes_0
+                                                                                                       b-scopes_1)))
+                                                                                                 (values
                                                                                                   result_1))))
-                                                                                          result_0)))))
-                                                                                   (for-loop_2
-                                                                                    #t
-                                                                                    best-scopes_1))
-                                                                                (values
-                                                                                 b-scopes_1
-                                                                                 binding_0)
-                                                                                (values
-                                                                                 (cons
-                                                                                  b-scopes_1
-                                                                                  best-scopes_1)
-                                                                                 #f))
-                                                                              (if (not
-                                                                                   best-scopes_1)
-                                                                                (values
-                                                                                 b-scopes_1
-                                                                                 binding_0)
-                                                                                (if (scope-set-subset?
-                                                                                     b-scopes_1
-                                                                                     best-scopes_1)
-                                                                                  (values
-                                                                                   best-scopes_1
-                                                                                   best-binding_1)
-                                                                                  (if (scope-set-subset?
-                                                                                       best-scopes_1
-                                                                                       b-scopes_1)
-                                                                                    (values
-                                                                                     b-scopes_1
-                                                                                     binding_0)
-                                                                                    (values
-                                                                                     (list
-                                                                                      best-scopes_1
-                                                                                      b-scopes_1)
-                                                                                     #f))))))
-                                                                          (lambda (best-scopes_2
-                                                                                   best-binding_2)
+                                                                                          (if (if (not
+                                                                                                   (let ((x_0
+                                                                                                          (list
+                                                                                                           amb-scopes_0)))
+                                                                                                     (not
+                                                                                                      result_1)))
+                                                                                                #t
+                                                                                                #f)
+                                                                                            (for-loop_2
+                                                                                             result_1
+                                                                                             rest_1)
+                                                                                            result_1))))
+                                                                                    result_0)))))
+                                                                             (for-loop_2
+                                                                              #t
+                                                                              best-scopes_1))
+                                                                          (values
+                                                                           b-scopes_1
+                                                                           binding_0)
+                                                                          (values
+                                                                           (cons
+                                                                            b-scopes_1
+                                                                            best-scopes_1)
+                                                                           #f))
+                                                                        (if (not
+                                                                             best-scopes_1)
+                                                                          (values
+                                                                           b-scopes_1
+                                                                           binding_0)
+                                                                          (if (scope-set-subset?
+                                                                               b-scopes_1
+                                                                               best-scopes_1)
                                                                             (values
-                                                                             best-scopes_2
-                                                                             best-binding_2)))
-                                                                         (values
-                                                                          best-scopes_1
-                                                                          best-binding_1)))
-                                                                     (lambda (best-scopes_2
-                                                                              best-binding_2)
-                                                                       (for-loop_1
-                                                                        best-scopes_2
-                                                                        best-binding_2
-                                                                        (if (pair?
-                                                                             i_0)
-                                                                          (cdr
-                                                                           i_0)
-                                                                          (let ((or-part_0
-                                                                                 (hash-iterate-next
-                                                                                  ht_1
-                                                                                  i_0)))
-                                                                            (if or-part_0
-                                                                              or-part_0
-                                                                              bulk-bindings_1)))))))))
-                                                              (values
-                                                               best-scopes_1
-                                                               best-binding_1))))))
-                                                       (for-loop_1
-                                                        best-scopes_0
-                                                        best-binding_0
-                                                        (let ((or-part_0
-                                                               (hash-iterate-first
-                                                                ht_1)))
-                                                          (if or-part_0
-                                                            or-part_0
-                                                            bulk-bindings_1)))))))))))
+                                                                             best-scopes_1
+                                                                             best-binding_1)
+                                                                            (if (scope-set-subset?
+                                                                                 best-scopes_1
+                                                                                 b-scopes_1)
+                                                                              (values
+                                                                               b-scopes_1
+                                                                               binding_0)
+                                                                              (values
+                                                                               (list
+                                                                                best-scopes_1
+                                                                                b-scopes_1)
+                                                                               #f))))))
+                                                                    (lambda (best-scopes_2
+                                                                             best-binding_2)
+                                                                      (values
+                                                                       best-scopes_2
+                                                                       best-binding_2)))
+                                                                   (values
+                                                                    best-scopes_1
+                                                                    best-binding_1)))
+                                                               (lambda (best-scopes_2
+                                                                        best-binding_2)
+                                                                 (for-loop_1
+                                                                  best-scopes_2
+                                                                  best-binding_2
+                                                                  (if (pair?
+                                                                       i_0)
+                                                                    (cdr i_0)
+                                                                    (let ((or-part_0
+                                                                           (hash-iterate-next
+                                                                            ht_0
+                                                                            i_0)))
+                                                                      (if or-part_0
+                                                                        or-part_0
+                                                                        bulk-bindings_0)))))))))
+                                                        (values
+                                                         best-scopes_1
+                                                         best-binding_1))))))
+                                                 (for-loop_1
+                                                  best-scopes_0
+                                                  best-binding_0
+                                                  (let ((or-part_0
+                                                         (hash-iterate-first
+                                                          ht_0)))
+                                                    (if or-part_0
+                                                      or-part_0
+                                                      bulk-bindings_0))))))))
                                          (lambda (best-scopes_1 best-binding_1)
                                            (for-loop_0
                                             best-scopes_1
@@ -13847,7 +13954,9 @@
                                                      table_0
                                                      sym_0
                                                      hash2725)
-                                                    null)
+                                                    null
+                                                    s38_0
+                                                    extra-shifts33_0)
                                                    (let ((app_0
                                                           (hash-ref
                                                            (table-with-bulk-bindings-syms
@@ -13856,186 +13965,184 @@
                                                            hash2725)))
                                                      (values
                                                       app_0
-                                                      (table-with-bulk-bindings-bulk-bindings
-                                                       table_0)))))
-                                               (lambda (ht_0 bulk-bindings_0)
-                                                 (let ((s_0 s38_0))
-                                                   (let ((extra-shifts_0
-                                                          extra-shifts33_0))
-                                                     (let ((s_1 s_0)
-                                                           (ht_1 ht_0)
-                                                           (bulk-bindings_1
-                                                            bulk-bindings_0))
-                                                       (begin
-                                                         #t
-                                                         (letrec*
-                                                          ((for-loop_1
-                                                            (|#%name|
-                                                             for-loop
-                                                             (lambda (best-scopes_1
-                                                                      best-binding_1
-                                                                      i_0)
-                                                               (if (not
-                                                                    (null?
-                                                                     i_0))
-                                                                 (let ((b-scopes_0
-                                                                        (if (pair?
-                                                                             i_0)
-                                                                          (bulk-binding-at-scopes
-                                                                           (car
-                                                                            i_0))
-                                                                          (hash-iterate-key
-                                                                           ht_1
-                                                                           i_0))))
-                                                                   (let ((binding_0
-                                                                          (if (pair?
-                                                                               i_0)
-                                                                            (let ((bulk_0
-                                                                                   (bulk-binding-at-bulk
-                                                                                    (car
-                                                                                     i_0))))
-                                                                              (let ((b-info_0
-                                                                                     (if (symbol-interned?
-                                                                                          sym_0)
-                                                                                       (hash-ref
-                                                                                        (bulk-binding-symbols
-                                                                                         bulk_0
-                                                                                         s_1
-                                                                                         extra-shifts_0)
-                                                                                        sym_0
-                                                                                        #f)
-                                                                                       #f)))
-                                                                                (if b-info_0
-                                                                                  (|#%app|
-                                                                                   (bulk-binding-class-create
-                                                                                    (bulk-binding-ref
-                                                                                     bulk_0))
+                                                      (bulk-bindings-for
+                                                       table_0
+                                                       sym_0
+                                                       s38_0
+                                                       extra-shifts33_0)
+                                                      s38_0
+                                                      extra-shifts33_0))))
+                                               (lambda (ht_0
+                                                        bulk-bindings_0
+                                                        s_0
+                                                        extra-shifts_0)
+                                                 (begin
+                                                   #t
+                                                   (letrec*
+                                                    ((for-loop_1
+                                                      (|#%name|
+                                                       for-loop
+                                                       (lambda (best-scopes_1
+                                                                best-binding_1
+                                                                i_0)
+                                                         (if (not (null? i_0))
+                                                           (let ((b-scopes_0
+                                                                  (if (pair?
+                                                                       i_0)
+                                                                    (bulk-binding-at-scopes
+                                                                     (car i_0))
+                                                                    (hash-iterate-key
+                                                                     ht_0
+                                                                     i_0))))
+                                                             (let ((binding_0
+                                                                    (if (pair?
+                                                                         i_0)
+                                                                      (let ((bulk_0
+                                                                             (bulk-binding-at-bulk
+                                                                              (car
+                                                                               i_0))))
+                                                                        (let ((b-info_0
+                                                                               (if (symbol-interned?
+                                                                                    sym_0)
+                                                                                 (hash-ref
+                                                                                  (bulk-binding-symbols
                                                                                    bulk_0
-                                                                                   b-info_0
-                                                                                   sym_0)
-                                                                                  #f)))
-                                                                            (hash-iterate-value
-                                                                             ht_1
-                                                                             i_0))))
-                                                                     (let ((b-scopes_1
-                                                                            b-scopes_0))
-                                                                       (call-with-values
-                                                                        (lambda ()
-                                                                          (if (if b-scopes_1
-                                                                                (if binding_0
-                                                                                  (scope-set-subset-of-union?
-                                                                                   b-scopes_1
-                                                                                   scs_0
-                                                                                   reps_0)
+                                                                                   s_0
+                                                                                   extra-shifts_0)
+                                                                                  sym_0
                                                                                   #f)
-                                                                                #f)
-                                                                            (call-with-values
-                                                                             (lambda ()
-                                                                               (if (pair?
-                                                                                    best-scopes_1)
-                                                                                 (if (letrec*
-                                                                                      ((for-loop_2
-                                                                                        (|#%name|
-                                                                                         for-loop
-                                                                                         (lambda (result_0
-                                                                                                  lst_2)
-                                                                                           (if (pair?
-                                                                                                lst_2)
-                                                                                             (let ((amb-scopes_0
-                                                                                                    (unsafe-car
-                                                                                                     lst_2)))
-                                                                                               (let ((rest_1
-                                                                                                      (unsafe-cdr
-                                                                                                       lst_2)))
-                                                                                                 (let ((result_1
-                                                                                                        (let ((result_1
-                                                                                                               (scope-set-subset?
-                                                                                                                amb-scopes_0
-                                                                                                                b-scopes_1)))
-                                                                                                          (values
-                                                                                                           result_1))))
-                                                                                                   (if (if (not
-                                                                                                            (let ((x_0
-                                                                                                                   (list
-                                                                                                                    amb-scopes_0)))
-                                                                                                              (not
-                                                                                                               result_1)))
-                                                                                                         #t
-                                                                                                         #f)
-                                                                                                     (for-loop_2
-                                                                                                      result_1
-                                                                                                      rest_1)
+                                                                                 #f)))
+                                                                          (if b-info_0
+                                                                            (|#%app|
+                                                                             (bulk-binding-class-create
+                                                                              (bulk-binding-ref
+                                                                               bulk_0))
+                                                                             bulk_0
+                                                                             b-info_0
+                                                                             sym_0)
+                                                                            #f)))
+                                                                      (hash-iterate-value
+                                                                       ht_0
+                                                                       i_0))))
+                                                               (let ((b-scopes_1
+                                                                      b-scopes_0))
+                                                                 (call-with-values
+                                                                  (lambda ()
+                                                                    (if (if b-scopes_1
+                                                                          (if binding_0
+                                                                            (scope-set-subset-of-union?
+                                                                             b-scopes_1
+                                                                             scs_0
+                                                                             reps_0)
+                                                                            #f)
+                                                                          #f)
+                                                                      (call-with-values
+                                                                       (lambda ()
+                                                                         (if (pair?
+                                                                              best-scopes_1)
+                                                                           (if (letrec*
+                                                                                ((for-loop_2
+                                                                                  (|#%name|
+                                                                                   for-loop
+                                                                                   (lambda (result_0
+                                                                                            lst_2)
+                                                                                     (if (pair?
+                                                                                          lst_2)
+                                                                                       (let ((amb-scopes_0
+                                                                                              (unsafe-car
+                                                                                               lst_2)))
+                                                                                         (let ((rest_1
+                                                                                                (unsafe-cdr
+                                                                                                 lst_2)))
+                                                                                           (let ((result_1
+                                                                                                  (let ((result_1
+                                                                                                         (scope-set-subset?
+                                                                                                          amb-scopes_0
+                                                                                                          b-scopes_1)))
+                                                                                                    (values
                                                                                                      result_1))))
-                                                                                             result_0)))))
-                                                                                      (for-loop_2
-                                                                                       #t
-                                                                                       best-scopes_1))
-                                                                                   (values
-                                                                                    b-scopes_1
-                                                                                    binding_0)
-                                                                                   (values
-                                                                                    (cons
-                                                                                     b-scopes_1
-                                                                                     best-scopes_1)
-                                                                                    #f))
-                                                                                 (if (not
-                                                                                      best-scopes_1)
-                                                                                   (values
-                                                                                    b-scopes_1
-                                                                                    binding_0)
-                                                                                   (if (scope-set-subset?
-                                                                                        b-scopes_1
-                                                                                        best-scopes_1)
-                                                                                     (values
-                                                                                      best-scopes_1
-                                                                                      best-binding_1)
-                                                                                     (if (scope-set-subset?
-                                                                                          best-scopes_1
-                                                                                          b-scopes_1)
-                                                                                       (values
-                                                                                        b-scopes_1
-                                                                                        binding_0)
-                                                                                       (values
-                                                                                        (list
-                                                                                         best-scopes_1
-                                                                                         b-scopes_1)
-                                                                                        #f))))))
-                                                                             (lambda (best-scopes_2
-                                                                                      best-binding_2)
+                                                                                             (if (if (not
+                                                                                                      (let ((x_0
+                                                                                                             (list
+                                                                                                              amb-scopes_0)))
+                                                                                                        (not
+                                                                                                         result_1)))
+                                                                                                   #t
+                                                                                                   #f)
+                                                                                               (for-loop_2
+                                                                                                result_1
+                                                                                                rest_1)
+                                                                                               result_1))))
+                                                                                       result_0)))))
+                                                                                (for-loop_2
+                                                                                 #t
+                                                                                 best-scopes_1))
+                                                                             (values
+                                                                              b-scopes_1
+                                                                              binding_0)
+                                                                             (values
+                                                                              (cons
+                                                                               b-scopes_1
+                                                                               best-scopes_1)
+                                                                              #f))
+                                                                           (if (not
+                                                                                best-scopes_1)
+                                                                             (values
+                                                                              b-scopes_1
+                                                                              binding_0)
+                                                                             (if (scope-set-subset?
+                                                                                  b-scopes_1
+                                                                                  best-scopes_1)
                                                                                (values
-                                                                                best-scopes_2
-                                                                                best-binding_2)))
-                                                                            (values
-                                                                             best-scopes_1
-                                                                             best-binding_1)))
-                                                                        (lambda (best-scopes_2
-                                                                                 best-binding_2)
-                                                                          (for-loop_1
-                                                                           best-scopes_2
-                                                                           best-binding_2
-                                                                           (if (pair?
-                                                                                i_0)
-                                                                             (cdr
-                                                                              i_0)
-                                                                             (let ((or-part_0
-                                                                                    (hash-iterate-next
-                                                                                     ht_1
-                                                                                     i_0)))
-                                                                               (if or-part_0
-                                                                                 or-part_0
-                                                                                 bulk-bindings_1)))))))))
-                                                                 (values
-                                                                  best-scopes_1
-                                                                  best-binding_1))))))
-                                                          (for-loop_1
-                                                           best-scopes_0
-                                                           best-binding_0
-                                                           (let ((or-part_0
-                                                                  (hash-iterate-first
-                                                                   ht_1)))
-                                                             (if or-part_0
-                                                               or-part_0
-                                                               bulk-bindings_1)))))))))))
+                                                                                best-scopes_1
+                                                                                best-binding_1)
+                                                                               (if (scope-set-subset?
+                                                                                    best-scopes_1
+                                                                                    b-scopes_1)
+                                                                                 (values
+                                                                                  b-scopes_1
+                                                                                  binding_0)
+                                                                                 (values
+                                                                                  (list
+                                                                                   best-scopes_1
+                                                                                   b-scopes_1)
+                                                                                  #f))))))
+                                                                       (lambda (best-scopes_2
+                                                                                best-binding_2)
+                                                                         (values
+                                                                          best-scopes_2
+                                                                          best-binding_2)))
+                                                                      (values
+                                                                       best-scopes_1
+                                                                       best-binding_1)))
+                                                                  (lambda (best-scopes_2
+                                                                           best-binding_2)
+                                                                    (for-loop_1
+                                                                     best-scopes_2
+                                                                     best-binding_2
+                                                                     (if (pair?
+                                                                          i_0)
+                                                                       (cdr
+                                                                        i_0)
+                                                                       (let ((or-part_0
+                                                                              (hash-iterate-next
+                                                                               ht_0
+                                                                               i_0)))
+                                                                         (if or-part_0
+                                                                           or-part_0
+                                                                           bulk-bindings_0)))))))))
+                                                           (values
+                                                            best-scopes_1
+                                                            best-binding_1))))))
+                                                    (for-loop_1
+                                                     best-scopes_0
+                                                     best-binding_0
+                                                     (let ((or-part_0
+                                                            (hash-iterate-first
+                                                             ht_0)))
+                                                       (if or-part_0
+                                                         or-part_0
+                                                         bulk-bindings_0))))))))
                                             (lambda (best-scopes_1
                                                      best-binding_1)
                                               (for-loop_0
@@ -20077,7 +20184,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish953
+  (let ((finish954
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -20103,7 +20210,7 @@
             #f
             #f
             |#%system-inspector|)))
-      (let ((effect954 (finish953 struct:set!-transformer_0)))
+      (let ((effect955 (finish954 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer
@@ -21452,6 +21559,8 @@
                                                                                                        table_0
                                                                                                        sym_0
                                                                                                        hash2725)
+                                                                                                      null
+                                                                                                      s_0
                                                                                                       null)
                                                                                                      (let ((app_0
                                                                                                             (hash-ref
@@ -21461,154 +21570,151 @@
                                                                                                              hash2725)))
                                                                                                        (values
                                                                                                         app_0
-                                                                                                        (table-with-bulk-bindings-bulk-bindings
-                                                                                                         table_0)))))
+                                                                                                        (bulk-bindings-for
+                                                                                                         table_0
+                                                                                                         sym_0
+                                                                                                         s_0
+                                                                                                         null)
+                                                                                                        s_0
+                                                                                                        null))))
                                                                                                  (lambda (ht_0
-                                                                                                          bulk-bindings_0)
-                                                                                                   (let ((s_1
-                                                                                                          s_0))
-                                                                                                     (let ((extra-shifts_0
-                                                                                                            null))
-                                                                                                       (let ((s_2
-                                                                                                              s_1)
-                                                                                                             (ht_1
-                                                                                                              ht_0)
-                                                                                                             (bulk-bindings_1
-                                                                                                              bulk-bindings_0))
-                                                                                                         (begin
-                                                                                                           #t
-                                                                                                           (letrec*
-                                                                                                            ((for-loop_2
-                                                                                                              (|#%name|
-                                                                                                               for-loop
-                                                                                                               (lambda (bindings_1
-                                                                                                                        covered-scope-sets_2
-                                                                                                                        i_0)
-                                                                                                                 (if (not
-                                                                                                                      (null?
-                                                                                                                       i_0))
-                                                                                                                   (let ((scs_0
-                                                                                                                          (if (pair?
-                                                                                                                               i_0)
-                                                                                                                            (bulk-binding-at-scopes
-                                                                                                                             (car
-                                                                                                                              i_0))
-                                                                                                                            (hash-iterate-key
-                                                                                                                             ht_1
-                                                                                                                             i_0))))
-                                                                                                                     (let ((b_0
-                                                                                                                            (if (pair?
-                                                                                                                                 i_0)
-                                                                                                                              (let ((bulk_0
-                                                                                                                                     (bulk-binding-at-bulk
-                                                                                                                                      (car
-                                                                                                                                       i_0))))
-                                                                                                                                (let ((b-info_0
-                                                                                                                                       (if (symbol-interned?
-                                                                                                                                            sym_0)
-                                                                                                                                         (hash-ref
-                                                                                                                                          (bulk-binding-symbols
-                                                                                                                                           bulk_0
-                                                                                                                                           s_2
-                                                                                                                                           extra-shifts_0)
-                                                                                                                                          sym_0
-                                                                                                                                          #f)
-                                                                                                                                         #f)))
-                                                                                                                                  (if b-info_0
-                                                                                                                                    (|#%app|
-                                                                                                                                     (bulk-binding-class-create
-                                                                                                                                      (bulk-binding-ref
-                                                                                                                                       bulk_0))
+                                                                                                          bulk-bindings_0
+                                                                                                          s_1
+                                                                                                          extra-shifts_0)
+                                                                                                   (begin
+                                                                                                     #t
+                                                                                                     (letrec*
+                                                                                                      ((for-loop_2
+                                                                                                        (|#%name|
+                                                                                                         for-loop
+                                                                                                         (lambda (bindings_1
+                                                                                                                  covered-scope-sets_2
+                                                                                                                  i_0)
+                                                                                                           (if (not
+                                                                                                                (null?
+                                                                                                                 i_0))
+                                                                                                             (let ((scs_0
+                                                                                                                    (if (pair?
+                                                                                                                         i_0)
+                                                                                                                      (bulk-binding-at-scopes
+                                                                                                                       (car
+                                                                                                                        i_0))
+                                                                                                                      (hash-iterate-key
+                                                                                                                       ht_0
+                                                                                                                       i_0))))
+                                                                                                               (let ((b_0
+                                                                                                                      (if (pair?
+                                                                                                                           i_0)
+                                                                                                                        (let ((bulk_0
+                                                                                                                               (bulk-binding-at-bulk
+                                                                                                                                (car
+                                                                                                                                 i_0))))
+                                                                                                                          (let ((b-info_0
+                                                                                                                                 (if (symbol-interned?
+                                                                                                                                      sym_0)
+                                                                                                                                   (hash-ref
+                                                                                                                                    (bulk-binding-symbols
                                                                                                                                      bulk_0
-                                                                                                                                     b-info_0
-                                                                                                                                     sym_0)
-                                                                                                                                    #f)))
-                                                                                                                              (hash-iterate-value
-                                                                                                                               ht_1
-                                                                                                                               i_0))))
-                                                                                                                       (let ((scs_1
-                                                                                                                              scs_0))
-                                                                                                                         (call-with-values
-                                                                                                                          (lambda ()
-                                                                                                                            (if (if scs_1
-                                                                                                                                  (if b_0
-                                                                                                                                    (not
-                                                                                                                                     (hash-ref
-                                                                                                                                      covered-scope-sets_2
-                                                                                                                                      scs_1
-                                                                                                                                      #f))
+                                                                                                                                     s_1
+                                                                                                                                     extra-shifts_0)
+                                                                                                                                    sym_0
                                                                                                                                     #f)
-                                                                                                                                  #f)
-                                                                                                                              (let ((bindings_2
-                                                                                                                                     (cons
-                                                                                                                                      (let ((app_0
-                                                                                                                                             (syntax-e$1
-                                                                                                                                              s_0)))
-                                                                                                                                        (let ((app_1
-                                                                                                                                               (scope-set->context
-                                                                                                                                                scs_1)))
-                                                                                                                                          (let ((app_2
-                                                                                                                                                 (scope-set-subset?
-                                                                                                                                                  scs_1
-                                                                                                                                                  s-scs_0)))
-                                                                                                                                            (let ((app_3
-                                                                                                                                                   (classify-binding_0
-                                                                                                                                                    b_0)))
-                                                                                                                                              (hasheq
-                                                                                                                                               'name
-                                                                                                                                               app_0
-                                                                                                                                               'context
-                                                                                                                                               app_1
-                                                                                                                                               'match?
-                                                                                                                                               app_2
-                                                                                                                                               'via
-                                                                                                                                               (scope-base-id
-                                                                                                                                                sc_0)
-                                                                                                                                               app_3
-                                                                                                                                               (extract-binding_0
-                                                                                                                                                b_0))))))
-                                                                                                                                      bindings_1)))
-                                                                                                                                (let ((covered-scope-sets_3
-                                                                                                                                       (hash-set
-                                                                                                                                        covered-scope-sets_2
-                                                                                                                                        scs_1
-                                                                                                                                        #t)))
-                                                                                                                                  (let ((bindings_3
-                                                                                                                                         bindings_2))
-                                                                                                                                    (values
-                                                                                                                                     bindings_3
-                                                                                                                                     covered-scope-sets_3))))
+                                                                                                                                   #f)))
+                                                                                                                            (if b-info_0
+                                                                                                                              (|#%app|
+                                                                                                                               (bulk-binding-class-create
+                                                                                                                                (bulk-binding-ref
+                                                                                                                                 bulk_0))
+                                                                                                                               bulk_0
+                                                                                                                               b-info_0
+                                                                                                                               sym_0)
+                                                                                                                              #f)))
+                                                                                                                        (hash-iterate-value
+                                                                                                                         ht_0
+                                                                                                                         i_0))))
+                                                                                                                 (let ((scs_1
+                                                                                                                        scs_0))
+                                                                                                                   (call-with-values
+                                                                                                                    (lambda ()
+                                                                                                                      (if (if scs_1
+                                                                                                                            (if b_0
+                                                                                                                              (not
+                                                                                                                               (hash-ref
+                                                                                                                                covered-scope-sets_2
+                                                                                                                                scs_1
+                                                                                                                                #f))
+                                                                                                                              #f)
+                                                                                                                            #f)
+                                                                                                                        (let ((bindings_2
+                                                                                                                               (cons
+                                                                                                                                (let ((app_0
+                                                                                                                                       (syntax-e$1
+                                                                                                                                        s_0)))
+                                                                                                                                  (let ((app_1
+                                                                                                                                         (scope-set->context
+                                                                                                                                          scs_1)))
+                                                                                                                                    (let ((app_2
+                                                                                                                                           (scope-set-subset?
+                                                                                                                                            scs_1
+                                                                                                                                            s-scs_0)))
+                                                                                                                                      (let ((app_3
+                                                                                                                                             (classify-binding_0
+                                                                                                                                              b_0)))
+                                                                                                                                        (hasheq
+                                                                                                                                         'name
+                                                                                                                                         app_0
+                                                                                                                                         'context
+                                                                                                                                         app_1
+                                                                                                                                         'match?
+                                                                                                                                         app_2
+                                                                                                                                         'via
+                                                                                                                                         (scope-base-id
+                                                                                                                                          sc_0)
+                                                                                                                                         app_3
+                                                                                                                                         (extract-binding_0
+                                                                                                                                          b_0))))))
+                                                                                                                                bindings_1)))
+                                                                                                                          (let ((covered-scope-sets_3
+                                                                                                                                 (hash-set
+                                                                                                                                  covered-scope-sets_2
+                                                                                                                                  scs_1
+                                                                                                                                  #t)))
+                                                                                                                            (let ((bindings_3
+                                                                                                                                   bindings_2))
                                                                                                                               (values
-                                                                                                                               bindings_1
-                                                                                                                               covered-scope-sets_2)))
-                                                                                                                          (lambda (bindings_2
-                                                                                                                                   covered-scope-sets_3)
-                                                                                                                            (for-loop_2
-                                                                                                                             bindings_2
-                                                                                                                             covered-scope-sets_3
-                                                                                                                             (if (pair?
-                                                                                                                                  i_0)
-                                                                                                                               (cdr
-                                                                                                                                i_0)
-                                                                                                                               (let ((or-part_0
-                                                                                                                                      (hash-iterate-next
-                                                                                                                                       ht_1
-                                                                                                                                       i_0)))
-                                                                                                                                 (if or-part_0
-                                                                                                                                   or-part_0
-                                                                                                                                   bulk-bindings_1)))))))))
-                                                                                                                   (values
-                                                                                                                    bindings_1
-                                                                                                                    covered-scope-sets_2))))))
-                                                                                                            (for-loop_2
-                                                                                                             bindings_0
-                                                                                                             covered-scope-sets_1
-                                                                                                             (let ((or-part_0
-                                                                                                                    (hash-iterate-first
-                                                                                                                     ht_1)))
-                                                                                                               (if or-part_0
-                                                                                                                 or-part_0
-                                                                                                                 bulk-bindings_1)))))))))))
+                                                                                                                               bindings_3
+                                                                                                                               covered-scope-sets_3))))
+                                                                                                                        (values
+                                                                                                                         bindings_1
+                                                                                                                         covered-scope-sets_2)))
+                                                                                                                    (lambda (bindings_2
+                                                                                                                             covered-scope-sets_3)
+                                                                                                                      (for-loop_2
+                                                                                                                       bindings_2
+                                                                                                                       covered-scope-sets_3
+                                                                                                                       (if (pair?
+                                                                                                                            i_0)
+                                                                                                                         (cdr
+                                                                                                                          i_0)
+                                                                                                                         (let ((or-part_0
+                                                                                                                                (hash-iterate-next
+                                                                                                                                 ht_0
+                                                                                                                                 i_0)))
+                                                                                                                           (if or-part_0
+                                                                                                                             or-part_0
+                                                                                                                             bulk-bindings_0)))))))))
+                                                                                                             (values
+                                                                                                              bindings_1
+                                                                                                              covered-scope-sets_2))))))
+                                                                                                      (for-loop_2
+                                                                                                       bindings_0
+                                                                                                       covered-scope-sets_1
+                                                                                                       (let ((or-part_0
+                                                                                                              (hash-iterate-first
+                                                                                                               ht_0)))
+                                                                                                         (if or-part_0
+                                                                                                           or-part_0
+                                                                                                           bulk-bindings_0))))))))
                                                                                               (lambda (bindings_1
                                                                                                        covered-scope-sets_2)
                                                                                                 (for-loop_1
@@ -28103,7 +28209,8 @@
                            (table-with-bulk-bindings1.1
                             syms_0
                             syms_0
-                            bulk-bindings_0)
+                            bulk-bindings_0
+                            0)
                            next-pos_1)))))))))
             (if (unsafe-fx< index_0 27)
               (if (unsafe-fx< index_0 24)
@@ -29091,7 +29198,7 @@
     (make-record-constructor-descriptor struct:parsed-top-id #f #f))))
 (define parsed-top-id?
   (|#%name| parsed-top-id? (record-predicate struct:parsed-top-id)))
-(define finish_2495
+(define finish_2494
   (make-struct-type-install-properties
    '(parsed-lambda)
    2
@@ -29117,7 +29224,7 @@
    #f
    #f
    |#%system-inspector|))
-(define effect_2349 (finish_2495 struct:parsed-lambda))
+(define effect_2349 (finish_2494 struct:parsed-lambda))
 (define parsed-lambda5.1
   (|#%name|
    parsed-lambda

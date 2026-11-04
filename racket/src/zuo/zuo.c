@@ -5761,7 +5761,7 @@ static char *zuo_string_to_shell_c(const char *s) {
 static char **zuo_shell_to_strings_c(char *buf, int skip_exe, zuo_intptr_t *_len) {
   zuo_intptr_t i = 0, j = 0, arg_start = 0, cmd = 0;
   int in_quote = 0, in_squote = 0, did_create = 0;
-  int maxargs = 32;
+  zuo_intptr_t maxargs = 32;
   char **command = (char **)zuo_malloc((maxargs + 1) * sizeof(char *));
 
   ZUO_UNUSED(skip_exe);
@@ -5903,8 +5903,8 @@ static char *zuo_string_to_shell_c(const char *s) {
    is parsed differently(!). */
 
 static char **zuo_shell_to_strings_c(char *buf, int starts_exe, zuo_intptr_t *_len) {
-  int pos = 0;
-  int maxargs = 32;
+  zuo_intptr_t pos = 0;
+  zuo_intptr_t maxargs = 32;
   char **command = (char **)zuo_malloc((maxargs + 1) * sizeof(char *));
   unsigned char *parse, *created, *write;
   int findquote = 0; /* i.e., inside a quoted block? */
@@ -5954,6 +5954,8 @@ static char **zuo_shell_to_strings_c(char *buf, int starts_exe, zuo_intptr_t *_l
 	char **c2;
 	c2 = (char **)zuo_malloc(((2 * maxargs) + 1) * sizeof(char *));
 	memcpy(c2, command, maxargs * sizeof(char *));
+	free(command);
+	command = c2;
 	maxargs *= 2;
       }
     }

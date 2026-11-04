@@ -1,0 +1,33 @@
+#lang zuo
+
+(require "harness.zuo")
+(require zuo/thread)
+
+(alert "shell parser")
+(define src-dir (build-path (car (split-path (quote-module-path))) ".."))
+(define config-file (build-path src-dir "Makefile"))
+(define config (if (file-exists? config-file) (config-file->hash config-file) (hash)))
+(define exe (.exe (build-path tmp-dir "shell-parser")))
+(call-in-main-thread
+ (lambda ()
+   (c-compile exe (list (build-path src-dir "tests" "shell-parser.c")) config)))
+
+(define (try n)
+  (define p (process exe (~a n) (hash 'stdout 'pipe 'stderr 'pipe)))
+  (define out (hash-ref p 'stdout))
+  (define err (hash-ref p 'stderr))
+  (define output (fd-read out eof))
+  (define errors (fd-read err eof))
+  (fd-close out)
+  (fd-close err)
+  (process-wait (hash-ref p 'process))
+  (check (list n (process-status (hash-ref p 'process))) (list n 0))
+  (check output "")
+  (check errors ""))
+
+(try 31)
+(try 32)
+(try 33)
+(try 34)
+(try 64)
+(try 65)

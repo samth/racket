@@ -4,6 +4,7 @@
 (require "integer.zuo")
 (require "pair.zuo")
 (require "string.zuo")
+(require "shell-parser.zuo")
 (require "symbol.zuo")
 (require "hash.zuo")
 (require "procedure.zuo")

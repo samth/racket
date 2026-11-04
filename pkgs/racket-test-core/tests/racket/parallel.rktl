@@ -1671,6 +1671,90 @@
               v)))
   (test (void) thread-wait posting-thread (lambda () #f)))
 
+;; --------------------
+;; Mutable `eq?` and `eqv?` hash tables shared among parallel threads,
+;; where `hash-ref` on an `eq?` table runs without taking a lock
+
+;; Like `thread/parallel`, but the result of `thread-wait` is the
+;; message of an exception raised by `thunk`, or #f
+(define (checked-thread/parallel thunk)
+  (thread #:pool 'own
+          #:keep 'results
+          (lambda ()
+            (with-handlers ([exn:fail? exn-message])
+              (thunk)
+              #f))))
+
+(let ()
+  (define W 4)
+  (define K 20000)
+  (define ht (make-hasheq))
+  (define htv (make-hasheqv))
+  (for ([i 1000])
+    (hash-set! ht i i)
+    (hash-set! htv (exact->inexact i) i))
+  (define ths
+    (for/list ([w W])
+      (checked-thread/parallel
+       (lambda ()
+         (for ([i K])
+           (define k (+ 1000 (* w K) i))
+           (hash-set! ht k w)
+           (hash-set! htv (exact->inexact k) w)
+           (unless (eqv? w (hash-ref ht k #f))
+             (error "lost own write"))
+           (unless (eqv? w (hash-ref htv (exact->inexact k) #f))
+             (error "lost own write in eqv table"))
+           (hash-ref ht (modulo (* i 7) 1000) #f)
+           (when (zero? (modulo i 3))
+             (hash-remove! ht k)
+             (hash-set! ht k w)))))))
+  (for ([i K])
+    (hash-ref ht (modulo i 1000) #f)
+    (hash-set! ht (modulo (* i 13) 1000) i))
+  (test (for/list ([t ths]) #f) map thread-wait ths)
+  (test (+ 1000 (* W K)) hash-count ht)
+  (test (+ 1000 (* W K)) hash-count htv))
+
+;; A writer grows and shrinks a table (so that it resizes) and replaces
+;; values with freshly allocated ones, while readers check that stable
+;; keys are always found and that every value they see is complete
+(let ()
+  (define ht (make-hasheq))
+  (for ([i 64])
+    (hash-set! ht (- -1 i) i))
+  (define done? #f)
+  (define (well-formed? k v)
+    (or (eqv? v k)
+        (and (pair? v) (eqv? (car v) k) (eqv? (cdr v) k))
+        (and (vector? v) (= 4 (vector-length v))
+             (for/and ([x (in-vector v)]) (eqv? x k)))))
+  (define readers
+    (for/list ([r 3])
+      (checked-thread/parallel
+       (lambda ()
+         (let loop ([i r])
+           (unless done?
+             (let ([s (bitwise-and i 63)])
+               (unless (eqv? s (hash-ref ht (- -1 s) #f))
+                 (error "lost stable key" s)))
+             (let* ([k (bitwise-and (* i 31) 4095)]
+                    [v (hash-ref ht k #f)])
+               (when (and v (not (well-formed? k v)))
+                 (error "wrong or incomplete value" k v)))
+             (loop (+ i 1))))))))
+  (for ([round 10])
+    (for ([k 4096])
+      (hash-set! ht k (case (modulo k 3)
+                        [(0) k]
+                        [(1) (cons k k)]
+                        [else (make-vector 4 k)])))
+    (for ([k 4096])
+      (hash-remove! ht k)))
+  (set! done? #t)
+  (test '(#f #f #f) map thread-wait readers)
+  (test 64 hash-count ht))
+
 ; --------------------
 
 (report-errs)

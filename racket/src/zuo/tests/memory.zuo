@@ -14,8 +14,8 @@
    (lambda ()
      (c-compile exe (list (build-path src-dir "tests" "memory.c")) config)))
 
-  (define (try mode status message)
-    (define p (process exe mode (hash 'stdout 'pipe 'stderr 'pipe)))
+  (define (try mode status message [exe-path exe])
+    (define p (process exe-path mode (hash 'stdout 'pipe 'stderr 'pipe)))
     (define out (hash-ref p 'stdout))
     (define err (hash-ref p 'stderr))
     (define output (fd-read out eof))
@@ -36,4 +36,10 @@
   (try "symbol-limit" 1 "symbol id space exhausted")
   (try "handle-limit" 1 "handle id space exhausted")
   (try "out-of-memory" 6 "out of memory")
-  (try "copy-buffer" 0 ""))
+  (try "copy-buffer" 0 "")
+
+  (define generic-exe (build-path tmp-dir "generic-self-path"))
+  (call-in-main-thread
+   (lambda ()
+     (c-compile generic-exe (list (build-path src-dir "tests" "generic-self-path.c")) config)))
+  (try "generic-self-path" 0 "" generic-exe))

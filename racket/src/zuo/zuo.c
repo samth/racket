@@ -7140,13 +7140,10 @@ static char *zuo_self_path_c(const char *exec_file)
     return zuo_string_to_c(zuo_path_to_complete_path(zuo_string(exec_file)));
   } else {
     /* We have to find the executable by searching PATH: */
-    char *path = zuo_strdup(getenv("PATH")), *p;
+    const char *env_path = getenv("PATH");
+    char *path = zuo_strdup(env_path ? env_path : ""), *p;
     zuo_t *m;
     int more;
-
-    if (!path) {
-      path = "";
-    }
 
     while (1) {
       /* Try each element of path: */

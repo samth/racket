@@ -214,8 +214,14 @@
                                    (hash-ref (runtime-env) 'env))
                         'exec? (hash-ref (runtime-env) 'can-exec?))))
 
-  (define (compile-file src dest loads [whole-program? #f])
-    (define args (append scheme-args
+  ;; Opt in only with an explicit identity for the runner image/sysroot and
+  ;; toolchain. Executable and boot bytes are additional declared inputs.
+  (define action-mode?
+    (and (not xpatch)
+         (equal? (cdr (or (assoc "ZUO_CS_ACTIONS" (hash-ref (runtime-env) 'env))
+                         '("ZUO_CS_ACTIONS" . ""))) "1")))
+  (define (compile-args src dest loads whole-program?)
+    (append scheme-args
                          (list "--script"
                                (at-source "compile-file.ss"))
                          (if unsafe?
@@ -240,20 +246,41 @@
                                src
                                dest)
                          loads))
-    (define config-env-vars
+  (define config-env-vars
       (map (lambda (s)
              (define l (string-split s "="))
              (cons (car l) (cadr l)))
            (string-split (or (lookup 'CONFIGURE_RACKET_SO_COMPILE) ""))))
-    (process/wait scheme args (hash
+  (define (compile-file src dest loads [whole-program? #f])
+    (process/wait scheme (compile-args src dest loads whole-program?) (hash
                                'env (append
                                      config-env-vars
                                      (hash-ref (runtime-env) 'env)))))
 
+  (define (compile-rule deps src dest loads whole-program?)
+    (define env (hash-ref (runtime-env) 'env))
+    (define toolchain (assoc "ZUO_CS_TOOLCHAIN_ID" env))
+    (unless (and toolchain (not (equal? (cdr toolchain) "")))
+      (error "ZUO_CS_ACTIONS requires ZUO_CS_TOOLCHAIN_ID (runner image, sysroot, platform, toolchain)"))
+    (command-rule
+     deps
+     (hash 'argv (cons (path->complete-path scheme) (compile-args src dest loads whole-program?))
+           'environment (append config-env-vars
+                                (filter (lambda (p) (not (assoc (car p) config-env-vars)))
+                                        (list (cons "PATH" (cdr (or (assoc "PATH" env) '("PATH" . ""))))
+                                              '("LANG" . "C") '("LC_ALL" . "C") '("TZ" . "UTC"))))
+           'toolchain (cdr toolchain)
+           'rule-files (list (at-source "main.zuo") (at-source "../lib.zuo")))))
+
   (define (library-target dest src import-deps more-srcs)
-    `[:target ,dest (,src ,@more-srcs ,@import-deps ,@compile-file-deps)
-              ,(lambda (path token)
-                 (compile-file src dest import-deps))])
+    `[:target ,(if xpatch
+                    dest ; cross compilation has a different output contract
+                    (list dest (path-replace-extension dest ".wpo")))
+              (,src ,@more-srcs ,@import-deps ,@compile-file-deps)
+              ,(if action-mode?
+                   (lambda (path token deps) (compile-rule deps src dest import-deps #f))
+                   (lambda (path token) (compile-file src dest import-deps)))
+              ,@(if action-mode? '(:rule) '())])
 
   (define (demo-target name name.so name-deps name.ss . more-deps)
     `[:target ,name (,name.so ,@more-deps)
@@ -287,11 +314,15 @@
   (mkdir-p (at-dir "compiled"))
 
   (make-targets
-   `([:target ,racket.so (,main.so ,@compile-file-deps)
-              ,(lambda (path token)
-                 (if wpo?
-                     (compile-file main.so path (list (at-dir "main.wpo")) #t)
-                     (cat (append main-deps (list main.so)) path)))]
+   `([:target ,racket.so (,main.so ,@main-deps ,@compile-file-deps)
+              ,(if (and action-mode? wpo?)
+                   (lambda (path token deps)
+                     (compile-rule deps main.so path (list (at-dir "main.wpo")) #t))
+                   (lambda (path token)
+                     (if wpo?
+                         (compile-file main.so path (list (at-dir "main.wpo")) #t)
+                         (cat (append main-deps (list main.so)) path))))
+              ,@(if (and action-mode? wpo?) '(:rule) '())]
 
      ,(library-target main.so (at-source "main.sps") main-deps
                       (list (at-source "main/help.ss")

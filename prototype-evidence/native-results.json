@@ -1,0 +1,37 @@
+[
+  {
+    "label": "cold",
+    "seconds": 95.4916152189835,
+    "status": 0,
+    "cache_hits": 0,
+    "cache_stores": 10
+  },
+  {
+    "label": "warm",
+    "seconds": 0.6077824830426835,
+    "status": 0,
+    "cache_hits": 0,
+    "cache_stores": 0
+  },
+  {
+    "label": "restore",
+    "seconds": 5.776525631023105,
+    "status": 0,
+    "cache_hits": 10,
+    "cache_stores": 0
+  },
+  {
+    "label": "missing-wpo",
+    "seconds": 1.3343035749858245,
+    "status": 0,
+    "cache_hits": 1,
+    "cache_stores": 0
+  },
+  {
+    "label": "corrupt-wpo",
+    "seconds": 0.8565432929899544,
+    "status": 0,
+    "cache_hits": 1,
+    "cache_stores": 0
+  }
+]

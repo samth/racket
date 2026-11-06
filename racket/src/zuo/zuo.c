@@ -7406,6 +7406,12 @@ static void zuo_runtime_init(zuo_t *lib_path, zuo_t *runtime_env) {
 
   Z.o_library_path = lib_path; /* should be absolute or #f */
 
+  runtime_env = zuo_hash_set(runtime_env, zuo_symbol("library-root"), lib_path);
+#ifdef ZUO_UNIX
+  runtime_env = zuo_hash_set(runtime_env, zuo_symbol("process-id"), zuo_integer(getpid()));
+#else
+  runtime_env = zuo_hash_set(runtime_env, zuo_symbol("process-id"), zuo_integer(GetCurrentProcessId()));
+#endif
   Z.o_runtime_env = zuo_finish_runtime_env(runtime_env);
 }
 

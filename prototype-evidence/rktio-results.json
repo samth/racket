@@ -1,0 +1,26 @@
+[
+  {
+    "label": "rktio-configure",
+    "status": 0,
+    "seconds": 1.663661525992211
+  },
+  {
+    "label": "rktio-cold",
+    "status": 0,
+    "seconds": 1.7223021549871191
+  },
+  {
+    "label": "rktio-warm",
+    "status": 0,
+    "seconds": 0.3588314999942668
+  },
+  {
+    "label": "rktio-flags",
+    "status": 0,
+    "seconds": 0.9791074690292589
+  },
+  {
+    "objects": 26,
+    "rebuilt": 26
+  }
+]

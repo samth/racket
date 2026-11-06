@@ -179,6 +179,7 @@
   (define linklet-srcs
     (map (lambda (name) (at-source "linklet" name))
          '("version.ss"
+           "trace.ss"
            "read.ss"
            "write.ss"
            "check.ss"
@@ -312,7 +313,8 @@
                       (list regexp.scm))
 
      ,(library-target io.so (at-source "io.sls") io-deps
-                      (list io.scm (at-source "io/terminal.ss")))
+                      (list io.scm (at-source "io/terminal.ss")
+                            (at-source "../rktio/rktio.rktl")))
 
      ,(library-target thread.so (at-source "thread.sls") thread-deps
                       (list thread.scm))

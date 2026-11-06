@@ -38,3 +38,13 @@ not a full Racket build. Neither probe establishes reproducibility across
 platforms, relocated paths, profiled builds or incremental-versus-clean builds.
 Source scope is conservative. Broader evaluation is needed before enabling this
 as an upstream default. See bundled Chez's BUILDING for policy details.
+
+
+The 2026-11-06 dependency audit fixes are also applied to this branch: the two
+missing native CS includes, native .so/.wpo output groups and final WPO inputs,
+Chez compile/link configuration and disableiconv, full LZ4 inputs, and complete
+Nanopass outputs. The bundled c/build.zuo and s/build.zuo match the validated
+versions on prototype/zuo-action-cache; the matching standalone Chez changes
+were also built and tested with automatic boot naming. No action-cache API is
+needed by this branch. See prototype-evidence/dependency-fixes-bundled.json and
+racket/src/ChezScheme/tools/dependency-regressions.py.

@@ -1,4 +1,5 @@
 #lang zuo
+(require "action-cache-helper.zuo")
 (define (targets-at at-dir vars)
   (define input (at-dir "input"))
   (define producer (at-source "action-cache-producer.zuo"))
@@ -10,7 +11,7 @@
               (list input)
               (hash 'argv (list tool "-X" (hash-ref vars 'LIB)
                                 producer input path (at-dir "b") (at-dir "runs")
-                                (hash-ref vars 'VALUE "one") (hash-ref vars 'FAIL "no") (hash-ref vars 'MODE "regular"))
+                                (hash-ref vars 'VALUE default-value) (hash-ref vars 'FAIL "no") (hash-ref vars 'MODE "regular"))
                     'environment (list (cons "ACTION_TEST" (hash-ref vars 'ENV "fixed")))
                     'toolchain (hash-ref vars 'TOOLCHAIN "test-toolchain-v1")
                     'rule-files (list (at-source "action-cache-driver.zuo") producer))))

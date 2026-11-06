@@ -20,7 +20,7 @@ EXE = Path(sys.argv[1]).resolve()
 ROOT = Path(tempfile.mkdtemp(prefix='zuo-action-cache-'))
 FIX = ROOT / 'fixtures'
 FIX.mkdir()
-for name in ['action-cache-driver.zuo', 'action-cache-producer.zuo']:
+for name in ['action-cache-driver.zuo', 'action-cache-producer.zuo', 'action-cache-helper.zuo']:
     shutil.copyfile(TESTS / name, FIX / name)
 CACHE = ROOT / 'cache'
 WORK = ROOT / 'work'
@@ -111,6 +111,19 @@ try:
     previous = count(); run(); assert count() == previous + 1
     assert set((CACHE / 'actions').iterdir()) == before
     env['ZUO_ACTION_CACHE'] = str(CACHE)
+    # Automatically track a loaded helper not listed in rule-files.
+    helper = FIX / 'action-cache-helper.zuo'
+    helper.write_text(helper.read_text() + '\n; loaded-helper revision\n')
+    previous = count(); run(); assert count() == previous + 1
+    # An unused language implementation must not invalidate these commands.
+    unused = LIB / 'zuo/private/base-hygienic/struct.zuo'
+    original = unused.read_bytes()
+    try:
+        unused.write_bytes(original + b'\n; unrelated module revision\n')
+        fresh(); previous = count()
+        assert 'hit' in run() and count() == previous
+    finally:
+        unused.write_bytes(original)
     # Several processes publish identical blobs under distinct action keys.
     dirs = []
     for i in range(6):

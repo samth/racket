@@ -1,0 +1,37 @@
+[
+  {
+    "label": "io-rktl-warm-reject",
+    "status": 1,
+    "seconds": 0.8018135980237275,
+    "cache_hits": 0,
+    "cache_stores": 0
+  },
+  {
+    "label": "io-rktl-fresh-cache-reject",
+    "status": 1,
+    "seconds": 1.943786198971793,
+    "cache_hits": 3,
+    "cache_stores": 0
+  },
+  {
+    "label": "linklet-trace-warm-reject",
+    "status": 1,
+    "seconds": 1.0224524899967946,
+    "cache_hits": 0,
+    "cache_stores": 0
+  },
+  {
+    "label": "linklet-trace-fresh-cache-reject",
+    "status": 1,
+    "seconds": 3.6792288829456083,
+    "cache_hits": 6,
+    "cache_stores": 0
+  },
+  {
+    "label": "unused-module-warm",
+    "status": 0,
+    "seconds": 0.544701109000016,
+    "cache_hits": 0,
+    "cache_stores": 0
+  }
+]

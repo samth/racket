@@ -126,26 +126,13 @@
   (unless (and (pair? files) (andmap path-string? files))
     (error "command-rule: declare producer/helper files with 'rule-files"))
   (define tools (cons (car (car description)) (hash-ref options 'tools '())))
-  (define lib-root (hash-ref (runtime-env) 'library-root 'missing))
-  (when (eq? lib-root 'missing)
-    (error "command-rule requires the prototype Zuo executable"))
-  (define inputs (append deps tools files
-                         (list (hash-ref (runtime-env) 'exe)
-                               (input-data-target 'command-action description))
-                         ;; Embedded libraries are covered by the executable;
-                         ;; source libraries also need their implementation files.
-                         (if lib-root
-                             (let walk ([dir lib-root])
-                               (apply append
-                                      (map (lambda (name)
-                                             (define path (build-path dir name))
-                                             (cond
-                                               [(directory-exists? path) (walk path)]
-                                               [(and (>= (string-length name) 4)
-                                                     (equal? (substring name (- (string-length name) 4)) ".zuo")) (list path)]
-                                               [else '()]))
-                                           (sort (ls dir) string<?))))
-                             '())))
+  (define module-files (hash-ref (runtime-env) 'module-files #f))
+  (unless module-files
+    (error "command-rule requires the prototype Zuo executable with module-file tracking"))
+  (define inputs
+    (append deps tools files module-files
+            (list (hash-ref (runtime-env) 'exe)
+                  (input-data-target 'command-action description))))
   (define r (make-rule inputs (lambda () (run-command description))))
   (when (ormap (lambda (t) (eq? (target-kind t) 'phony)) (rule-deps r))
     (error "command-rule: phony dependencies are not cacheable"))

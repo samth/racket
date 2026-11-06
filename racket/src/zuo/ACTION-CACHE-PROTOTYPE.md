@@ -25,7 +25,7 @@ Use `command-rule` as the rule returned by a file target's rule callback:
 
 The description is also the command executed. No independent build closure can
 drift from it. `environment` is the **complete child environment**; stdin is EOF.
-The executable, Zuo, library source files, declared tools, and rule files become
+The executable, Zuo, loaded module source files, declared tools, and rule files become
 inputs automatically. Declare every other file read, including generated
 inputs and boot images, in `deps`. Data targets represent configuration inputs.
 The `:rule` option in `make-targets` lets a file target's callback accept
@@ -103,3 +103,12 @@ Symlink file inputs are dereferenced for bytes/modes and their immediate link
 targets are included. Producers that inspect additional filesystem metadata,
 resolved ancestor paths, directory listings, or absent files must declare that
 information separately as data; the prototype does not discover those reads.
+
+The module loader now reports actual filesystem module inputs through
+`runtime-env`'s `module-files` entry. Embedded modules are covered by the Zuo
+executable. External boot images must still be declared explicitly. This is a
+conservative set of modules loaded so far in the parent process, including the
+active driver, rather than a scan of all library files. Arbitrary file reads and
+modules loaded only by child tools still require explicit declarations. The
+native pilot now declares `rktio/rktio.rktl` and `cs/linklet/trace.ss`; mutation
+regressions verify rejection of stale incremental outputs and false cache hits.

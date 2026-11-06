@@ -660,16 +660,26 @@ and `make-boot-file` to generate code for the target <machine type>.
 
 REPRODUCIBLE BUILDS
 
-The `--sessionkey=<string>` option for `configure` enables
-byte-for-byte reproducible builds. It uses `<string>` to seed a hash
-that is used for gensyms created during the build.
+Configure defaults to `--sessionkey=auto` in this prototype. The build driver
+hashes Scheme/compiler sources and scopes generated identities to each action,
+script, compiler executable and startup inputs. Ordinary application gensyms
+retain their usual fresh session identities. An empty `--sessionkey=` opts out;
+an explicit custom string retains the previous seeded behavior.
 
-A few limitations apply. Start with a fresh build space to add or
-change the `--sessionkey` configuration option, because incremental
-builds via `make` do not adapt to a changed key. Along similar lines,
-`--sessionkey` is not compatible with development of Chez Scheme
-itself, where a non-cross, fixpoint-finding build loop is often
-needed. Building with `--sessionkey` through a typical non-cross,
-pb-based build requires that the pb boot files are up-to-date (like
-they are in a release) to ensure that the build reaches a fixpoint in
-a single iteration.
+The initial validation covers fresh builds at fixed source/output paths and a
+normal PB-to-native build on Linux x86-64. It does not establish identical
+incremental-versus-clean output, relocation, profiled builds or other platforms.
+Use a fresh build space when switching naming policies. Automatic source scope
+is deliberately conservative and can change identities after an unrelated
+compiler source edit. This is not an artifact cache or a FASL normalizer.
+
+For custom keys the earlier restrictions still apply: incremental builds via
+`make` do not fully adapt to a changed key, and development builds that require
+multiple fixpoint iterations need particular care. A typical non-cross,
+pb-based custom-key build requires current pb boot files so that it reaches a
+fixpoint in a single iteration. Automatic source/action scopes are intended to
+avoid blindly reusing one fixed namespace during development, but need broader
+evaluation before this default is suitable for upstream.
+
+See the repository-root `PROTOTYPE-RESULTS.md` and `racket/src/ChezScheme/tools/reproducible-boot-probe.py` for measured
+comparisons and a reproducible probe.

@@ -1,0 +1,86 @@
+[
+  {
+    "label": "auto-1-configure",
+    "seconds": 0.05887513002380729,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/racket-boot/racket/src/ChezScheme/configure",
+      "--force",
+      "--disable-curses",
+      "--disable-x11",
+      "-m=ta6le",
+      "--workarea=ta6le",
+      "ZUO=/workspace/prototypes/checks/zuo"
+    ]
+  },
+  {
+    "label": "auto-1-bootquick",
+    "seconds": 19.828727182000875,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/checks/zuo",
+      ".",
+      "-j",
+      "4",
+      "bootquick",
+      "--host-scheme",
+      "/workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/bin/ta6le/scheme -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/petite.boot -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/scheme.boot",
+      "ta6le"
+    ]
+  },
+  {
+    "label": "auto-1",
+    "hashes": {
+      "petite.boot": "01b16b0974b80bb22ab5d7a64e2a07082ffef5d405c2d7d319b8fc4f2646c62f",
+      "scheme.boot": "525703e2a7bdebe9822d7b4420b793ecf7a34e4c766543cbec915b4fd973b413",
+      "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+      "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+      "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+      "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+      "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+      "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+    }
+  },
+  {
+    "label": "auto-2-configure",
+    "seconds": 0.02602254698285833,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/racket-boot/racket/src/ChezScheme/configure",
+      "--force",
+      "--disable-curses",
+      "--disable-x11",
+      "-m=ta6le",
+      "--workarea=ta6le",
+      "ZUO=/workspace/prototypes/checks/zuo"
+    ]
+  },
+  {
+    "label": "auto-2-bootquick",
+    "seconds": 17.55574531899765,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/checks/zuo",
+      ".",
+      "-j",
+      "4",
+      "bootquick",
+      "--host-scheme",
+      "/workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/bin/ta6le/scheme -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/petite.boot -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/scheme.boot",
+      "ta6le"
+    ]
+  },
+  {
+    "label": "auto-2",
+    "hashes": {
+      "petite.boot": "01b16b0974b80bb22ab5d7a64e2a07082ffef5d405c2d7d319b8fc4f2646c62f",
+      "scheme.boot": "525703e2a7bdebe9822d7b4420b793ecf7a34e4c766543cbec915b4fd973b413",
+      "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+      "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+      "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+      "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+      "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+      "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+    }
+  }
+]

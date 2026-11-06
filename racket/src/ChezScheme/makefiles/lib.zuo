@@ -118,6 +118,27 @@
                          [extra-source-dirs '()]
                          [extra-library-dirs '()]
                          [init-env (hash-ref (runtime-env) 'env)])
+  ;; Compute once per build driver, without depending on mtimes, checkout
+  ;; locations, VCS state, or the output tree. Keep application gensyms random.
+  (define session-key-base (lookup 'sessionKey))
+  (define automatic-source-key
+    (and (equal? session-key-base "auto")
+         (let ([root (at-source "..")])
+           (define (walk dir)
+             (apply append
+                    (map (lambda (name)
+                           (define path (build-path dir name))
+                           (cond
+                             [(member name '(".git" "compiled")) '()]
+                             [(directory-exists? path) (walk path)]
+                             [else
+                              (list (list (find-relative-path root path)
+                                          (string-sha256 (file->string path))))]))
+                         (sort (ls dir) string<?))))
+           (string-sha256
+            (~s (map (lambda (dir) (walk (build-path root dir)))
+                     '("s" "nanopass" "unicode" "makefiles")))))))
+
   (define (call-with-scheme k)
     (define-values (scheme.exe scheme-args)
       (if host-scheme
@@ -153,17 +174,29 @@
        (fd-write to (~s `(library-directories '(,@extra-library-dirs
                                                 ,(cons (at-source ".")
                                                        (at-dir "."))))))
-       (let ((session-key-base (lookup 'sessionKey)))
-         (define (session-key-for what)
-           (~a "k"
-               (substring (string-sha256 (~a session-key-base "\0"
-                                             (at-dir ".") "\0"
-                                             what))
-                          0 24)
-               "-"))
-         (when (and session-key-base (not (equal? session-key-base "")))
-           (fd-write to (~s `(,(string->symbol "#%$set-top-level-value!")
-                              '$session-key ,(session-key-for what))))))
+       (when (and session-key-base (not (equal? session-key-base "")))
+         (define scope
+           (if automatic-source-key
+               ;; Include action script and compiler identity as well as the
+               ;; source universe. `inputs` are startup Scheme files.
+               (list 'automatic-boot-key-v1 automatic-source-key
+                     (string-sha256 (file->string scheme.exe))
+                     host-m scheme-args script
+                     (map (lambda (path)
+                            (if (file-exists? path)
+                                (list path (string-sha256 (file->string path)))
+                                path))
+                          inputs))
+               session-key-base))
+         (define session-key
+           (~a "k" (substring (string-sha256
+                               (if automatic-source-key
+                                   (~s (list scope (at-dir ".") what))
+                                   ;; Preserve existing explicitly seeded builds.
+                                   (~a session-key-base "\0" (at-dir ".") "\0" what)))
+                              0 24) "-"))
+         (fd-write to (~s `(,(string->symbol "#%$set-top-level-value!")
+                            '$session-key ,session-key))))
        (fd-write to (string-join (map ~s script)))
        (fd-close to)
        (thread-process-wait (hash-ref p 'process))

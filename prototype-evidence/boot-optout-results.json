@@ -1,0 +1,172 @@
+[
+  {
+    "label": "auto-1-configure",
+    "seconds": 0.033772234979551286,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/racket-boot/racket/src/ChezScheme/configure",
+      "--force",
+      "--disable-curses",
+      "--disable-x11",
+      "-m=ta6le",
+      "--workarea=ta6le",
+      "ZUO=/workspace/prototypes/checks/zuo"
+    ]
+  },
+  {
+    "label": "auto-1-bootquick",
+    "seconds": 20.88511161605129,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/checks/zuo",
+      ".",
+      "-j",
+      "4",
+      "bootquick",
+      "--host-scheme",
+      "/workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/bin/ta6le/scheme -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/petite.boot -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/scheme.boot",
+      "ta6le"
+    ]
+  },
+  {
+    "label": "auto-1",
+    "hashes": {
+      "petite.boot": "f2e24680640192d73fd5de7c41cbead84a797eef6ea25d86014efa4872dcb140",
+      "scheme.boot": "a8ed6cabe24507838a61ac364fc87e71871d785c69e00f59e44104636f458f90",
+      "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+      "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+      "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+      "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+      "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+      "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+    }
+  },
+  {
+    "label": "auto-2-configure",
+    "seconds": 0.0346925689955242,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/racket-boot/racket/src/ChezScheme/configure",
+      "--force",
+      "--disable-curses",
+      "--disable-x11",
+      "-m=ta6le",
+      "--workarea=ta6le",
+      "ZUO=/workspace/prototypes/checks/zuo"
+    ]
+  },
+  {
+    "label": "auto-2-bootquick",
+    "seconds": 23.01334250200307,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/checks/zuo",
+      ".",
+      "-j",
+      "4",
+      "bootquick",
+      "--host-scheme",
+      "/workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/bin/ta6le/scheme -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/petite.boot -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/scheme.boot",
+      "ta6le"
+    ]
+  },
+  {
+    "label": "auto-2",
+    "hashes": {
+      "petite.boot": "f2e24680640192d73fd5de7c41cbead84a797eef6ea25d86014efa4872dcb140",
+      "scheme.boot": "a8ed6cabe24507838a61ac364fc87e71871d785c69e00f59e44104636f458f90",
+      "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+      "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+      "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+      "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+      "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+      "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+    }
+  },
+  {
+    "label": "random-1-configure",
+    "seconds": 0.03429583500837907,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/racket-boot/racket/src/ChezScheme/configure",
+      "--force",
+      "--disable-curses",
+      "--disable-x11",
+      "-m=ta6le",
+      "--workarea=ta6le",
+      "ZUO=/workspace/prototypes/checks/zuo",
+      "--sessionkey="
+    ]
+  },
+  {
+    "label": "random-1-bootquick",
+    "seconds": 21.320667053980287,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/checks/zuo",
+      ".",
+      "-j",
+      "4",
+      "bootquick",
+      "--host-scheme",
+      "/workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/bin/ta6le/scheme -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/petite.boot -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/scheme.boot",
+      "ta6le"
+    ]
+  },
+  {
+    "label": "random-1",
+    "hashes": {
+      "petite.boot": "0992d2630c0ae0a6e769fe4e8fbfeac2102a253cfabf240ff9c195f093effddf",
+      "scheme.boot": "a771406e99160909d327b16b4b65b8e02de1a0714b9515f81c062ce38865e7cc",
+      "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+      "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+      "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+      "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+      "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+      "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+    }
+  },
+  {
+    "label": "random-2-configure",
+    "seconds": 0.03535399498650804,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/racket-boot/racket/src/ChezScheme/configure",
+      "--force",
+      "--disable-curses",
+      "--disable-x11",
+      "-m=ta6le",
+      "--workarea=ta6le",
+      "ZUO=/workspace/prototypes/checks/zuo",
+      "--sessionkey="
+    ]
+  },
+  {
+    "label": "random-2-bootquick",
+    "seconds": 21.663103402999695,
+    "status": 0,
+    "command": [
+      "/workspace/prototypes/checks/zuo",
+      ".",
+      "-j",
+      "4",
+      "bootquick",
+      "--host-scheme",
+      "/workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/bin/ta6le/scheme -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/petite.boot -B /workspace/racket/racket/src/build/cs/c/ChezScheme/ta6le/boot/ta6le/scheme.boot",
+      "ta6le"
+    ]
+  },
+  {
+    "label": "random-2",
+    "hashes": {
+      "petite.boot": "658ca87e615472c31db4d062c1648672f772368eb4020db005e959df1ddf55d0",
+      "scheme.boot": "e2d9e011f7658b49a92d7ac921cc3cf8bb7f58b3222772726a2a5113fd9b3b4b",
+      "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+      "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+      "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+      "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+      "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+      "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+    }
+  }
+]

@@ -6,7 +6,9 @@
          (for-syntax racket/base))
 
 (provide fl+ fl- fl* fl/
-         flabs flsqrt flhypot flexp fllog
+         flabs flsqrt flhypot flfma flexp fllog
+         fllog1p flexpm1 flsinh flcosh fltanh
+         flasinh flacosh flatanh fllog2 flexp2 flnextafter
          flsin flcos fltan flasin flacos flatan
          flfloor flceiling flround fltruncate
          flsingle flexpt flrandom flbit-field

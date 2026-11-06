@@ -493,7 +493,8 @@
           make-flrectangular
           gcd
           lcm
-          fllog flatan flhypot
+          fllog flatan flhypot flfma
+          fllog1p flexpm1 flsinh flcosh fltanh flasinh flacosh flatanh fllog2 flexp2 flnextafter
           fxquotient
 
           random
@@ -668,6 +669,18 @@
           unsafe-flatan
           unsafe-fllog
           unsafe-flexp
+          unsafe-flfma
+          unsafe-fllog1p
+          unsafe-flexpm1
+          unsafe-flsinh
+          unsafe-flcosh
+          unsafe-fltanh
+          unsafe-flasinh
+          unsafe-flacosh
+          unsafe-flatanh
+          unsafe-fllog2
+          unsafe-flexp2
+          unsafe-flnextafter
           unsafe-flhypot
           unsafe-flsqrt
           unsafe-flexpt

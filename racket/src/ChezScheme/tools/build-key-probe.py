@@ -12,7 +12,7 @@ with tempfile.TemporaryDirectory(prefix='chez-build-key-') as d:
     unit=src/'s/unit.ss';unit.write_text('; first source\n')
     cap=root/'capture.py';cap.write_text('import sys\nopen(sys.argv[1],"w").write(sys.stdin.read())\n')
     captured=root/'stdin';driver=root/'main.zuo'
-    def key(seed='auto',what='unit',script='(void)'):
+    def key(seed='',what='unit',script='(void)'):
         q=lambda x:json.dumps(str(x))
         driver.write_text('''#lang zuo
 (require LIB zuo/thread)
@@ -24,14 +24,16 @@ with tempfile.TemporaryDirectory(prefix='chez-build-key-') as d:
         assert not r.returncode,r.stdout+r.stderr
         m=re.search(r'\$session-key\) "([^"]+)"',captured.read_text())
         return m.group(1) if m else None
-    first=key();assert first is not None,captured.read_text()
-    assert first==key()
-    assert first!=key(what='another-unit')
-    assert first!=key(script='(void 1)')
-    unit.write_text('; changed source\n');assert first!=key()
-    assert key(seed='') is None
+    assert key() is None, 'Default builds must not override the session key'
+    first=key(seed='custom');assert first==key(seed='custom')
+    assert first!=key(seed='custom',what='another-unit')
+    # The ordinary explicit-key API has no source/script hashing or auto mode.
+    assert first==key(seed='custom',script='(void 1)')
+    unit.write_text('; changed source\n');assert first==key(seed='custom')
     # Exact legacy preimage, including old directory scope and NUL separators.
     prefix='k'+hashlib.sha256(('custom\0'+str(work)+'\0unit').encode()).hexdigest()[:24]+'-'
     actual=key(seed='custom')
     assert actual==prefix,(actual,prefix)
-print('Stable auto key; source/script/action changes isolated; opt-out and legacy custom key passed.')
+    literal='k'+hashlib.sha256(('auto\0'+str(work)+'\0unit').encode()).hexdigest()[:24]+'-'
+    assert key(seed='auto')==literal
+print('Default has no override; explicit key scoping retains the upstream formula.')

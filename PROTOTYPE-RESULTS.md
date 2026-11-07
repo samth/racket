@@ -1,50 +1,18 @@
-# Reproducible bundled Chez boots: prototype
+# CI-only Chez session key prototype
 
-This branch changes **Racket's bundled Chez**, independently of the matching
-`samth/ChezScheme` branch `prototype/reproducible-boot-default`.
+The automatic default change has been removed. Chez's configure, session-key
+implementation, and BUILDING documentation match the upstream baseline again.
+Normal builds therefore keep ordinary fresh session identities. The dependency
+fixes and native .so/.wpo output declarations remain.
 
-Configure defaults to `--sessionkey=auto`. The build driver scopes identities by
-source-tree contents, action script, compiler executable, startup inputs, machine
-and existing action/output paths. Ordinary application gensyms retain their
-random session identities. `--sessionkey=` opts out; named custom keys preserve
-the previous exact key formula. No global runtime gensym policy is changed.
+The replacement is an explicit CI opt-in: a pure-Zuo helper generates a seed from
+Chez/build/PB inputs; a small Racket adapter forwards RACKET_CHEZ_SESSION_KEY to
+Chez's existing option. A separate manual workflow tests the normal PB bootstrap
+and desktop tests, with a seeded/default boolean control. See
+[CI-BOOT-SESSION-KEY.md](CI-BOOT-SESSION-KEY.md).
 
-Two fresh native-host bootquick builds at fixed source/output roots produced
-8/8 byte-identical boot/header files. Final runs took 19.83 and 17.56 seconds.
-A separate opt-out pair reproduced the two changing boot images while the other
-six outputs matched. Local timings overlapped other validation work; they are
-not CI speedup estimates. Compact command/status/timing rows and SHA-256
-manifests are committed in `prototype-evidence/`.
-
-The build-key probe passed stable-key, source/script/action-change, opt-out and
-exact legacy custom-key checks. Run it with:
-
-```sh
-python3 racket/src/ChezScheme/tools/build-key-probe.py --zuo /absolute/zuo
-```
-
-The complete boot comparison is reproducible with:
-
-```sh
-python3 racket/src/ChezScheme/tools/reproducible-boot-probe.py \
-  --zuo /absolute/zuo \
-  --host-scheme '/absolute/native/scheme -B /absolute/native/petite.boot -B /absolute/native/scheme.boot'
-```
-
-The standalone Chez prototype additionally passed a normal PB-to-native build
-and native runtime smoke checks; independent runtime processes generated
-distinct ordinary gensyms. The bundled probe here uses the existing native host,
-not a full Racket build. Neither probe establishes reproducibility across
-platforms, relocated paths, profiled builds or incremental-versus-clean builds.
-Source scope is conservative. Broader evaluation is needed before enabling this
-as an upstream default. See bundled Chez's BUILDING for policy details.
-
-
-The 2026-11-06 dependency audit fixes are also applied to this branch: the two
-missing native CS includes, native .so/.wpo output groups and final WPO inputs,
-Chez compile/link configuration and disableiconv, full LZ4 inputs, and complete
-Nanopass outputs. The bundled c/build.zuo and s/build.zuo match the validated
-versions on prototype/zuo-action-cache; the matching standalone Chez changes
-were also built and tested with automatic boot naming. No action-cache API is
-needed by this branch. See prototype-evidence/dependency-fixes-bundled.json and
-racket/src/ChezScheme/tools/dependency-regressions.py.
+The earlier automatic-default experiment's boot hash JSON files are retained as
+historical evidence, not validation of the current policy. Current explicit-key
+and default-control evidence is in `prototype-evidence/ci-session-key/`.
+Dependency-audit regression evidence remains in
+`prototype-evidence/dependency-fixes-bundled.json`.

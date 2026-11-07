@@ -17,11 +17,11 @@ jobs:
       - name: Collect the requested benchmark's own evidence
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 .github/scripts/collect-chez-ci-replay.py --run 42381614896 --wait
+        run: python3 .github/scripts/collect-chez-ci-replay.py --run 42381872117 --wait
       - name: Save reviewable summaries on this results branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add benchmark-results/chez-ci-replay-42381614896.json benchmark-results/chez-ci-replay-42381614896.md
+          git add benchmark-results/chez-ci-replay-42381872117.json benchmark-results/chez-ci-replay-42381872117.md
           git commit -m 'Record measured backend dependency fix CI results'
           git push origin HEAD:prototype/chez-platform-ci-results

@@ -39,6 +39,7 @@ run('submodules',['git','submodule','update','--init','--recursive','nanopass','
 run('dependency-fixes',['git','apply','--3way',root/'.github/scripts/chez-replay-dependency-fixes.patch'],cwd=chez)
 platform_patch='chez-replay-platform-modern.patch' if 'x86-64-level' in (chez/'s/machine.zuo').read_text() else 'chez-replay-platform-fixes.patch'
 run('platform-fixes',['git','apply',root/'.github/scripts'/platform_patch],cwd=chez)
+run('compiler-inputs',['git','apply',root/'.github/scripts/chez-replay-compiler-inputs.patch'],cwd=chez)
 seed_payload=evidence/'pb-seeds';shutil.copytree(bundle/'boot/pb',seed_payload,ignore=shutil.ignore_patterns('.git'))
 shutil.rmtree(bundle);shutil.copytree(chez,bundle,ignore=shutil.ignore_patterns('.git','stex','zuo','__pycache__'))
 shutil.rmtree(bundle/'boot/pb',ignore_errors=True);(bundle/'boot').mkdir(exist_ok=True);shutil.copytree(seed_payload,bundle/'boot/pb')

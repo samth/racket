@@ -54,3 +54,19 @@ behavior remain unchanged.
 The replay is destructive only inside its explicitly authorized disposable
 checkout (`--allow-replace-bundled`). It does not publish or alter the managed
 environment configuration or authentication.
+
+## Compiler-input dependency regression
+
+The first constant-base replay exposed stale compiler-preparation artifacts on
+`d533f2e1`: bootstrap failed with a duplicate interned gensym. Global source-key
+rotation had previously forced those files to be discarded. The corrective Zuo
+patch declares the native compiler executable and incoming boot files as inputs
+to bootstrap preparation and the bootstrap stamp. Preamble and Nanopass artifacts
+therefore rebuild when their compiler changes. Nanopass removes its complete
+14-file output group before compilation; imported-library timestamp checks cannot
+retain old child libraries. The active boot files modified during fixpoint
+iteration are deliberately not cyclic inputs. No namespace derivation changes.
+
+The real shared-compiler commit remains a required warm-versus-fresh regression,
+including independent native compilation when the parent's native cache misses.
+The initial failed run and its diagnostics are retained as evidence.

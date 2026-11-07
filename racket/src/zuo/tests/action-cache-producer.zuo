@@ -1,0 +1,18 @@
+#lang zuo/base
+(define args (hash-ref (runtime-env) 'args))
+(define input (list-ref args 0))
+(define a (list-ref args 1))
+(define b (list-ref args 2))
+(define runs (list-ref args 3))
+(define value (list-ref args 4))
+(define fail (list-ref args 5))
+;; Test instrumentation only; cached outputs do not depend on this counter.
+(display-to-file (~a (if (file-exists? runs) (file->string runs) "") "run\n") runs :truncate)
+(define result (~a (file->string input) ":" value ":"
+                   (cdr (assoc "ACTION_TEST" (hash-ref (runtime-env) 'env)))))
+(if (equal? (list-ref args 6) "executable")
+    (cp (hash-ref (runtime-env) 'exe) a)
+    (display-to-file result a :truncate))
+(when (equal? fail "yes") (exit 7))
+(when (equal? fail "mutate") (display-to-file "changed-during-action" input :truncate))
+(unless (equal? fail "incomplete") (display-to-file (~a result ":second") b :truncate))

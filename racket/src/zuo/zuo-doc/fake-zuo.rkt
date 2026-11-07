@@ -215,6 +215,7 @@
 
     target
     rule
+    command-rule
     phony-rule
     input-file-target
     input-data-target

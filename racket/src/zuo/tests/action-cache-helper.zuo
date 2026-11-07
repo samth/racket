@@ -1,0 +1,3 @@
+#lang zuo/base
+(provide default-value)
+(define default-value "one")

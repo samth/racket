@@ -1381,6 +1381,16 @@ Zuo process. The hash table includes the following keys:
 
 @item{@racket['exe]: an absolute path for the running Zuo executable}
 
+@item{@racket['process-id]: the operating-system process identifier.}
+
+@item{@racket['module-files]: absolute file paths read by the module loader in
+      this runtime, including modules currently being evaluated. Modules restored
+      from a boot image are excluded. This list is updated as modules load.}
+
+@item{@racket['library-root]: the absolute library-collection root, or
+      @racket[#f] when filesystem library lookup is disabled. This allows
+      explicitly described build actions to fingerprint their implementation.}
+
 @item{@racket['system-type]: @racket['unix] or @racket['windows]}
 
 @item{@racket['toolchain-type]: @racket['unix] (@exec{cc}, etc.) or

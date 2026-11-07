@@ -1,0 +1,30 @@
+{
+  "baseline": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+  "revisions": [
+    {
+      "sha": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+      "subject": "riscv64 and loongarch64: repairs for foreign call and callable arguments",
+      "date": "2026-11-05T16:13:15Z"
+    },
+    {
+      "sha": "a8f47df081d4e810715c34b5426c3fc3667452ff",
+      "subject": "Consdense release notes for foreign struct-argument repairs",
+      "date": "2026-11-05T16:13:15Z"
+    },
+    {
+      "sha": "68a0bc5e8f24fe936b371558ab95fd75acc62506",
+      "subject": "configure: add `--x86-64-v<level>` to enable direct ROUNDSD, etc. (#1092)",
+      "date": "2026-11-06T13:03:24Z"
+    },
+    {
+      "sha": "ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e",
+      "subject": "repair in-place marking of an empty continuation stack (#1096)",
+      "date": "2026-11-07T13:09:01Z"
+    },
+    {
+      "sha": "d533f2e156d4eddeafe24bd7cc4de87fdc88caeb",
+      "subject": "use native fused multiply-add instructions for flfma (#1095)",
+      "date": "2026-11-07T13:09:19Z"
+    }
+  ]
+}

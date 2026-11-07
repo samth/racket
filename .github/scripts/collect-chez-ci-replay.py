@@ -45,7 +45,7 @@ diagnostics=[]
 for f in Path('incoming').rglob('phases.json'):
  entry=dict(path=str(f),phases=json.loads(f.read_text()),tails={})
  if any(p['status'] for p in entry['phases']):
-  for name in ['chez-bootstrap.log','racket-native.log','chez-smoke.log']:
+  for name in ['chez-bootstrap.log','racket-native.log','chez-smoke.log','native-racket-smoke.log','native-fasl-equivalence.log','rktio-configure.log','rktio-shared.log']:
    path=f.parent/name
    if path.is_file():
     tail=path.read_text(errors='replace')[-14000:]
@@ -62,7 +62,7 @@ for r in rows:
   net=f'{r["net_job_saved_seconds"]:.0f}s ({r["net_job_percent_faster"]:.1f}%)' if 'net_job_saved_seconds'in r else 'unavailable'
   lines.append(f'| `{r["sha"][:8]}` | {subject} | {c["build_seconds"]:.1f}s | {n["build_seconds"]:.1f}s | {n["native_cache_hits"]}/10 | {net} |')
  else:lines.append(f'| `{r["sha"][:8]}` | {subject} | incomplete | incomplete | — | — |')
-lines += ['','Independent verification jobs force fresh target bootstraps with the same fixed namespace and compare compiler, all eight boot/header files and all 19 native artifacts against their incremental target builds. Constant-base active/inactive/shared-source and flag mutation tests are recorded under dependency_mutations; fresh equivalence results are under validation_summaries.', '', 'Fresh/restored build time sums the Chez/PB bootstrap and native Racket compilation phases. Target job saving includes checkout, configuration, artifact download/restoration and cleanup; queue time is excluded. Parent preparation is prior-run cache-warming cost and is recorded in the JSON, not counted as free target-PR work.','',
+lines += ['','Independent verification jobs force fresh target bootstraps with the same fixed namespace and compare compiler and all eight boot/header files byte for byte, and all 19 native outputs with Chez\'s code/data/sharing FASL comparison (allowing private gensym renaming). Both fresh and incremental Racket cores execute runtime smoke checks. Raw native byte matches are recorded separately. Constant-base active/inactive/shared-source and flag mutation tests are recorded under dependency_mutations; fresh equivalence results are under validation_summaries.', '', 'Fresh/restored build time sums the Chez/PB bootstrap and native Racket compilation phases. Target job saving includes checkout, configuration, artifact download/restoration and cleanup; queue time is excluded. Parent preparation is prior-run cache-warming cost and is recorded in the JSON, not counted as free target-PR work.','',
 'One pair per commit, on standard Ubuntu 22.04 hosted runners with four build jobs. Small differences are subject to runner noise. This does not measure package setup, the full desktop test step, macOS or iOS; it is not an end-to-end PR speedup claim.','',
 'Every successful arm checks Racket bootstrap consistency, runs arithmetic/flfma smoke checks, and records compiler/boot hashes and all 19 native artifact hashes. Detailed phases, source materialization and cache invalidation decisions are retained in the JSON and workflow artifacts.']
 (out/f'chez-ci-replay-{a.run}.md').write_text('\n'.join(lines)+'\n')

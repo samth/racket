@@ -12,7 +12,7 @@ p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--root',type=Path,default=Path.cwd())
 p.add_argument('--chez',type=Path,required=True)
 p.add_argument('--revision',required=True)
-p.add_argument('--mode',choices=['prepare','cold','reuse'],required=True)
+p.add_argument('--mode',choices=['prepare','cold','reuse','rebuild'],required=True)
 p.add_argument('--name',required=True)
 p.add_argument('--jobs',default='4')
 p.add_argument('--zuo',type=Path)
@@ -36,6 +36,7 @@ start_all=time.monotonic()
 run('checkout',['git','reset','--hard',a.revision],cwd=chez)
 run('submodules',['git','submodule','update','--init','--recursive','nanopass','zlib','lz4'],cwd=chez)
 run('dependency-fixes',['git','apply','--3way',root/'.github/scripts/chez-replay-dependency-fixes.patch'],cwd=chez)
+run('platform-fixes',['git','apply',root/'.github/scripts/chez-replay-platform-fixes.patch'],cwd=chez)
 seed_payload=evidence/'pb-seeds';shutil.copytree(bundle/'boot/pb',seed_payload,ignore=shutil.ignore_patterns('.git'))
 shutil.rmtree(bundle);shutil.copytree(chez,bundle,ignore=shutil.ignore_patterns('.git','stex','zuo','__pycache__'))
 shutil.rmtree(bundle/'boot/pb',ignore_errors=True);(bundle/'boot').mkdir(exist_ok=True);shutil.copytree(seed_payload,bundle/'boot/pb')
@@ -43,15 +44,16 @@ platform=os.environ.get('RUNNER_OS','Linux')+'/'+os.environ.get('RUNNER_ARCH',os
 image=os.environ.get('ImageOS','local')+'/'+os.environ.get('ImageVersion','frozen')
 assert not os.environ.get('RUNNER_OS') or os.environ.get('ImageVersion'), 'Hosted cache experiment requires the runner image identity'
 flags=['--enable-cs','--disable-curses','--disable-gracket','--disable-docs']
-key_args=[str(zuo),str(root/'.github/scripts/chez-session-key.zuo'),str(bundle),platform,image,' '.join(flags)]
+key_args=[str(zuo),str(root/'.github/scripts/chez-session-key.zuo'),str(bundle),platform,image,'--machines=pb,ta6le',' '.join(flags)]
 t=time.monotonic();key=subprocess.check_output(key_args,cwd=root,text=True).strip();key_seconds=time.monotonic()-t
-parent_meta=json.loads((state/'parent.json').read_text()) if a.mode=='reuse' else None
+parent_meta=json.loads((state/'parent.json').read_text()) if a.mode in ('reuse','rebuild') else None
 seed_matches=bool(parent_meta and parent_meta['session_key']==key)
 # A changed explicit key is not compatible with an incrementally retained Chez
 # workarea. Keep the native Racket cache, but rebuild Chez from scratch.
 if a.mode=='cold':shutil.rmtree(state,ignore_errors=True)
 state.mkdir(exist_ok=True)
-if a.mode=='reuse' and not seed_matches:shutil.rmtree(cs/'ChezScheme',ignore_errors=True)
+if a.mode=='rebuild' or (a.mode=='reuse' and not seed_matches):shutil.rmtree(cs/'ChezScheme',ignore_errors=True)
+if a.mode=='rebuild':(cs/'check-bootstrap-same-stamp').unlink(missing_ok=True)
 for f in state.rglob('_zuo_tc.db'):f.unlink()
 # Every job starts without native Racket outputs, so reuse has to demonstrate
 # real action-cache hits, not just existing-file incremental reuse.
@@ -89,6 +91,16 @@ summary=dict(revision=revision,mode=a.mode,name=a.name,session_key=key,seed_matc
              bootstrap_compilations=bootstrap['scheme_compilations'],bootstrap_full_passes=bootstrap['full_scheme_passes'],
              native_scheme_compilations=racket['scheme_compilations'],boot_hashes=boots,native_hashes=artifacts,
              compiler_sha256=sha(area/'bin/ta6le/scheme'),zuo_sha256=sha(zuo),jobs=int(a.jobs))
+if a.mode in ('reuse','rebuild'):
+ assert seed_matches, 'The foreign-backend change must retain the scoped key'
+ assert boots==parent_meta['boot_hashes'], 'Boot bytes changed after an irrelevant backend change'
+ assert artifacts==parent_meta['native_hashes'], 'Restored native bytes differ from parent'
+ assert summary['compiler_sha256']==parent_meta['compiler_sha256']
+ assert racket['cache_hits']==10 and racket['scheme_compilations']==0
+ if a.mode=='reuse':
+  assert bootstrap['scheme_compilations']==0 and bootstrap['full_scheme_passes']==0
+ else:
+  assert bootstrap['scheme_compilations']>0 and bootstrap['full_scheme_passes']>0
 (evidence/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 if a.mode=='prepare':
  (state/'parent.json').write_text(json.dumps(summary,indent=2)+'\n')

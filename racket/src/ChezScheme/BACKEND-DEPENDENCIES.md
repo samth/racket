@@ -13,8 +13,8 @@ list still contains every backend, and now also includes the compiler entry
 points so bootquick records track those edits.
 
 This changes dependency precision only; it does not change session-key defaults.
-Racket's optional CI key helper uses the same selector with an explicitly supplied
-set of source-built host/target machines.
+Racket's CI session-key base is a fixed literal. It does not inspect these source
+files or duplicate dependency selection; Zuo handles invalidation independently.
 
 Run the selector regression with:
 

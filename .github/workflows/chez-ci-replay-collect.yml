@@ -1,0 +1,27 @@
+name: Collect Chez platform dependency results
+on:
+  push:
+    branches: [prototype/chez-platform-ci-results]
+    paths:
+      - .github/workflows/chez-ci-replay-collect.yml
+      - .github/scripts/collect-chez-ci-replay.py
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  collect:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Collect the requested benchmark's own evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/collect-chez-ci-replay.py --run 42381614896 --wait
+      - name: Save reviewable summaries on this results branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add benchmark-results/chez-ci-replay-42381614896.json benchmark-results/chez-ci-replay-42381614896.md
+          git commit -m 'Record measured backend dependency fix CI results'
+          git push origin HEAD:prototype/chez-platform-ci-results

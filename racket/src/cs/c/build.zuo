@@ -118,11 +118,14 @@
                'exePostStep (lookup 'POST_LINKER)))
 
   (define (add-scheme-boot-config config)
+    ;; Explicit opt-in for CI; normal builds retain Chez's default naming.
+    (define session-key (assoc "RACKET_CHEZ_SESSION_KEY" (hash-ref (runtime-env) 'env)))
+    (define keyed-config (if session-key (hash-set config 'sessionKey (cdr session-key)) config))
     (if (equal? (lookup 'ENABLE_EXTRA_CHECKS "no") "yes")
-        (hash-set* config
+        (hash-set* keyed-config
                    'o "2"
                    'd "1")
-        config))
+        keyed-config))
 
   (define (add-windows-config config)
     (hash-set* config

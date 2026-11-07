@@ -1,68 +1,56 @@
-# Recent Chez commits: CI replay benchmark
+# Fixed CI session base: dependency and cache replay
 
-This branch runs the selected RISC-V/LoongArch upstream commit (listed by immutable SHA in
-`.github/scripts/chez-replay-revisions.json`) through the Linux PR build's
-Chez/PB bootstrap and native Racket CS compilation boundaries. It does not time
-package setup, full desktop test execution, or macOS/iOS jobs.
+This prototype separates the literal gensym base in `.github/chez-session-key`
+from rebuild and cache decisions. The base is `racket-chez-ci-v1` across source,
+compiler, configuration and platform changes. Chez's existing per-action/workarea
+namespace derivation is unchanged. There is no source hash, backend exclusion,
+or automatic default in the CI namespace.
 
-For each target commit, a parent job builds its immediate parent with the
-explicit CI session key and the audited Zuo native action cache. It archives the
-complete build state and action-cache directory. Two comparison jobs then build
-the target: a fresh unseeded build without the action cache, and a seeded build
-restoring its parent state/cache. Each native Racket arm starts without .so/.wpo
-outputs. Only real command-rule hits can avoid native Racket compilation.
+Zuo's audited dependencies, including selected-backend precision, determine
+source invalidation. Native Racket command-rule keys separately track executable,
+loaded boot files, sources, command/configuration, loaded rule modules and an
+explicit runner/toolchain identity. Whole build-state checkpoints are accepted
+only for the same compiler, platform/image, Zuo executable and build configuration;
+that compatibility identity never changes the gensym base. It contains no source
+hash. A deliberate base-version rotation also requires a fresh workarea.
 
-The retained setup does not cache Chez compiler actions. If its source
-session key changes, the Chez workarea is discarded, as upstream key changes are
-not compatible with retained incremental state. Changes confined to an unused backend retain the scoped key. Restored timestamp hash databases are discarded in either case.
-The ordinary Zuo bootstrap recipe is still executed, including any phony steps.
+The replay covers three real upstream changes and their immediate parents:
+unused RISC-V/LoongArch backend code, shared C runtime code, and shared Scheme
+compiler code. Both arms materialize the selected upstream Chez and pinned
+libraries in Racket's bundled path and apply identical audited dependency fixes.
+The Racket-selected PB payload is held fixed. The older/newer source graphs use
+corresponding narrow patches, preserving upstream ISA-configuration behavior.
 
-Both arms include identical dependency fixes, applied as a three-way patch to
-the selected upstream Chez tree. The actual selected Chez sources and pinned
-nanopass/zlib/lz4 are copied into Racket's bundled source path. Racket's selected
-PB seed payload is held constant across comparisons. Each native compiler runs
-with its actual loaded boots, passes Racket's bootstrap-consistency check, and
-runs arithmetic/flfma smoke checks. Native Racket actions hash that executable
-and loaded boots as well as declared sources/configuration.
+For each target, an earlier seeded parent checkpoint warms the native cache.
+The cold arm uses ordinary unseeded builds and no native action cache. The reuse
+arm retains the fixed base and valid parent state, allowing Zuo to decide which
+inputs changed. Native outputs start absent in every target arm; timestamp hash
+databases are discarded. No source-derived namespace can force source rebuilds.
 
-The hosted workflow uses separate standard Ubuntu 22.04 jobs at four build jobs,
-records runner image identity, and uploads full logs and compact JSON results.
-Source/seed retrieval and artifact transfers are separate workflow steps. Report
-build-phase time and target-job elapsed time separately; the latter includes
-cache download/restoration. Parent preparation is the preceding cache-warming
-cost, not free work done during the target PR. A first run has no parent cache.
+The RISC-V arm must run zero compiler actions and hit all ten native cache entries,
+with unchanged executable/boot/native hashes. For shared-source changes there is
+no assertion of a speedup or unchanged compiler bytes: affected work must rebuild.
+An independent verification job discards all Chez/configure build state and forces
+a fresh seeded target at the same paths. It compares the resulting executable,
+all eight boot/header files and all 19 native outputs with that target's measured
+incremental arm, using the exact same fixed base. It must perform both bootstrap
+passes; it cannot pass by retaining old Chez outputs.
 
-Each comparison is one sample per commit on hosted runners, so small differences
-are subject to scheduling and hardware noise. No end-to-end PR speedup should be
-inferred directly from these build-boundary timings. Code changes may receive no
-benefit with this namespace; the benchmark must report that
-rather than assume reproducibility alone skips compilation.
+Mutation tests independently poison unused backends, the active x86-64 backend,
+a shared compiler entry file, and CPPFLAGS. All use the same fixed base. Unused
+backends must perform zero compiler actions; active/shared source and flag changes
+must be noticed and fail at the poisoned input. Build state and source/config
+contents are restored between cases. Selector tests cover eleven machine types.
 
-The runner is `.github/scripts/chez-ci-replay.py`; it explicitly requires
-`--allow-replace-bundled` and must only be used in disposable checkouts. It
-replaces bundled sources, maintains a fixed build path, and records every phase
-status, elapsed time, compiler work, cache counts and output hashes. The workflow
-is restricted to this benchmark branch and supports manual retries.
+Reports distinguish bootstrap/native build time from whole target-job time,
+including source preparation and artifact transfer. Parent cache preparation is
+prior-run cost, recorded separately. One pair per commit is subject to runner
+noise; executed compiler actions and fresh/incremental equivalence are stronger
+evidence than small timing differences. Package setup, collection compilation,
+full desktop tests, macOS and iOS are not measured here. No whole-PR speedup is
+inferred from these build-only experiments. Default CI and normal Chez session
+behavior remain unchanged.
 
-## Target-specific dependency fix
-
-This branch replays only `8403ef4c` against `048879e3`, with the same fixed PB
-payload and native action-cache setup. The seed explicitly selects `pb,ta6le`.
-Both arms include the new target-specific dependency rules in addition to the
-previous audit fixes. The new patch is applied separately to avoid changing
-unrelated upstream ISA-level configuration behavior.
-
-A separate verification job forces a fresh seeded target bootstrap at the same
-paths, then requires the compiler, all eight boot/header files, and all 19 native
-outputs to match the parent byte for byte. It also requires all ten native cache
-hits. This checks that excluding the unused backend preserves freshly compiled
-output, rather than merely trusting previously restored files. The warm reuse
-arm additionally requires zero bootstrap and native compiler actions.
-
-Mutation regressions poison RISC-V and LoongArch backend files: x86-64 must still
-build with zero compiler actions. Poisoning x86_64.ss must invalidate the build
-and fail while opening that backend. The tests discard timestamp databases and
-restore sources/build state. Key-scope regressions require the changed backend
-to invalidate its own target key, and check common/PB/toolchain inputs. A graph
-selector test covers eleven machine variants, common and unknown source files,
-and compatibility of the complete aggregate source list.
+The replay is destructive only inside its explicitly authorized disposable
+checkout (`--allow-replace-bundled`). It does not publish or alter the managed
+environment configuration or authentication.

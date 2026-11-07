@@ -1,14 +1,13 @@
-name: Chez platform dependency replay
+name: Chez fixed session base replay
 on:
   push:
-    branches: [prototype/chez-platform-ci]
+    branches: [prototype/chez-fixed-session-ci]
     paths:
       - .github/workflows/chez-ci-replay.yml
       - .github/scripts/chez-ci-replay.py
       - .github/scripts/chez-replay-*
       - .github/scripts/chez-backend-*
-      - .github/scripts/chez-session-key.zuo
-      - .github/scripts/tests/test-chez-session-key.py
+      - .github/chez-session-key
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,7 +26,7 @@ jobs:
           p=json.load(open('.github/scripts/chez-replay-revisions.json'))
           parents=[];comparisons=[];previous=p['baseline']
           for r in p['revisions']:
-            row=dict(id=r['sha'][:8],sha=r['sha'],parent=previous)
+            row=dict(id=r['sha'][:8],sha=r['sha'],parent=r.get('parent',previous))
             parents.append(row)
             for mode in ['cold','reuse']: comparisons.append(dict(row,mode=mode))
             previous=r['sha']
@@ -103,7 +102,7 @@ jobs:
           path: replay-evidence
           retention-days: 7
   verify:
-    needs: [plan, parents]
+    needs: [plan, parents, compare]
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.parents) }}
@@ -122,15 +121,19 @@ jobs:
           name: parent-${{ matrix.id }}
       - name: Restore parent state
         run: tar -xzf parent-state.tgz
+      - uses: actions/download-artifact@v8
+        with:
+          name: evidence-${{ matrix.id }}-reuse
+          path: warm-evidence
       - name: Force fresh seeded target build and compare every output
         run: |
           python3 .github/scripts/chez-ci-replay.py --chez chez-upstream \
             --revision '${{ matrix.sha }}' --mode rebuild \
-            --name '${{ matrix.id }}-rebuild' --allow-replace-bundled
-      - name: Test active and inactive backend dependencies
+            --name '${{ matrix.id }}-rebuild' --reference-dir warm-evidence --allow-replace-bundled
+      - name: Test source and configuration dependencies with the fixed base
+        if: matrix.id == '8403ef4c'
         run: |
           racket/src/build/bin/zuo .github/scripts/chez-backend-dependencies.zuo
-          python3 .github/scripts/tests/test-chez-session-key.py racket/src/build/bin/zuo
           python3 .github/scripts/chez-backend-regressions.py --root . \
             --zuo racket/src/build/bin/zuo --output replay-evidence/backend-regressions
       - uses: actions/upload-artifact@v7

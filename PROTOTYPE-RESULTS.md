@@ -16,3 +16,10 @@ historical evidence, not validation of the current policy. Current explicit-key
 and default-control evidence is in `prototype-evidence/ci-session-key/`.
 Dependency-audit regression evidence remains in
 `prototype-evidence/dependency-fixes-bundled.json`.
+
+Two clean normal Racket PB-to-native bootstraps passed (177.0 s and 183.6 s),
+including Racket's bootstrap consistency checks, with 8/8 identical completed
+native boot/header files. Separate explicit-seed/default control pairs reproduced
+8/8 and 6/8 respectively. Ordinary runtime gensyms remain distinct. Scope tests
+passed using upstream Zuo; the new helper requires no Zuo implementation change.
+These local correctness checks do not claim a hosted CI speedup.

@@ -28,7 +28,7 @@ for j in jobs:
  if not m:continue
  reuse=any(s['name']=='Restore parent state' and s.get('conclusion')=='success' for s in j.get('steps',[]));mode='reuse' if reuse else 'cold'
  jobdata[m[1]+'-'+mode]=dict(id=j['id'],url=f'https://github.com/{a.repo}/actions/runs/{a.run}/job/{j["id"]}',status=j['status'],conclusion=j['conclusion'],job_seconds=duration(j),steps=[dict(name=s['name'],conclusion=s.get('conclusion'),seconds=duration(s)) for s in j.get('steps',[])])
-assert all(j['conclusion']=='success' for j in jobs), 'A benchmark or validation job failed'
+# Failed runs still need reproducible diagnostics; do not report them as passing.
 rows=[]
 for item in selection['revisions']:
  short=item['sha'][:8];cold=summaries.get(short+'-cold');reuse=summaries.get(short+'-reuse');cj=jobdata.get(short+'-cold');rj=jobdata.get(short+'-reuse')
@@ -41,7 +41,17 @@ for item in selection['revisions']:
 mutations=[]
 for f in Path('incoming').glob('**/backend-regressions/results.json'):
  mutations.extend(json.loads(f.read_text()))
-report=dict(run_id=a.run,url=f'https://github.com/{a.repo}/actions/runs/{a.run}',rows=rows,parent_summaries=[r for r in summaries.values() if r['mode']=='prepare'],validation_summaries=[r for r in summaries.values() if r['mode']=='rebuild'],dependency_mutations=mutations,jobs=jobs)
+diagnostics=[]
+for f in Path('incoming').rglob('phases.json'):
+ entry=dict(path=str(f),phases=json.loads(f.read_text()),tails={})
+ if any(p['status'] for p in entry['phases']):
+  for name in ['chez-bootstrap.log','racket-native.log','chez-smoke.log']:
+   path=f.parent/name
+   if path.is_file():
+    tail=path.read_text(errors='replace')[-14000:]
+    entry['tails'][name]=re.sub(r'(https?://[^\s?]+)\?[^\s]+',r'\1?[redacted]',tail)
+  diagnostics.append(entry)
+report=dict(run_id=a.run,url=f'https://github.com/{a.repo}/actions/runs/{a.run}',rows=rows,parent_summaries=[r for r in summaries.values() if r['mode']=='prepare'],validation_summaries=[r for r in summaries.values() if r['mode']=='rebuild'],dependency_mutations=mutations,diagnostics=diagnostics,jobs=jobs)
 out=Path('benchmark-results');out.mkdir(exist_ok=True);(out/f'chez-ci-replay-{a.run}.json').write_text(json.dumps(report,indent=2)+'\n')
 lines=['# Recent Chez commits: measured Linux CI replay','',f'[GitHub Actions run]({report["url"]})','',
 'Each target is compared with its immediate parent. Both arms include the audited dependency fixes. The restored arm uses one fixed CI namespace and the native Racket action cache. Sources invalidate through Zuo dependencies; compiler/platform/configuration compatibility is checked independently of the namespace.','',

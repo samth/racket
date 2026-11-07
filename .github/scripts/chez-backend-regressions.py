@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix='backend-build-backup-',dir=root) as d:
     rows.append(dict(backend=name,status=r.returncode,scheme_compilations=count,seconds=time.monotonic()-start))
     assert (r.returncode==0)==ok,(name,log[-2500:])
     if ok:assert count==0,(name,count)
-    else:assert 'too many expressions in x86_64.ss' in log,log[-2500:]
+    else:assert 'too many expressions in ' in log and '/x86_64.ss' in log,log[-2500:]
    finally:path.write_bytes(original);os.utime(path,ns=(st.st_atime_ns,st.st_mtime_ns))
  finally:
   shutil.rmtree(build);shutil.copytree(backup,build,symlinks=True)

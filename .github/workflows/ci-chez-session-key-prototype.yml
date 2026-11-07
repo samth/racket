@@ -25,9 +25,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          case "$RUNNER_OS/$RUNNER_ARCH" in
+            Linux/X64) target=ta6le ;;
+            macOS/X64) target=ta6osx ;;
+            macOS/ARM64) target=tarm64osx ;;
+            *) echo 'Unknown target; specify the actual Chez machines' >&2; exit 1 ;;
+          esac
           key=$(racket/src/build/bin/zuo .github/scripts/chez-session-key.zuo \
             racket/src/ChezScheme "$RUNNER_OS/$RUNNER_ARCH" \
-            "${ImageOS:-unknown}/${ImageVersion:-unknown}" "PKGS=;configure=defaults")
+            "${ImageOS:-unknown}/${ImageVersion:-unknown}" "--machines=pb,$target" "PKGS=;configure=defaults")
           echo "RACKET_CHEZ_SESSION_KEY=$key" >> "$GITHUB_ENV"
       - name: Build
         shell: bash

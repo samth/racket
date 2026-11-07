@@ -1,7 +1,8 @@
 #lang zuo
 (require "../makefiles/lib.zuo")
 
-(provide arch->backend
+(provide machine-source-names
+         arch->backend
          get-machine-files)
 
 (define (arch->backend arch)
@@ -12,6 +13,19 @@
     [(string=? arch "la64") "loongarch64"]
     [(string=? arch "armv7") "arm32"]
     [else arch]))
+
+(define backend-source-names
+  (map (lambda (arch) (~a (arch->backend arch) ".ss"))
+       '("a6" "i3" "arm32" "arm64" "ppc32" "rv64" "la64" "pb")))
+
+;; `architecture` in np-register.ss opens only <target architecture>.ss.
+;; Keep unknown/common inputs conservatively, including newly added files.
+(define (machine-source-names names m)
+  (define backend (~a (arch->backend (m->arch m)) ".ss"))
+  (filter (lambda (name)
+            (or (not (member name backend-source-names))
+                (equal? name backend)))
+          names))
 
 ;; Get or synthesize a "machine.def" file and supporting files,
 ;; returns

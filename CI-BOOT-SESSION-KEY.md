@@ -24,7 +24,7 @@ After fetching the selected PB payload, CI runs:
 ```sh
 racket/src/build/bin/zuo .github/scripts/chez-session-key.zuo \
   racket/src/ChezScheme "$RUNNER_OS/$RUNNER_ARCH" \
-  "${ImageOS:-unknown}/${ImageVersion:-unknown}" "PKGS=;configure=defaults"
+  "${ImageOS:-unknown}/${ImageVersion:-unknown}" "--machines=pb,ta6le" "PKGS=;configure=defaults"
 ```
 
 The pure-Zuo helper hashes the production Chez source trees, library sources,
@@ -34,6 +34,21 @@ context. It also conservatively includes Racket's Chez adapter/configure recipe
 files. It excludes VCS metadata, unrelated Racket sources, whole-repository commit
 IDs and workflow run IDs. Identical inputs retain the seed across unrelated
 Racket PR changes. Editing adapter recipe files can conservatively change it.
+
+With `--machines=pb,ta6le`, the helper excludes the known Scheme compiler
+backends that neither selected machine reads. It uses the same selector as the
+Chez build graph. Specify every source-built host and target machine: for a
+RISC-V cross build include `trv64le`; for Apple Silicon use `tarm64osx` rather
+than `ta6le`. The workflow explicitly maps its supported native targets and
+rejects unknown combinations. Omit the option for conservative whole-tree scope.
+Common files and unknown/new source filenames remain included. This narrows only
+known backend files, not conditional C inputs or machine-definition files.
+
+Chez's per-machine compilation, bootstrap stamps, and PB-to-target bootquick
+records now use only the selected backend. The aggregate `all-src-names` export
+continues to enumerate all backends. Compiler entry-point files are also included
+in that list so bootquick records track edits to `cpnanopass.ss` and companions.
+Default session-key behavior remains unchanged.
 
 Pass any additional build options in the context arguments; keep those arguments
 in agreement with the actual build. The image argument should identify the
@@ -47,7 +62,7 @@ and toolchain identity.
 
 ```sh
 key=$(racket/src/build/bin/zuo .github/scripts/chez-session-key.zuo \
-  racket/src/ChezScheme Linux/X64 your-runner-image 'your exact build options')
+  racket/src/ChezScheme Linux/X64 your-runner-image --machines=pb,ta6le 'your exact build options')
 RACKET_CHEZ_SESSION_KEY="$key" make CPUS=4 PKGS=""
 ```
 

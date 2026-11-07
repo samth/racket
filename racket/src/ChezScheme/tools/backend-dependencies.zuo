@@ -1,0 +1,33 @@
+#lang zuo
+;; Run with: zuo tools/backend-dependencies.zuo
+(require "../s/machine.zuo"
+         (only-in "../s/build.zuo" all-src-names all-src-names-for-machine))
+(define cases '(("ta6le" "x86_64.ss") ("a6osx" "x86_64.ss")
+               ("ti3le" "x86.ss") ("tarm32le" "arm32.ss")
+               ("tarmv7le" "arm32.ss") ("tarm64osx" "arm64.ss")
+               ("ppc32le" "ppc32.ss") ("trv64le" "riscv64.ss")
+               ("tla64le" "loongarch64.ss") ("pb" "pb.ss")
+               ("tpb64l" "pb.ss")))
+(define backends '("x86_64.ss" "x86.ss" "arm32.ss" "arm64.ss" "ppc32.ss"
+                   "riscv64.ss" "loongarch64.ss" "pb.ss"))
+(for-each (lambda (entry)
+            (define m (car entry))
+            (define wanted (cadr entry))
+            (define selected (all-src-names-for-machine m))
+            (for-each (lambda (name)
+                        (unless (equal? (and (member name selected) #t)
+                                        (equal? name wanted))
+                          (error "incorrect target backend" m name)))
+                      backends)
+            (for-each (lambda (name)
+                        (unless (member name selected) (error "missing common source" m name)))
+                      '("cpnanopass.ss" "cpprim.ss" "compile.ss" "cback.ss"
+                        "np-register.ss" "ffi-help.ss" "library.ss"))
+            (unless (equal? (machine-source-names '("unknown.ss" "common.ss") m)
+                            '("unknown.ss" "common.ss"))
+              (error "unknown/common source excluded" m)))
+          cases)
+(for-each (lambda (name)
+            (unless (member name all-src-names) (error "aggregate list lost backend" name)))
+          backends)
+(displayln "Backend dependencies: eleven machine variants, common/unknown inputs, and aggregate compatibility passed")

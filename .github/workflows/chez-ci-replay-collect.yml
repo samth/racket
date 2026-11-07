@@ -1,0 +1,27 @@
+name: Collect Chez CI replay results
+on:
+  push:
+    branches: [prototype/chez-ci-replay-results]
+    paths:
+      - .github/workflows/chez-ci-replay-collect.yml
+      - .github/scripts/collect-chez-ci-replay.py
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  collect:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Collect the requested benchmark's own evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/collect-chez-ci-replay.py --run 42378505446 --wait
+      - name: Save reviewable summaries on this results branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add benchmark-results/chez-ci-replay-42378505446.json benchmark-results/chez-ci-replay-42378505446.md
+          git commit -m 'Record measured recent-Chez CI build results'
+          git push origin HEAD:prototype/chez-ci-replay-results

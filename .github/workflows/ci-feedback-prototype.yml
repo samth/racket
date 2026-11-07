@@ -1,0 +1,113 @@
+name: CI feedback prototype
+
+# Deliberately manual: measure the job split before changing PR defaults.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Host build finishes and publishes BEFORE package setup and desktop tests.
+  host-linux:
+    runs-on: ubuntu-22.04
+    container:
+      image: racket/racket-ci:latest
+      options: --init
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build runtime
+        run: make CPUS="$(nproc)" PKGS=""
+      - run: tar -cf host.tar racket
+      - uses: actions/upload-artifact@v7
+        with:
+          name: host-ubuntu-22.04
+          path: host.tar
+          compression-level: 1
+
+  host-macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build runtime
+        run: make CPUS="$(sysctl -n hw.physicalcpu)" PKGS=""
+      - run: tar -cf host.tar racket
+      - uses: actions/upload-artifact@v7
+        with:
+          name: host-macos-15
+          path: host.tar
+          compression-level: 1
+
+  prepare-tests:
+    needs: [host-linux, host-macos]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.os == 'ubuntu-22.04' && 'racket/racket-ci:latest' || null }}
+    # Racket setup writes user-scoped packages here; archive those with runtime.
+    env:
+      PLTUSERHOME: ${{ github.workspace }}/test-user
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: host-${{ matrix.os }}
+      - run: tar -xf host.tar
+      - run: echo "${GITHUB_WORKSPACE}/racket/bin" >> "$GITHUB_PATH"
+      - name: Download and compile test packages once
+        run: bash .github/scripts/run-racket-tests.sh --install-only
+      - name: Archive prepared test environment
+        run: tar -cf prepared.tar racket pkgs test-user
+      - uses: actions/upload-artifact@v7
+        with:
+          name: prepared-${{ matrix.os }}
+          path: prepared.tar
+          compression-level: 1
+
+  test:
+    needs: prepare-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15]
+        shard: [core, other]
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.os == 'ubuntu-22.04' && 'racket/racket-ci:latest' || null }}
+    env:
+      PLTUSERHOME: ${{ github.workspace }}/test-user
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: prepared-${{ matrix.os }}
+      - run: tar -xf prepared.tar
+      - run: echo "${GITHUB_WORKSPACE}/racket/bin" >> "$GITHUB_PATH"
+      - name: Test ${{ matrix.shard }}
+        run: bash .github/scripts/run-racket-tests.sh --skip-install --shard '${{ matrix.shard }}'
+
+  build-ios:
+    needs: host-macos
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: host-macos-15
+      - name: Restore macOS host
+        run: |
+          mkdir host-racket
+          tar -xf host.tar -C host-racket --strip-components 1
+      - name: Build iOS Racket
+        run: |
+          set -euxo pipefail
+          mkdir -p racket/src/build-ios
+          cd racket/src/build-ios
+          ../configure \
+            --host=aarch64-apple-darwin \
+            --enable-ios=iPhoneOS \
+            --enable-racket=${{ github.workspace }}/host-racket/bin/racket \
+            --enable-scheme=${{ github.workspace }}/host-racket/src/build/cs/c
+          make
+          make install

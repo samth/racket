@@ -1,0 +1,162 @@
+name: Chez fixed session base replay
+on:
+  push:
+    branches: [prototype/chez-fixed-session-ci]
+    paths:
+      - .github/workflows/chez-ci-replay.yml
+      - .github/scripts/chez-ci-replay.py
+      - .github/scripts/chez-replay-*
+      - .github/scripts/chez-backend-*
+      - .github/chez-session-key
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+env:
+  PARENT_CHECKPOINT_RUN: "42392234841"
+jobs:
+  plan:
+    runs-on: ubuntu-22.04
+    outputs:
+      parents: ${{ steps.matrix.outputs.parents }}
+      comparisons: ${{ steps.matrix.outputs.comparisons }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: matrix
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=json.load(open('.github/scripts/chez-replay-revisions.json'))
+          parents=[];comparisons=[];previous=p['baseline']
+          for r in p['revisions']:
+            row=dict(id=r['sha'][:8],sha=r['sha'],parent=r.get('parent',previous))
+            parents.append(row)
+            for mode in ['cold','reuse']: comparisons.append(dict(row,mode=mode))
+            previous=r['sha']
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+            f.write('parents='+json.dumps(dict(include=parents))+'\n')
+            f.write('comparisons='+json.dumps(dict(include=comparisons))+'\n')
+          PY
+  parents:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.parents) }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: cisco/ChezScheme
+          fetch-depth: 0
+          path: chez-upstream
+      - name: Fetch selected PB payload and build Zuo
+        run: make fetch-pb
+      - name: Fetch the already-tested parent checkpoint
+        uses: actions/download-artifact@v8
+        with:
+          name: parent-${{ matrix.id }}
+          run-id: ${{ env.PARENT_CHECKPOINT_RUN }}
+          github-token: ${{ github.token }}
+      - name: Restore and record the preceding-run parent
+        run: |
+          tar -xzf parent-state.tgz
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os
+          p=Path('replay-state/parent.json');r=json.loads(p.read_text())
+          assert r['revision']=='${{ matrix.parent }}'
+          assert r['session_key']==Path('.github/chez-session-key').read_text().strip()
+          r['checkpoint_origin_run']=os.environ['PARENT_CHECKPOINT_RUN']
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          out=Path('replay-evidence/parent-${{ matrix.id }}');out.mkdir(parents=True)
+          (out/'summary.json').write_text(json.dumps(r,indent=2)+'\n')
+          PY
+      - name: Archive parent state and native action cache
+        run: tar -czf parent-state.tgz replay-state
+      - uses: actions/upload-artifact@v7
+        with:
+          name: parent-${{ matrix.id }}
+          path: parent-state.tgz
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evidence-parent-${{ matrix.id }}
+          path: replay-evidence
+          retention-days: 7
+  compare:
+    needs: [plan, parents]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.comparisons) }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: cisco/ChezScheme
+          fetch-depth: 0
+          path: chez-upstream
+      - name: Fetch selected PB payload and build Zuo
+        run: make fetch-pb
+      - uses: actions/download-artifact@v8
+        if: matrix.mode == 'reuse'
+        with:
+          name: parent-${{ matrix.id }}
+      - name: Restore parent state
+        if: matrix.mode == 'reuse'
+        run: tar -xzf parent-state.tgz
+      - name: Measure target revision
+        run: |
+          python3 .github/scripts/chez-ci-replay.py --chez chez-upstream \
+            --revision '${{ matrix.sha }}' --mode '${{ matrix.mode }}' \
+            --name '${{ matrix.id }}-${{ matrix.mode }}' --allow-replace-bundled
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evidence-${{ matrix.id }}-${{ matrix.mode }}
+          path: replay-evidence
+          retention-days: 7
+  verify:
+    needs: [plan, parents, compare]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.parents) }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: cisco/ChezScheme
+          fetch-depth: 0
+          path: chez-upstream
+      - name: Fetch selected PB payload and build Zuo
+        run: make fetch-pb
+      - uses: actions/download-artifact@v8
+        with:
+          name: parent-${{ matrix.id }}
+      - name: Restore parent state
+        run: tar -xzf parent-state.tgz
+      - uses: actions/download-artifact@v8
+        with:
+          name: evidence-${{ matrix.id }}-reuse
+          path: warm-evidence
+      - name: Force fresh seeded target build and compare every output
+        run: |
+          python3 .github/scripts/chez-ci-replay.py --chez chez-upstream \
+            --revision '${{ matrix.sha }}' --mode rebuild \
+            --name '${{ matrix.id }}-rebuild' --reference-dir warm-evidence --allow-replace-bundled
+      - name: Test source and configuration dependencies with the fixed base
+        if: matrix.id == '8403ef4c'
+        run: |
+          racket/src/build/bin/zuo .github/scripts/chez-backend-dependencies.zuo
+          python3 .github/scripts/chez-backend-regressions.py --root . \
+            --zuo racket/src/build/bin/zuo --output replay-evidence/backend-regressions
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evidence-verify-${{ matrix.id }}
+          path: replay-evidence
+          retention-days: 7

@@ -4,13 +4,15 @@
          "config.zuo"
          "jobserver.zuo"
          "dry-run.zuo"
-         "private/build-db.zuo")
+         "private/build-db.zuo"
+         "private/action-cache.zuo")
 
 (provide (rename-out [make-target target]
                      [make-rule rule]
                      [make-phony-rule phony-rule])
          input-file-target
          input-data-target
+         command-rule
 
          target-name
          target-path
@@ -62,7 +64,8 @@
 ;; A rule is a result from `get-rule`:
 (struct rule (deps        ; list of targets
               build       ; (-> any), called when deps SHA-256s different than recorded
-              sha256))      ; #f => computed via `file-sha256`
+              sha256      ; #f => computed via `file-sha256`
+              action))    ; #f, or an explicitly described command
 
 ;; A phony target returns a phony-rule, instead:
 (struct phony-rule (deps
@@ -112,8 +115,28 @@
                (arg-error 'rule "procedure or #f" build))
              (unless (or (not sha256) (sha256? sha256))
                (arg-error 'rule "sha256 or #f" sha256))
-             (rule norm-deps build sha256)))])
+             (rule norm-deps build sha256 #f)))])
     rule))
+
+;; Opt-in prototype. There is no arbitrary build closure to drift from its
+;; cache description: the command description is also what gets executed.
+(define (command-rule deps options)
+  (define description (make-command-description options))
+  (define files (hash-ref options 'rule-files '()))
+  (unless (and (pair? files) (andmap path-string? files))
+    (error "command-rule: declare producer/helper files with 'rule-files"))
+  (define tools (cons (car (car description)) (hash-ref options 'tools '())))
+  (define module-files (hash-ref (runtime-env) 'module-files #f))
+  (unless module-files
+    (error "command-rule requires the prototype Zuo executable with module-file tracking"))
+  (define inputs
+    (append deps tools files module-files
+            (list (hash-ref (runtime-env) 'exe)
+                  (input-data-target 'command-action description))))
+  (define r (make-rule inputs (lambda () (run-command description))))
+  (when (ormap (lambda (t) (eq? (target-kind t) 'phony)) (rule-deps r))
+    (error "command-rule: phony dependencies are not cacheable"))
+  (rule-set-action r description))
 
 ;; An input-file target has no dependencies
 (define (input-file-target path [missing-counts-as-changed? #f])
@@ -125,7 +148,7 @@
                   (lambda () (if missing-counts-as-changed?
                                  #f
                                  (error "missing input file" path)))
-                  #f))
+                  #f #f))
           'input
           (hash)))
 
@@ -174,7 +197,7 @@
           (lambda ()
             ((phony-rule-build r))
             phony-sha256)
-          phony-sha256)))
+          phony-sha256 #f)))
 
 (define (target-path t)
   (unless (target? t) (arg-error 'target-path "target" t))
@@ -509,7 +532,35 @@
      (unless to-build
        (error "build: out-of-date target has no build procedure" (target-name t)))
      (define (build-one finish)
-       (let* ([maybe-sha256 (to-build)] ; build!
+       (define action (rule-action r))
+       (when (and action (not (string? path)))
+         (error "command-rule requires a file target"))
+       (define outputs (cons path co-outputs))
+       (define snapshot (and action (action-input-snapshot deps)))
+       (define root (and action (cache-directory)))
+       (define key
+         (and root
+              (cache-key action
+                         (sort (map (lambda (k)
+                                      (list (if (symbol-key? k)
+                                                (~s (symbol-key->symbol k))
+                                                (path->complete-path (symbol->string k)))
+                                            (hash-ref all-dep-sha256s k)))
+                                    (hash-keys all-dep-sha256s))
+                               (lambda (a b) (string<? (car a) (car b))))
+                         snapshot outputs)))
+       (when (and action
+                  (ormap (lambda (out)
+                           (ormap (lambda (in) (equal? (path->complete-path out) (car in))) snapshot))
+                         outputs))
+         (error "command-rule inputs and outputs must be disjoint"))
+       (define hit? (and root (cache-restore root key outputs)))
+       (when (and action (not hit?))
+         ;; A successful command must create the complete group in THIS run.
+         ;; Otherwise an omitted co-output could reuse stale bytes.
+         (for-each (lambda (out) (when (file-exists? out) (rm out))) outputs))
+       (define (still-valid?) (equal? snapshot (action-input-snapshot deps)))
+       (let* ([maybe-sha256 (if hit? #f (to-build))] ; restore or execute
               [sha256 (if build-to-sha256?
                           maybe-sha256
                           (if (pair? co-outputs)
@@ -521,6 +572,10 @@
            (error "rule for target did not create it" (if (pair? co-outputs)
                                                           (cons path co-outputs)
                                                           path)))
+         (when action
+           (unless (still-valid?) (error "command inputs changed while building" path))
+           (when (and root (not hit?))
+             (cache-store root key outputs still-valid?)))
          (when path-handle (cleanable-cancel path-handle))
          (finish
           (lambda (state)
@@ -789,6 +844,28 @@
   (or (hash-ref (build-state-db state) key #f)
       (cons no-sha256 (hash))))
 
+;; Bypass the timestamp hash cache for artifact lookup/publication. File paths,
+;; contents and modes are part of identity; generated dependencies have already
+;; completed here. Data-target identity is carried by all-dep-sha256s above.
+(define (action-input-snapshot deps)
+  (sort
+   (apply append
+          (map (lambda (t)
+                 (if (symbol? (target-name t))
+                     '()
+                     (map (lambda (path)
+                            (define s (stat path #t #t))
+                            (unless (and s (eq? (hash-ref s 'type) 'file))
+                              (error "command-rule requires regular-file inputs" path))
+                            (list (path->complete-path path)
+                                  (string-sha256 (file->string path))
+                                  (bitwise-and (hash-ref s 'mode) 511)
+                                  (let ([st (stat path #f)])
+                                    (and (eq? (hash-ref st 'type) 'link) (readlink path)))))
+                          (cons (target-name t) (hash-ref (target-options t) 'co-outputs '())))))
+               deps))
+   (lambda (a b) (string<? (car a) (car b)))))
+
 (define (ensure-consistent state t)
   (let* ([saw (build-state-saw-targets state)]
          [old-t (hash-ref saw (target-key t) #f)])
@@ -991,6 +1068,12 @@
                                         (list-ref spec 2)))))
                 (error "make-targets: bad specification line" spec)))
             specs)
+  (for-each (lambda (spec)
+              (when (and (eq? (car spec) ':target)
+                         (symbol? (list-ref spec 1))
+                         (member ':rule (list-tail spec 4)))
+                (error "make-targets: :rule requires a file target")))
+            specs)
   (define target-specs (filter (lambda (spec) (eq? ':target (car spec))) specs))
   (define phony-keys (foldl (lambda (spec phony-keys)
                               (let ([name (list-ref spec 1)])
@@ -1100,11 +1183,20 @@
                                                                            ((cdr deps+preamble))
                                                                            (apply (list-ref spec 3) (cons token args)))))
                                                       (lambda (path token)
-                                                        (define deps+preamble (get-deps+preamble token))
-                                                        (make-rule (car deps+preamble)
-                                                                   (lambda ()
-                                                                     ((cdr deps+preamble))
-                                                                     ((list-ref spec 3) path token)))))
+                                                        (cond
+                                                          [(member ':rule (list-tail spec 4))
+                                                           (define deps (get-deps))
+                                                           (when (ormap (lambda (dep) (hash-ref (target-options dep) 'secondary? #f)) deps)
+                                                             (error "make-targets: :rule does not support secondary dependencies" name))
+                                                           (define r ((list-ref spec 3) path token deps))
+                                                           (unless (rule? r) (error "make-targets: :rule callback must return a rule" name))
+                                                           r]
+                                                          [else
+                                                           (define deps+preamble (get-deps+preamble token))
+                                                           (make-rule (car deps+preamble)
+                                                                      (lambda ()
+                                                                        ((cdr deps+preamble))
+                                                                        ((list-ref spec 3) path token)))])))
                                                   (foldl (lambda (tag options)
                                                            (hash-set options (hash-ref keyword-to-option tag) #t))
                                                          (let* ([options shared-options]
@@ -1122,7 +1214,8 @@
   (reverse targets))
 
 (define keyword-to-option
-  (hash ':precious 'precious?
+  (hash ':rule 'rule?
+        ':precious 'precious?
         ':command 'command?
         ':noisy 'noisy?
         ':quiet 'quiet?

@@ -1,0 +1,147 @@
+diff --git a/build.zuo b/build.zuo
+index cb7a293d..3e5531ac 100644
+--- a/build.zuo
++++ b/build.zuo
+@@ -6,7 +6,7 @@
+                   reboot)
+          (only-in "s/build.zuo"
+                   [targets-at s-targets-at]
+-                  all-src-names)
++                  all-src-names-for-machine)
+          (only-in "c/build.zuo"
+                   [targets-at c-targets-at])
+          "makefiles/lib.zuo")
+@@ -94,13 +94,13 @@
+               targets)
+         targets))
+ 
+-  (define all-src-files
++  (define (all-src-files xm)
+     (map (lambda (n) (at-source "s" n))
+-         all-src-names))
++         (all-src-names-for-machine xm)))
+ 
+-  (define via-pb-files
++  (define (via-pb-files xm)
+     (and record-from-pb?
+-         (append pb-files all-src-files)))
++         (append pb-files (all-src-files xm))))
+ 
+   (define clean-links-stamp (at-dir ".no-links"))
+ 
+@@ -212,10 +212,10 @@
+                             (if record-from-pb?
+                                 ;; declare dependency on pb instead of host,
+                                 ;; so we don't rebuild via pb:
+-                                via-pb-files
++                                (via-pb-files xm)
+                                 ;; otherwise, bootquick again if host changes:
+                                 (append (host-boot-files)
+-                                        all-src-files)))
++                                        (all-src-files xm))))
+                            thunk))
+                    (hash 'co-outputs (map at-boot (cdr boot-file-names))
+                          'precious? #t
+@@ -519,7 +519,7 @@
+               boot-files)
+ 
+        ,@(if boot-from-pb?
+-             `([:target (,@boot-src-files) (,@(add-x86-64-level-target m via-pb-files))
++             `([:target (,@boot-src-files) (,@(add-x86-64-level-target m (via-pb-files m)))
+                         ,(lambda (first-path token)
+                            (check-machine-type m)
+                            (alert (~a "checking boot files for " m " against pb"))
+diff --git a/s/build.zuo b/s/build.zuo
+index c5a7c2da..789cc8dc 100644
+--- a/s/build.zuo
++++ b/s/build.zuo
+@@ -5,7 +5,7 @@
+                   [targets-at examples-targets-at]))
+ 
+ (provide-targets targets-at)
+-(provide all-src-names)
++(provide all-src-names all-src-names-for-machine)
+ 
+ (define default-options
+   (hash
+@@ -141,6 +141,7 @@
+ ;; used externally as dependencies
+ (define all-src-names
+   (append base-src-names
++          compiler-names
+           macro-src-names
+           other-src-names
+           type-src-names
+@@ -148,6 +149,9 @@
+           unicode-src-names
+           def-src-names))
+ 
++(define (all-src-names-for-machine m)
++  (machine-source-names all-src-names m))
++
+ ;; The `compiler-compiler-options` argument overrides certain `var` and config-file
+ ;; options for building preamble files, which is useful for compiling a cross-compiler
+ ;; in safe mode (but having the final cross-built compiler built in unsafe mode)
+@@ -172,6 +176,8 @@
+                               ((make-at-dir (at-dir "..")) (or host-workarea ".")))))
+   (define host-scheme (lookup 'hostscheme))
+   (define arch (m->arch m))
++  (define machine-cpnanopass-src-names
++    (machine-source-names cpnanopass-src-names m))
+ 
+   (define x86-64-level (if (string=? arch "a6")
+                            (or (lookup 'x86_64_level) "1")
+@@ -210,7 +216,7 @@
+     (map at-source type-src-names))
+ 
+   (define cpnanopass-srcs
+-    (map at-source cpnanopass-src-names))
++    (map at-source machine-cpnanopass-src-names))
+ 
+   (define unicode-srcs
+     (map at-source unicode-src-names))
+@@ -612,8 +618,8 @@
+        ,(include-dep "strip" (list "strip-types.ss"))
+        ,(include-dep "vfasl" (list "strip-types.ss"))
+        ,(include-dep "pbchunk" (list "strip-types.ss"))
+-       ,(include-dep "cpnanopass" cpnanopass-src-names (list machine.def))
+-       ,(include-dep "cpprim" cpnanopass-src-names (list machine.def))
++       ,(include-dep "cpnanopass" machine-cpnanopass-src-names (list machine.def))
++       ,(include-dep "cpprim" machine-cpnanopass-src-names (list machine.def))
+ 
+        [:target ,petite.boot ,(add-patchfile base-objs)
+                 ,(lambda (petite.boot token)
+diff --git a/s/machine.zuo b/s/machine.zuo
+index 365bc4ea..02aeeeec 100644
+--- a/s/machine.zuo
++++ b/s/machine.zuo
+@@ -1,7 +1,8 @@
+ #lang zuo
+ (require "../makefiles/lib.zuo")
+ 
+-(provide arch->backend
++(provide machine-source-names
++         arch->backend
+          get-machine-files)
+ 
+ (define (arch->backend arch)
+@@ -13,6 +14,19 @@
+     [(string=? arch "armv7") "arm32"]
+     [else arch]))
+ 
++(define backend-source-names
++  (map (lambda (arch) (~a (arch->backend arch) ".ss"))
++       '("a6" "i3" "arm32" "arm64" "ppc32" "rv64" "la64" "pb")))
++
++;; `architecture` in np-register.ss opens only <target architecture>.ss.
++;; Keep unknown/common inputs conservatively, including newly added files.
++(define (machine-source-names names m)
++  (define backend (~a (arch->backend (m->arch m)) ".ss"))
++  (filter (lambda (name)
++            (or (not (member name backend-source-names))
++                (equal? name backend)))
++          names))
++
+ ;; Get or synthesize a "machine.def" file and supporting files,
+ ;; returns
+ ;;    (list (cons dep-name build) dep-input-name ...)

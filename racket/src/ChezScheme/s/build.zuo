@@ -431,6 +431,14 @@
 
   (define nanopass.ss (at-source "../nanopass/nanopass.ss"))
   (define nanopass.so (at-dir "nanopass.so"))
+  ;; Complete compiled library closure for the pinned Nanopass sources.
+  (define nanopass-outputs
+    (cons nanopass.so
+          (map (lambda (name) (at-dir "nanopass" (~a name ".so")))
+               '("helpers" "implementation-helpers.chezscheme" "language-helpers"
+                 "language-node-counter" "language" "meta-parser"
+                 "meta-syntax-dispatch" "nano-syntax-dispatch" "parser" "pass"
+                 "records" "syntaxconvert" "unparser"))))
 
   (define output-headers
     (list scheme.h equates.h gc-ocd.inc gc-oce.inc gc-par.inc heapcheck.inc))
@@ -557,7 +565,7 @@
 
        ,(compilation-preamble-target mkgc.so type-srcs
                                      (list cmacros.so priminfo.so primvars.so env.so mkheader.so))
-       [:target ,nanopass.so ,(cons nanopass.ss
+       [:target ,nanopass-outputs ,(cons nanopass.ss
                                     (let ([np-dir (at-source "../nanopass/nanopass")])
                                       (map (lambda (p) (build-path np-dir p)) (ls np-dir))))
                 ,(lambda (path token)

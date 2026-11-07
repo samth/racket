@@ -714,3 +714,28 @@ build result for each target is stored in the target's directory.
                                @racket[_option].}
          #:changed "1.16" @elem{Added @racket[':secondary] for
                                @racket[_option].}]}
+
+@section{Experimental Explicit Command Rules}
+
+@defproc[(command-rule [deps list?] [options hash?]) rule?]{
+
+Creates an explicit command rule. Required options are @racket['argv] (a
+nonempty list of strings starting with an absolute executable),
+@racket['environment] (the complete association list of string pairs),
+@racket['toolchain] (a nonempty identity covering the platform, sysroot and
+remaining tools), and @racket['rule-files] (a nonempty list of producer files).
+Optional @racket['directory] defaults to @racket["."], and @racket['tools]
+lists additional executable or tool files. All file reads must be declared;
+there is no sandbox or dependency discovery. Standard input is EOF.
+
+The @racket[':rule] option of @racket[make-targets] makes a file target's callback
+accept three arguments---path, token, and resolved dependencies---and return a
+rule. This option does not support secondary dependencies or phony targets.
+
+Setting @tt{ZUO_ACTION_CACHE} enables the experimental POSIX local content cache.
+Commands and direct inputs are hashed; complete declared regular-file output
+groups are validated and restored, including modes. Paths are part of identity.
+The cache requires trusted storage and complete caller-supplied toolchain and
+input declarations. @tt{ZUO_ACTION_CACHE_LOG} enables digest-only cache logging.
+Cache entries require trusted storage and fixed checkout/build paths.
+Remote transport and automatic toolchain discovery are not provided.}

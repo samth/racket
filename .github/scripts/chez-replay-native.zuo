@@ -1,0 +1,12 @@
+#lang zuo
+(require "../../racket/src/lib.zuo")
+(define cs-targets-at (dynamic-require (at-source "../../racket/src/cs/main.zuo") 'targets-at))
+(define (targets-at at-dir vars)
+  (define native (hash-ref vars 'NATIVE))
+  (define boots (map (lambda (name) (build-path native "boot/ta6le" name)) '("petite.boot" "scheme.boot")))
+  (cs-targets-at at-dir
+    (hash-set* vars 'SCHEME (build-path native "bin/ta6le/scheme")
+      'scheme-args (list "-B" (car boots) "-B" (cadr boots))
+      'schemify "f" 'UNSAFE_COMP "yes" 'COMPRESS_COMP "--compress" 'DISABLE_WPO "f")
+    boots))
+(build/command-line* targets-at)

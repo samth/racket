@@ -1,0 +1,157 @@
+#lang zuo/base
+(require "../thread.zuo")
+
+;; Prototype: explicitly declared commands, regular file outputs, POSIX storage.
+;; Descriptions are hashed, never written to cache metadata (they may contain env).
+(provide make-command-description run-command cache-directory
+         cache-key cache-restore cache-store)
+
+(define (make-command-description options)
+  (define argv (hash-ref options 'argv #f))
+  (define env (hash-ref options 'environment #f))
+  (define toolchain (hash-ref options 'toolchain #f))
+  (unless (and (pair? argv) (andmap string? argv)
+               (not (relative-path? (car argv))))
+    (error "command-rule: argv must start with an absolute executable path"))
+  (unless (and (list? env)
+               (andmap (lambda (p) (and (pair? p) (string? (car p)) (string? (cdr p)))) env))
+    (error "command-rule: environment must be an explicit list of string pairs"))
+  (unless (and (string? toolchain) (not (equal? toolchain "")))
+    (error "command-rule: a nonempty toolchain identity is required"))
+  (define sorted-env (sort env (lambda (a b) (string<? (car a) (car b)))))
+  (let loop ([l sorted-env])
+    (when (and (pair? l) (pair? (cdr l)))
+      (when (equal? (car (car l)) (car (cadr l))) (error "command-rule: duplicate environment variable"))
+      (loop (cdr l))))
+  (list argv
+        (path->complete-path (hash-ref options 'directory "."))
+        sorted-env toolchain))
+
+(define (run-command description)
+  (define p (apply process (append (car description)
+                                  (list (hash 'dir (cadr description)
+                                              'env (list-ref description 2)
+                                              'stdin 'pipe)))))
+  (fd-close (hash-ref p 'stdin))
+  (thread-process-wait (hash-ref p 'process))
+  (define status (process-status (hash-ref p 'process)))
+  (unless (equal? status 0) (error "command action failed" (car (car description)) status))
+  #f)
+
+(define (cache-directory)
+  (define p (assoc "ZUO_ACTION_CACHE" (hash-ref (runtime-env) 'env)))
+  (and p (not (equal? (cdr p) ""))
+       (begin
+         (unless (eq? (system-type) 'unix)
+           (error "prototype action cache currently supports POSIX filesystems only"))
+         (path->complete-path (cdr p)))))
+
+(define (cache-key description dependencies snapshot outputs)
+  (string-sha256 (~s (list 'zuo-command-cache-v1 description
+                           (hash-ref (runtime-env) 'system-type)
+                           (hash-ref (runtime-env) 'toolchain-type)
+                           dependencies snapshot
+                           (map path->complete-path outputs)))))
+
+(define (log-event event key)
+  (when (assoc "ZUO_ACTION_CACHE_LOG" (hash-ref (runtime-env) 'env))
+    (alert (~a "action cache " event " " key))))
+
+(define (regular? p)
+  (define s (stat p #f #t))
+  (and s (eq? (hash-ref s 'type) 'file)))
+(define (digest p) (string-sha256 (file->string p)))
+(define (hex-digest? s)
+  (and (= (string-length s) 64)
+       (let loop ([i 0])
+         (or (= i 64)
+             (let ([c (string-ref s i)])
+               (and (or (and (>= c (char "0")) (<= c (char "9")))
+                        (and (>= c (char "a")) (<= c (char "f"))))
+                    (loop (+ i 1))))))))
+
+(define (temporary near)
+  (define t (current-time))
+  (~a near ".tmp-" (hash-ref (runtime-env) 'process-id)
+      "-" (car t) "-" (cdr t)))
+
+;; A deliberately small, non-evaluated format: version, key, then digest/mode
+;; pairs. Output paths come ONLY from the current rule, never from the cache.
+(define (read-manifest path key count)
+  (and (regular? path)
+       (let ([lines (filter (lambda (s) (not (equal? s "")))
+                            (string-split (file->string path) "\n"))])
+         (and (= (length lines) (+ count 2))
+              (equal? (car lines) "zuo-command-cache-v1")
+              (equal? (cadr lines) key)
+              (let ([entries (map (lambda (line)
+                                    (define parts (string-split line " "))
+                                    (and (= (length parts) 2)
+                                         (hex-digest? (car parts))
+                                         (let ([mode (string->integer (cadr parts))])
+                                           (and mode (<= 0 mode) (<= mode 511)
+                                                (list (car parts) mode)))))
+                                  (cddr lines))])
+                (and (andmap (lambda (x) x) entries) entries))))))
+
+(define (cache-restore root key outputs)
+  (define manifest (read-manifest (build-path root "actions" key) key (length outputs)))
+  (define valid?
+    (and manifest
+         (andmap (lambda (e)
+                   (define blob (build-path root "blobs" (car e)))
+                   (and (regular? blob) (equal? (digest blob) (car e))))
+                 manifest)))
+  (cond
+    [valid?
+     ;; Verify the COMPLETE group before touching any existing output. Stage
+     ;; next to destinations for same-filesystem renames. A failed/interrupted
+     ;; restore never records a successful incremental result.
+     (define stages
+       (map (lambda (out entry)
+              (mkdir-p (or (car (split-path out)) "."))
+              (define temp (temporary out))
+              (define cleanup (cleanable-file temp))
+              (cp (build-path root "blobs" (car entry)) temp (hash 'mode (cadr entry)))
+              (list temp out cleanup (car entry)))
+            outputs manifest))
+     (cond
+       [(andmap (lambda (s) (equal? (digest (car s)) (list-ref s 3))) stages)
+        (for-each (lambda (s) (mv (car s) (cadr s)) (cleanable-cancel (list-ref s 2))) stages)
+        (log-event 'hit key)
+        #t]
+       [else
+        (for-each (lambda (s) (rm* (car s)) (cleanable-cancel (list-ref s 2))) stages)
+        (log-event 'rejected key)
+        #f])]
+    [else (log-event (if manifest 'rejected 'miss) key) #f]))
+
+(define (cache-store root key outputs still-valid?)
+  (mkdir-p (build-path root "blobs"))
+  (mkdir-p (build-path root "actions"))
+  (define entries
+    (map (lambda (out)
+           (unless (regular? out) (error "command action must produce regular files" out))
+           (define sha (digest out))
+           (define mode (bitwise-and (hash-ref (stat out #f) 'mode) 511))
+           (define blob (build-path root "blobs" sha))
+           (unless (and (regular? blob) (equal? (digest blob) sha))
+             (define temp (temporary blob))
+             (define cleanup (cleanable-file temp))
+             (cp out temp)
+             (unless (equal? (digest temp) sha) (error "output changed during cache publication" out))
+             (mv temp blob)
+             (cleanable-cancel cleanup))
+           (list sha mode))
+         outputs))
+  (unless (still-valid?) (error "command inputs changed during cache publication"))
+  (define path (build-path root "actions" key))
+  (define temp (temporary path))
+  (define cleanup (cleanable-file temp))
+  (display-to-file
+   (~a "zuo-command-cache-v1\n" key "\n"
+       (string-join (map (lambda (e) (~a (car e) " " (cadr e))) entries) "\n") "\n")
+   temp)
+  (mv temp path)
+  (cleanable-cancel cleanup)
+  (log-event 'stored key))

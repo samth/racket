@@ -1,0 +1,10 @@
+{
+  "baseline": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+  "revisions": [
+    {
+      "sha": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+      "subject": "riscv64 and loongarch64: repairs for foreign call and callable arguments",
+      "date": "2026-11-05T16:13:15Z"
+    }
+  ]
+}

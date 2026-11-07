@@ -74,7 +74,7 @@
   (define c-config-file
     (at-dir "config.h"))
   (define c-config-keys
-    '(disablecurses disablex11 enablelibffi alwaysUseBootFile preloadBootFiles relativeBootFiles
+    '(disableiconv disablecurses disablex11 enablelibffi alwaysUseBootFile preloadBootFiles relativeBootFiles
                     InstallBin InstallLib))
 
   ;; sources for "kernel.o":
@@ -119,8 +119,7 @@
     (append
      (map at-source
           (list "system.h" "types.h" "version.h" "globals.h" "externs.h" "segment.h"
-                "atomic.h" "thread.h" "sort.h" "compress-io.h"
-                "nocurses.h"))
+                "atomic.h" "thread.h" "sort.h" "compress-io.h"))
      (list c-config-file)
      (map at-mach
           (list "equates.h"
@@ -161,12 +160,33 @@
   (define zlib-lib (build-path zlib-dir (.a (~a (if msvc? "zlib" "z")))))
   (define lz4-lib (build-path lz4-dir (.a (~a "lib/" (if msvc? "liblz4" "lz4")))))
 
-  (define lz4-files (map at-source
-                         ;; LZ4 is simple enough that we can list all
-                         ;; the files that matter:
-                         (list "../lz4/lib/lz4.h" "../lz4/lib/lz4frame.h"
-                               "../lz4/lib/lz4.c" "../lz4/lib/lz4frame.c"
-                               "../lz4/lib/lz4hc.c" "../lz4/lib/xxhash.c")))
+  ;; Ignore VCS administration files in source inputs and copied build trees.
+  (define (library-sources dir)
+    (apply append
+           (map (lambda (name)
+                  (define path (build-path dir name))
+                  (cond
+                    [(member name '(".git" ".hg" ".svn")) '()]
+                    [(directory-exists? path) (library-sources path)]
+                    [else (list (input-file-target path))]))
+                (ls dir))))
+  (define zlib-files (library-sources (at-source "../zlib")))
+  ;; The pinned LZ4 makefile also compiles lz4file.c and reads more headers.
+  (define lz4-files (library-sources (at-source "../lz4")))
+
+  (define (copy-library dir dest files)
+    ;; This rule owns the complete nested build. A clean tree also prevents
+    ;; nested make from retaining objects built with old command-line flags.
+    (when (equal? (path->complete-path dir) (path->complete-path dest))
+      (error "library build directory must differ from its source directory" dest))
+    (rm* dest)
+    (mkdir-p dest)
+    (for-each (lambda (t)
+                (define path (target-path t))
+                (define out (build-path dest (find-relative-path dir path)))
+                (mkdir-p (path-only out))
+                (cp* path out))
+              files))
 
   (define zlib-system-lib (let ([lib (or (lookup 'zlibLib) "")])
                             (and (not (equal? lib "")) lib)))
@@ -177,7 +197,32 @@
                            (if lz4-system-lib '() (list lz4-lib))))
   (define res-deps (if msvc? (list res-file) '()))
 
-  (define cflags-dep (input-data-target 'cflags (lookup 'CFLAGS)))
+  (define (configuration-input name keys)
+    (input-data-target name (map (lambda (key) (list key (lookup key))) keys)))
+  (define rule-files
+    (map at-source '("build.zuo" "lib.zuo" "mingw.zuo"
+                     "../makefiles/lib.zuo" "../makefiles/version.zuo")))
+  (define compile-inputs
+    (cons (configuration-input 'c-compile-config
+                               '(CC CPPFLAGS CFLAGS warningFlags mdinclude m flagsm
+                                 zlibLib LZ4Lib runtimeAs linkAs productAs))
+          rule-files))
+  (define library-inputs
+    (cons (configuration-input 'c-library-config
+                               '(CC CPPFLAGS CFLAGS AR ARFLAGS RANLIB STRIP LDFLAGS
+                                 MAKE WINDRES zlibConfigureFlags zlibConfigureEnv
+                                 m flagsm runtimeAs linkAs productAs))
+          rule-files))
+  (define archive-inputs
+    (cons (configuration-input 'c-archive-config
+                               '(AR ARFLAGS LD mdldflags CC CFLAGS LDFLAGS LIBS
+                                 m flagsm runtimeAs linkAs productAs))
+          rule-files))
+  (define link-inputs
+    (cons (configuration-input 'c-link-config
+                               '(CC CFLAGS LDFLAGS LIBS mdlinkflags exePostStep
+                                 zlibLib LZ4Lib m flagsm runtimeAs linkAs productAs))
+          rule-files))
 
   (define preload-files (get-preload-files config at-dir mboot))
 
@@ -237,7 +282,7 @@
               ,void
               :recur]
 
-     [:target ,exe (,kernel-dep ,@main-objs ,@res-deps ,@preload-files ,(at-source "mingw.zuo"))
+     [:target ,exe (,kernel-dep ,@main-objs ,@res-deps ,@preload-files ,@link-inputs)
               ,(lambda (path token)
                  (mkdir-p (path-only path))
                  (c-link path
@@ -293,7 +338,7 @@
      [:target lib (,kernel-dep ,@main-objs)
               ,void]
 
-     [:target ,kernel-lib (,@res-deps ,@lib-deps ,@kernel-objs)
+     [:target ,kernel-lib (,@res-deps ,@lib-deps ,@kernel-objs ,@archive-inputs)
               ,(lambda (path token)
                  (cond
                    [(and msvc?
@@ -310,7 +355,7 @@
                           kernel-objs
                           config)]))]
 
-     [:target ,kernel.o (,@kernel-objs ,@lib-deps)
+     [:target ,kernel.o (,@kernel-objs ,@lib-deps ,@archive-inputs)
               ,(lambda (path token)
                  (mkdir-p (path-only path))
                  (shell/wait (lookup 'LD)
@@ -322,9 +367,9 @@
                              (string->shell (or zlib-system-lib zlib-lib))
                              (string->shell (or lz4-system-lib lz4-lib))))]
 
-     [:target ,zlib-lib ,(source-tree (at-source "../zlib"))
+     [:target ,zlib-lib ,(append zlib-files library-inputs)
               ,(lambda (path token)
-                 (cp* (at-source "../zlib") zlib-dir)
+                 (copy-library (at-source "../zlib") zlib-dir zlib-files)
 		 (cond
 		  [msvc?
 		   ((dynamic-require (at-source "winlib.zuo") 'build-zlib) zlib-dir (as-runtime-dll? config))]
@@ -357,10 +402,10 @@
                                (hash 'dir zlib-dir
                                      'desc "zlib make"))]))]
 
-     [:target ,lz4-lib (,@lz4-files)
+     [:target ,lz4-lib (,@lz4-files ,@library-inputs)
               ,(lambda (path token)
                  (define lz4-lib-dir (build-path lz4-dir "lib"))
-                 (cp* (at-source "../lz4") lz4-dir)
+                 (copy-library (at-source "../lz4") lz4-dir lz4-files)
 		 (cond
 		  [msvc?
 		   ((dynamic-require (at-source "winlib.zuo") 'build-lz4) lz4-lib-dir config)]
@@ -371,13 +416,13 @@
                                      'desc "lz4 make"))]))]
 
      ,@(map (lambda (.c .o)
-              `[:target ,.o (,.c ,@kernel-hdrs ,@lib-deps ,cflags-dep)
+              `[:target ,.o (,.c ,@kernel-hdrs ,@lib-deps ,@compile-inputs)
                         ,(lambda (.o target)
                            (compile-one .c .o))])
             kernel-srcs kernel-srcobjs)
 
      ,@(map (lambda (.asm .o)
-              `[:target ,.o (,.asm)
+              `[:target ,.o (,.asm ,@compile-inputs)
                         ,(lambda (.o target)
                            (cond
                              [(string=? arch "arm64")
@@ -396,10 +441,12 @@
             kernel-asms kernel-asmobjs)
 
      ,@(map (lambda (.c .o)
-              `[:target ,.o (,.c ,@main-hdrs ,cflags-dep)
+              `[:target ,.o (,.c ,@main-hdrs ,@compile-inputs)
                         ,(lambda (.o target)
                            (compile-one .c .o))])
             main-srcs main-objs)
+
+     [:depend ,(at-dir (.c->.o "expeditor.c")) (,(at-source "nocurses.h"))]
 
      [:depend ,(at-dir (.c->.o "scheme.c")) (,(at-source "itest.c"))]
      [:depend ,(at-dir (.c->.o "gc-011.c")) (,@gc-wrap ,(at-mach "gc-ocd.inc"))]

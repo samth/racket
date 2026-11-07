@@ -348,6 +348,8 @@ static struct {
 
     /* for cycle detection */
     zuo_t *o_pending_modules;
+    /* Files read by the module loader in this runtime (not dumped images). */
+    zuo_t *o_module_files;
 
 #ifdef ZUO_UNIX
     /* process status table */
@@ -4098,7 +4100,7 @@ static zuo_t *zuo_build_module_path(zuo_t *base_mod_path, zuo_t *rel_mod_path) {
 }
 
 static zuo_t *zuo_runtime_env(void) {
-  return Z.o_runtime_env;
+  return zuo_hash_set(Z.o_runtime_env, zuo_symbol("module-files"), Z.o_module_files);
 }
 
 #ifndef ZUO_EMBEDDED
@@ -4916,6 +4918,7 @@ static zuo_t *zuo_module_to_hash_star(zuo_t *module_path) {
     in = zuo_fd_open_input_handle(file_path, z.o_empty_hash);
     str = zuo_drain(in, -1);
     zuo_close_handle(in);
+    Z.o_module_files = zuo_cons(zuo_path_to_complete_path(file_path), Z.o_module_files);
 
     lang = zuo_read_language(ZUO_STRING_PTR(str), &post, module_path);
 
@@ -7396,6 +7399,7 @@ static void zuo_runtime_init(zuo_t *lib_path, zuo_t *runtime_env) {
   Z.o_interp_k = z.o_done_k;
   Z.o_interp_meta_k = z.o_null;
   Z.o_pending_modules = z.o_null;
+  Z.o_module_files = z.o_null;
   Z.o_stash = z.o_false;
 
 #ifdef ZUO_UNIX
@@ -7406,6 +7410,12 @@ static void zuo_runtime_init(zuo_t *lib_path, zuo_t *runtime_env) {
 
   Z.o_library_path = lib_path; /* should be absolute or #f */
 
+  runtime_env = zuo_hash_set(runtime_env, zuo_symbol("library-root"), lib_path);
+#ifdef ZUO_UNIX
+  runtime_env = zuo_hash_set(runtime_env, zuo_symbol("process-id"), zuo_integer(getpid()));
+#else
+  runtime_env = zuo_hash_set(runtime_env, zuo_symbol("process-id"), zuo_integer(GetCurrentProcessId()));
+#endif
   Z.o_runtime_env = zuo_finish_runtime_env(runtime_env);
 }
 

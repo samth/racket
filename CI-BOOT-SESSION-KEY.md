@@ -63,3 +63,10 @@ that source and configuration changes still invalidate their consumers.
 
 Earlier source-derived-seed experiments are historical evidence, not the current
 key design. New fixed-base results are retained on the CI replay results branch.
+
+Bootstrap preparation also tracks the native compiler executable and the incoming
+seed boot files. These are distinct from the active boot files replaced during
+fixpoint iteration, so the dependencies are acyclic. Preamble objects and the
+complete Nanopass library group rebuild when their compiler inputs change.
+Nanopass compilation removes its prior output group first: Chez's internal
+imported-library timestamp checks do not track a changed compiler.

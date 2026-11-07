@@ -26,3 +26,10 @@ The companion Racket replay checks actual PB bootstraps, warm reuse, fresh seede
 output equivalence, active/inactive backend mutations and native action-cache
 hits. No RISC-V execution speed or cross-toolchain correctness claim is made by
 these x86-64 tests.
+
+Bootstrap preparation also tracks the native compiler executable and the incoming
+seed boot files. These are distinct from the active boot files replaced during
+fixpoint iteration, so the dependencies are acyclic. Preamble objects and the
+complete Nanopass library group rebuild when their compiler inputs change.
+Nanopass compilation removes its prior output group first: Chez's internal
+imported-library timestamp checks do not track a changed compiler.

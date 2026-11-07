@@ -11,6 +11,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
+env:
+  PARENT_CHECKPOINT_RUN: "42392234841"
 jobs:
   plan:
     runs-on: ubuntu-22.04
@@ -49,11 +52,26 @@ jobs:
           path: chez-upstream
       - name: Fetch selected PB payload and build Zuo
         run: make fetch-pb
-      - name: Build parent checkpoint
+      - name: Fetch the already-tested parent checkpoint
+        uses: actions/download-artifact@v8
+        with:
+          name: parent-${{ matrix.id }}
+          run-id: ${{ env.PARENT_CHECKPOINT_RUN }}
+          github-token: ${{ github.token }}
+      - name: Restore and record the preceding-run parent
         run: |
-          python3 .github/scripts/chez-ci-replay.py --chez chez-upstream \
-            --revision '${{ matrix.parent }}' --mode prepare --name parent-${{ matrix.id }} \
-            --allow-replace-bundled
+          tar -xzf parent-state.tgz
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os
+          p=Path('replay-state/parent.json');r=json.loads(p.read_text())
+          assert r['revision']=='${{ matrix.parent }}'
+          assert r['session_key']==Path('.github/chez-session-key').read_text().strip()
+          r['checkpoint_origin_run']=os.environ['PARENT_CHECKPOINT_RUN']
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          out=Path('replay-evidence/parent-${{ matrix.id }}');out.mkdir(parents=True)
+          (out/'summary.json').write_text(json.dumps(r,indent=2)+'\n')
+          PY
       - name: Archive parent state and native action cache
         run: tar -czf parent-state.tgz replay-state
       - uses: actions/upload-artifact@v7

@@ -27,6 +27,13 @@ with tempfile.TemporaryDirectory(prefix='fixed-base-build-backup-',dir=root) as 
   rows.append(dict(case=label,status=r.returncode,scheme_compilations=count,c_compilations=sum(' -c ' in line for line in log.splitlines()),seconds=time.monotonic()-start,session_key=key))
   assert (r.returncode==0)==ok,(label,log[-2500:])
   if ok:assert count==0,(label,count)
+  if diagnostic and diagnostic not in log:
+   # Configure diagnostics are written to config.log instead of stdout.
+   for path in build.rglob('config.log'):
+    text=path.read_text(errors='replace')
+    if diagnostic in text:
+     (out/(label+'-config.log')).write_text(text)
+     log+='\n'+text
   if diagnostic:assert diagnostic in log,log[-2500:]
  try:
   for name,ok,poison,diagnostic in [
@@ -39,12 +46,12 @@ with tempfile.TemporaryDirectory(prefix='fixed-base-build-backup-',dir=root) as 
     path.write_bytes(original+poison)
     check(name,cs,'scheme',ok,diagnostic)
    finally:path.write_bytes(original);os.utime(path,ns=(st.st_atime_ns,st.st_mtime_ns))
-  restore();path=native/'Mf-config';original=path.read_bytes();blocked=out/'blocked.h';blocked.write_text('#error dependency-regression-CPPFLAGS\n')
+  restore();path=cs/'Makefile';original=path.read_bytes();blocked=out/'blocked.h';blocked.write_text('#error dependency-regression-CPPFLAGS\n')
   try:
-   changed=re.sub(rb'^CPPFLAGS=.*$',lambda m:m[0]+b' -include '+str(blocked).encode(),original,flags=re.M)
-   assert changed!=original,'No CPPFLAGS entry in the native config'
+   changed=re.sub(rb'^CPPFLAGS\s*=.*$',lambda m:m[0]+b' -include '+str(blocked).encode(),original,flags=re.M)
+   assert changed!=original,'No CPPFLAGS entry in the Racket config'
    path.write_bytes(changed)
-   check('CPPFLAGS',native/'c','stats.o',False,'dependency-regression-CPPFLAGS')
+   check('CPPFLAGS',cs,'scheme',False,'dependency-regression-CPPFLAGS')
   finally:path.write_bytes(original)
  finally:
   restore();(out/'results.json').write_text(json.dumps(rows,indent=2)+'\n')

@@ -1,0 +1,905 @@
+{
+  "run_id": "42381872117",
+  "url": "https://github.com/samth/racket/actions/runs/42381872117",
+  "rows": [
+    {
+      "sha": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+      "subject": "riscv64 and loongarch64: repairs for foreign call and callable arguments",
+      "date": "2026-11-05T16:13:15Z",
+      "cold": {
+        "revision": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+        "mode": "cold",
+        "name": "8403ef4c-cold",
+        "session_key": "ci-chez-540e178717684072e7e097a17bed6d72c607ef6cc20f85f16d3e73b7498ccd83",
+        "seed_matches_parent": false,
+        "parent_revision": null,
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "key_seconds": 0.6283890039999278,
+        "chez_seconds": 220.6266725749997,
+        "racket_native_seconds": 57.61058844099989,
+        "build_seconds": 278.2372610159996,
+        "elapsed_seconds": 295.19357014499974,
+        "native_cache_hits": 0,
+        "native_cache_stores": 0,
+        "bootstrap_compilations": 177,
+        "bootstrap_full_passes": 2,
+        "native_scheme_compilations": 9,
+        "boot_hashes": {
+          "petite.boot": "f7fec83064418e6e19e18deabd53449a755644eea1df83e7d926ea497b4d36e5",
+          "scheme.boot": "5f2621f64c647eee6c5d847dac98418236ec5d04f801c872be27530b476acc2c",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "7f6f7de9b5c308a6f69a8ead2bdabca51749bdd048fce2f12de96f7b031698d5",
+          "schemify.wpo": "dbffa9b1351894b96bac2b994a5eedce4d22ba02e10fb0b8e852bdab20c1da74",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "208d5c2a650d7f0e115cb8d49ad5da6b0bd12d07bb4a6f88ad7452134ead3981",
+          "schemify.so": "03885a31da87695e66a8a290cf8e6362156333ab997322c918ef50e110a726b2",
+          "thread.so": "4ca367ad568d3071cc297c7f7599151c786cc7b3d903ec48c26a57be44692c0a",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "94725d421bf37419686aca3562cc9948f9ecd74547940dafb2049892a3d2995a",
+          "main.wpo": "d5b82ff8f758345d5bb4075448c229a19e87e11128f3348baefa6985381b576b",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "d41989738e972da5571ea575a5475712d8b3f13a53b54538826c0ecf215c30e8",
+          "linklet.so": "740726f294faf370ca1db29de4df4112a1eb36126e43fc339bb8304ea8602f4e",
+          "racket.so": "91da5c2d07c15ca628f2a9b00803cd40a571ee0801ccf98f1737163aadb31aa7",
+          "io.wpo": "03c3f5fba50226e342c294727dbfabf4d843cc44086817a123007a9942ee9d37",
+          "expander.wpo": "b3c0c6950058a6bbcfe10801060e3da12a70c88a3c3ff450b628f2cd5aa5f7c5",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "4e4fc68532bf1a9b9f723427134acc1e3d892cb9bc003e336366875dc92ca09b",
+          "regexp.wpo": "551e48b3de83f7f181f6efedd7a29e3d3972f05175c2cdff53e9e6a7e91f980b"
+        },
+        "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "reuse": {
+        "revision": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+        "mode": "reuse",
+        "name": "8403ef4c-reuse",
+        "session_key": "ci-chez-540e178717684072e7e097a17bed6d72c607ef6cc20f85f16d3e73b7498ccd83",
+        "seed_matches_parent": true,
+        "parent_revision": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "key_seconds": 0.3552702859999499,
+        "chez_seconds": 0.9784638950000044,
+        "racket_native_seconds": 2.887817735999988,
+        "build_seconds": 3.8662816309999926,
+        "elapsed_seconds": 7.029784303000042,
+        "native_cache_hits": 10,
+        "native_cache_stores": 0,
+        "bootstrap_compilations": 0,
+        "bootstrap_full_passes": 0,
+        "native_scheme_compilations": 0,
+        "boot_hashes": {
+          "petite.boot": "6ead775bc7d51d712baa27e09892f46040305926e44b829b51f0f8429e68aa9f",
+          "scheme.boot": "c066d919822cb0a801d6a43984842699184a3ee01a069eeb99db50c23d1580a2",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "bdb7fe8ef080bc22be85008cc2a6ef37c0c62455748140ab4b7f2dcfe1c07e19",
+          "schemify.wpo": "1c7aa59e4872a7508671c97a496f943d7baabdfacdb8372b7aab2d0bbd1988c1",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "2fa48f659e0223bc554f07de8bcb0f75c00e0c8f1c8e737c3fae9c583c1beee4",
+          "schemify.so": "c3305fea8cd47ed1ae1a782287a7097575645532a220944b01c4c56822867cca",
+          "thread.so": "7c690d5361717263dec121f234330ffc0a6e560309d83f2ec912d7f45547d915",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "ce9c9032c3066b11a60ada3b2449687724d3ea7c296f12246040798a696e1d97",
+          "main.wpo": "79c3e205a466c1f9465a982aa46cfbfd602e75bf5b598c2dac471772c5a1da75",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "c0674592751e6be799d5461c99c2be1e1a43ddbf8cea5b58b60055f70a076042",
+          "linklet.so": "5082661eb2f95570aeb82dd3b604a836d4f1ddaed0cf53ddd42f383b70aeefce",
+          "racket.so": "f9d07c504069a86504f72744d7cac653e32a3ef7286bd8ac213f7aa20f7ae231",
+          "io.wpo": "d8eb1ec05080aa66f0321fbe3a00008e9af8f68b3f3723600b315cf6cba1b058",
+          "expander.wpo": "582e0a415dba817eee4c8a716e74ea86917c3d81dc60639c641e429af0862869",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "7ecd666cb81dca787920e17ac481ce877b117de33f83d49f90c08930dda53543",
+          "regexp.wpo": "eef66d30ad091ba326f40ff2e067430c5272bd83599e1865087ad30caf694043"
+        },
+        "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "cold_job": {
+        "id": 128432497932,
+        "url": "https://github.com/samth/racket/actions/runs/42381872117/job/128432497932",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 339.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 28.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 295.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "reuse_job": {
+        "id": 128432497811,
+        "url": "https://github.com/samth/racket/actions/runs/42381872117/job/128432497811",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 44.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 22.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "build_saved_seconds": 274.3709793849996,
+      "build_percent_faster": 98.61043714386706,
+      "net_job_saved_seconds": 295.0,
+      "net_job_percent_faster": 87.02064896755162
+    }
+  ],
+  "parent_summaries": [
+    {
+      "revision": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+      "mode": "prepare",
+      "name": "parent-8403ef4c",
+      "session_key": "ci-chez-540e178717684072e7e097a17bed6d72c607ef6cc20f85f16d3e73b7498ccd83",
+      "seed_matches_parent": false,
+      "parent_revision": null,
+      "platform": "Linux/X64",
+      "image": "ubuntu22/20261101.347.1",
+      "key_seconds": 0.6406010270000024,
+      "chez_seconds": 222.71132817600005,
+      "racket_native_seconds": 67.10434694699984,
+      "build_seconds": 289.8156751229999,
+      "elapsed_seconds": 296.49956493800005,
+      "native_cache_hits": 0,
+      "native_cache_stores": 10,
+      "bootstrap_compilations": 177,
+      "bootstrap_full_passes": 2,
+      "native_scheme_compilations": 9,
+      "boot_hashes": {
+        "petite.boot": "6ead775bc7d51d712baa27e09892f46040305926e44b829b51f0f8429e68aa9f",
+        "scheme.boot": "c066d919822cb0a801d6a43984842699184a3ee01a069eeb99db50c23d1580a2",
+        "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+        "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+        "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+        "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+        "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+        "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+      },
+      "native_hashes": {
+        "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+        "linklet.wpo": "bdb7fe8ef080bc22be85008cc2a6ef37c0c62455748140ab4b7f2dcfe1c07e19",
+        "schemify.wpo": "1c7aa59e4872a7508671c97a496f943d7baabdfacdb8372b7aab2d0bbd1988c1",
+        "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+        "io.so": "2fa48f659e0223bc554f07de8bcb0f75c00e0c8f1c8e737c3fae9c583c1beee4",
+        "schemify.so": "c3305fea8cd47ed1ae1a782287a7097575645532a220944b01c4c56822867cca",
+        "thread.so": "7c690d5361717263dec121f234330ffc0a6e560309d83f2ec912d7f45547d915",
+        "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+        "rumble.so": "ce9c9032c3066b11a60ada3b2449687724d3ea7c296f12246040798a696e1d97",
+        "main.wpo": "79c3e205a466c1f9465a982aa46cfbfd602e75bf5b598c2dac471772c5a1da75",
+        "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+        "main.so": "c0674592751e6be799d5461c99c2be1e1a43ddbf8cea5b58b60055f70a076042",
+        "linklet.so": "5082661eb2f95570aeb82dd3b604a836d4f1ddaed0cf53ddd42f383b70aeefce",
+        "racket.so": "f9d07c504069a86504f72744d7cac653e32a3ef7286bd8ac213f7aa20f7ae231",
+        "io.wpo": "d8eb1ec05080aa66f0321fbe3a00008e9af8f68b3f3723600b315cf6cba1b058",
+        "expander.wpo": "582e0a415dba817eee4c8a716e74ea86917c3d81dc60639c641e429af0862869",
+        "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+        "rumble.wpo": "7ecd666cb81dca787920e17ac481ce877b117de33f83d49f90c08930dda53543",
+        "regexp.wpo": "eef66d30ad091ba326f40ff2e067430c5272bd83599e1865087ad30caf694043"
+      },
+      "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+      "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+      "jobs": 4
+    }
+  ],
+  "validation_summaries": [
+    {
+      "revision": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+      "mode": "rebuild",
+      "name": "8403ef4c-rebuild",
+      "session_key": "ci-chez-540e178717684072e7e097a17bed6d72c607ef6cc20f85f16d3e73b7498ccd83",
+      "seed_matches_parent": true,
+      "parent_revision": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+      "platform": "Linux/X64",
+      "image": "ubuntu22/20261101.347.1",
+      "key_seconds": 0.31838000700008706,
+      "chez_seconds": 120.27918749200012,
+      "racket_native_seconds": 2.611115565999853,
+      "build_seconds": 122.89030305799997,
+      "elapsed_seconds": 125.92926547799993,
+      "native_cache_hits": 10,
+      "native_cache_stores": 0,
+      "bootstrap_compilations": 177,
+      "bootstrap_full_passes": 2,
+      "native_scheme_compilations": 0,
+      "boot_hashes": {
+        "petite.boot": "6ead775bc7d51d712baa27e09892f46040305926e44b829b51f0f8429e68aa9f",
+        "scheme.boot": "c066d919822cb0a801d6a43984842699184a3ee01a069eeb99db50c23d1580a2",
+        "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+        "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+        "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+        "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+        "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+        "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+      },
+      "native_hashes": {
+        "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+        "linklet.wpo": "bdb7fe8ef080bc22be85008cc2a6ef37c0c62455748140ab4b7f2dcfe1c07e19",
+        "schemify.wpo": "1c7aa59e4872a7508671c97a496f943d7baabdfacdb8372b7aab2d0bbd1988c1",
+        "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+        "io.so": "2fa48f659e0223bc554f07de8bcb0f75c00e0c8f1c8e737c3fae9c583c1beee4",
+        "schemify.so": "c3305fea8cd47ed1ae1a782287a7097575645532a220944b01c4c56822867cca",
+        "thread.so": "7c690d5361717263dec121f234330ffc0a6e560309d83f2ec912d7f45547d915",
+        "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+        "rumble.so": "ce9c9032c3066b11a60ada3b2449687724d3ea7c296f12246040798a696e1d97",
+        "main.wpo": "79c3e205a466c1f9465a982aa46cfbfd602e75bf5b598c2dac471772c5a1da75",
+        "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+        "main.so": "c0674592751e6be799d5461c99c2be1e1a43ddbf8cea5b58b60055f70a076042",
+        "linklet.so": "5082661eb2f95570aeb82dd3b604a836d4f1ddaed0cf53ddd42f383b70aeefce",
+        "racket.so": "f9d07c504069a86504f72744d7cac653e32a3ef7286bd8ac213f7aa20f7ae231",
+        "io.wpo": "d8eb1ec05080aa66f0321fbe3a00008e9af8f68b3f3723600b315cf6cba1b058",
+        "expander.wpo": "582e0a415dba817eee4c8a716e74ea86917c3d81dc60639c641e429af0862869",
+        "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+        "rumble.wpo": "7ecd666cb81dca787920e17ac481ce877b117de33f83d49f90c08930dda53543",
+        "regexp.wpo": "eef66d30ad091ba326f40ff2e067430c5272bd83599e1865087ad30caf694043"
+      },
+      "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+      "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+      "jobs": 4
+    }
+  ],
+  "jobs": [
+    {
+      "id": 128431025273,
+      "run_id": 42381872117,
+      "workflow_name": "Chez platform dependency replay",
+      "head_branch": "prototype/chez-platform-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42381872117",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd5xXseQ",
+      "head_sha": "23f67577cb367daf2b4439a713ef2e7af166950f",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128431025273",
+      "html_url": "https://github.com/samth/racket/actions/runs/42381872117/job/128431025273",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T14:30:05Z",
+      "started_at": "2026-11-07T14:30:07Z",
+      "completed_at": "2026-11-07T14:30:17Z",
+      "name": "plan",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T14:30:08Z",
+          "completed_at": "2026-11-07T14:30:08Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T14:30:08Z",
+          "completed_at": "2026-11-07T14:30:14Z"
+        },
+        {
+          "name": "Run python3 - <<'PY'",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T14:30:14Z",
+          "completed_at": "2026-11-07T14:30:14Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T14:30:14Z",
+          "completed_at": "2026-11-07T14:30:14Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T14:30:14Z",
+          "completed_at": "2026-11-07T14:30:14Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128431025273",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020730,
+      "runner_name": "GitHub Actions 1000020730",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128431077815,
+      "run_id": 42381872117,
+      "workflow_name": "Chez platform dependency replay",
+      "head_branch": "prototype/chez-platform-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42381872117",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd5xa5tw",
+      "head_sha": "23f67577cb367daf2b4439a713ef2e7af166950f",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128431077815",
+      "html_url": "https://github.com/samth/racket/actions/runs/42381872117/job/128431077815",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T14:30:17Z",
+      "started_at": "2026-11-07T14:30:19Z",
+      "completed_at": "2026-11-07T14:36:10Z",
+      "name": "parents (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T14:30:20Z",
+          "completed_at": "2026-11-07T14:30:21Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T14:30:21Z",
+          "completed_at": "2026-11-07T14:30:27Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T14:30:27Z",
+          "completed_at": "2026-11-07T14:31:01Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T14:31:01Z",
+          "completed_at": "2026-11-07T14:31:03Z"
+        },
+        {
+          "name": "Build parent checkpoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T14:31:03Z",
+          "completed_at": "2026-11-07T14:36:00Z"
+        },
+        {
+          "name": "Archive parent state and native action cache",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T14:36:00Z",
+          "completed_at": "2026-11-07T14:36:03Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T14:36:03Z",
+          "completed_at": "2026-11-07T14:36:05Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T14:36:05Z",
+          "completed_at": "2026-11-07T14:36:08Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T14:36:08Z",
+          "completed_at": "2026-11-07T14:36:08Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T14:36:08Z",
+          "completed_at": "2026-11-07T14:36:08Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T14:36:08Z",
+          "completed_at": "2026-11-07T14:36:08Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128431077815",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020731,
+      "runner_name": "GitHub Actions 1000020731",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128432497811,
+      "run_id": 42381872117,
+      "workflow_name": "Chez platform dependency replay",
+      "head_branch": "prototype/chez-platform-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42381872117",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd5yxkkw",
+      "head_sha": "23f67577cb367daf2b4439a713ef2e7af166950f",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128432497811",
+      "html_url": "https://github.com/samth/racket/actions/runs/42381872117/job/128432497811",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T14:36:11Z",
+      "started_at": "2026-11-07T14:36:12Z",
+      "completed_at": "2026-11-07T14:36:56Z",
+      "name": "compare (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T14:36:13Z",
+          "completed_at": "2026-11-07T14:36:14Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T14:36:14Z",
+          "completed_at": "2026-11-07T14:36:19Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T14:36:19Z",
+          "completed_at": "2026-11-07T14:36:41Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T14:36:41Z",
+          "completed_at": "2026-11-07T14:36:43Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T14:36:43Z",
+          "completed_at": "2026-11-07T14:36:44Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T14:36:44Z",
+          "completed_at": "2026-11-07T14:36:45Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T14:36:45Z",
+          "completed_at": "2026-11-07T14:36:52Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T14:36:52Z",
+          "completed_at": "2026-11-07T14:36:53Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T14:36:53Z",
+          "completed_at": "2026-11-07T14:36:54Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T14:36:54Z",
+          "completed_at": "2026-11-07T14:36:54Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T14:36:54Z",
+          "completed_at": "2026-11-07T14:36:54Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128432497811",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020750,
+      "runner_name": "GitHub Actions 1000020750",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128432497919,
+      "run_id": 42381872117,
+      "workflow_name": "Chez platform dependency replay",
+      "head_branch": "prototype/chez-platform-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42381872117",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd5yxk_w",
+      "head_sha": "23f67577cb367daf2b4439a713ef2e7af166950f",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128432497919",
+      "html_url": "https://github.com/samth/racket/actions/runs/42381872117/job/128432497919",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T14:36:11Z",
+      "started_at": "2026-11-07T14:36:12Z",
+      "completed_at": "2026-11-07T14:39:14Z",
+      "name": "verify (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f4...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T14:36:13Z",
+          "completed_at": "2026-11-07T14:36:14Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T14:36:14Z",
+          "completed_at": "2026-11-07T14:36:19Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T14:36:19Z",
+          "completed_at": "2026-11-07T14:36:42Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T14:36:42Z",
+          "completed_at": "2026-11-07T14:36:43Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T14:36:43Z",
+          "completed_at": "2026-11-07T14:36:45Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T14:36:45Z",
+          "completed_at": "2026-11-07T14:36:45Z"
+        },
+        {
+          "name": "Force fresh seeded target build and compare every output",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T14:36:45Z",
+          "completed_at": "2026-11-07T14:38:51Z"
+        },
+        {
+          "name": "Test active and inactive backend dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T14:38:51Z",
+          "completed_at": "2026-11-07T14:39:11Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-07T14:39:11Z",
+          "completed_at": "2026-11-07T14:39:12Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T14:39:12Z",
+          "completed_at": "2026-11-07T14:39:12Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-11-07T14:39:12Z",
+          "completed_at": "2026-11-07T14:39:12Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-11-07T14:39:12Z",
+          "completed_at": "2026-11-07T14:39:12Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128432497919",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020752,
+      "runner_name": "GitHub Actions 1000020752",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128432497932,
+      "run_id": 42381872117,
+      "workflow_name": "Chez platform dependency replay",
+      "head_branch": "prototype/chez-platform-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42381872117",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd5yxlDA",
+      "head_sha": "23f67577cb367daf2b4439a713ef2e7af166950f",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128432497932",
+      "html_url": "https://github.com/samth/racket/actions/runs/42381872117/job/128432497932",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T14:36:11Z",
+      "started_at": "2026-11-07T14:36:13Z",
+      "completed_at": "2026-11-07T14:41:52Z",
+      "name": "compare (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T14:36:14Z",
+          "completed_at": "2026-11-07T14:36:16Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T14:36:16Z",
+          "completed_at": "2026-11-07T14:36:20Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T14:36:20Z",
+          "completed_at": "2026-11-07T14:36:48Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T14:36:48Z",
+          "completed_at": "2026-11-07T14:36:52Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-11-07T14:36:52Z",
+          "completed_at": "2026-11-07T14:36:52Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-07T14:36:52Z",
+          "completed_at": "2026-11-07T14:36:52Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T14:36:52Z",
+          "completed_at": "2026-11-07T14:41:47Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T14:41:47Z",
+          "completed_at": "2026-11-07T14:41:49Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T14:41:49Z",
+          "completed_at": "2026-11-07T14:41:50Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T14:41:50Z",
+          "completed_at": "2026-11-07T14:41:50Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T14:41:50Z",
+          "completed_at": "2026-11-07T14:41:50Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128432497932",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020751,
+      "runner_name": "GitHub Actions 1000020751",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

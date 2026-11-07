@@ -1,0 +1,2075 @@
+{
+  "run_id": "42389568087",
+  "url": "https://github.com/samth/racket/actions/runs/42389568087",
+  "rows": [
+    {
+      "sha": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+      "subject": "riscv64 and loongarch64: repairs for foreign call and callable arguments",
+      "date": "2026-11-05T16:13:15Z",
+      "parent": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+      "expect_unchanged": true,
+      "cold": {
+        "revision": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+        "mode": "cold",
+        "name": "8403ef4c-cold",
+        "session_key": "racket-chez-ci-v1",
+        "seed_matches_parent": false,
+        "parent_revision": null,
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+        "build_context_matches_parent": false,
+        "key_seconds": 7.123500000716376e-05,
+        "chez_seconds": 155.970183544,
+        "racket_native_seconds": 50.653526227999976,
+        "build_seconds": 206.62370977199998,
+        "elapsed_seconds": 211.34910062300003,
+        "native_cache_hits": 0,
+        "native_cache_stores": 0,
+        "bootstrap_compilations": 177,
+        "bootstrap_full_passes": 2,
+        "native_scheme_compilations": 9,
+        "boot_hashes": {
+          "petite.boot": "3c5e93703658a67ac207d4eb20dfbabf1a133b12c658c85e960db8c12596a2a4",
+          "scheme.boot": "40ae349f31da2ff59c9bac4c827d41b8ab9c7950cb902b69cbfc2853b819159e",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "6a947d442bb3d4b00937fc093e56c1d75a9c08341f039e6b9baee8915361e78f",
+          "schemify.wpo": "fcb65cddd0d961d59c5fffe36f85d3a7c6f3585b421c4e9a06d3b3eb825a27b2",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "d01c908983d46d1d378b71bbe00aad67ec9757dc0ecf117d273aa65999c4b885",
+          "schemify.so": "e6b64146a6d6c6f0869f59964145cbc0ce48e7c135629560aefdef762488e8c0",
+          "thread.so": "35f2239ffb6f40fc04e6f11719745405c118096693eb9a2f23dbcabc8ad8d17e",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "1d9b11521c88e5b4261180a668d4a56cd98fabb57079d9f8bd39d675ad62fca8",
+          "main.wpo": "057616be965c4467faec1ba1ad7d91659bd6d1889d69fa50e699cde66bfccbf8",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "3d0a300af30c64d52dba7e9ab23dc0cf20ee8620ae53bf79e97d8ff60cf99727",
+          "linklet.so": "d59fe93d39bc5e10112343908ecfb38806b2d1fcba1d36ed80d37f54e39b38b6",
+          "racket.so": "3ae4f30d73685fba2a1dfd3bad644814a4850d465d74184d4c448ed2093ac946",
+          "io.wpo": "57462f07cb36776723d99e6bc38f4ed27d6dea1cc221f0f9480a9c62ce2485db",
+          "expander.wpo": "fbc6611df1542a6467d0be89e5c2725757d3c1ad4eb453e01b6ecaa0dd955106",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "6daa4dd522a413daa2214c3d28f273939f96f3523067f60ea5a75736a3099d72",
+          "regexp.wpo": "00b5cb4a37fec5ec77bcfb72d88b36c1c4901bef05c98e937172efdcce72d08b"
+        },
+        "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "reuse": {
+        "revision": "8403ef4cd7724d1d6648e2be5307a01e6e1a5759",
+        "mode": "reuse",
+        "name": "8403ef4c-reuse",
+        "session_key": "racket-chez-ci-v1",
+        "seed_matches_parent": true,
+        "parent_revision": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+        "build_context_matches_parent": true,
+        "key_seconds": 7.246599999177761e-05,
+        "chez_seconds": 1.545735061000002,
+        "racket_native_seconds": 4.83628190200001,
+        "build_seconds": 6.382016963000012,
+        "elapsed_seconds": 8.949703841000002,
+        "native_cache_hits": 10,
+        "native_cache_stores": 0,
+        "bootstrap_compilations": 0,
+        "bootstrap_full_passes": 0,
+        "native_scheme_compilations": 0,
+        "boot_hashes": {
+          "petite.boot": "538f691ff6ebfe17467c3164b92ae68bdb7607858ebcf08780a55714bd857aef",
+          "scheme.boot": "9c83d4a0e1274eb3fe16bf6f99f1cbbefd0d334ae2650a5cab1afd38813ffd63",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "81b3a1ddacd16f75bd014b6eff761cd032b0a35eb4fb3193382f63d477d715c2",
+          "schemify.wpo": "85a91f46ef05dec5b0d0f4e1263fd2d131eeaadf37828e425f84a65e857b1487",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "edc643e48c6160a4f60c7f1a36b3a61db764f962f8b2a1389b54e0aa7d2db120",
+          "schemify.so": "4dfd9d5cad593abf0f1c7863dd0db592a5cd83523aba7d1f8a6de9a82660e2e5",
+          "thread.so": "1c70d44ec810c544cb130346c5d392f37ef4c924838623503b432813752672e9",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "0e7ce62cd569b58caea22a1e8c2be0222f53b7674349fd595f6eeb06242c98b3",
+          "main.wpo": "a90c231e5fa609b02137ea6c845fa3c47dbe61d2e4ecdac7efa6fc2d385afc6a",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "635f3c0cf0704e4f838380f2dfd0603a97f5cc064839339d6c4008e68a30d12b",
+          "linklet.so": "c4d8259f1dc0ad51514fb4ef7c8d02eee2aaf5935f2c4a93ccddeb58c33fcfd6",
+          "racket.so": "3e06fa5dc90dc2ba71d934853f3f9bbaa6bcbc8c5d646f78668b49fd362a86e4",
+          "io.wpo": "5bce00e1dad8d0f2d0d6758ca6554327c5195f93916cf4f232e0f1cfdcd70b72",
+          "expander.wpo": "b4fdfa7aacc9c7a7a4268f8e272fbc2c9cb4031dd8412013bfaded7de9799cee",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "4e3467e20e8d306795d0f32c7af45830a2c9eaf404a3e5b58edefec085814a37",
+          "regexp.wpo": "4f9449c28e8641dd95075c63f71896c6cc0d87b340ef66b718a35e326f6e38f6"
+        },
+        "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "cold_job": {
+        "id": 128455343527,
+        "url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343527",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 253.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 27.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 212.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "reuse_job": {
+        "id": 128455343514,
+        "url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343514",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 45.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 22.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 9.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "build_saved_seconds": 200.24169280899997,
+      "build_percent_faster": 96.9112852682578,
+      "net_job_saved_seconds": 208.0,
+      "net_job_percent_faster": 82.21343873517787
+    },
+    {
+      "sha": "ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e",
+      "subject": "repair in-place marking of an empty continuation stack (#1096)",
+      "date": "2026-11-07T13:09:01Z",
+      "parent": "68a0bc5e8f24fe936b371558ab95fd75acc62506",
+      "expect_unchanged": false,
+      "cold": {
+        "revision": "ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e",
+        "mode": "cold",
+        "name": "ed9bbe77-cold",
+        "session_key": "racket-chez-ci-v1",
+        "seed_matches_parent": false,
+        "parent_revision": null,
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+        "build_context_matches_parent": false,
+        "key_seconds": 6.25259999935679e-05,
+        "chez_seconds": 215.166830636,
+        "racket_native_seconds": 53.460016156999984,
+        "build_seconds": 268.62684679299997,
+        "elapsed_seconds": 272.823913917,
+        "native_cache_hits": 0,
+        "native_cache_stores": 0,
+        "bootstrap_compilations": 177,
+        "bootstrap_full_passes": 2,
+        "native_scheme_compilations": 9,
+        "boot_hashes": {
+          "petite.boot": "7b8aedd07c61608c8f78c4b7c41208ddf26ce94276927f23d91d74dd4b92220a",
+          "scheme.boot": "117b9837af8d2f571bd087c2976d42c89b92f6c596e8b1afd1357cec07a2b8df",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "61be04b3a829ba4066efc4db8fb9e72baa1d474e008b384c231b4a08f1dfce6f",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "bb2681ce91b986c6373c08e12ad03bd73114e93b6b308f42cdf5b3afb6c6a784",
+          "schemify.wpo": "c49285a58c89230a878be6997089610fd8190bc26c0c0e7366eff51848590383",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "224075be7f106485b52ebbc2105794e3dcdcd3f8e1588b1beb53f9ef9360e7c7",
+          "schemify.so": "178484d1ddace7b5abd133c126a9999e584cd2a09cf6159cbe6bfa50c0161b39",
+          "thread.so": "41f9f28886255077fab87a60d039b866c9899d151e08b1137a17fa81978017b0",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "23eef009e5208672ed2ca8a199fb6faed0447bd187fa45316c9860aaab2cde19",
+          "main.wpo": "fb5b52b1ef156ceb2ea197e7f00929a60074530850d0190b7d909bd11952a5fb",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "669216fda6dae675ef102ed98f79f07770df5414ebe9192ebe4b6db15ac7115d",
+          "linklet.so": "bf69423b334f65665cd83c3af01fcaea5cc7b6b388b7f59e0a361997a6ecab80",
+          "racket.so": "d03537fe26031e307a6ff0d94d2afc3711f383a2eaee96222e3d97f240f1d5fc",
+          "io.wpo": "d2d22616e90f9321ab0292c53b0fa33d6e4cf136b66cb6728455b9b8620be768",
+          "expander.wpo": "44e0387e1e02b614657f27d54d49ea5ed1f6821d584188a762513f59bb94c5dd",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "6273258d396c3e26bab2fedbb0f5d32ee7fd75beb995a8fa63de47c3cf704f84",
+          "regexp.wpo": "5256bc413ec87ea408c14ef02f561279cc18f21547245a374a437eee830685a7"
+        },
+        "compiler_sha256": "628241f07e8dda9ebaa94ee27fe57b4a72ab9b0fa3a83590da00bcb560694942",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "reuse": {
+        "revision": "ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e",
+        "mode": "reuse",
+        "name": "ed9bbe77-reuse",
+        "session_key": "racket-chez-ci-v1",
+        "seed_matches_parent": true,
+        "parent_revision": "68a0bc5e8f24fe936b371558ab95fd75acc62506",
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+        "build_context_matches_parent": true,
+        "key_seconds": 7.942799999227645e-05,
+        "chez_seconds": 10.711041375999997,
+        "racket_native_seconds": 68.15526509399999,
+        "build_seconds": 78.86630646999998,
+        "elapsed_seconds": 82.68272915000001,
+        "native_cache_hits": 0,
+        "native_cache_stores": 10,
+        "bootstrap_compilations": 0,
+        "bootstrap_full_passes": 0,
+        "native_scheme_compilations": 9,
+        "boot_hashes": {
+          "petite.boot": "538f691ff6ebfe17467c3164b92ae68bdb7607858ebcf08780a55714bd857aef",
+          "scheme.boot": "8421353b3300d4c4533330beb89c1b2318e0ba9bee2f14110df72d6f40465dc2",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "61be04b3a829ba4066efc4db8fb9e72baa1d474e008b384c231b4a08f1dfce6f",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "2a7ebf36ca50994c4e24f2428e779e29566c3ff1ec6e376d01cafe98e831c10e",
+          "schemify.wpo": "ce5ce1d7d5d9ff839b98dc0839fd3758ff81f44c4a2bc4250dbb0cdc49573c02",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "0c7071698ef1ffe1e425a01ecd47a78bca2d3b0a05e393b21a04f92f7268e856",
+          "schemify.so": "1b799c82a163a1072e61507b01eade90a8a5108a8ab145770e7a6f25d9dea146",
+          "thread.so": "b9778dff2b4e265507ddc0cbe3070b21bbddda6b371e33deba97197256fc8050",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "465006ff5b51c6ec01f7dd7e578c22382fd8e688fcbf35d44bea7064a758f850",
+          "main.wpo": "197d218d3f40bcca749b03bf153a5e697875ff181008df5c60b5b0157a6b9349",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "c97bce7857e3c9e1501a05a9038f7d89acbafa8cb65188b06f7d9f7dd5315f4b",
+          "linklet.so": "2c23915461fdc5409df1adc11e48735b55281691986d45a752201f7835608801",
+          "racket.so": "5d012930f614088ea70b5f25bc9d89489182adf0328a33d53e4b0d0e0f2f68f4",
+          "io.wpo": "85a5ed11fbc0621147fe80cb447e1fa1c915c3524fcd3a2cbdb481c1ec43cecb",
+          "expander.wpo": "b7f4651ad8278bc852da93dd6c3077acaa767e9a69efe144aa7ad6112ec85e87",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "945e51222d96c4c877276bea9d8281c732fcbd269ce4488e75bee1afae168818",
+          "regexp.wpo": "0526ebd5d2fe6990c3489b4947069ecfff1c9f1f8b361fe189b56604fef43ec8"
+        },
+        "compiler_sha256": "628241f07e8dda9ebaa94ee27fe57b4a72ab9b0fa3a83590da00bcb560694942",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "cold_job": {
+        "id": 128455343572,
+        "url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343572",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 307.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 22.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 273.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "reuse_job": {
+        "id": 128455343588,
+        "url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343588",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 125.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 24.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "success",
+            "seconds": 3.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 83.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "build_saved_seconds": 189.760540323,
+      "build_percent_faster": 70.64094396686522,
+      "net_job_saved_seconds": 182.0,
+      "net_job_percent_faster": 59.28338762214984
+    },
+    {
+      "sha": "d533f2e156d4eddeafe24bd7cc4de87fdc88caeb",
+      "subject": "use native fused multiply-add instructions for flfma (#1095)",
+      "date": "2026-11-07T13:09:19Z",
+      "parent": "ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e",
+      "expect_unchanged": false,
+      "cold": {
+        "revision": "d533f2e156d4eddeafe24bd7cc4de87fdc88caeb",
+        "mode": "cold",
+        "name": "d533f2e1-cold",
+        "session_key": "racket-chez-ci-v1",
+        "seed_matches_parent": false,
+        "parent_revision": null,
+        "platform": "Linux/X64",
+        "image": "ubuntu22/20261101.347.1",
+        "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+        "build_context_matches_parent": false,
+        "key_seconds": 9.52529999977969e-05,
+        "chez_seconds": 155.52084063,
+        "racket_native_seconds": 54.72797101500004,
+        "build_seconds": 210.24881164500005,
+        "elapsed_seconds": 216.77501760100003,
+        "native_cache_hits": 0,
+        "native_cache_stores": 0,
+        "bootstrap_compilations": 177,
+        "bootstrap_full_passes": 2,
+        "native_scheme_compilations": 9,
+        "boot_hashes": {
+          "petite.boot": "5d58cce906ebddc783a5344b7133159a479b7009b0f3bb8805e6b6c9769243d4",
+          "scheme.boot": "d6bfe63149278167e40fb538520df0517f20c1ec817a13a4513d52e8cff8a4df",
+          "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+          "equates.h": "61be04b3a829ba4066efc4db8fb9e72baa1d474e008b384c231b4a08f1dfce6f",
+          "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+          "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+          "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+          "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+        },
+        "native_hashes": {
+          "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+          "linklet.wpo": "ab7e28b3fac022846c004aee2fc9853a8b6b33e177be9b689188d775435e8819",
+          "schemify.wpo": "f22ef6d547c6262282f75dd8bcd960d09e550cd935b97f37f47adce822551be5",
+          "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+          "io.so": "3b8ca7ad137c3538bcbb1110773e8ae0e623ba7b3de64ef5b1d6074348ddbdf7",
+          "schemify.so": "72b1499068dae056bb4d9a1ab44c843692b7680dbe6b150363875b1e0abbd135",
+          "thread.so": "685993e157ef4ebc4e36ca34aaac035a3f26241032ab61c13407267f845a59c4",
+          "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+          "rumble.so": "a58cb474e2a4482ccf85261a91fd5f40a9c8fe029dd47a9fba9f88d8dbfe7e6c",
+          "main.wpo": "c90c8a48d3100250f3b22bd34ccbec0b8e086693ffaa2d5eb67ea28a51156b52",
+          "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+          "main.so": "3a80275518bdbdd1e2031bb0ad616998c95a685b484417e1b6564e38e500e419",
+          "linklet.so": "14951c09e8a71b088c802ef6383399bd565c84d19f2f435afd25b433bce84382",
+          "racket.so": "7da636b69c8881541ff1fe4293104a0de7ade7b7ee4b7135ec4e1e520f7e3657",
+          "io.wpo": "1ea039d663eca0a301c20f0647694c318a1a62a75fd685f5c6a0a54c6f29fd3e",
+          "expander.wpo": "1bfae439b5ce8f2915de8370df504a36dde281b94f924ee7da398e1d261ff311",
+          "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+          "rumble.wpo": "366e14cffebc529acfaeafb10972d2b24c8bc728f7728b635f9511436c440d9e",
+          "regexp.wpo": "40d9c47572a8a634c43a0934206e1a56ce3ee0c86bbca245a7d3d3ea9b0d9a2c"
+        },
+        "compiler_sha256": "628241f07e8dda9ebaa94ee27fe57b4a72ab9b0fa3a83590da00bcb560694942",
+        "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+        "jobs": 4
+      },
+      "reuse": null,
+      "cold_job": {
+        "id": 128455343581,
+        "url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343581",
+        "status": "completed",
+        "conclusion": "success",
+        "job_seconds": 266.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 34.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "skipped",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "success",
+            "seconds": 217.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "reuse_job": {
+        "id": 128455343585,
+        "url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343585",
+        "status": "completed",
+        "conclusion": "failure",
+        "job_seconds": 194.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 28.0
+          },
+          {
+            "name": "Fetch selected PB payload and build Zuo",
+            "conclusion": "success",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/download-artifact@v8",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Restore parent state",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Measure target revision",
+            "conclusion": "failure",
+            "seconds": 149.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v7",
+            "conclusion": "success",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v7",
+            "conclusion": "success",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success",
+            "seconds": 0.0
+          }
+        ]
+      },
+      "net_job_saved_seconds": 72.0,
+      "net_job_percent_faster": 27.06766917293233
+    }
+  ],
+  "parent_summaries": [
+    {
+      "revision": "048879e36460dc831a4737a2f5967fc3d34f42e1",
+      "mode": "prepare",
+      "name": "parent-8403ef4c",
+      "session_key": "racket-chez-ci-v1",
+      "seed_matches_parent": false,
+      "parent_revision": null,
+      "platform": "Linux/X64",
+      "image": "ubuntu22/20261101.347.1",
+      "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+      "build_context_matches_parent": false,
+      "key_seconds": 4.954499999598738e-05,
+      "chez_seconds": 116.96486989800002,
+      "racket_native_seconds": 41.624093818999995,
+      "build_seconds": 158.588963717,
+      "elapsed_seconds": 162.539599232,
+      "native_cache_hits": 0,
+      "native_cache_stores": 10,
+      "bootstrap_compilations": 177,
+      "bootstrap_full_passes": 2,
+      "native_scheme_compilations": 9,
+      "boot_hashes": {
+        "petite.boot": "538f691ff6ebfe17467c3164b92ae68bdb7607858ebcf08780a55714bd857aef",
+        "scheme.boot": "9c83d4a0e1274eb3fe16bf6f99f1cbbefd0d334ae2650a5cab1afd38813ffd63",
+        "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+        "equates.h": "cd71147a0d78725b1839fdd797b41b2306f11b0f9be63540d39bdf30a6d3b22d",
+        "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+        "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+        "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+        "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+      },
+      "native_hashes": {
+        "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+        "linklet.wpo": "81b3a1ddacd16f75bd014b6eff761cd032b0a35eb4fb3193382f63d477d715c2",
+        "schemify.wpo": "85a91f46ef05dec5b0d0f4e1263fd2d131eeaadf37828e425f84a65e857b1487",
+        "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+        "io.so": "edc643e48c6160a4f60c7f1a36b3a61db764f962f8b2a1389b54e0aa7d2db120",
+        "schemify.so": "4dfd9d5cad593abf0f1c7863dd0db592a5cd83523aba7d1f8a6de9a82660e2e5",
+        "thread.so": "1c70d44ec810c544cb130346c5d392f37ef4c924838623503b432813752672e9",
+        "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+        "rumble.so": "0e7ce62cd569b58caea22a1e8c2be0222f53b7674349fd595f6eeb06242c98b3",
+        "main.wpo": "a90c231e5fa609b02137ea6c845fa3c47dbe61d2e4ecdac7efa6fc2d385afc6a",
+        "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+        "main.so": "635f3c0cf0704e4f838380f2dfd0603a97f5cc064839339d6c4008e68a30d12b",
+        "linklet.so": "c4d8259f1dc0ad51514fb4ef7c8d02eee2aaf5935f2c4a93ccddeb58c33fcfd6",
+        "racket.so": "3e06fa5dc90dc2ba71d934853f3f9bbaa6bcbc8c5d646f78668b49fd362a86e4",
+        "io.wpo": "5bce00e1dad8d0f2d0d6758ca6554327c5195f93916cf4f232e0f1cfdcd70b72",
+        "expander.wpo": "b4fdfa7aacc9c7a7a4268f8e272fbc2c9cb4031dd8412013bfaded7de9799cee",
+        "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+        "rumble.wpo": "4e3467e20e8d306795d0f32c7af45830a2c9eaf404a3e5b58edefec085814a37",
+        "regexp.wpo": "4f9449c28e8641dd95075c63f71896c6cc0d87b340ef66b718a35e326f6e38f6"
+      },
+      "compiler_sha256": "19df50f734131859f62eaf4dba64938a2a9f62004b634dec0b0bd2341e8c8be1",
+      "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+      "jobs": 4
+    },
+    {
+      "revision": "ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e",
+      "mode": "prepare",
+      "name": "parent-d533f2e1",
+      "session_key": "racket-chez-ci-v1",
+      "seed_matches_parent": false,
+      "parent_revision": null,
+      "platform": "Linux/X64",
+      "image": "ubuntu22/20261101.347.1",
+      "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+      "build_context_matches_parent": false,
+      "key_seconds": 0.00010658399999385892,
+      "chez_seconds": 169.000966376,
+      "racket_native_seconds": 64.20790060399997,
+      "build_seconds": 233.20886697999998,
+      "elapsed_seconds": 237.89733688499996,
+      "native_cache_hits": 0,
+      "native_cache_stores": 10,
+      "bootstrap_compilations": 177,
+      "bootstrap_full_passes": 2,
+      "native_scheme_compilations": 9,
+      "boot_hashes": {
+        "petite.boot": "538f691ff6ebfe17467c3164b92ae68bdb7607858ebcf08780a55714bd857aef",
+        "scheme.boot": "8421353b3300d4c4533330beb89c1b2318e0ba9bee2f14110df72d6f40465dc2",
+        "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+        "equates.h": "61be04b3a829ba4066efc4db8fb9e72baa1d474e008b384c231b4a08f1dfce6f",
+        "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+        "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+        "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+        "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+      },
+      "native_hashes": {
+        "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+        "linklet.wpo": "cae88d3893172f0f47864c52ca3eed7933852d7cd7e5009027401caa168e290e",
+        "schemify.wpo": "620692bd8097d3404fd7b18d1b21bb982bede18d16261dab2678684846bcf5e4",
+        "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+        "io.so": "45e5450c0ab9d825c18cc3cb3bb0b37f0fe08d4ae235d3faa005c20c2dc25c3b",
+        "schemify.so": "d11dbc47ed5dbfa6c051f0e24950280bd43baafe10085a2c843d5752255b793c",
+        "thread.so": "f58b4d7789378fd5185c8fbbfedd8341ef5cb451b5292ffd8b9823b0562bf841",
+        "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+        "rumble.so": "e6bcacba6b69e123d844f0254a7cc59b8668973b5715598a8ab4979e716c6d48",
+        "main.wpo": "1f08d4039689c962745278e72892e098a2a8c91c3257d6f8d504490bd59282bc",
+        "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+        "main.so": "fa33b0038f911cc8e24219c01bd4621a98c26e892c1463bb6073dfeed3cee5d3",
+        "linklet.so": "0ee68532f8e05894245f97030fdfc3dfc6da88c638495436e7aaee533f3301c7",
+        "racket.so": "f3feeb20022308a450a4f0dd5587632d76d0df6781771f6a0cc2d09efd3f5593",
+        "io.wpo": "28129fbb958b4c7aaebd987de08ad15863629c0add228ae6dda03bde29dff7c5",
+        "expander.wpo": "b0572ff913890639296bb8bd9bea6e3c02beacf0313f0b40f5604925d4315c00",
+        "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+        "rumble.wpo": "ed7a2879fdf39b9c1c416ba9c652b8bd44c4fcc9fcdcc81d0063d6020128fc9b",
+        "regexp.wpo": "6cec661a5ea5a855d1b1ac77967e29255466654a37f60a95125ee8164868e613"
+      },
+      "compiler_sha256": "628241f07e8dda9ebaa94ee27fe57b4a72ab9b0fa3a83590da00bcb560694942",
+      "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+      "jobs": 4
+    },
+    {
+      "revision": "68a0bc5e8f24fe936b371558ab95fd75acc62506",
+      "mode": "prepare",
+      "name": "parent-ed9bbe77",
+      "session_key": "racket-chez-ci-v1",
+      "seed_matches_parent": false,
+      "parent_revision": null,
+      "platform": "Linux/X64",
+      "image": "ubuntu22/20261101.347.1",
+      "build_context_id": "e15e9f82284e06998b973f05469792ceb0374ff98416adc316b98fb0f648241f",
+      "build_context_matches_parent": false,
+      "key_seconds": 5.406200000379613e-05,
+      "chez_seconds": 122.271253278,
+      "racket_native_seconds": 46.11747791299999,
+      "build_seconds": 168.38873119099998,
+      "elapsed_seconds": 172.43562015999998,
+      "native_cache_hits": 0,
+      "native_cache_stores": 10,
+      "bootstrap_compilations": 177,
+      "bootstrap_full_passes": 2,
+      "native_scheme_compilations": 9,
+      "boot_hashes": {
+        "petite.boot": "538f691ff6ebfe17467c3164b92ae68bdb7607858ebcf08780a55714bd857aef",
+        "scheme.boot": "8421353b3300d4c4533330beb89c1b2318e0ba9bee2f14110df72d6f40465dc2",
+        "scheme.h": "dca75122270684cef8d3eaf058bef48319fdba9878530cf4ed95001c15a037bb",
+        "equates.h": "61be04b3a829ba4066efc4db8fb9e72baa1d474e008b384c231b4a08f1dfce6f",
+        "gc-ocd.inc": "e3930ae0cbaa5e1161de1a6a8f9f24890e0fa3a61df721b66d75b93684bcf78b",
+        "gc-oce.inc": "71478f9e63334a2d7d7dec8ef55cd34ebe1d05c96f9165bc1181ba11f950db5d",
+        "gc-par.inc": "023b3c215b1a335803f991410e88a5a458a1da947f961a390ba4229013259814",
+        "heapcheck.inc": "7d2e1bf83e212b378f0082a234a0720e5888c29f7987fabf1e099b5dcf8b00da"
+      },
+      "native_hashes": {
+        "thread.wpo": "0f69e6ce6c9eeee8712da238f82bc7c1835c12d465d4edaecf7ccfb38d69b398",
+        "linklet.wpo": "aa261bf15d13f2acafd283c892ee5d16bde7c25498c4740c5f48aef7328fc6a4",
+        "schemify.wpo": "82ba0e9a67f63fea79e468d3e8ebd362d2523155d0ef83f936041e860bf6749c",
+        "expander.so": "f8f4ea0e9d67407bb0102687595423aaadcfe005d570ef81d9267aeffc802924",
+        "io.so": "4513f6c9b179065456463a39366fc7d2051fcc79ea43d88059bb2742371e54cb",
+        "schemify.so": "3e6c5be2a77c9e274da5067e429c6132d091d35429f9c20c97d63eb3b9c5fdb6",
+        "thread.so": "35a4f8e72e11b3673f5f7c270fb87acf29a1070ef863ef5e907e3a369c92db47",
+        "regexp.so": "927e174a5510477d79b463657abc6de9459f5cfae1d32949fac59ee948b2d744",
+        "rumble.so": "67cbc2084449154757504671d354938f27468a54f5b3c1813a29e5911da74183",
+        "main.wpo": "73a1680ca7b0970af472a0ede0ebd0ab1f07d98a019503b6704ea67a4361e680",
+        "chezpart.wpo": "34d622d906b2412ded4898125ea754ec20ede1b475892c9fd61cef39d1b02340",
+        "main.so": "de926f3bd841472921cea51b8f75bae706d82e56b7b9163f1b2f4c5016584d8a",
+        "linklet.so": "2d01941366c19c48793844bd1c8ebb12c5eaee991ceb24911900b86f01a6ad3a",
+        "racket.so": "c390297485ed12f9bfbc41127dbc45b38caa4468a10c95dc67d4a1aa7e8341db",
+        "io.wpo": "58f0708388ce99f6e63300962a6f334abfad22b83e54665375f24354cde37e84",
+        "expander.wpo": "024f416288a72ea5fd6caa834867692577a263132533c7c2f3b9dde7c89bfa3f",
+        "chezpart.so": "b3ef5161ba17018e0a04c04cc80a1a76fe0d9b031680be0e3db5c2b44c9ec453",
+        "rumble.wpo": "197351ffd0257b7f6c40670edafdf2e0a509b21d5e963e79340a2df1cb4f105b",
+        "regexp.wpo": "803bf713a30119bc710e6db2a16690693002ddea9e86c520ca4b41e350bd0824"
+      },
+      "compiler_sha256": "2e57b3d53f894fe1ee71834c12f9f346e2893e26272da0392e8a4beee2ba5d34",
+      "zuo_sha256": "d839475a82ea9b8ac9c70074398d07dd04c9f1677d188a2999babe8d10242039",
+      "jobs": 4
+    }
+  ],
+  "validation_summaries": [],
+  "dependency_mutations": [],
+  "diagnostics": [
+    {
+      "path": "incoming/evidence-d533f2e1-reuse/d533f2e1-reuse/phases.json",
+      "phases": [
+        {
+          "label": "checkout",
+          "seconds": 0.15542480100000944,
+          "status": 0,
+          "c_compilations": 0,
+          "scheme_compilations": 0,
+          "full_scheme_passes": 0,
+          "cache_hits": 0,
+          "cache_stores": 0
+        },
+        {
+          "label": "submodules",
+          "seconds": 3.0159131339999874,
+          "status": 0,
+          "c_compilations": 0,
+          "scheme_compilations": 0,
+          "full_scheme_passes": 0,
+          "cache_hits": 0,
+          "cache_stores": 0
+        },
+        {
+          "label": "dependency-fixes",
+          "seconds": 0.005768308000000388,
+          "status": 0,
+          "c_compilations": 0,
+          "scheme_compilations": 0,
+          "full_scheme_passes": 0,
+          "cache_hits": 0,
+          "cache_stores": 0
+        },
+        {
+          "label": "platform-fixes",
+          "seconds": 0.0020480270000007295,
+          "status": 0,
+          "c_compilations": 0,
+          "scheme_compilations": 0,
+          "full_scheme_passes": 0,
+          "cache_hits": 0,
+          "cache_stores": 0
+        },
+        {
+          "label": "chez-bootstrap",
+          "seconds": 144.786466051,
+          "status": 1,
+          "c_compilations": 0,
+          "scheme_compilations": 158,
+          "full_scheme_passes": 3,
+          "cache_hits": 0,
+          "cache_stores": 0
+        }
+      ],
+      "tails": {
+        "chez-bootstrap.log": "ling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_6.ss with output to ChezScheme/xc-ta6le/s/5_6.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_7.ss with output to ChezScheme/xc-ta6le/s/5_7.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/event.ss with output to ChezScheme/xc-ta6le/s/event.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/4.ss with output to ChezScheme/xc-ta6le/s/4.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/front.ss with output to ChezScheme/xc-ta6le/s/front.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/foreign.ss with output to ChezScheme/xc-ta6le/s/foreign.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/6.ss with output to ChezScheme/xc-ta6le/s/6.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/print.ss with output to ChezScheme/xc-ta6le/s/print.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/newhash.ss with output to ChezScheme/xc-ta6le/s/newhash.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/format.ss with output to ChezScheme/xc-ta6le/s/format.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/date.ss with output to ChezScheme/xc-ta6le/s/date.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/7.ss with output to ChezScheme/xc-ta6le/s/7.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cafe.ss with output to ChezScheme/xc-ta6le/s/cafe.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/trace.ss with output to ChezScheme/xc-ta6le/s/trace.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/engine.ss with output to ChezScheme/xc-ta6le/s/engine.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/interpret.ss with output to ChezScheme/xc-ta6le/s/interpret.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cprep.ss with output to ChezScheme/xc-ta6le/s/cprep.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpcheck.ss with output to ChezScheme/xc-ta6le/s/cpcheck.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cp0.ss with output to ChezScheme/xc-ta6le/s/cp0.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpvalid.ss with output to ChezScheme/xc-ta6le/s/cpvalid.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cptypes.ss with output to ChezScheme/xc-ta6le/s/cptypes.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpcommonize.ss with output to ChezScheme/xc-ta6le/s/cpcommonize.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpletrec.ss with output to ChezScheme/xc-ta6le/s/cpletrec.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/inspect.ss with output to ChezScheme/xc-ta6le/s/inspect.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/enum.ss with output to ChezScheme/xc-ta6le/s/enum.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/io.ss with output to ChezScheme/xc-ta6le/s/io.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/read.ss with output to ChezScheme/xc-ta6le/s/read.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/primvars.ss with output to ChezScheme/xc-ta6le/s/primvars.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/syntax.ss with output to ChezScheme/xc-ta6le/s/syntax.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/costctr.ss with output to ChezScheme/xc-ta6le/s/costctr.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/expeditor.ss with output to ChezScheme/xc-ta6le/s/expeditor.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/exceptions.ss with output to ChezScheme/xc-ta6le/s/exceptions.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/pretty.ss with output to ChezScheme/xc-ta6le/s/pretty.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/env.ss with output to ChezScheme/xc-ta6le/s/env.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/fasl.ss with output to ChezScheme/xc-ta6le/s/fasl.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/vfasl.ss with output to ChezScheme/xc-ta6le/s/vfasl.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/pbchunk.ss with output to ChezScheme/xc-ta6le/s/pbchunk.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/reloc.ss with output to ChezScheme/xc-ta6le/s/reloc.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/pdhtml.ss with output to ChezScheme/xc-ta6le/s/pdhtml.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/strip.ss with output to ChezScheme/xc-ta6le/s/strip.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/ftype.ss with output to ChezScheme/xc-ta6le/s/ftype.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/back.ss with output to ChezScheme/xc-ta6le/s/back.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpnanopass.ss with output to ChezScheme/xc-ta6le/s/cpnanopass.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpprim.ss with output to ChezScheme/xc-ta6le/s/cpprim.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/compile.ss with output to ChezScheme/xc-ta6le/s/compile.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cback.ss with output to ChezScheme/xc-ta6le/s/cback.ta6le\n(time (let () ...))\n    586 collections\n    88.525300116s elapsed cpu time, including 4.810020041s collecting\n    88.530632199s elapsed real time, including 4.814194576s collecting\n    9362744832 bytes allocated, including 8971302864 bytes reclaimed\n    579477504 bytes peak memory use\nChezScheme/ta6le/bin/ta6le/scheme is up to date\nChezScheme/ta6le/bin/ta6le/petite is up to date\nrunning ChezScheme/ta6le/bin/ta6le/scheme to build all at once\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/library.ss with output to ChezScheme/ta6le/s/library.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/prims.ss with output to ChezScheme/ta6le/s/prims.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/mathprims.ss with output to ChezScheme/ta6le/s/mathprims.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/record.ss with output to ChezScheme/ta6le/s/record.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_1.ss with output to ChezScheme/ta6le/s/5_1.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_2.ss with output to ChezScheme/ta6le/s/5_2.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_3.ss with output to ChezScheme/ta6le/s/5_3.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/strnum.ss with output to ChezScheme/ta6le/s/strnum.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/bytevector.ss with output to ChezScheme/ta6le/s/bytevector.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_4.ss with output to ChezScheme/ta6le/s/5_4.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_6.ss with output to ChezScheme/ta6le/s/5_6.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/5_7.ss with output to ChezScheme/ta6le/s/5_7.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/event.ss with output to ChezScheme/ta6le/s/event.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/4.ss with output to ChezScheme/ta6le/s/4.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/front.ss with output to ChezScheme/ta6le/s/front.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/foreign.ss with output to ChezScheme/ta6le/s/foreign.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/6.ss with output to ChezScheme/ta6le/s/6.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/print.ss with output to ChezScheme/ta6le/s/print.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/newhash.ss with output to ChezScheme/ta6le/s/newhash.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/format.ss with output to ChezScheme/ta6le/s/format.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/date.ss with output to ChezScheme/ta6le/s/date.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/7.ss with output to ChezScheme/ta6le/s/7.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cafe.ss with output to ChezScheme/ta6le/s/cafe.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/trace.ss with output to ChezScheme/ta6le/s/trace.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/engine.ss with output to ChezScheme/ta6le/s/engine.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/interpret.ss with output to ChezScheme/ta6le/s/interpret.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cprep.ss with output to ChezScheme/ta6le/s/cprep.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpcheck.ss with output to ChezScheme/ta6le/s/cpcheck.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cp0.ss with output to ChezScheme/ta6le/s/cp0.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpvalid.ss with output to ChezScheme/ta6le/s/cpvalid.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cptypes.ss with output to ChezScheme/ta6le/s/cptypes.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpcommonize.ss with output to ChezScheme/ta6le/s/cpcommonize.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpletrec.ss with output to ChezScheme/ta6le/s/cpletrec.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/inspect.ss with output to ChezScheme/ta6le/s/inspect.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/enum.ss with output to ChezScheme/ta6le/s/enum.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/io.ss with output to ChezScheme/ta6le/s/io.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/read.ss with output to ChezScheme/ta6le/s/read.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/primvars.ss with output to ChezScheme/ta6le/s/primvars.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/syntax.ss with output to ChezScheme/ta6le/s/syntax.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/costctr.ss with output to ChezScheme/ta6le/s/costctr.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/expeditor.ss with output to ChezScheme/ta6le/s/expeditor.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/exceptions.ss with output to ChezScheme/ta6le/s/exceptions.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/pretty.ss with output to ChezScheme/ta6le/s/pretty.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/env.ss with output to ChezScheme/ta6le/s/env.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/fasl.ss with output to ChezScheme/ta6le/s/fasl.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/vfasl.ss with output to ChezScheme/ta6le/s/vfasl.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/pbchunk.ss with output to ChezScheme/ta6le/s/pbchunk.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/reloc.ss with output to ChezScheme/ta6le/s/reloc.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/pdhtml.ss with output to ChezScheme/ta6le/s/pdhtml.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/strip.ss with output to ChezScheme/ta6le/s/strip.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/ftype.ss with output to ChezScheme/ta6le/s/ftype.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/back.ss with output to ChezScheme/ta6le/s/back.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpnanopass.ss with output to ChezScheme/ta6le/s/cpnanopass.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cpprim.ss with output to ChezScheme/ta6le/s/cpprim.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/compile.ss with output to ChezScheme/ta6le/s/compile.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/cback.ss with output to ChezScheme/ta6le/s/cback.ta6le\n(time (let () ...))\n    650 collections\n    10.699947479s elapsed cpu time, including 2.698190711s collecting\n    10.717544040s elapsed real time, including 2.700610732s collecting\n    10433521712 bytes allocated, including 10428746832 bytes reclaimed\n    840339456 bytes peak memory use\nrunning ChezScheme/ta6le/bin/ta6le/scheme to build fixpoint check\nException in $fasl-file-equal?: sharing2 comparison failed while comparing ChezScheme/ta6le/boot/ta6le/sbb and ChezScheme/ta6le/boot/ta6le/petite.boot within fasl entry 301\nrunning ChezScheme/ta6le/bin/ta6le/scheme to build all at once\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/library.ss with output to ChezScheme/ta6le/s/library.ta6le\ncompiling /home/runner/work/racket/racket/racket/src/ChezScheme/s/prims.ss with output to ChezScheme/ta6le/s/prims.ta6le\nException in intern-gensym: unique name \"k950a783bcff0759a346aa5ca-1\" already interned\nfailed\n in build-one\n in loop\n in module->hash\n"
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "id": 128454088417,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6HXW4Q",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128454088417",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128454088417",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:06:01Z",
+      "started_at": "2026-11-07T16:06:03Z",
+      "completed_at": "2026-11-07T16:06:12Z",
+      "name": "plan",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:06:04Z",
+          "completed_at": "2026-11-07T16:06:04Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:06:04Z",
+          "completed_at": "2026-11-07T16:06:10Z"
+        },
+        {
+          "name": "Run python3 - <<'PY'",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:06:10Z",
+          "completed_at": "2026-11-07T16:06:10Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:06:10Z",
+          "completed_at": "2026-11-07T16:06:10Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:06:10Z",
+          "completed_at": "2026-11-07T16:06:10Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128454088417",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020781,
+      "runner_name": "GitHub Actions 1000020781",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128454138645,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6HabFQ",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128454138645",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128454138645",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:06:13Z",
+      "started_at": "2026-11-07T16:06:15Z",
+      "completed_at": "2026-11-07T16:10:58Z",
+      "name": "parents (d533f2e1, d533f2e156d4eddeafe24bd7cc4de87fdc88caeb, ed9bbe777715a8df75cdb84ca2088cdd2a16...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:06:15Z",
+          "completed_at": "2026-11-07T16:06:16Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:06:16Z",
+          "completed_at": "2026-11-07T16:06:21Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:06:21Z",
+          "completed_at": "2026-11-07T16:06:50Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:06:50Z",
+          "completed_at": "2026-11-07T16:06:52Z"
+        },
+        {
+          "name": "Build parent checkpoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T16:06:52Z",
+          "completed_at": "2026-11-07T16:10:50Z"
+        },
+        {
+          "name": "Archive parent state and native action cache",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:10:50Z",
+          "completed_at": "2026-11-07T16:10:54Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:10:54Z",
+          "completed_at": "2026-11-07T16:10:55Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:10:55Z",
+          "completed_at": "2026-11-07T16:10:56Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:10:56Z",
+          "completed_at": "2026-11-07T16:10:56Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:10:56Z",
+          "completed_at": "2026-11-07T16:10:57Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:10:57Z",
+          "completed_at": "2026-11-07T16:10:57Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128454138645",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020782,
+      "runner_name": "GitHub Actions 1000020782",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128454138649,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6HabGQ",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128454138649",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128454138649",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:06:13Z",
+      "started_at": "2026-11-07T16:06:15Z",
+      "completed_at": "2026-11-07T16:09:54Z",
+      "name": "parents (ed9bbe77, ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e, 68a0bc5e8f24fe936b371558ab95fd75acc6...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:06:15Z",
+          "completed_at": "2026-11-07T16:06:16Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:06:16Z",
+          "completed_at": "2026-11-07T16:06:21Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:06:21Z",
+          "completed_at": "2026-11-07T16:06:53Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:06:53Z",
+          "completed_at": "2026-11-07T16:06:54Z"
+        },
+        {
+          "name": "Build parent checkpoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T16:06:54Z",
+          "completed_at": "2026-11-07T16:09:47Z"
+        },
+        {
+          "name": "Archive parent state and native action cache",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:09:47Z",
+          "completed_at": "2026-11-07T16:09:49Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:09:49Z",
+          "completed_at": "2026-11-07T16:09:51Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:09:51Z",
+          "completed_at": "2026-11-07T16:09:52Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:09:52Z",
+          "completed_at": "2026-11-07T16:09:52Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:09:52Z",
+          "completed_at": "2026-11-07T16:09:53Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:09:53Z",
+          "completed_at": "2026-11-07T16:09:53Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128454138649",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020784,
+      "runner_name": "GitHub Actions 1000020784",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128454138663,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6HabJw",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128454138663",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128454138663",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:06:13Z",
+      "started_at": "2026-11-07T16:06:14Z",
+      "completed_at": "2026-11-07T16:09:38Z",
+      "name": "parents (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:06:15Z",
+          "completed_at": "2026-11-07T16:06:15Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:06:15Z",
+          "completed_at": "2026-11-07T16:06:20Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:06:20Z",
+          "completed_at": "2026-11-07T16:06:47Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:06:47Z",
+          "completed_at": "2026-11-07T16:06:49Z"
+        },
+        {
+          "name": "Build parent checkpoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T16:06:49Z",
+          "completed_at": "2026-11-07T16:09:31Z"
+        },
+        {
+          "name": "Archive parent state and native action cache",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:09:31Z",
+          "completed_at": "2026-11-07T16:09:33Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:09:33Z",
+          "completed_at": "2026-11-07T16:09:35Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:09:35Z",
+          "completed_at": "2026-11-07T16:09:36Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:09:36Z",
+          "completed_at": "2026-11-07T16:09:36Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:09:36Z",
+          "completed_at": "2026-11-07T16:09:36Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:09:36Z",
+          "completed_at": "2026-11-07T16:09:36Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128454138663",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020783,
+      "runner_name": "GitHub Actions 1000020783",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128455343514,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6Ij9mg",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128455343514",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343514",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:10:58Z",
+      "started_at": "2026-11-07T16:11:00Z",
+      "completed_at": "2026-11-07T16:11:45Z",
+      "name": "compare (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:11:00Z",
+          "completed_at": "2026-11-07T16:11:01Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:11:01Z",
+          "completed_at": "2026-11-07T16:11:07Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:11:07Z",
+          "completed_at": "2026-11-07T16:11:29Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:11:29Z",
+          "completed_at": "2026-11-07T16:11:32Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T16:11:32Z",
+          "completed_at": "2026-11-07T16:11:33Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:11:33Z",
+          "completed_at": "2026-11-07T16:11:33Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:11:33Z",
+          "completed_at": "2026-11-07T16:11:42Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:11:42Z",
+          "completed_at": "2026-11-07T16:11:43Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:11:43Z",
+          "completed_at": "2026-11-07T16:11:44Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:11:44Z",
+          "completed_at": "2026-11-07T16:11:44Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:11:44Z",
+          "completed_at": "2026-11-07T16:11:44Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128455343514",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020787,
+      "runner_name": "GitHub Actions 1000020787",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128455343527,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6Ij9pw",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128455343527",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343527",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:10:58Z",
+      "started_at": "2026-11-07T16:11:00Z",
+      "completed_at": "2026-11-07T16:15:13Z",
+      "name": "compare (8403ef4c, 8403ef4cd7724d1d6648e2be5307a01e6e1a5759, 048879e36460dc831a4737a2f5967fc3d34f...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:11:01Z",
+          "completed_at": "2026-11-07T16:11:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:11:02Z",
+          "completed_at": "2026-11-07T16:11:07Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:11:07Z",
+          "completed_at": "2026-11-07T16:11:34Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:11:34Z",
+          "completed_at": "2026-11-07T16:11:36Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-11-07T16:11:36Z",
+          "completed_at": "2026-11-07T16:11:36Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-07T16:11:36Z",
+          "completed_at": "2026-11-07T16:11:36Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:11:36Z",
+          "completed_at": "2026-11-07T16:15:08Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:15:08Z",
+          "completed_at": "2026-11-07T16:15:10Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:15:10Z",
+          "completed_at": "2026-11-07T16:15:10Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:15:10Z",
+          "completed_at": "2026-11-07T16:15:11Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:15:11Z",
+          "completed_at": "2026-11-07T16:15:11Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128455343527",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020788,
+      "runner_name": "GitHub Actions 1000020788",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128455343572,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6Ij91A",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128455343572",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343572",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:10:58Z",
+      "started_at": "2026-11-07T16:11:00Z",
+      "completed_at": "2026-11-07T16:16:07Z",
+      "name": "compare (ed9bbe77, ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e, 68a0bc5e8f24fe936b371558ab95fd75acc6...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:11:00Z",
+          "completed_at": "2026-11-07T16:11:01Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:11:01Z",
+          "completed_at": "2026-11-07T16:11:07Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:11:07Z",
+          "completed_at": "2026-11-07T16:11:29Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:11:29Z",
+          "completed_at": "2026-11-07T16:11:31Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-11-07T16:11:31Z",
+          "completed_at": "2026-11-07T16:11:31Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-07T16:11:31Z",
+          "completed_at": "2026-11-07T16:11:31Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:11:31Z",
+          "completed_at": "2026-11-07T16:16:04Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:16:04Z",
+          "completed_at": "2026-11-07T16:16:05Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:16:05Z",
+          "completed_at": "2026-11-07T16:16:06Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:16:06Z",
+          "completed_at": "2026-11-07T16:16:06Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:16:06Z",
+          "completed_at": "2026-11-07T16:16:06Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128455343572",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020790,
+      "runner_name": "GitHub Actions 1000020790",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128455343581,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6Ij93Q",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128455343581",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343581",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:10:58Z",
+      "started_at": "2026-11-07T16:11:00Z",
+      "completed_at": "2026-11-07T16:15:26Z",
+      "name": "compare (d533f2e1, d533f2e156d4eddeafe24bd7cc4de87fdc88caeb, ed9bbe777715a8df75cdb84ca2088cdd2a16...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:11:01Z",
+          "completed_at": "2026-11-07T16:11:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:11:02Z",
+          "completed_at": "2026-11-07T16:11:07Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:11:07Z",
+          "completed_at": "2026-11-07T16:11:41Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:11:41Z",
+          "completed_at": "2026-11-07T16:11:44Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-11-07T16:11:44Z",
+          "completed_at": "2026-11-07T16:11:44Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-07T16:11:44Z",
+          "completed_at": "2026-11-07T16:11:44Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:11:44Z",
+          "completed_at": "2026-11-07T16:15:21Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:15:21Z",
+          "completed_at": "2026-11-07T16:15:23Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:15:23Z",
+          "completed_at": "2026-11-07T16:15:23Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:15:23Z",
+          "completed_at": "2026-11-07T16:15:24Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:15:24Z",
+          "completed_at": "2026-11-07T16:15:24Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128455343581",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020791,
+      "runner_name": "GitHub Actions 1000020791",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128455343585,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6Ij94Q",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128455343585",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343585",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-07T16:10:58Z",
+      "started_at": "2026-11-07T16:11:00Z",
+      "completed_at": "2026-11-07T16:14:14Z",
+      "name": "compare (d533f2e1, d533f2e156d4eddeafe24bd7cc4de87fdc88caeb, ed9bbe777715a8df75cdb84ca2088cdd2a16...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:11:01Z",
+          "completed_at": "2026-11-07T16:11:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:11:02Z",
+          "completed_at": "2026-11-07T16:11:08Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:11:08Z",
+          "completed_at": "2026-11-07T16:11:36Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:11:36Z",
+          "completed_at": "2026-11-07T16:11:39Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T16:11:39Z",
+          "completed_at": "2026-11-07T16:11:41Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:11:41Z",
+          "completed_at": "2026-11-07T16:11:41Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 7,
+          "started_at": "2026-11-07T16:11:41Z",
+          "completed_at": "2026-11-07T16:14:10Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:14:10Z",
+          "completed_at": "2026-11-07T16:14:12Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:14:12Z",
+          "completed_at": "2026-11-07T16:14:12Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:14:12Z",
+          "completed_at": "2026-11-07T16:14:12Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:14:12Z",
+          "completed_at": "2026-11-07T16:14:12Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128455343585",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020789,
+      "runner_name": "GitHub Actions 1000020789",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128455343588,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6Ij95A",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128455343588",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128455343588",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T16:10:58Z",
+      "started_at": "2026-11-07T16:11:00Z",
+      "completed_at": "2026-11-07T16:13:05Z",
+      "name": "compare (ed9bbe77, ed9bbe777715a8df75cdb84ca2088cdd2a16aa1e, 68a0bc5e8f24fe936b371558ab95fd75acc6...",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-07T16:11:01Z",
+          "completed_at": "2026-11-07T16:11:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-07T16:11:02Z",
+          "completed_at": "2026-11-07T16:11:08Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-07T16:11:08Z",
+          "completed_at": "2026-11-07T16:11:32Z"
+        },
+        {
+          "name": "Fetch selected PB payload and build Zuo",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-07T16:11:32Z",
+          "completed_at": "2026-11-07T16:11:34Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v8",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-07T16:11:34Z",
+          "completed_at": "2026-11-07T16:11:37Z"
+        },
+        {
+          "name": "Restore parent state",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-07T16:11:37Z",
+          "completed_at": "2026-11-07T16:11:37Z"
+        },
+        {
+          "name": "Measure target revision",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-07T16:11:37Z",
+          "completed_at": "2026-11-07T16:13:00Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-07T16:13:00Z",
+          "completed_at": "2026-11-07T16:13:02Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-07T16:13:02Z",
+          "completed_at": "2026-11-07T16:13:03Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-07T16:13:03Z",
+          "completed_at": "2026-11-07T16:13:03Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-07T16:13:03Z",
+          "completed_at": "2026-11-07T16:13:03Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128455343588",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": 1000020792,
+      "runner_name": "GitHub Actions 1000020792",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 128456668342,
+      "run_id": 42389568087,
+      "workflow_name": "Chez fixed session base replay",
+      "head_branch": "prototype/chez-fixed-session-ci",
+      "run_url": "https://api.github.com/repos/samth/racket/actions/runs/42389568087",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOAKJ0-s8AAAAd6J00tg",
+      "head_sha": "832b8a2e5b490cbf60282c7a3a7af08121d61c2a",
+      "url": "https://api.github.com/repos/samth/racket/actions/jobs/128456668342",
+      "html_url": "https://github.com/samth/racket/actions/runs/42389568087/job/128456668342",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-11-07T16:16:08Z",
+      "started_at": "2026-11-07T16:16:08Z",
+      "completed_at": "2026-11-07T16:16:07Z",
+      "name": "verify",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/samth/racket/check-runs/128456668342",
+      "labels": [
+        "ubuntu-22.04"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ]
+}

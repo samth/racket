@@ -2,9 +2,9 @@
 """Replay actual Chez revisions through Racket's PB/bootstrap + native CS build.
 
 DESTRUCTIVE within the specified disposable checkout: replaces bundled Chez.
-Both arms include the audited dependency fixes. Only reuse enables the explicit
-CI key, restored state, and the existing native CS action cache. No Chez action
-cache is invented: when its key changes, its workarea is discarded.
+Both arms include the audited dependency fixes. Seeded arms use one literal CI
+base and the native CS action cache. Source invalidation belongs to Zuo; build
+checkpoint compatibility is checked independently of the namespace.
 """
 from pathlib import Path
 import argparse,hashlib,json,os,re,shlex,shutil,subprocess,time
@@ -83,6 +83,15 @@ bootstrap=run('chez-bootstrap',[zuo,'-X',root/'racket/src/zuo/lib','.', '-j',a.j
 assert (cs/'check-bootstrap-same-stamp').is_file()
 area=cs/'ChezScheme/ta6le'
 racket=run('racket-native',[zuo,'-X',root/'racket/src/zuo/lib',root/'.github/scripts/chez-replay-native.zuo','-j',a.jobs,'NATIVE='+str(area)],cwd=native,env=env)
+# Runtime validation uses a shared rktio built outside the timed compiler phases.
+rktio=state/'rktio-shared';rktio.mkdir(exist_ok=True)
+if not (rktio/'Makefile').exists():
+ run('rktio-configure',[root/'racket/src/rktio/configure','--enable-standalone','--prefix='+str(root/'racket')],cwd=rktio,env=env)
+run('rktio-shared',[zuo,'-X',root/'racket/src/zuo/lib','.', 'installed-shared-object'],cwd=rktio,env=env)
+init_args=['false',str(root/'racket/bin/racket'),str(root/'racket/bin/racket'),str(root/'racket/collects'),str(root/'racket/etc'),'','0','false','false','0','']
+smoke_env=dict(env,RACKET_IO_SOURCE_DIR=str(root/'racket/src/cs'))
+run('native-racket-smoke',[area/'bin/ta6le/scheme','-B',area/'boot/ta6le/petite.boot','-B',area/'boot/ta6le/scheme.boot','--script',native/'racket.so',*init_args,'-I','racket/base','-q','-e','(begin (unless (= (+ 20 22) 42) (error "arithmetic")) (let ([h (hash \'x (vector 1 2 3))]) (unless (= (vector-ref (hash-ref h \'x) 1) 2) (error "hash/vector"))) (displayln "native-racket-smoke: ok"))'],env=smoke_env)
+assert 'native-racket-smoke: ok' in (evidence/'native-racket-smoke.log').read_text()
 # Each compiler is executed with its actual loaded boot files for a runtime check.
 smoke=evidence/'smoke.ss';smoke.write_text('''(import (chezscheme))
 (unless (= (+ 20 22) 42) (error 'smoke "arithmetic"))
@@ -106,7 +115,7 @@ expect_unchanged=next((r.get('expect_unchanged',False) for r in selection['revis
 if a.mode in ('reuse','rebuild'):
  assert seed_matches, 'The fixed namespace must survive source changes'
  assert context_matches, 'The comparison requires matching build/toolchain context'
- if expect_unchanged:
+ if expect_unchanged and a.mode=='reuse':
   assert boots==parent_meta['boot_hashes']
   assert artifacts==parent_meta['native_hashes']
   assert summary['compiler_sha256']==parent_meta['compiler_sha256']
@@ -116,16 +125,30 @@ if a.mode in ('reuse','rebuild'):
  if a.mode=='rebuild':
   assert bootstrap['scheme_compilations']>0 and bootstrap['full_scheme_passes']>0
   assert a.reference_dir, 'Fresh validation requires a measured incremental target'
-  candidates=[json.loads(p.read_text()) for p in a.reference_dir.rglob('summary.json')]
-  matches=[r for r in candidates if r['revision']==revision and r['mode']=='reuse']
+  candidates=[(p,json.loads(p.read_text())) for p in a.reference_dir.rglob('summary.json')]
+  matches=[(p,r) for p,r in candidates if r['revision']==revision and r['mode']=='reuse']
   assert len(matches)==1, 'Expected one incremental target reference'
-  reference=matches[0]
+  reference_path,reference=matches[0]
+  pairs=[]
+  for name,h in reference['native_hashes'].items():
+   other=reference_path.parent/'native-outputs'/name
+   assert other.is_file() and sha(other)==h, 'Missing or changed reference output: '+name
+   pairs.append((str(other.resolve()),str(native/name)))
+  compare=evidence/'compare-native.ss'
+  compare.write_text('(import (chezscheme))\n'+''.join('(unless (#%$fasl-file-equal? '+json.dumps(x)+' '+json.dumps(y)+' #t #t) (error \'equivalence "mismatch"))\n' for x,y in pairs))
+  run('native-fasl-equivalence',[area/'bin/ta6le/scheme','-B',area/'boot/ta6le/petite.boot','-B',area/'boot/ta6le/scheme.boot','--script',compare],env=env)
   summary['incremental_reference']=reference['name']
+  summary['native_byte_identical']=artifacts==reference['native_hashes']
+  summary['native_byte_matches']=[n for n in artifacts if artifacts[n]==reference['native_hashes'][n]]
+  summary['native_comparison']='Chez fasl-file-equal?; code/data/sharing checked with private gensym renaming'
   summary['equivalence']={
    'compiler':summary['compiler_sha256']==reference['compiler_sha256'],
    'boots':boots==reference['boot_hashes'],
-   'native':artifacts==reference['native_hashes']}
+   'native':True}
   assert all(summary['equivalence'].values()), summary['equivalence']
+if a.mode=='reuse':
+ out=evidence/'native-outputs';out.mkdir()
+ for name in artifacts:shutil.copyfile(native/name,out/name)
 (evidence/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 if a.mode=='prepare':
  (state/'parent.json').write_text(json.dumps(summary,indent=2)+'\n')

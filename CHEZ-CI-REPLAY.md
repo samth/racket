@@ -32,7 +32,7 @@ with unchanged executable/boot/native hashes. For shared-source changes there is
 no assertion of a speedup or unchanged compiler bytes: affected work must rebuild.
 An independent verification job discards all Chez/configure build state and forces
 a fresh seeded target at the same paths. It compares the resulting executable,
-all eight boot/header files and all 19 native outputs with that target's measured
+all eight boot/header files and the code/data/sharing of all 19 native outputs with that target's measured
 incremental arm, using the exact same fixed base. It must perform both bootstrap
 passes; it cannot pass by retaining old Chez outputs.
 
@@ -46,8 +46,9 @@ Reports distinguish bootstrap/native build time from whole target-job time,
 including source preparation and artifact transfer. Parent cache preparation is
 prior-run cost, recorded separately. One pair per commit is subject to runner
 noise; executed compiler actions and fresh/incremental equivalence are stronger
-evidence than small timing differences. Package setup, collection compilation,
-full desktop tests, macOS and iOS are not measured here. No whole-PR speedup is
+evidence than small timing differences. Package setup, full desktop tests, macOS and iOS are not measured here. The
+minimal racket/base runtime smoke may compile collections as verification work,
+separate from the timed compiler phases. No whole-PR speedup is
 inferred from these build-only experiments. Default CI and normal Chez session
 behavior remain unchanged.
 
@@ -70,3 +71,18 @@ iteration are deliberately not cyclic inputs. No namespace derivation changes.
 The real shared-compiler commit remains a required warm-versus-fresh regression,
 including independent native compilation when the parent's native cache misses.
 The initial failed run and its diagnostics are retained as evidence.
+
+The final verification imports the already-built parent checkpoints from run
+42392234841 (identical compiler/namespace/dependency code), rather than warming
+them again. Their original preparation times and source revisions remain in the
+JSON with checkpoint_origin_run; consumers independently verify the complete
+compiler/platform/configuration compatibility identity before reusing build state.
+
+Compiler and eight boot/header comparisons remain byte for byte. Independently
+compiled native Racket files can differ in private gensym unique names. The native
+comparison uses Chez's own fasl-file-equal? checker, retaining code, data and sharing
+checks while allowing private gensym renaming. Raw hashes and exact-byte match
+counts are recorded separately. The warm arm uploads native reference outputs
+for that check. Each arm also builds a shared rktio outside the timed compiler
+phases and executes its actual Racket core against racket/base with arithmetic
+and hash/vector checks. Added verification/artifact work is included in job times.

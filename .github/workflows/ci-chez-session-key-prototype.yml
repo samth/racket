@@ -1,0 +1,47 @@
+name: CI Chez session key prototype
+on:
+  workflow_dispatch:
+    inputs:
+      seeded:
+        description: Use an explicit deterministic Chez build session key
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.os == 'ubuntu-22.04' && 'racket/racket-ci:latest' || null }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch pinned PB seeds and build Zuo
+        run: make fetch-pb
+      - name: Enable the fixed CI session key
+        if: ${{ inputs.seeded }}
+        shell: bash
+        run: |
+          key=$(cat .github/chez-session-key)
+          echo "RACKET_CHEZ_SESSION_KEY=$key" >> "$GITHUB_ENV"
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$RUNNER_OS" == macOS ]]; then cpus=$(sysctl -n hw.physicalcpu); else cpus=$(nproc); fi
+          make CPUS="$cpus" PKGS=""
+      - name: Fingerprint bootstrap and native boot artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          racket/src/build/bin/zuo .github/scripts/chez-boot-manifest.zuo \
+            racket/src/build/cs/c/ChezScheme | tee chez-boot-manifest.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chez-boot-manifest-${{ matrix.os }}-${{ inputs.seeded && 'seeded' || 'default' }}
+          path: chez-boot-manifest.txt
+      - run: echo "${GITHUB_WORKSPACE}/racket/bin" >> "$GITHUB_PATH"
+      - name: Test
+        run: bash .github/scripts/run-racket-tests.sh

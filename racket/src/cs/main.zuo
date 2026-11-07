@@ -179,6 +179,7 @@
   (define linklet-srcs
     (map (lambda (name) (at-source "linklet" name))
          '("version.ss"
+           "trace.ss"
            "read.ss"
            "write.ss"
            "check.ss"
@@ -251,7 +252,8 @@
                                      (hash-ref (runtime-env) 'env)))))
 
   (define (library-target dest src import-deps more-srcs)
-    `[:target ,dest (,src ,@more-srcs ,@import-deps ,@compile-file-deps)
+    `[:target ,(if xpatch dest (list dest (path-replace-extension dest ".wpo")))
+              (,src ,@more-srcs ,@import-deps ,@compile-file-deps)
               ,(lambda (path token)
                  (compile-file src dest import-deps))])
 
@@ -287,7 +289,7 @@
   (mkdir-p (at-dir "compiled"))
 
   (make-targets
-   `([:target ,racket.so (,main.so ,@compile-file-deps)
+   `([:target ,racket.so (,main.so ,@main-deps ,@compile-file-deps)
               ,(lambda (path token)
                  (if wpo?
                      (compile-file main.so path (list (at-dir "main.wpo")) #t)
@@ -312,7 +314,8 @@
                       (list regexp.scm))
 
      ,(library-target io.so (at-source "io.sls") io-deps
-                      (list io.scm (at-source "io/terminal.ss")))
+                      (list io.scm (at-source "io/terminal.ss")
+                            (at-source "../rktio/rktio.rktl")))
 
      ,(library-target thread.so (at-source "thread.sls") thread-deps
                       (list thread.scm))

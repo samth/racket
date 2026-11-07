@@ -1,0 +1,15 @@
+#lang zuo
+(define args (hash-ref (runtime-env) 'args))
+(unless (= (length args) 1) (error "usage: chez-boot-manifest.zuo CHEZ_BUILD_ROOT"))
+(define root (path->complete-path (car args)))
+(define names '("petite.boot" "scheme.boot" "scheme.h" "equates.h"
+                "gc-ocd.inc" "gc-oce.inc" "gc-par.inc" "heapcheck.inc"))
+(define (walk relative)
+  (define path (build-path root relative))
+  (if (directory-exists? path)
+      (apply append (map (lambda (name) (walk (build-path relative name))) (sort (ls path) string<?)))
+      (if (member (cdr (split-path path)) names)
+          (list (~a (string-sha256 (file->string path)) "  " relative)) '())))
+(define entries (walk "."))
+(unless (pair? entries) (error "no Chez boot artifacts found" root))
+(for-each displayln entries)

@@ -21,6 +21,17 @@
   (define config (config-file->hash (at-dir "Makefile") vars))
   (define (lookup k [default ""]) (hash-ref config k default))
 
+  (define (config-input name keys)
+    (input-data-target name (map (lambda (k) (list k (lookup k))) keys)))
+  (define c-compile-input
+    (config-input 'cs-c-compile '(CC CPPFLAGS CFLAGS PBCHUNK_MODE MACH TARGET_MACH)))
+  (define c-link-input
+    (config-input 'cs-c-link '(CC CFLAGS LDFLAGS LIBS LINK_DYNAMIC POST_LINKER OSX MACLIBRKT_LINK_MODE)))
+  (define scheme-input
+    (input-data-target 'cs-scheme-command
+                       (map (lambda (k) (list k (lookup k)))
+                            '(SCHEME SCHEME_DIR MACH TARGET_MACH CROSS_MODE
+                              BOOT_COMPRESS_COMP))))
   (define host-m (lookup 'MACH))
   (define m (hash-ref config 'TARGET_MACH host-m))
 
@@ -142,7 +153,7 @@
 
   (define main-deps
     (append
-     (list (at-source "main.c")
+     (list c-compile-input (at-source "main.c")
            (at-source "boot.h")
            (at-dir "cs_config.h")
            (at-source "../../start/config.inc")
@@ -490,7 +501,7 @@
                                                      embed+boot-deps)
                                                ,(input-data-target 'mac-fw mac-fw?)
                                                ,@entitlements
-                                               ,link-config)
+                                               ,link-config ,c-link-input)
                       ,(lambda (path token)
                          (cond
                            [mac?
@@ -524,7 +535,7 @@
                                         ,@(if windows?
                                               (list MemoryModule.o dll_via_temp.o res.o)
                                               '())
-                                        ,link-config)
+                                        ,link-config ,c-link-input)
                       ,(lambda (path token)
                          (define dest_exe (cond
                                             [(and mac-fw? (not gui?) codesign-via-racket? (not cross?))
@@ -611,7 +622,7 @@
                           (post-linker gracketcs)
                           (restore-signature gracketcs))])])
 
-       [:target ,framework (,@boot-objs ,@boot-files)
+       [:target ,framework (,@boot-objs ,@boot-files ,c-link-input)
                 ,(lambda (path token)
                    (mkdir-p (at-dir framework-dir))
                    (c-compile framework
@@ -638,7 +649,7 @@
                    (vfasl scheme-chunked.boot "scheme.boot" '("petite"))
                    (vfasl racket-chunked.boot "racket.boot" '("petite" "scheme")))]
 
-       [:target ,libracketcsxxx_RAW.dll (,@boot-objs ,libres.o ,@mingw-to-ms-link-libraries-deps)
+       [:target ,libracketcsxxx_RAW.dll (,@boot-objs ,c-link-input ,libres.o ,@mingw-to-ms-link-libraries-deps)
                 ,(lambda (path token)
                    (c-compile libracketcsxxx_RAW.dll
                               (append (map target->path boot-objs)
@@ -670,7 +681,11 @@
                 ,(lambda (grmain.o token)
                    (compile-main grmain.o (at-source "grmain.c")))]
 
-       [:target ,boot.o (,(at-source "boot.c")
+       [:target ,boot.o (,c-compile-input
+                         ,(at-source "api.h")
+                         ,(at-source "../../rktio/rktio.h")
+                         ,(at-dir CS m "boot" m "scheme.h")
+                         ,(at-source "boot.c")
                          ,(at-source "../../rktio/rktio.inc")
                          ,(at-source "../../start/self_exe.inc")
                          ,(at-source "../../ChezScheme/c/self-exe.c")
@@ -689,19 +704,19 @@
                                                              rktio-dir)])
                                 config)))]
 
-       [:target ,MemoryModule.o (,(at-source "../../start/MemoryModule.c"))
+       [:target ,MemoryModule.o (,c-compile-input ,(at-source "../../start/MemoryModule.c"))
                 ,(lambda (path token)
                    (c-compile MemoryModule.o
                               (at-source "../../start/MemoryModule.c")
                               config))]
 
-       [:target ,dll_via_temp.o (,(at-source "../../start/dll_via_temp.c"))
+       [:target ,dll_via_temp.o (,c-compile-input ,(at-source "../../start/dll_via_temp.c"))
                 ,(lambda (path token)
                    (c-compile dll_via_temp.o
                               (at-source "../../start/dll_via_temp.c")
                               config))]
 
-       [:target ,racket.boot (,(find-target "racket.so" cs-targets))
+       [:target ,racket.boot (,(find-target "racket.so" cs-targets) ,(at-source "convert-to-boot.ss") ,scheme-input)
                 ,(lambda (path token)
                    (scheme "--script" (at-source "convert-to-boot.ss")
                            boot-compress-flags
@@ -816,22 +831,22 @@
 
        ;; used to double-check that a pb-based build produced boot files that
        ;; were already at a fixed point
-       [:target ,check-bootstrap-same-stamp (,petite.boot ,scheme.boot)
+       [:target ,check-bootstrap-same-stamp (,petite.boot ,scheme.boot ,(at-source "same-boot.ss") ,scheme-input)
                 ,(lambda (path token)
                    (scheme "--script" (at-source "same-boot.ss") (at-dir CS "boot" m "petite.boot") petite.boot)
                    (scheme "--script" (at-source "same-boot.ss") (at-dir CS "boot" m "scheme.boot") scheme.boot)
                    (fd-close (fd-open-output check-bootstrap-same-stamp :truncate)))]
 
-       [:target ,petite-v.boot (,petite-chunked.boot)
+       [:target ,petite-v.boot (,petite-chunked.boot ,(at-source "to-vfasl.ss") ,scheme-input)
                 ,(lambda (path target)
                    (scheme "--script" (at-source "to-vfasl.ss") boot-compress-flags xpatch-args
                            petite-chunked.boot petite-v.boot))]
-       [:target ,scheme-v.boot (,scheme-chunked.boot)
+       [:target ,scheme-v.boot (,scheme-chunked.boot ,(at-source "to-vfasl.ss") ,scheme-input)
                 ,(lambda (path target)
                    (scheme "--script" (at-source "to-vfasl.ss") boot-compress-flags xpatch-args
                            scheme-chunked.boot scheme-v.boot
                            "petite"))]
-       [:target ,racket-v.boot (,racket-chunked.boot)
+       [:target ,racket-v.boot (,racket-chunked.boot ,(at-source "to-vfasl.ss") ,scheme-input)
                 ,(lambda (path target)
                    (scheme "--script" (at-source "to-vfasl.ss") boot-compress-flags xpatch-args
                            racket-chunked.boot racket-v.boot

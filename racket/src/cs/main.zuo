@@ -33,9 +33,13 @@
   
   (define compile-file-deps
     (append
-     (list (input-data-target 'compile-config (list unsafe? debug? compress? slsp-suffix)))
+     (list scheme
+           (input-data-target 'compile-config
+                              (list unsafe? debug? compress? slsp-suffix scheme-args
+                                    (lookup 'CONFIGURE_RACKET_SO_COMPILE))))
      extra-compile-file-deps
-     (map at-source '("compile-file.ss" "include.ss" "place-register.ss"))))
+     (if xpatch (list xpatch) '())
+     (map at-source '("compile-file.ss" "main.zuo" "../lib.zuo"))))
 
   (define chezpart.so
     (at-dir (~a "chezpart" cso)))
@@ -111,7 +115,6 @@
             "intmap.ss"
             "patricia.ss"
             "hamt-stencil.ss"
-            "hamt-vector.ss"
             "hash.ss"
             "datum.ss"
             "lock.ss"
@@ -179,15 +182,13 @@
   (define linklet-srcs
     (map (lambda (name) (at-source "linklet" name))
          '("version.ss"
-           "trace.ss"
            "read.ss"
            "write.ss"
            "check.ss"
            "performance.ss"
            "annotation.ss"
-           "compress.ss"
            "config.ss"
-           "cross-compile.ss")))
+           "cross-compile.ss" "trace.ss")))
 
   (define thread.scm (at-source "schemified/thread.scm"))
   (define io.scm (at-source "schemified/io.scm"))
@@ -215,14 +216,8 @@
                                    (hash-ref (runtime-env) 'env))
                         'exec? (hash-ref (runtime-env) 'can-exec?))))
 
-  ;; Opt in only with an explicit identity for the runner image/sysroot and
-  ;; toolchain. Executable and boot bytes are additional declared inputs.
-  (define action-mode?
-    (and (not xpatch)
-         (equal? (cdr (or (assoc "ZUO_CS_ACTIONS" (hash-ref (runtime-env) 'env))
-                         '("ZUO_CS_ACTIONS" . ""))) "1")))
-  (define (compile-args src dest loads whole-program?)
-    (append scheme-args
+  (define (compile-file src dest loads [whole-program? #f])
+    (define args (append scheme-args
                          (list "--script"
                                (at-source "compile-file.ss"))
                          (if unsafe?
@@ -247,44 +242,46 @@
                                src
                                dest)
                          loads))
-  (define config-env-vars
+    (define config-env-vars
       (map (lambda (s)
              (define l (string-split s "="))
              (cons (car l) (cadr l)))
            (string-split (or (lookup 'CONFIGURE_RACKET_SO_COMPILE) ""))))
-  (define (compile-file src dest loads [whole-program? #f])
-    (process/wait scheme (compile-args src dest loads whole-program?) (hash
+    (process/wait scheme args (hash
                                'env (append
                                      config-env-vars
                                      (hash-ref (runtime-env) 'env)))))
 
-  (define (compile-rule deps src dest loads whole-program?)
-    (define env (hash-ref (runtime-env) 'env))
-    (define toolchain (assoc "ZUO_CS_TOOLCHAIN_ID" env))
-    (unless (and toolchain (not (equal? (cdr toolchain) "")))
-      (error "ZUO_CS_ACTIONS requires ZUO_CS_TOOLCHAIN_ID (runner image, sysroot, platform, toolchain)"))
-    (command-rule
-     deps
-     (hash 'argv (cons (path->complete-path scheme) (compile-args src dest loads whole-program?))
-           'environment (append config-env-vars
-                                (filter (lambda (p) (not (assoc (car p) config-env-vars)))
-                                        (list (cons "PATH" (cdr (or (assoc "PATH" env) '("PATH" . ""))))
-                                              '("LANG" . "C") '("LC_ALL" . "C") '("TZ" . "UTC"))))
-           'toolchain (cdr toolchain)
-           'rule-files (list (at-source "main.zuo") (at-source "../lib.zuo")))))
+  (define library-targets (variable 'library-targets))
+  (define library-inputs
+    (foldl (lambda (path inputs)
+             (hash-set inputs (string->symbol path)
+                       (output-file-target path
+                                           (lambda () (find-target path (variable-ref library-targets))))))
+           (hash)
+           (append main-deps (list main.so)
+                   (map (lambda (p) (path-replace-extension p ".wpo"))
+                        (append main-deps (list main.so))))))
+  (define (library-input path)
+    (if xpatch path (hash-ref library-inputs (string->symbol path))))
 
   (define (library-target dest src import-deps more-srcs)
-    `[:target ,(if xpatch
-                    dest ; cross compilation has a different output contract
-                    (list dest (path-replace-extension dest ".wpo")))
-              (,src ,@more-srcs ,@import-deps ,@compile-file-deps)
-              ,(if action-mode?
-                   (lambda (path token deps) (compile-rule deps src dest import-deps #f))
-                   (lambda (path token) (compile-file src dest import-deps)))
-              ,@(if action-mode? '(:rule) '())])
+    (define stub (file-name-from-path src))
+    (define stub-includes
+      (append (if (member stub '("thread.sls" "io.sls" "regexp.sls" "schemify.sls" "expander.sls"))
+                  (list (at-source "include.ss")) '())
+              (if (member stub '("thread.sls" "io.sls" "regexp.sls" "expander.sls"))
+                  (list (at-source "place-register.ss")) '())))
+    (define stamp (~a dest ".compile-stamp"))
+    `[:target ,(if xpatch dest (list stamp dest (path-replace-extension dest ".wpo")))
+              (,src ,@more-srcs ,@stub-includes ,@(map library-input import-deps) ,@compile-file-deps)
+              ,(lambda (path token)
+                 (compile-file src dest import-deps)
+                 (unless xpatch
+                   (fd-close (fd-open-output stamp :truncate))))])
 
   (define (demo-target name name.so name-deps name.ss . more-deps)
-    `[:target ,name (,name.so ,@more-deps)
+    `[:target ,name (,(library-input name.so) ,@more-deps)
               ,(lambda (token)
                  (process/wait scheme name-deps name.so (at-source "demo" name.ss)))])
 
@@ -314,16 +311,36 @@
 
   (mkdir-p (at-dir "compiled"))
 
-  (make-targets
-   `([:target ,racket.so (,main.so ,@main-deps ,@compile-file-deps)
-              ,(if (and action-mode? wpo?)
-                   (lambda (path token deps)
-                     (compile-rule deps main.so path (list (at-dir "main.wpo")) #t))
-                   (lambda (path token)
-                     (if wpo?
-                         (compile-file main.so path (list (at-dir "main.wpo")) #t)
-                         (cat (append main-deps (list main.so)) path))))
-              ,@(if (and action-mode? wpo?) '(:rule) '())]
+  ;; Whole-program lookup checks source presence even with timestamp checks
+  ;; disabled. Keep that metadata distinct from source contents and from the
+  ;; compiled .so siblings. Variant WPO files, if supplied, are content inputs.
+  (define library-names '("chezpart" "rumble" "thread" "io" "regexp" "schemify" "linklet" "expander"))
+  (define wpo-source-paths
+    (apply append
+           (map (lambda (name)
+                  (map (lambda (suffix) (at-source (~a name suffix)))
+                       '(".chezscheme.sls" ".ss" ".sls" ".scm" ".sch")))
+                library-names)))
+  (define wpo-variants
+    (map (lambda (name) (at-dir (~a name ".chezscheme.wpo"))) library-names))
+  (define wpo-metadata
+    (input-data-target 'wpo-search-paths
+                       (map (lambda (p) (list p (file-exists? p)))
+                            (append wpo-source-paths wpo-variants))))
+  (define targets
+    (make-targets
+   `([:target ,racket.so (,@(if (and wpo? (not xpatch))
+                               (append (map (lambda (p) (library-input (path-replace-extension p ".wpo")))
+                                            (append main-deps (list main.so)))
+                                       (list wpo-metadata)
+                                       (filter file-exists? wpo-variants))
+                               (if wpo? (list main.so)
+                                   (map library-input (append main-deps (list main.so)))))
+                         ,(input-data-target 'whole-program? wpo?) ,@compile-file-deps)
+              ,(lambda (path token)
+                 (if wpo?
+                     (compile-file main.so path (list (at-dir "main.wpo")) #t)
+                     (cat (append main-deps (list main.so)) path)))]
 
      ,(library-target main.so (at-source "main.sps") main-deps
                       (list (at-source "main/help.ss")
@@ -337,7 +354,7 @@
                       linklet-srcs)
 
      ,(library-target schemify.so (at-source "schemify.sls") schemify-deps
-                      (list* schemify.scm known.scm
+                      (list* schemify.scm
                              primitive-tables))
 
      ,(library-target regexp.so (at-source "regexp.sls") regexp-deps
@@ -356,7 +373,7 @@
      ,(library-target chezpart.so (at-source "chezpart.sls") '()
                       '())
 
-     [:target run (,main.so ,rktio.so)
+     [:target run (,(library-input main.so) ,rktio.so)
               ,(lambda (token . args)
                  (run-racket main.so args))
               :quiet
@@ -394,11 +411,11 @@
                [:target ,thread.scm (,thread.rktl ,@convert-deps) ,(converter thread.rktl) :precious]))
            '())
 
-     [:target setup (,main.so ,rktio.so)
+     [:target setup (,(library-input main.so) ,rktio.so)
               ,(lambda (token . args)
                  (run-racket main.so "-l-" "setup" args))
               :command]
-     [:target setup-v (,main.so ,rktio.so)
+     [:target setup-v (,(library-input main.so) ,rktio.so)
               ,(lambda (token . args)
                  (run-racket main.so "-W" "info@compiler/cm info@linklet debug@GC:major error"
                              "-l-" "setup" "-j" "1" args))
@@ -424,3 +441,5 @@
      [:db-dir ,(at-dir "compiled")]
 
      #;(end-of-make-targets))))
+  (variable-set! library-targets targets)
+  targets)

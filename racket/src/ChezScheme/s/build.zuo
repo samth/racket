@@ -5,7 +5,7 @@
                   [targets-at examples-targets-at]))
 
 (provide-targets targets-at)
-(provide all-src-names)
+(provide all-src-names all-src-names-for-machine)
 
 (define default-options
   (hash
@@ -137,11 +137,22 @@
 ;; used externally as dependencies
 (define all-src-names
   (append base-src-names
+          compiler-names
           macro-src-names
           other-src-names
           type-src-names
           cpnanopass-src-names
           unicode-src-names))
+
+(define nanopass-src-names
+  (cons "../nanopass/nanopass.ss"
+        (map (lambda (name) (build-path "../nanopass/nanopass" name))
+             (ls (at-source "../nanopass/nanopass")))))
+(define (all-src-names-for-machine m)
+  (define machine-files (get-machine-files m (m->arch m)))
+  (append (machine-source-names all-src-names m)
+          (cons (caar machine-files) (cdr machine-files))
+          nanopass-src-names))
 
 ;; The `compiler-compiler-options` argument overrides certain `var` and config-file
 ;; options for building preamble files, which is useful for compiling a cross-compiler
@@ -156,8 +167,9 @@
                                         (hash-keys compiler-compiler-options))
                                  default-options))
 
-  (define options-t (input-data-target 'options (cons (relevant-config opt default-options)
-                                                      compiler-compiler-options)))
+  (define options-t (input-data-target 'options (list (relevant-config opt default-options)
+                                                      compiler-compiler-options
+                                                      (lookup 'sessionKey))))
 
   (define m (lookup 'm))
   (define host-m (or (lookup 'hostm) m))
@@ -166,7 +178,26 @@
                               ""
                               ((make-at-dir (at-dir "..")) (or host-workarea ".")))))
   (define host-scheme (lookup 'hostscheme))
+  ;; Preambles and Nanopass are compiled by the incoming bootstrap compiler.
+  ;; Track the executable and immutable seed boots, not the active boots that
+  ;; bootstrap replaces.
+  (define seed-m (or (lookup 'mboot) m))
+  (define incoming-boot-dir (build-path host-workarea ".." "boot" seed-m))
+  (define seed-dir
+    (cond
+      [(lookup 'SCHEMEHEAPDIRS) (path->complete-path (lookup 'SCHEMEHEAPDIRS))]
+      [(not (equal? m host-m)) (build-path host-workarea "boot" host-m)]
+      [(directory-exists? incoming-boot-dir) incoming-boot-dir]
+      [else (at-source "../boot" seed-m)]))
+  (define bootstrap-compiler-inputs
+    (append (or (lookup 'bootstrapCompilerFiles)
+                (scheme-input-files host-scheme host-workarea host-m seed-dir))
+            (list (input-data-target 'bootstrap-command
+                                     (list host-scheme (path->complete-path host-workarea) host-m
+                                           (lookup 'SCHEMEHEAPDIRS) (lookup 'sessionKey))))))
   (define arch (m->arch m))
+  (define machine-cpnanopass-src-names
+    (machine-source-names cpnanopass-src-names m))
 
   (define mach-src+dep+more-srcs (get-machine-files m arch))
   (define machine-def-inputs (map at-source (cons (caar mach-src+dep+more-srcs)
@@ -201,7 +232,7 @@
     (map at-source type-src-names))
 
   (define cpnanopass-srcs
-    (map at-source cpnanopass-src-names))
+    (map at-source machine-cpnanopass-src-names))
 
   (define unicode-srcs
     (map at-source unicode-src-names))
@@ -221,7 +252,7 @@
                  other-src-names)))
 
   (define all-srcs
-    (append base-srcs
+    (append machine-def-inputs (map at-source nanopass-src-names) base-srcs
             compiler-srcs
             included-srcs
             other-srcs))
@@ -338,7 +369,7 @@
   ;; to compile the compiler
   (define (compilation-preamble-target .so deps loads)
     (define .ss (at-source (path-replace-extension (file-name-from-path .so) ".ss")))
-    `[:target ,.so (,.ss ,@deps ,@loads)
+    `[:target ,.so (,.ss ,@bootstrap-compiler-inputs ,@deps ,@loads)
               ,(lambda (path token)
                  (run-scheme path
                              (make-compiler-compile-script .ss path 'normal)
@@ -469,7 +500,7 @@
 
        ;; The `bootstrap` target uses a "bootstrap" stamp file to trigger a separate `build` run,
        ;; and it iterates up to three times to find a fixpoint
-       [:target ,(at-dir "bootstrap") (,options-t ,machine.def ,@all-srcs)
+       [:target ,(at-dir "bootstrap") (,options-t ,machine.def ,@bootstrap-compiler-inputs ,@all-srcs)
                 ,(lambda (path token)
                    (look-for-fixpoint 3 (lambda () (build (find-target "bootall" the-targets) token)))
                    (build (map (lambda (file) (find-target file the-targets))
@@ -565,10 +596,14 @@
 
        ,(compilation-preamble-target mkgc.so type-srcs
                                      (list cmacros.so priminfo.so primvars.so env.so mkheader.so))
-       [:target ,nanopass-outputs ,(cons nanopass.ss
+       [:target ,nanopass-outputs ,(append bootstrap-compiler-inputs
+                                    (cons nanopass.ss
                                     (let ([np-dir (at-source "../nanopass/nanopass")])
-                                      (map (lambda (p) (build-path np-dir p)) (ls np-dir))))
+                                      (map (lambda (p) (build-path np-dir p)) (ls np-dir)))))
                 ,(lambda (path token)
+                   ;; Chez's imported-library timestamp checks do not track the
+                   ;; compiler or its boot inputs. Rebuild the complete output group.
+                   (for-each rm* nanopass-outputs)
                    (run-scheme path
                                (make-compiler-compile-script nanopass.ss path 'library)
                                (list "--compile-imported-libraries")))]
@@ -601,8 +636,8 @@
        ,(include-dep "strip" (list "strip-types.ss"))
        ,(include-dep "vfasl" (list "strip-types.ss"))
        ,(include-dep "pbchunk" (list "strip-types.ss"))
-       ,(include-dep "cpnanopass" cpnanopass-src-names)
-       ,(include-dep "cpprim" cpnanopass-src-names)
+       ,(include-dep "cpnanopass" machine-cpnanopass-src-names)
+       ,(include-dep "cpprim" machine-cpnanopass-src-names)
 
        [:target ,petite.boot ,(add-patchfile base-objs)
                 ,(lambda (petite.boot token)

@@ -12,16 +12,25 @@
                        vars)))
   (define (lookup key) (hash-ref config key #f))
 
-  ;; Configuration is an input, even when captured by a build procedure.
-  (define config-input
-    (input-data-target 'rktio-configuration
-                       (map (lambda (k) (list k (hash-ref config k)))
-                            (sort (hash-keys config)
-                                  (lambda (a b) (string<? (~s a) (~s b)))))))
+  ;; Each recipe records the command fields it actually uses. Linker and
+  ;; installation settings must not invalidate C compilation.
+  (define (configuration name keys)
+    (input-data-target name (map (lambda (k) (list k (lookup k))) keys)))
   (define rule-inputs
-    (list config-input (at-source "build.zuo")
-          (at-source "../lib.zuo")
+    (list (at-source "build.zuo") (at-source "../lib.zuo")
           (at-source "../zuo/lib/zuo/c.zuo")))
+  (define compile-input (configuration 'rktio-compile '(CC CPPFLAGS CFLAGS)))
+  (define link-input (configuration 'rktio-link '(CC RKTLINKER CFLAGS LDFLAGS LIBS)))
+  (define archive-input
+    (input-data-target 'rktio-archive
+                       (list (shell-subst (or (and (not (equal? (lookup 'AS_STANDALONE) "t"))
+                                                   (lookup 'STATIC_AR))
+                                              (lookup 'AR)
+                                              (if msvc? "lib.exe" "ar"))
+                                          config)
+                             (lookup 'ARFLAGS)
+                             (and (equal? (lookup 'AS_STANDALONE) "t")
+                                  (list (lookup 'LDFLAGS) (lookup 'LIBS))))))
 
   (define lto (or (lookup 'LTO) (if msvc?
                                     "obj"
@@ -104,7 +113,7 @@
   (make-targets
    `([:target default_rktio (,librktio.a) ,void]
 
-     [:target ,librktio.a (,@objs ,@rule-inputs)
+     [:target ,librktio.a (,@objs ,archive-input ,@rule-inputs)
               ,(lambda (path token)
                  (c-ar path
                        (if standalone?
@@ -122,7 +131,7 @@
 
      ,@(map (lambda (name obj)
               (let ([src (at-source name)])
-                `[:target ,obj (,src ,@headers ,@rule-inputs)
+                `[:target ,obj (,src ,@headers ,compile-input ,@rule-inputs)
                           ,(lambda (path token)
                              (c-compile obj src (config-include config
                                                                 (at-dir ".")
@@ -132,7 +141,7 @@
 
      [:target demo (,rktio_demo) ,void]
 
-     [:target ,rktio_demo (,demo.obj ,librktio.a ,@rule-inputs)
+     [:target ,rktio_demo (,demo.obj ,librktio.a ,link-input ,@rule-inputs)
               ,(lambda (path token)
                  (c-link path (list demo.obj librktio.a)
                          (hash-set config 'CC
@@ -140,7 +149,7 @@
                                        (hash-ref config 'CC #f)))))]
                                        
 
-     [:target ,demo.obj (,demo.c ,@headers ,@rule-inputs)
+     [:target ,demo.obj (,demo.c ,@headers ,compile-input ,@rule-inputs)
               ,(lambda (path token)
                  (c-compile path demo.c (config-include config
                                                         (at-dir ".")

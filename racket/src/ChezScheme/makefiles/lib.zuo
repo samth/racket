@@ -1,6 +1,8 @@
 #lang zuo
 
-(provide cp/ln
+(provide scheme-input-files
+         output-file-target
+         cp/ln
          m->arch
          define-values
          hash-set*
@@ -245,3 +247,30 @@
                    (equal? m "any"))
          (error "not a recognized machine name" m))]
       [else (loop (cdr lines))])))
+
+;; Ensure that a multi-output producer is complete, but depend on this file's
+;; bytes only. The producer must have a different primary path. In particular,
+;; changing an archive must not invalidate compilation that uses only a header.
+(define (output-file-target path producer)
+  (target path
+          (lambda (path token)
+            (build/no-dep (producer) token)
+            (define sha (file-sha256 path #f))
+            (rule '() (lambda () sha) sha))
+          (hash 'eager? #t)))
+
+;; Match make-run-scheme's executable selection. Native bootstrapping records
+;; immutable seed boots; a cross compiler can use its host's active boot pair.
+(define (scheme-input-files command workarea m seed-dir)
+  (if command
+      (let ([args (shell->strings command #t)])
+        (cons (find-executable-path (car args))
+              (let loop ([args (cdr args)])
+                (cond
+                  [(null? args) '()]
+                  [(and (equal? (car args) "-B") (pair? (cdr args)))
+                   (cons (path->complete-path (cadr args)) (loop (cddr args)))]
+                  [else (loop (cdr args))]))))
+      (list (build-path workarea "bin" m (.exe "scheme"))
+            (build-path seed-dir "petite.boot")
+            (build-path seed-dir "scheme.boot"))))

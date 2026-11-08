@@ -12,9 +12,12 @@ p.add_argument('--source',type=Path,default=Path(__file__).resolve().parents[1])
 p.add_argument('--workarea',type=Path,required=True,help='isolated native workarea, e.g. evidence/work/ta6le')
 p.add_argument('--zuo',type=Path,required=True)
 p.add_argument('--output',type=Path,required=True,help='new evidence directory, outside the workarea')
+p.add_argument('--driver',type=Path,help='optional adapter for embedded workareas')
+p.add_argument('--config-file',type=Path,help='configuration used by the adapter')
 a=p.parse_args();src=a.source.resolve();work=a.workarea.resolve();out=a.output.resolve();out.mkdir(parents=True)
 assert work.is_dir() and (work/'c/main.zuo').is_file() and out!=work and work not in out.parents
-rows=[];command=[str(a.zuo.resolve()),'.','-j','1']
+rows=[];command=[str(a.zuo.resolve()),str(a.driver.resolve()) if a.driver else '.','-j','1']
+config_file=a.config_file.resolve() if a.config_file else work/'Mf-config'
 def run(label,target,cwd,ok=True):
  t=time.monotonic();r=subprocess.run([*command,target],cwd=cwd,capture_output=True,text=True);text=r.stdout+r.stderr;(out/(label+'.log')).write_text(text)
  row=dict(label=label,status=r.returncode,seconds=time.monotonic()-t,c_compilations=text.count(' -c '),scheme_compilations=sum(line.startswith('compiling ') and ' with output to ' in line for line in text.splitlines()));rows.append(row);(out/'results.json').write_text(json.dumps(rows,indent=2)+'\n');print(row,flush=True)
@@ -41,24 +44,30 @@ with tempfile.TemporaryDirectory(prefix='chez-dependency-baseline-') as d:
            lambda b:b+b'\n#error dependency-regression-lz4\n',
            lambda n=name:run('lz4-'+n,'liblz4.a',work/'c',ok=False))
  blocked=out/'blocked.h';blocked.write_text('#error dependency-regression-CPPFLAGS\n')
- mutation(work/'Mf-config',
-          lambda b:re.sub(rb'^CPPFLAGS=.*$',lambda m:m[0]+b' -include '+str(blocked).encode(),b,flags=re.M),
+ mutation(config_file,
+          lambda b:re.sub(rb'^CPPFLAGS\s*=.*$',lambda m:m[0]+b' -include '+str(blocked).encode(),b,flags=re.M),
           lambda:run('cppflags-warm-reject','stats.o',work/'c',ok=False))
- mutation(work/'Mf-config',
-          lambda b:re.sub(rb'^LDFLAGS=.*$',lambda m:m[0]+b' -Wl,--dependency-regression-link-option',b,flags=re.M),
+ mutation(config_file,
+          lambda b:re.sub(rb'^LDFLAGS\s*=.*$',lambda m:m[0]+b' -Wl,--dependency-regression-link-option',b,flags=re.M),
           lambda:run('ldflags-warm-reject','scheme',work/'c',ok=False))
- mutation(work/'Mf-config',
-          lambda b:re.sub(rb'^mdlinkflags=.*$',lambda m:m[0]+b' -Wl,--dependency-regression-link-option',b,flags=re.M),
+ mutation(config_file,
+          lambda b:b+b'\nmdlinkflags=-Wl,--dependency-regression-link-option\n',
           lambda:run('link-only-flags-warm-reject','scheme',work/'c',ok=False))
  def iconv_check():
   run('disableiconv-regenerate','config.h',work/'c')
   assert b'#define DISABLE_ICONV' in (work/'c/config.h').read_bytes()
- mutation(work/'Mf-config',lambda b:b.replace(b'disableiconv=no',b'disableiconv=yes'),iconv_check)
+ mutation(config_file,lambda b:re.sub(rb'(?m)^((?:disableiconv|DISABLE_ICONV)\s*=\s*)no',rb'\1yes',b),iconv_check)
  restore();helper=work/'s/nanopass/helpers.so';helper.unlink()
  try:
   run('missing-nanopass-helper','nanopass.so',work/'s');assert helper.is_file()
   assert len(list((work/'s/nanopass').glob('*.so')))==13
  finally:restore()
+ # The machine definition recipe also creates the architecture option file.
+ if (src/'s/a6-options.def').is_file():
+  restore();options=work/'s/a6-options.def';options.unlink()
+  try:
+   run('missing-machine-options','cmacros.so',work/'s');assert options.is_file()
+  finally:restore()
  # Observe object mtimes after changing only the isolated header.
  header=src/'c/nocurses.h'
  def header_check():

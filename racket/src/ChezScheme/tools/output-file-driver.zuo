@@ -1,0 +1,21 @@
+#lang zuo
+(require "../makefiles/lib.zuo")
+(define group
+  (target "producer-stamp"
+          (lambda (path token)
+            (rule (list "input")
+                  (lambda ()
+                    (define parts (string-split (file->string "input") "\n"))
+                    (display-to-file (car parts) "a" :truncate)
+                    (display-to-file (cadr parts) "b" :truncate)
+                    (display-to-file "" path :truncate))))
+          (hash 'co-outputs '("a" "b"))))
+(define a (output-file-target "a" (lambda () group)))
+(define result
+  (target "result"
+          (lambda (path token)
+            (rule (list a)
+                  (lambda ()
+                    (display-to-file (~a (if (file-exists? "runs") (file->string "runs") "") "run\n") "runs" :truncate)
+                    (cp "a" path))))))
+(build/command-line (list result group))

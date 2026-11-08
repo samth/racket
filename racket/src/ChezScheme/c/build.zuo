@@ -119,7 +119,7 @@
     (append
      (map at-source
           (list "system.h" "types.h" "version.h" "globals.h" "externs.h" "segment.h"
-                "atomic.h" "thread.h" "sort.h" "compress-io.h"))
+                "atomic.h" "thread.h" "compress-io.h"))
      (list c-config-file)
      (map at-mach
           (list "equates.h"
@@ -140,7 +140,7 @@
     (list (at-mach "scheme.h")
           c-config-file))
 
-  (define gc-wrap (list (at-source "gc.c")))
+  (define gc-wrap (list (at-source "gc.c") (at-source "sort.h")))
 
   (define (exe-path name)
     (at-dir (build-path "../bin" m (if (for-windows? config)
@@ -195,6 +195,19 @@
 
   (define lib-deps (append (if zlib-system-lib '() (list zlib-lib))
                            (if lz4-system-lib '() (list lz4-lib))))
+  ;; These headers are products of the nested library build, not archive bytes.
+  (define zlib-headers (map (lambda (name) (build-path zlib-dir name))
+                            '("zlib.h" "zconf.h")))
+  (define lz4-headers (map (lambda (name) (build-path lz4-dir "lib" name))
+                           '("lz4.h" "lz4hc.h" "lz4frame.h")))
+  (define library-targets (variable 'library-targets))
+  (define (header-input path archive)
+    (output-file-target path
+                        (lambda () (find-target archive (variable-ref library-targets)))))
+  (define zlib-header-inputs
+    (if zlib-system-lib '() (map (lambda (p) (header-input p zlib-lib)) zlib-headers)))
+  (define lz4-header-inputs
+    (if lz4-system-lib '() (map (lambda (p) (header-input p lz4-lib)) lz4-headers)))
   (define res-deps (if msvc? (list res-file) '()))
 
   (define (configuration-input name keys)
@@ -215,9 +228,12 @@
           rule-files))
   (define archive-inputs
     (cons (configuration-input 'c-archive-config
-                               '(AR ARFLAGS LD mdldflags CC CFLAGS LDFLAGS LIBS
-                                 m flagsm runtimeAs linkAs productAs))
+                               (if (and msvc? (as-scheme-dll? config))
+                                   '(CC CPPFLAGS CFLAGS LDFLAGS LIBS)
+                                   '(AR ARFLAGS)))
           rule-files))
+  (define relocatable-inputs
+    (list (configuration-input 'c-relocatable-config '(LD mdldflags zlibLib LZ4Lib))))
   (define link-inputs
     (cons (configuration-input 'c-link-config
                                '(CC CFLAGS LDFLAGS LIBS mdlinkflags exePostStep
@@ -277,7 +293,8 @@
           "make"
           make)))
 
-  (make-targets
+  (define targets
+    (make-targets
    `([:target build (,exe ,petite-exe revision)
               ,void
               :recur]
@@ -338,7 +355,8 @@
      [:target lib (,kernel-dep ,@main-objs)
               ,void]
 
-     [:target ,kernel-lib (,@res-deps ,@lib-deps ,@kernel-objs ,@archive-inputs)
+     [:target ,kernel-lib (,@(if (and msvc? (as-scheme-dll? config)) (append res-deps lib-deps) '())
+                           ,@kernel-objs ,@archive-inputs)
               ,(lambda (path token)
                  (cond
                    [(and msvc?
@@ -355,7 +373,7 @@
                           kernel-objs
                           config)]))]
 
-     [:target ,kernel.o (,@kernel-objs ,@lib-deps ,@archive-inputs)
+     [:target ,kernel.o (,@kernel-objs ,@lib-deps ,@relocatable-inputs ,@rule-files)
               ,(lambda (path token)
                  (mkdir-p (path-only path))
                  (shell/wait (lookup 'LD)
@@ -367,7 +385,7 @@
                              (string->shell (or zlib-system-lib zlib-lib))
                              (string->shell (or lz4-system-lib lz4-lib))))]
 
-     [:target ,zlib-lib ,(append zlib-files library-inputs)
+     [:target (,zlib-lib ,@zlib-headers) ,(append zlib-files library-inputs)
               ,(lambda (path token)
                  (copy-library (at-source "../zlib") zlib-dir zlib-files)
 		 (cond
@@ -402,7 +420,7 @@
                                (hash 'dir zlib-dir
                                      'desc "zlib make"))]))]
 
-     [:target ,lz4-lib (,@lz4-files ,@library-inputs)
+     [:target (,lz4-lib ,@lz4-headers) (,@lz4-files ,@library-inputs)
               ,(lambda (path token)
                  (define lz4-lib-dir (build-path lz4-dir "lib"))
                  (copy-library (at-source "../lz4") lz4-dir lz4-files)
@@ -416,7 +434,7 @@
                                      'desc "lz4 make"))]))]
 
      ,@(map (lambda (.c .o)
-              `[:target ,.o (,.c ,@kernel-hdrs ,@lib-deps ,@compile-inputs)
+              `[:target ,.o (,.c ,@kernel-hdrs ,@compile-inputs)
                         ,(lambda (.o target)
                            (compile-one .c .o))])
             kernel-srcs kernel-srcobjs)
@@ -445,6 +463,18 @@
                         ,(lambda (.o target)
                            (compile-one .c .o))])
             main-srcs main-objs)
+
+     ;; Only the compression consumers need these generated headers. Kernel
+     ;; archives and links keep their ordinary archive dependencies above.
+     [:depend ,(at-dir (.c->.o "new-io.c"))
+              (,@zlib-header-inputs
+               ,@(filter (lambda (t) (not (equal? (file-name-from-path (target-path t)) "lz4frame.h")))
+                         lz4-header-inputs))]
+     [:depend ,(at-dir (.c->.o "compress-io.c")) (,@zlib-header-inputs ,@lz4-header-inputs)]
+     [:depend ,(at-dir (.c->.o "fasl.c")) (,@zlib-header-inputs)]
+
+     [:depend (,(at-dir (.c->.o "prim5.c")) ,(at-dir (.c->.o "segment.c")))
+              (,(at-source "sort.h"))]
 
      [:depend ,(at-dir (.c->.o "expeditor.c")) (,(at-source "nocurses.h"))]
 
@@ -542,6 +572,8 @@
                  (map rm* kernel-objs))]
 
      #;(end-make-targets))))
+  (variable-set! library-targets targets)
+  targets)
 
 (define (is-msvc? config)
   (eq? 'windows (hash-ref (runtime-env) 'toolchain-type)))

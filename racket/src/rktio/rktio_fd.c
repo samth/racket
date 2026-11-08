@@ -16,6 +16,183 @@
 # include <poll.h>
 #endif
 
+/* Experimental: on Linux, avoid the fcntl()/poll() dance around
+   reads and writes of non-socket, non-regular fds (pipes, ttys,
+   inherited stdio) by asking the kernel for a per-operation
+   non-blocking transfer, either with preadv2()/pwritev2() and
+   RWF_NOWAIT ("nowait" mode) or with a synchronous io_uring
+   submission ("uring" mode). The mode is selected at startup with
+   the PLT_RKTIO_IO environment variable: "classic" (default),
+   "nowait", or "uring". */
+#if defined(__linux__) && defined(RKTIO_SYSTEM_UNIX) && defined(__has_include)
+# if __has_include(<linux/io_uring.h>)
+#  define RKTIO_LINUX_IO_EXPERIMENT
+# endif
+#endif
+
+#ifdef RKTIO_LINUX_IO_EXPERIMENT
+# include <sys/uio.h>
+# include <sys/mman.h>
+# include <sys/syscall.h>
+# include <linux/io_uring.h>
+# include <string.h>
+# include <stdio.h>
+
+/* declared by <sys/uio.h> only with _GNU_SOURCE; in glibc since 2.26 */
+extern ssize_t preadv2(int fd, const struct iovec *iov, int iovcnt, off_t offset, int flags);
+extern ssize_t pwritev2(int fd, const struct iovec *iov, int iovcnt, off_t offset, int flags);
+
+# define RKTIO_IO_CLASSIC 0
+# define RKTIO_IO_NOWAIT  1
+# define RKTIO_IO_URING   2
+
+static int linux_io_mode = -1;
+
+static int get_linux_io_mode()
+{
+  if (linux_io_mode < 0) {
+    const char *s = getenv("PLT_RKTIO_IO");
+    if (s && !strcmp(s, "nowait"))
+      linux_io_mode = RKTIO_IO_NOWAIT;
+    else if (s && !strcmp(s, "uring"))
+      linux_io_mode = RKTIO_IO_URING;
+    else
+      linux_io_mode = RKTIO_IO_CLASSIC;
+  }
+  return linux_io_mode;
+}
+
+/* A minimal per-OS-thread io_uring used synchronously: one SQE is
+   submitted and waited for in a single io_uring_enter() call. A ring
+   is per OS thread, so no locking is needed even if multiple Racket
+   places or parallel threads perform I/O. (Prototype: rings are not
+   released when an OS thread exits.) */
+typedef struct linux_ring_t {
+  int fd; /* -1 => unavailable */
+  unsigned *sq_tail, *sq_mask, *sq_array;
+  unsigned *cq_head, *cq_tail, *cq_mask;
+  struct io_uring_sqe *sqes;
+  struct io_uring_cqe *cqes;
+} linux_ring_t;
+
+static __thread linux_ring_t *thread_ring;
+
+static linux_ring_t *get_ring()
+{
+  linux_ring_t *r = thread_ring;
+  struct io_uring_params p;
+  void *sq, *cq;
+  size_t sq_sz, cq_sz;
+
+  if (r) return r;
+
+  r = calloc(1, sizeof(linux_ring_t));
+  r->fd = -1;
+  thread_ring = r;
+
+  memset(&p, 0, sizeof(p));
+  /* SINGLE_ISSUER: only this OS thread submits; supported since 6.0 */
+  p.flags = IORING_SETUP_SINGLE_ISSUER;
+  {
+    int fd = syscall(__NR_io_uring_setup, 4, &p);
+    if ((fd < 0) && (errno == EINVAL)) {
+      memset(&p, 0, sizeof(p));
+      fd = syscall(__NR_io_uring_setup, 4, &p);
+    }
+    if (fd < 0)
+      return r;
+    if (!(p.features & IORING_FEAT_SINGLE_MMAP)) {
+      close(fd);
+      return r;
+    }
+    sq_sz = p.sq_off.array + p.sq_entries * sizeof(unsigned);
+    cq_sz = p.cq_off.cqes + p.cq_entries * sizeof(struct io_uring_cqe);
+    if (cq_sz > sq_sz) sq_sz = cq_sz;
+    sq = mmap(NULL, sq_sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_SQ_RING);
+    if (sq == MAP_FAILED) { close(fd); return r; }
+    cq = sq;
+    r->sqes = mmap(NULL, p.sq_entries * sizeof(struct io_uring_sqe), PROT_READ | PROT_WRITE,
+                   MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_SQES);
+    if (r->sqes == MAP_FAILED) { munmap(sq, sq_sz); close(fd); return r; }
+    r->sq_tail = (unsigned *)((char *)sq + p.sq_off.tail);
+    r->sq_mask = (unsigned *)((char *)sq + p.sq_off.ring_mask);
+    r->sq_array = (unsigned *)((char *)sq + p.sq_off.array);
+    r->cq_head = (unsigned *)((char *)cq + p.cq_off.head);
+    r->cq_tail = (unsigned *)((char *)cq + p.cq_off.tail);
+    r->cq_mask = (unsigned *)((char *)cq + p.cq_off.ring_mask);
+    r->cqes = (struct io_uring_cqe *)((char *)cq + p.cq_off.cqes);
+    r->fd = fd;
+  }
+
+  return r;
+}
+
+/* Returns a byte count or -errno */
+static intptr_t ring_rw(int opcode, int fd, void *buffer, intptr_t len)
+{
+  linux_ring_t *r = get_ring();
+  unsigned tail, idx, head;
+  struct io_uring_sqe *sqe;
+  intptr_t res;
+  int rc;
+
+  if (r->fd < 0)
+    return -ENOSYS;
+
+  tail = *r->sq_tail;
+  idx = tail & *r->sq_mask;
+  sqe = &r->sqes[idx];
+  memset(sqe, 0, sizeof(*sqe));
+  sqe->opcode = opcode;
+  sqe->fd = fd;
+  sqe->addr = (uintptr_t)buffer;
+  sqe->len = len;
+  sqe->off = (uint64_t)-1; /* use and update the file position */
+  sqe->rw_flags = RWF_NOWAIT;
+  r->sq_array[idx] = idx;
+  __atomic_store_n(r->sq_tail, tail + 1, __ATOMIC_RELEASE);
+
+  do {
+    rc = syscall(__NR_io_uring_enter, r->fd, 1, 1, IORING_ENTER_GETEVENTS, NULL, 0);
+  } while ((rc < 0) && (errno == EINTR));
+  if (rc < 0)
+    return -errno; /* SQE may be left unconsumed; prototype doesn't recover */
+
+  head = *r->cq_head;
+  while (head == __atomic_load_n(r->cq_tail, __ATOMIC_ACQUIRE)) {
+    /* should not happen after GETEVENTS with min_complete=1 */
+    syscall(__NR_io_uring_enter, r->fd, 0, 1, IORING_ENTER_GETEVENTS, NULL, 0);
+  }
+  res = r->cqes[head & *r->cq_mask].res;
+  __atomic_store_n(r->cq_head, head + 1, __ATOMIC_RELEASE);
+
+  return res;
+}
+
+/* Non-blocking transfer without changing fd flags. Returns a byte count,
+   or -errno; -EOPNOTSUPP means "not supported for this fd" */
+static intptr_t linux_nowait_rw(int mode, int is_write, int fd, void *buffer, intptr_t len)
+{
+  if (mode == RKTIO_IO_URING)
+    return ring_rw(is_write ? IORING_OP_WRITE : IORING_OP_READ, fd, buffer, len);
+  else {
+    struct iovec iov;
+    intptr_t r;
+    iov.iov_base = buffer;
+    iov.iov_len = len;
+    do {
+      if (is_write)
+        r = pwritev2(fd, &iov, 1, -1, RWF_NOWAIT);
+      else
+        r = preadv2(fd, &iov, 1, -1, RWF_NOWAIT);
+    } while ((r == -1) && (errno == EINTR));
+    if (r == -1)
+      return -errno;
+    return r;
+  }
+}
+#endif
+
 /*========================================================================*/
 /* fd struct                                                              */
 /*========================================================================*/
@@ -31,6 +208,9 @@ struct rktio_fd_t {
 # endif
 # ifdef RKTIO_USE_PENDING_OPEN
   struct open_in_thread_t *pending;
+# endif
+# ifdef RKTIO_LINUX_IO_EXPERIMENT
+  int no_nowait; /* 1 => RWF_NOWAIT not supported for this fd */
 # endif
 #endif
   
@@ -1015,6 +1195,31 @@ static intptr_t do_read_converted(rktio_t *rktio, rktio_fd_t *rfd, char *buffer,
   } else {
     int old_flags;
 
+# ifdef RKTIO_LINUX_IO_EXPERIMENT
+    {
+      int mode = get_linux_io_mode();
+      if ((mode != RKTIO_IO_CLASSIC) && !rfd->no_nowait) {
+        bc = linux_nowait_rw(mode, 0, rfd->fd, buffer, len);
+        if (bc > 0)
+          return bc;
+        else if (bc == -EAGAIN)
+          return 0;
+        else if (bc == 0) {
+          /* Distinguish EOF from a FIFO without a writer, yet */
+          if (!rktio_poll_read_ready(rktio, rfd))
+            return 0;
+          return RKTIO_READ_EOF;
+        } else if ((bc == -EOPNOTSUPP) || (bc == -ENOSYS) || (bc == -EINVAL))
+          rfd->no_nowait = 1; /* fall through to classic path */
+        else {
+          errno = -bc;
+          rktio_get_posix_error(err);
+          return RKTIO_READ_ERROR;
+        }
+      }
+    }
+# endif
+
     /* Check that input is available. This step is needed
        for fifos to avoid getting an EOF-looking result
        if there's no writer, yet. */
@@ -1572,6 +1777,43 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
       return RKTIO_WRITE_ERROR;
     } else if (rfd->pending)
       return 0;
+  }
+# endif
+
+# ifdef RKTIO_LINUX_IO_EXPERIMENT
+  {
+    int mode = get_linux_io_mode();
+    if ((mode != RKTIO_IO_CLASSIC) && rktio_fd_is_regular_file(rktio, rfd)) {
+      /* Regular files never block in the poll() sense, and RWF_NOWAIT
+         could report EAGAIN for a write that needs block allocation,
+         so just write. */
+      do {
+        amt = write(rfd->fd, buffer, LIMIT_REQUEST_SIZE(len));
+      } while ((amt == -1) && (errno == EINTR));
+      if (amt == -1) {
+        if (errno == EAGAIN)
+          return 0;
+        rktio_get_posix_error(err);
+        return RKTIO_WRITE_ERROR;
+      }
+      return amt;
+    }
+    if ((mode != RKTIO_IO_CLASSIC) && !rfd->no_nowait) {
+      amt = linux_nowait_rw(mode, 1, rfd->fd, (void *)buffer, LIMIT_REQUEST_SIZE(len));
+      if (amt >= 0) {
+        if ((rfd->modes & RKTIO_OPEN_TRACK_TERMINAL_OUTPUT) && (amt > 0))
+          wrote_to_terminal(amt);
+        return amt;
+      } else if (amt == -EAGAIN)
+        return 0;
+      else if ((amt == -EOPNOTSUPP) || (amt == -ENOSYS) || (amt == -EINVAL))
+        rfd->no_nowait = 1; /* fall through to classic path */
+      else {
+        errno = -amt;
+        rktio_get_posix_error(err);
+        return RKTIO_WRITE_ERROR;
+      }
+    }
   }
 # endif
 

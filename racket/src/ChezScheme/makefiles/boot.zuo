@@ -1,5 +1,6 @@
 #lang zuo
-(require (only-in "../s/build.zuo"
+(require "lib.zuo"
+         (only-in "../s/build.zuo"
                   [targets-at s-targets-at]))
 
 (provide boot-file-names
@@ -39,7 +40,10 @@
                    (build-path dir "Mf-config")
                    :truncate)
   (let ([targets (s-targets-at (make-at-dir s-dir)
-                               (hash-remove vars 'm)
+                               (hash-set (hash-remove vars 'm) 'bootstrapCompilerFiles
+                                         (let ([host (or host-workarea (at-dir "."))])
+                                           (scheme-input-files host-scheme host m
+                                                               (build-path host "boot" m))))
                                ccopts)])
     (build (find-target "clean" targets) token)
     (map (lambda (t)

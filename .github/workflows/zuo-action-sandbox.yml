@@ -1,0 +1,33 @@
+name: Zuo Action Sandbox Prototype
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [prototype/zuo-action-sandbox]
+    paths:
+      - racket/src/zuo/**
+      - .github/workflows/zuo-action-sandbox.yml
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install sandbox test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap strace gcc libc6-dev
+      - name: Build Zuo
+        run: cc -O2 -DZUO_LIB_PATH="\"$GITHUB_WORKSPACE/racket/src/zuo/lib\"" -o "$RUNNER_TEMP/zuo" racket/src/zuo/zuo.c
+      - name: Check Zuo and action caching
+        run: |
+          "$RUNNER_TEMP/zuo" -X racket/src/zuo/lib racket/src/zuo/tests/main.zuo
+          python3 racket/src/zuo/tests/action-cache.py "$RUNNER_TEMP/zuo"
+      - name: Check input enforcement and real compiler reuse
+        run: |
+          python3 racket/src/zuo/tests/action-sandbox.py "$RUNNER_TEMP/zuo"
+          python3 racket/src/zuo/tests/action-sandbox-cc.py "$RUNNER_TEMP/zuo"

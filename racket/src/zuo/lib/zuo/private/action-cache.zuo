@@ -4,7 +4,87 @@
 ;; Prototype: explicitly declared commands, regular file outputs, POSIX storage.
 ;; Descriptions are hashed, never written to cache metadata (they may contain env).
 (provide make-command-description run-command cache-directory
-         cache-key cache-restore cache-store)
+         cache-key cache-restore cache-store
+         attach-command-sandbox sandbox-support-inputs sandbox-sdk-inputs
+         sandboxed-command? sandbox-plan run-sandbox-command)
+
+;; Sandboxing is opt-in. The support programs evaluate/enforce the rule; SDK
+;; files and runtime dependencies are the only files exposed to the action.
+(define (sandbox-prefix s)
+  (append (list (path->complete-path (hash-ref s 'python)) "-I"
+                (path->complete-path (hash-ref s 'runner))
+                "--bubblewrap" (path->complete-path (hash-ref s 'bubblewrap))
+                "--strace" (path->complete-path (hash-ref s 'strace))
+                "--launcher" (path->complete-path (hash-ref s 'launcher))
+                "--unused" (~a (hash-ref s 'unused-inputs 'error)))
+          (if (hash-ref s 'manifest #f)
+              (list "--manifest" (path->complete-path (hash-ref s 'manifest)))
+              '())))
+
+(define (sandbox-support-inputs s)
+  (if s
+      (append (map (lambda (k) (path->complete-path (hash-ref s k)))
+                   '(python runner bubblewrap strace launcher))
+              (if (hash-ref s 'manifest #f) (list (hash-ref s 'manifest)) '()))
+      '()))
+
+(define (helper description argv capture?)
+  (define p (apply process
+                   (append argv (list (hash 'dir (cadr description)
+                                            'env (list-ref description 2)
+                                            'stdin 'pipe
+                                            'stdout (if capture? 'pipe (fd-open-output 'stdout)))))))
+  (unless capture?
+    (fd-write (hash-ref p 'stdin)
+              (apply ~a (map (lambda (p) (~a (car p) "=" (cdr p) "\0"))
+                             (list-ref description 2)))))
+  (fd-close (hash-ref p 'stdin))
+  (define result (and capture? (fd-read (hash-ref p 'stdout) eof)))
+  (when capture? (fd-close (hash-ref p 'stdout)))
+  (thread-process-wait (hash-ref p 'process))
+  (unless (equal? (process-status (hash-ref p 'process)) 0)
+    (error "command sandbox helper failed"))
+  result)
+
+(define (sandbox-sdk-inputs s description)
+  (if s
+      (filter (lambda (p) (not (equal? p "")))
+              (string-split (helper description (append (sandbox-prefix s) (list "--manifest-inputs")) #t) "\n"))
+      '()))
+
+(define (attach-command-sandbox description s runtime-inputs)
+  (if s
+      (begin
+        (unless (eq? (hash-ref (runtime-env) 'system-type) 'unix)
+          (error "command sandbox requires Linux"))
+        (unless (member (hash-ref s 'unused-inputs 'error) '(error report))
+          (error "sandbox unused-inputs must be 'error or 'report"))
+        (append description (list (list (sandbox-prefix s)
+                                       (sort (map path->complete-path runtime-inputs) string<?)))))
+      description))
+
+(define (sandboxed-command? description) (and description (= (length description) 5)))
+(define (sandbox-argv description outputs)
+  (append (car (list-ref description 4))
+          (list "--cwd" (cadr description))
+          (apply append (map (lambda (p) (list "--input" p)) (cadr (list-ref description 4))))
+          (apply append (map (lambda (p) (list "--output" (path->complete-path p))) outputs))))
+(define (sandbox-plan description outputs)
+  (and (sandboxed-command? description)
+       (string-trim (helper description
+                            (append (sandbox-argv description outputs)
+                                    (list "--plan" "--") (car description)) #t) "\n")))
+(define (run-sandbox-command description outputs plan)
+  (define report-dir (assoc "ZUO_ACTION_SANDBOX_REPORT_DIR" (hash-ref (runtime-env) 'env)))
+  (define report-args
+    (if report-dir
+        (let ([dir (path->complete-path (cdr report-dir))])
+          (mkdir-p dir)
+          (list "--report" (build-path dir (~a (string-sha256 (~s (list description plan))) ".json"))))
+        '()))
+  (helper description (append (sandbox-argv description outputs)
+                              report-args (list "--expected-plan" plan "--") (car description)) #f)
+  #f)
 
 (define (make-command-description options)
   (define argv (hash-ref options 'argv #f))

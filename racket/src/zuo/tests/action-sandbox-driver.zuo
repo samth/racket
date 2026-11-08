@@ -1,0 +1,25 @@
+#lang zuo
+(define (targets-at at-dir vars)
+  (define input (at-dir "input"))
+  (define mode (hash-ref vars 'MODE "good"))
+  (list
+   (target (at-dir "a")
+           (lambda (path token)
+             (command-rule
+              (append (list input)
+                      (if (equal? (hash-ref vars 'EXTRA "no") "yes")
+                          (list (at-dir "extra")) '()))
+              (hash 'argv (list (hash-ref vars 'TOOL) mode input path (at-dir "b"))
+                    'environment (list (cons "ACTION_TEST" "fixed"))
+                    'toolchain "sandbox-test-v1"
+                    'rule-files (list (at-source "action-sandbox-driver.zuo"))
+                    'sandbox (hash 'python (hash-ref vars 'PYTHON)
+                                   'runner (hash-ref vars 'RUNNER)
+                                   'bubblewrap (hash-ref vars 'BWRAP)
+                                   'strace (hash-ref vars 'STRACE)
+                                   'launcher (hash-ref vars 'LAUNCHER)
+                                   'manifest (hash-ref vars 'SDK)
+                                   'unused-inputs (if (equal? (hash-ref vars 'UNUSED "error") "report")
+                                                      'report 'error)))))
+           (hash 'co-outputs (list (at-dir "b"))))))
+(provide-targets targets-at)

@@ -121,16 +121,28 @@
 ;; Opt-in prototype. There is no arbitrary build closure to drift from its
 ;; cache description: the command description is also what gets executed.
 (define (command-rule deps options)
-  (define description (make-command-description options))
+  (define base-description (make-command-description options))
+  (define sandbox (hash-ref options 'sandbox #f))
   (define files (hash-ref options 'rule-files '()))
   (unless (and (pair? files) (andmap path-string? files))
     (error "command-rule: declare producer/helper files with 'rule-files"))
-  (define tools (cons (car (car description)) (hash-ref options 'tools '())))
+  (define tools (cons (car (car base-description)) (hash-ref options 'tools '())))
+  (define sdk (sandbox-sdk-inputs sandbox base-description))
+  (define runtime-inputs
+    (append (apply append
+                   (map (lambda (d)
+                          (define t (coerce-to-target d))
+                          (if (symbol? (target-name t))
+                              '()
+                              (cons (target-name t) (hash-ref (target-options t) 'co-outputs '()))))
+                        deps))
+            tools sdk))
+  (define description (attach-command-sandbox base-description sandbox runtime-inputs))
   (define module-files (hash-ref (runtime-env) 'module-files #f))
   (unless module-files
     (error "command-rule requires the prototype Zuo executable with module-file tracking"))
   (define inputs
-    (append deps tools files module-files
+    (append deps tools sdk (sandbox-support-inputs sandbox) files module-files
             (list (hash-ref (runtime-env) 'exe)
                   (input-data-target 'command-action description))))
   (define r (make-rule inputs (lambda () (run-command description))))
@@ -503,6 +515,9 @@
   ;; compare to recorded result, and rebuild if different
   (cond
     [(and same-so-far?
+          ;; Strict actions revalidate SDK absence contracts and file snapshots
+          ;; before every cache lookup, including incremental invocations.
+          (not (sandboxed-command? (rule-action r)))
           (andmap (lambda (dep-key)
                     (log-changed (equal? (hash-ref all-dep-sha256s dep-key #f)
                                          (hash-ref prev-dep-sha256s dep-key #f))
@@ -537,10 +552,11 @@
          (error "command-rule requires a file target"))
        (define outputs (cons path co-outputs))
        (define snapshot (and action (action-input-snapshot deps)))
+       (define sandbox-state (and action (sandbox-plan action outputs)))
        (define root (and action (cache-directory)))
        (define key
          (and root
-              (cache-key action
+              (cache-key (if sandbox-state (list action sandbox-state) action)
                          (sort (map (lambda (k)
                                       (list (if (symbol-key? k)
                                                 (~s (symbol-key->symbol k))
@@ -559,8 +575,12 @@
          ;; A successful command must create the complete group in THIS run.
          ;; Otherwise an omitted co-output could reuse stale bytes.
          (for-each (lambda (out) (when (file-exists? out) (rm out))) outputs))
-       (define (still-valid?) (equal? snapshot (action-input-snapshot deps)))
-       (let* ([maybe-sha256 (if hit? #f (to-build))] ; restore or execute
+       (define (still-valid?)
+         (and (equal? snapshot (action-input-snapshot deps))
+              (equal? sandbox-state (and action (sandbox-plan action outputs)))))
+       (let* ([maybe-sha256 (cond [hit? #f]
+                                 [sandbox-state (run-sandbox-command action outputs sandbox-state)]
+                                 [else (to-build)])] ; restore or execute
               [sha256 (if build-to-sha256?
                           maybe-sha256
                           (if (pair? co-outputs)

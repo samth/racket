@@ -725,8 +725,9 @@ nonempty list of strings starting with an absolute executable),
 @racket['toolchain] (a nonempty identity covering the platform, sysroot and
 remaining tools), and @racket['rule-files] (a nonempty list of producer files).
 Optional @racket['directory] defaults to @racket["."], and @racket['tools]
-lists additional executable or tool files. All file reads must be declared;
-there is no sandbox or dependency discovery. Standard input is EOF.
+lists additional executable or tool files. All file reads must be declared.
+Standard input is EOF. Without the optional sandbox described below,
+declarations are the caller's responsibility.
 
 The @racket[':rule] option of @racket[make-targets] makes a file target's callback
 accept three arguments---path, token, and resolved dependencies---and return a
@@ -739,3 +740,70 @@ The cache requires trusted storage and complete caller-supplied toolchain and
 input declarations. @tt{ZUO_ACTION_CACHE_LOG} enables digest-only cache logging.
 Cache entries require trusted storage and fixed checkout/build paths.
 Remote transport and automatic toolchain discovery are not provided.}
+
+@subsection{Experimental Linux Input Enforcement}
+
+The optional @racket['sandbox] hash enables a sparse filesystem sandbox and
+system-call audit for a @racket[command-rule]. This prototype requires Linux,
+Python 3.8 or later, Bubblewrap with user/network/PID namespaces, and Strace
+with @tt{--decode-pids=pidns}. Missing capabilities are errors; there is no
+fallback to unsandboxed execution.
+
+Required fields are absolute paths for @racket['python], @racket['runner]
+(@filepath{lib/zuo/private/action-sandbox.py}), @racket['bubblewrap],
+@racket['strace], and @racket['launcher]. Build the launcher with
+@exec{cc -static -O2 -o launcher lib/zuo/private/action-sandbox-launcher.c}.
+It passes the exact declared environment to the action and makes standard
+input EOF, including when the sandbox programs would otherwise add variables.
+Environment values travel through a pipe, not command-line arguments or
+cache metadata.
+
+Optional @racket['manifest] names a JSON SDK declaration, for example:
+@verbatim["{\"version\":1,\"files\":[\"/lib64/ld-linux-x86-64.so.2\"],\"absent\":[\"/etc/ld.so.preload\"],\"directories\":[]}"]
+@tt{files} lists exact regular-file inputs, including shared libraries,
+executable interpreters and compiler resources. Their bytes and modes become
+ordinary Zuo dependencies. @tt{absent} lists exact paths required not to exist,
+including optional-header probes; these contracts are checked against the host
+on every lookup. Optional @tt{directories} declares additional directory
+presence, with normalized metadata and no inherited host contents. Ancestors
+of declared paths exist automatically. Directory enumeration is unsupported;
+declare an explicit file set. A trace can help prepare a manifest, but the
+sandbox never adds observed paths to declarations automatically.
+
+Only direct dependency files (including their co-outputs), explicit tools and
+SDK files enter the action filesystem. Producer files, loaded Zuo modules and
+sandbox support programs affect the key separately; they are not classified
+as unused runtime inputs. Inputs are copied as read-only regular files, with
+fixed timestamps; symlinks are materialized as their referenced bytes. Outputs
+must be regular files below an existing working directory. Working-directory
+and output paths cannot contain symlinks. Inputs below @filepath{/tmp},
+@filepath{/dev} or @filepath{/proc} are unsupported. Temporary storage is
+private; networking is isolated. Private procfs supports the
+@filepath{/proc/self/exe} alias for a declared executable, and
+@filepath{/dev/null} is available. Other ambient filesystem reads are rejected.
+
+The audit follows subprocesses and rejects undeclared reads, failed path
+probes, writes to inputs, network attempts and unsupported file operations.
+Output groups are published only after successful execution and audit. Cache
+keys include the sandbox declaration and policy; cache hits recheck input
+snapshots and absence contracts. Strict actions bypass the ordinary
+timestamp-only up-to-date shortcut: without the action cache they execute on
+every invocation, and dry-run/question modes conservatively report work.
+
+Optional @racket['unused-inputs] is @racket['error] by default, rejecting files
+not accessed in that execution. @racket['report] only reports these files;
+undeclared accesses still fail. The policies have different cache identities.
+@tt{ZUO_ACTION_SANDBOX_REPORT_DIR} enables local JSON diagnostic files containing
+used, metadata-only, unused, and undeclared paths, named by action digest. The
+report location does not affect cache identity. A cache hit does not produce a
+new execution report. No declaration is pruned automatically: conditional inputs
+may be needed in another configuration, and metadata-only accesses may justify
+a weaker dependency rather than a content dependency.
+
+This is opt-in filesystem enforcement for explicit commands, not a proof of
+semantic minimality for all builds. Rule evaluation and sandbox support tools
+remain trusted, with their runtime covered by the caller's toolchain identity.
+Time, randomness, kernel behavior and other non-file inputs are not made
+deterministic. Executing newly generated tools, directory discovery, and
+several less common system calls are unsupported and fail closed. Normal Zuo
+rules and Racket's default CI remain unchanged.

@@ -1,0 +1,20 @@
+#lang zuo
+(define (targets-at at-dir vars)
+  (list
+   (target (at-dir "value.o")
+           (lambda (path token)
+             (command-rule
+              (append (list (at-dir "input.c"))
+                      (if (equal? (hash-ref vars 'HEADER "yes") "yes")
+                          (list (at-dir "value.h")) '()))
+              (hash 'argv (list (hash-ref vars 'CC) "-nostdinc" "-c" "input.c" "-o" path)
+                    'environment (list (cons "LC_ALL" "C") (cons "PATH" "/usr/bin:/bin"))
+                    'toolchain "sandbox-cc-test-v1"
+                    'rule-files (list (at-source "action-sandbox-cc-driver.zuo"))
+                    'sandbox (hash 'python (hash-ref vars 'PYTHON)
+                                   'runner (hash-ref vars 'RUNNER)
+                                   'bubblewrap (hash-ref vars 'BWRAP)
+                                   'strace (hash-ref vars 'STRACE)
+                                   'launcher (hash-ref vars 'LAUNCHER)
+                                   'manifest (hash-ref vars 'SDK))))))))
+(provide-targets targets-at)

@@ -1,5 +1,6 @@
 /* Build with cc -static -O2. The sandbox runner starts this trusted shim before
-   tracing the action itself. Replace bubblewrap's environment (which injects
+   tracing the action itself. argv[1] supplies the declared stdin file (or
+   /dev/null); argv[2...] supplies the action command. Replace bubblewrap's environment (which injects
    PWD) with the exact NUL-delimited name=value records supplied on stdin. */
 #include <errno.h>
 #include <fcntl.h>
@@ -11,7 +12,7 @@ int main(int argc, char **argv) {
   size_t size = 0, capacity = 4096, count = 0, i;
   char *bytes = malloc(capacity);
   char **env;
-  if (argc < 2 || !bytes) return 125;
+  if (argc < 3 || !bytes) return 125;
   for (;;) {
     ssize_t n;
     if (size == capacity) {
@@ -35,7 +36,7 @@ int main(int argc, char **argv) {
     env[count++] = bytes + i;
   }
   close(0);
-  if (open("/dev/null", O_RDONLY) != 0) return 125;
-  execve(argv[1], argv + 1, env);
+  if (open(argv[1], O_RDONLY) != 0) return 125;
+  execve(argv[2], argv + 2, env);
   return 126;
 }

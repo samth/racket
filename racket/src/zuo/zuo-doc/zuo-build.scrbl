@@ -753,8 +753,10 @@ Required fields are absolute paths for @racket['python], @racket['runner]
 (@filepath{lib/zuo/private/action-sandbox.py}), @racket['bubblewrap],
 @racket['strace], and @racket['launcher]. Build the launcher with
 @exec{cc -static -O2 -o launcher lib/zuo/private/action-sandbox-launcher.c}.
-It passes the exact declared environment to the action and makes standard
-input EOF, including when the sandbox programs would otherwise add variables.
+It passes the exact declared environment to the action, including when the
+sandbox programs would otherwise add variables. Standard input is EOF unless
+optional @racket['stdin-file] names a regular file. That file becomes an explicit
+content input and is delivered on stdin, separately from the environment pipe.
 Environment values travel through a pipe, not command-line arguments or
 cache metadata.
 
@@ -765,7 +767,12 @@ executable interpreters and compiler resources. Their bytes and modes become
 ordinary Zuo dependencies. @tt{absent} lists exact paths required not to exist,
 including optional-header probes; these contracts are checked against the host
 on every lookup. Optional @tt{directories} declares additional directory
-presence, with normalized metadata and no inherited host contents. Ancestors
+presence, with normalized metadata and no inherited host contents. Optional
+@tt{metadata} lists regular files whose presence alone is an input: they are
+represented by empty read-only files with fixed metadata. Content opens are
+rejected, and presence is checked even on cache hits; changing contents does
+not invalidate these contracts. This models existence checks, not host file
+sizes, timestamps or arbitrary @exec{stat} results. Ancestors
 of declared paths exist automatically. Directory enumeration is unsupported;
 declare an explicit file set. A trace can help prepare a manifest, but the
 sandbox never adds observed paths to declarations automatically.
@@ -779,7 +786,8 @@ must be regular files below an existing working directory. Working-directory
 and output paths cannot contain symlinks. Inputs below @filepath{/tmp},
 @filepath{/dev} or @filepath{/proc} are unsupported. Temporary storage is
 private; networking is isolated. Private procfs supports the
-@filepath{/proc/self/exe} alias for a declared executable, and
+@filepath{/proc/self/exe} alias and the equivalent numeric alias obtained from
+@exec{readlink("/proc/self")} for the current declared executable, and
 @filepath{/dev/null} is available. Other ambient filesystem reads are rejected.
 
 The audit follows subprocesses and rejects undeclared reads, failed path
@@ -799,6 +807,14 @@ report location does not affect cache identity. A cache hit does not produce a
 new execution report. No declaration is pruned automatically: conditional inputs
 may be needed in another configuration, and metadata-only accesses may justify
 a weaker dependency rather than a content dependency.
+
+Reports also list @tt{undeclared_outputs}: retained files in the private working
+directory that are neither declared inputs nor declared outputs. They are
+discarded with the sandbox. Optional @racket['extra-outputs] defaults to
+@racket['report] to permit private scratch intermediates; @racket['error]
+rejects retained extras before publishing any output or cache entry. These
+policies have distinct cache identities. A reported extra is a candidate to
+review, not an automatically inferred output declaration.
 
 This is opt-in filesystem enforcement for explicit commands, not a proof of
 semantic minimality for all builds. Rule evaluation and sandbox support tools

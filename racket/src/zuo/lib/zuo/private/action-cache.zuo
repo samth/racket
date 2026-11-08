@@ -16,9 +16,13 @@
                 "--bubblewrap" (path->complete-path (hash-ref s 'bubblewrap))
                 "--strace" (path->complete-path (hash-ref s 'strace))
                 "--launcher" (path->complete-path (hash-ref s 'launcher))
-                "--unused" (~a (hash-ref s 'unused-inputs 'error)))
+                "--unused" (~a (hash-ref s 'unused-inputs 'error))
+                "--extra-outputs" (~a (hash-ref s 'extra-outputs 'report)))
           (if (hash-ref s 'manifest #f)
               (list "--manifest" (path->complete-path (hash-ref s 'manifest)))
+              '())
+          (if (hash-ref s 'stdin-file #f)
+              (list "--stdin-file" (path->complete-path (hash-ref s 'stdin-file)))
               '())))
 
 (define (sandbox-support-inputs s)
@@ -49,7 +53,8 @@
 (define (sandbox-sdk-inputs s description)
   (if s
       (filter (lambda (p) (not (equal? p "")))
-              (string-split (helper description (append (sandbox-prefix s) (list "--manifest-inputs")) #t) "\n"))
+              (append (string-split (helper description (append (sandbox-prefix s) (list "--manifest-inputs")) #t) "\n")
+                      (if (hash-ref s 'stdin-file #f) (list (hash-ref s 'stdin-file)) '())))
       '()))
 
 (define (attach-command-sandbox description s runtime-inputs)

@@ -72,7 +72,7 @@ with tempfile.TemporaryDirectory(prefix='.zuo-sandbox-test-', dir=Path.cwd()) as
     (work / 'b').unlink()
     assert 'hit' in run() and (work / 'b').exists()
     # Tolerated missing reads and subprocess reads still invalidate the action.
-    for mode in ['missing', 'child', 'network', 'write-input', 'symlink', 'incomplete', 'fail']:
+    for mode in ['missing', 'child', 'network', 'write-input', 'symlink', 'incomplete', 'fail', 'abort']:
         fresh()
         before = set((cache / 'actions').iterdir())
         message = run('MODE=' + mode, ok=False)
@@ -81,6 +81,9 @@ with tempfile.TemporaryDirectory(prefix='.zuo-sandbox-test-', dir=Path.cwd()) as
         assert (work / 'input').read_text() == 'declared input\n'
         if mode in ['missing', 'child']:
             assert 'undeclared probe:' in message and '/hidden' in message, message
+        if mode == 'abort':
+            assert report()['exit_status'] != 0
+            assert report()['violations'] == []
     fresh()
     assert 'unused declared input:' in run('EXTRA=yes', ok=False)
     assert not (work / 'a').exists()
@@ -96,6 +99,57 @@ with tempfile.TemporaryDirectory(prefix='.zuo-sandbox-test-', dir=Path.cwd()) as
     (work / 'optional').write_text('new input')
     assert 'declared absent path exists' in run('MODE=optional', ok=False)
     (work / 'optional').unlink()
+    # Literal compilation programs can be delivered from a hashed file. The
+    # environment channel remains separate and the action sees exactly stdin.
+    sdk.write_text(json.dumps({'version': 1, 'files': [], 'absent': []}))
+    program = work / 'program'
+    program.write_text('first stdin\n')
+    fresh()
+    assert 'stored' in run('MODE=stdin', 'STDIN=' + str(program))
+    assert (work / 'a').read_text() == 'declared input\nfirst stdin\n'
+    assert 'hit' in run('MODE=stdin', 'STDIN=' + str(program))
+    program.write_text('second stdin\n')
+    # The strict plan rehashes even when mtimes are indistinguishable.
+    assert 'stored' in run('MODE=stdin', 'STDIN=' + str(program))
+    assert (work / 'a').read_text().endswith('second stdin\n')
+    # Presence is a distinct contract: changing bytes does not invalidate it,
+    # but opening those bytes (even tolerantly) rejects cache publication.
+    optional = work / 'optional'
+    optional.write_text('metadata is not content\n')
+    sdk.write_text(json.dumps({'version': 1, 'files': [], 'absent': [],
+                              'metadata': [str(optional)]}))
+    fresh()
+    assert 'stored' in run('MODE=metadata')
+    assert str(optional) in report()['metadata_only']
+    optional.write_text('changed bytes\n')
+    assert 'hit' in run('MODE=metadata')
+    fresh()
+    assert 'content read of file-presence input:' in run('MODE=metadata-read', ok=False)
+    optional.unlink()
+    assert 'helper failed' in run('MODE=metadata', ok=False)
+    sdk.write_text(json.dumps({'version': 1, 'files': [], 'absent': []}))
+    fresh()
+    run('MODE=retained')
+    assert report()['undeclared_outputs'] == [str(work / 'unlisted-header.h')]
+    assert not (work / 'unlisted-header.h').exists()
+    fresh()
+    before = set((cache / 'actions').iterdir())
+    assert 'undeclared retained output:' in run('MODE=retained', 'OUTPUTS=error', ok=False)
+    assert before == set((cache / 'actions').iterdir())
+    assert not (work / 'a').exists()
+    fresh()
+    run('MODE=proc')
+    fresh()
+    assert '/proc/1/environ' in run('MODE=proc-other', ok=False)
+    # CLONE_FS shares cwd, not the executable identity or namespace process ID.
+    # A child exec must not change how the parent's procfs alias is audited.
+    child = producer.with_name(producer.name + '-child')
+    shutil.copyfile(producer, child)
+    child.chmod(0o755)
+    sdk.write_text(json.dumps({'version': 1, 'files': [str(child)], 'absent': []}))
+    fresh()
+    run('MODE=clone-exec')
+    sdk.write_text(json.dumps({'version': 1, 'files': [], 'absent': []}))
     # Disabling caching still enforces the boundary.
     env.pop('ZUO_ACTION_CACHE')
     fresh()

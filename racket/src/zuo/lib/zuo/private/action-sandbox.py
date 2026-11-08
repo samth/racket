@@ -41,18 +41,21 @@ def inside(p, directory):
 
 def manifest(filename):
     if filename is None:
-        return [], [], []
+        return [], [], [], []
     data = json.loads(Path(filename).read_text())
     if (not {'version', 'files', 'absent'}.issubset(data)
-            or set(data) - {'version', 'files', 'absent', 'directories'}
+            or set(data) - {'version', 'files', 'absent', 'directories', 'metadata'}
             or data['version'] != VERSION):
         fail('unsupported SDK manifest')
     if not isinstance(data['files'], list) or not isinstance(data['absent'], list):
         fail('manifest files and absent must be lists')
     if not isinstance(data.get('directories', []), list):
         fail('manifest directories must be a list')
+    metadata = data.get('metadata', [])
+    if not isinstance(metadata, list):
+        fail('metadata must be a list of file-presence paths')
     return (sorted(set(map(path, data['files']))), sorted(set(map(path, data['absent']))),
-            sorted(set(map(path, data.get('directories', [])))))
+            sorted(set(map(path, data.get('directories', [])))), sorted(set(map(path, metadata))))
 
 
 def digest(p):
@@ -93,8 +96,9 @@ def interpreter(filename):
 
 
 def plan(args):
-    sdk, absent, directories = manifest(args.manifest)
-    inputs = sorted(set(map(path, args.input)) | set(sdk))
+    sdk, absent, directories, metadata = manifest(args.manifest)
+    stdin_file = path(args.stdin_file) if args.stdin_file else None
+    inputs = sorted(set(map(path, args.input)) | set(sdk) | ({stdin_file} if stdin_file else set()))
     outputs = sorted(set(map(path, args.output)))
     cwd = path(args.cwd)
     if cwd in ('/', '/tmp') or inside(cwd, '/dev'):
@@ -126,16 +130,25 @@ def plan(args):
     for p in absent:
         if os.path.lexists(p):
             fail('declared absent path exists; update the SDK declaration: ' + p)
-        if p in inputs or any(inside(q, p) for q in inputs + outputs + directories + [cwd]):
+        if p in inputs or any(inside(q, p) for q in inputs + outputs + directories + metadata + [cwd]):
             fail('absence conflicts with a sandbox path: ' + p)
     for p in directories:
         if not os.path.isdir(p) or inside(p, '/proc') or inside(p, '/dev') or inside(p, '/tmp'):
             fail('unsupported declared directory: ' + p)
+    for p in metadata:
+        if (p in inputs or p in absent or p in directories
+                or inside(p, '/proc') or inside(p, '/dev') or inside(p, '/tmp')
+                or any(inside(out, p) or inside(p, out) for out in outputs)
+                or any(inside(other, p) for other in inputs + metadata if other != p)):
+            fail('conflicting file-presence declaration: ' + p)
+        if not stat.S_ISREG(os.lstat(p).st_mode) or os.path.realpath(p) != p:
+            fail('file-presence input must be a regular file without symlink ancestors: ' + p)
     signature = hashlib.sha256(json.dumps(
-        [VERSION, records, absent, directories, cwd, outputs, args.command, args.unused,
+        [VERSION, records, absent, directories, metadata, stdin_file, cwd, outputs, args.command,
+         args.unused, args.extra_outputs,
          digest(args.launcher)],
         separators=(',', ':')).encode()).hexdigest()
-    return signature, records, absent, directories, cwd, outputs
+    return signature, records, absent, directories, metadata, cwd, outputs
 
 
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"')
@@ -162,7 +175,9 @@ def trace_calls(filename):
             if any(match[3][q.end():].startswith('...') for q in QUOTED.finditer(match[3])):
                 fail('truncated or unsupported trace record')
             yield int(match[1]), match[2], match[3], match[4]
-        elif re.match(r'^\d+\s+(\+\+\+ exited with \d+ \+\+\+|\+\+\+ killed by .+ \+\+\+|--- .+ ---)$', raw):
+        elif re.match(r'^\d+\s+\+\+\+ killed by .+ \+\+\+$', raw):
+            yield int(raw.split()[0]), '__killed__', '', ''
+        elif re.match(r'^\d+\s+(\+\+\+ exited with \d+ \+\+\+|--- .+ ---)$', raw):
             continue
         else:
             fail('unrecognized trace record: ' + raw[:120])
@@ -170,12 +185,15 @@ def trace_calls(filename):
         fail('trace ended with unfinished system calls')
 
 
-def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
+def audit(filename, inputs, absent, extra_directories, cwd, outputs, command,
+          presence=(), stdin_file=None):
     declared = set(inputs)
-    directories = {'/', '/tmp', '/dev', cwd, *extra_directories}
-    for p in list(inputs) + list(outputs) + [cwd]:
+    directories = {'/', '/tmp', '/dev', '/proc', cwd, *extra_directories}
+    for p in list(inputs) + list(outputs) + list(presence) + [cwd]:
         directories.update(str(d) for d in Path(p).parents)
     used, metadata, created, problems = set(), set(), set(outputs), set()
+    if stdin_file:
+        used.add(stdin_file)  # delivered by the trusted launcher before exec
     processes = {}
     started = False
     exited = set()
@@ -183,7 +201,7 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
     def resolve(value, state, argtext=None):
         if value.startswith('/'):
             return path(value)
-        base = state['cwd']
+        base = state['fs']['cwd']
         if argtext is not None:
             prefix = argtext.split('"', 1)[0]
             if not prefix.startswith('AT_FDCWD'):
@@ -195,13 +213,18 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
 
     def access(p, reading, success, writing=False):
         if writing:
-            if p in declared or not (inside(p, cwd) or inside(p, '/tmp')):
+            if p in declared or p in presence or not (inside(p, cwd) or inside(p, '/tmp')):
                 problems.add('write outside scratch/outputs: ' + p)
             elif success:
                 created.add(p)
             return
         if p in declared:
             (used if reading else metadata).add(p)
+        elif p in presence:
+            if reading:
+                problems.add('content read of file-presence input: ' + p)
+            else:
+                metadata.add(p)
         elif p in created or inside(p, '/tmp') or p == '/dev/null':
             pass
         elif p in directories:
@@ -218,9 +241,16 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
         translated = re.search(r'/\* (\d+) in strace\'s PID NS \*/', result)
         return int(translated[1]) if translated else int(result.split()[0])
 
-    forks = {child_pid(result): (pid, 'CLONE_FS' in text)
+    forks = {child_pid(result): (pid, text)
              for pid, name, text, result in calls
              if name in ('clone', 'clone3', 'fork', 'vfork') and not result.startswith('-1 ')}
+
+    def fork_state(parent, flags):
+        child = dict(parent)
+        child['fs'] = parent['fs'] if 'CLONE_FS' in flags else dict(parent['fs'])
+        if 'CLONE_THREAD' not in flags:
+            child.pop('namespace_pid', None)
+        return child
 
     def descendant(pid, seen=None):
         if pid in processes:
@@ -229,9 +259,9 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
         if pid in seen or pid not in forks:
             return False
         seen.add(pid)
-        parent, shared = forks[pid]
+        parent, flags = forks[pid]
         if descendant(parent, seen):
-            processes[pid] = processes[parent] if shared else dict(processes[parent])
+            processes[pid] = fork_state(processes[parent], flags)
             return True
         return False
 
@@ -242,7 +272,7 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
             if name == 'execve' and success and strings and strings[0] == command[0]:
                 if started:
                     fail('ambiguous action entry in trace')
-                processes[pid] = {'cwd': cwd, 'exe': command[0]}
+                processes[pid] = {'fs': {'cwd': cwd}, 'exe': command[0]}
                 started = True
             else:
                 continue  # bubblewrap's trusted setup, outside the action
@@ -251,12 +281,12 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
             if success:
                 child = child_pid(result)
                 if child not in processes:
-                    processes[child] = state if 'CLONE_FS' in text else dict(state)
+                    processes[child] = fork_state(state, text)
             continue
-        if name in ('exit', 'exit_group'):
+        if name in ('exit', 'exit_group', '__killed__'):
             exited.add(pid)
             continue
-        if name in ('wait4', 'waitid'):
+        if name in ('wait4', 'waitid', 'kill', 'tkill', 'tgkill'):
             continue
         if name in ('socket', 'socketpair', 'connect', 'bind', 'sendto', 'sendmsg',
                     'recvfrom', 'recvmsg', 'listen', 'accept', 'accept4',
@@ -273,10 +303,10 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
             p = path(match[1])
             access(p, False, success)
             if success:
-                state['cwd'] = p
+                state['fs']['cwd'] = p
             continue
         if name == 'getcwd':
-            if success and (not strings or path(strings[0]) != state['cwd']):
+            if success and (not strings or path(strings[0]) != state['fs']['cwd']):
                 fail('getcwd disagrees with traced working directory')
             continue
         if not strings:
@@ -285,12 +315,21 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
                       'faccessat2', 'readlinkat', 'mkdirat', 'unlinkat',
                       'fchmodat', 'fchmodat2', 'utimensat', 'execveat')
         p = resolve(strings[0], state, text if at else None)
-        if name == 'readlink' and p == '/proc/self/exe' and success:
+        if name == 'readlink' and p == '/proc/self' and success:
+            if len(strings) != 2 or not re.fullmatch(r'[1-9][0-9]*', strings[1]):
+                fail('unexpected private /proc/self target')
+            state['namespace_pid'] = strings[1]
+            continue
+        proc_pid = '/proc/' + state.get('namespace_pid', 'unknown')
+        if p == proc_pid and name in ('readlink', 'stat', 'lstat', 'newfstatat', 'statx'):
+            continue  # metadata for this process in the private PID namespace
+        proc_exe = p in ('/proc/self/exe', proc_pid + '/exe')
+        if name == 'readlink' and proc_exe and success:
             if len(strings) != 2 or strings[1] != state['exe']:
                 fail('unexpected /proc/self/exe target')
             metadata.add(state['exe'])
             continue
-        if p == '/proc/self/exe':
+        if proc_exe:
             p = state['exe']  # private procfs alias for a declared executable
         if name in ('execve', 'execveat', 'open', 'openat', 'openat2'):
             writing = name.startswith('open') and bool(re.search(r'O_WRONLY|O_RDWR|O_CREAT|O_TRUNC', text))
@@ -314,7 +353,7 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
                       'access', 'faccessat', 'faccessat2', 'readlink', 'readlinkat', 'chdir'):
             access(p, False, success)
             if name == 'chdir' and success:
-                state['cwd'] = p
+                state['fs']['cwd'] = p
         elif name in ('mkdir', 'mkdirat', 'unlink', 'unlinkat', 'rmdir', 'chmod',
                       'fchmodat', 'fchmodat2', 'utime', 'utimes', 'utimensat', 'truncate'):
             access(p, False, success, True)
@@ -331,12 +370,14 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command):
     if not started or not exited or not set(processes).issubset(exited):
         fail('action trace is incomplete (entry/exit or descendant missing)')
     return {'version': VERSION, 'used': sorted(used), 'metadata_only': sorted(metadata - used),
-            'unused': sorted(declared - used - metadata), 'violations': sorted(problems)}
+            'unused': sorted(declared - used - metadata),
+            'unused_metadata': sorted(set(presence) - metadata),
+            'violations': sorted(problems)}
 
 
 def run(args, expected):
     environment = sys.stdin.buffer.read()
-    signature, records, absent, extra_directories, cwd, outputs = plan(args)
+    signature, records, absent, extra_directories, presence, cwd, outputs = plan(args)
     if signature != expected:
         fail('sandbox inputs changed before execution')
     with tempfile.TemporaryDirectory(prefix='zuo-sandbox-') as temp:
@@ -355,6 +396,11 @@ def run(args, expected):
                 fail('input changed during snapshot: ' + p)
         for p in outputs:
             directories.add(str(Path(p).parent))
+        for p in presence:
+            target = staged(p)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.touch(mode=0o444)
+            os.utime(target, (EPOCH, EPOCH))
         for p in directories:
             staged(p).mkdir(parents=True, exist_ok=True)
         staged('/dev/null').touch()
@@ -374,18 +420,37 @@ def run(args, expected):
         for p, sha, mode in records:
             if inside(p, cwd):
                 command.extend(['--ro-bind', str(staged(p)), p])
-        command.extend(['--', '/.zuo-launcher', *args.command])
+        for p in presence:
+            if inside(p, cwd):
+                command.extend(['--ro-bind', str(staged(p)), p])
+        command.extend(['--', '/.zuo-launcher', args.stdin_file or '/dev/null', *args.command])
         result = subprocess.run(command, input=environment, env={})
         if args.trace_report:
             shutil.copyfile(trace, args.trace_report)
-        report = audit(trace, [r[0] for r in records], absent, extra_directories, cwd, outputs, args.command)
+        report = audit(trace, [r[0] for r in records], absent, extra_directories, cwd, outputs,
+                       args.command, presence, args.stdin_file)
+        report['exit_status'] = result.returncode
+        # Scratch intermediates are allowed, but retained files are reported as
+        # output-contract candidates. Never silently add them to the output set.
+        staged_inputs = {p for p, _, _ in records} | set(presence)
+        report['undeclared_outputs'] = sorted('/' + str(p.relative_to(root))
+            for p in staged(cwd).rglob('*')
+            if (p.is_file() or p.is_symlink())
+            and '/' + str(p.relative_to(root)) not in staged_inputs | set(outputs))
         if args.report:
             Path(args.report).write_text(json.dumps(report, indent=2) + '\n')
         for problem in report['violations']:
             print('sandbox: ' + problem, file=sys.stderr)
         for p in report['unused']:
             print('sandbox: unused declared input: ' + p, file=sys.stderr)
-        if result.returncode or report['violations'] or (report['unused'] and args.unused == 'error'):
+        for p in report['unused_metadata']:
+            print('sandbox: unused file-presence input: ' + p, file=sys.stderr)
+        if args.extra_outputs == 'error':
+            for p in report['undeclared_outputs']:
+                print('sandbox: undeclared retained output: ' + p, file=sys.stderr)
+        if (result.returncode or report['violations']
+                or ((report['unused'] or report['unused_metadata']) and args.unused == 'error')
+                or (report['undeclared_outputs'] and args.extra_outputs == 'error')):
             fail('sandbox action rejected; no outputs published (exit ' + str(result.returncode) + ')')
         if plan(args)[0] != signature:
             fail('sandbox inputs changed during execution')
@@ -419,8 +484,10 @@ def main():
     parser.add_argument('--expected-plan')
     parser.add_argument('--cwd')
     parser.add_argument('--input', action='append', default=[])
+    parser.add_argument('--stdin-file', help='declared regular file delivered as action stdin')
     parser.add_argument('--output', action='append', default=[])
     parser.add_argument('--unused', choices=('error', 'report'), default='error')
+    parser.add_argument('--extra-outputs', choices=('error', 'report'), default='report')
     parser.add_argument('--report')
     parser.add_argument('--trace-report')
     parser.add_argument('--bubblewrap', default='/usr/bin/bwrap')

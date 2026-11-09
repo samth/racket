@@ -28,6 +28,8 @@
   (define wpo? (not (equal? (lookup 'DISABLE_WPO) "t")))
   (define schemify? (not (equal? (lookup 'schemify) "f")))
   (define slsp-suffix (lookup 'PLT_CS_SLSP_SUFFIX))
+  (define session-key (let ([key (lookup 'sessionKey)])
+                        (and key (not (equal? key "")) key)))
 
   (define cso (or (lookup 'cso) ".so"))
   
@@ -36,7 +38,7 @@
      (list scheme
            (input-data-target 'compile-config
                               (list unsafe? debug? compress? slsp-suffix scheme-args
-                                    (lookup 'CONFIGURE_RACKET_SO_COMPILE))))
+                                    (lookup 'CONFIGURE_RACKET_SO_COMPILE) session-key)))
      extra-compile-file-deps
      (if xpatch (list xpatch) '())
      (map at-source '("compile-file.ss" "main.zuo" "../lib.zuo"))))
@@ -220,6 +222,10 @@
     (define args (append scheme-args
                          (list "--script"
                                (at-source "compile-file.ss"))
+                         (if session-key
+                             ;; Independently compiled outputs are loaded together.
+                             (list "--session-key" (~a session-key "-" (file-name-from-path dest) "-"))
+                             '())
                          (if unsafe?
                              (list "--unsafe")
                              '())

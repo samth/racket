@@ -49,6 +49,7 @@
 (define source-dir "")
 (define build-dir "")
 (define xpatch-path #f)
+(define session-key #f)
 
 (define-values (src dest deps)
   (let loop ([args (command-line-arguments)])
@@ -92,6 +93,10 @@
       => (lambda (args)
            (set! xpatch-path (car args))
            (loop (cdr args)))]
+     [(get-opt args "--session-key" 1)
+      => (lambda (args)
+           (set! session-key (car args))
+           (loop (cdr args)))]
      [(get-opt args "--show-cp0" 0)
       => (lambda (args)
            (run-cp0 (lambda (cp0 x)
@@ -105,6 +110,10 @@
       (error 'compile-file "missing destination file")]
      [else
       (values (car args) (cadr args) (cddr args))])))
+
+;; The build supplies this only when deterministic compilation is requested.
+(when (and session-key (not (string=? session-key "")))
+  (#%$set-top-level-value! '$session-key session-key))
 
 (when xpatch-path
   (load xpatch-path))

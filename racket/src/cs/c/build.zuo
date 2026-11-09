@@ -20,6 +20,13 @@
 (define (targets-at at-dir [vars (hash)])
   (define config (config-file->hash (at-dir "Makefile") vars))
   (define (lookup k [default ""]) (hash-ref config k default))
+  ;; CI supplies the base key; an explicit build variable overrides the
+  ;; environment, including an empty value to retain ordinary Chez naming.
+  (define session-key
+    (let ([key (lookup 'sessionKey
+                       (let ([p (assoc "RACKET_CHEZ_SESSION_KEY" (hash-ref (runtime-env) 'env))])
+                         (and p (cdr p))))])
+      (and key (not (equal? key "")) key)))
 
   (define (config-input name keys)
     (input-data-target name (map (lambda (k) (list k (lookup k))) keys)))
@@ -96,6 +103,7 @@
                                     (let ([vars (hash-set* vars
                                                            'SCHEME scheme.exe
                                                            'scheme-args scheme-args
+                                                           'sessionKey session-key
                                                            'schemify "f"
                                                            'CONFIGURE_RACKET_SO_COMPILE (lookup 'CONFIGURE_RACKET_SO_COMPILE)
                                                            'COMPRESS_COMP (lookup 'COMPRESS_COMP)
@@ -129,11 +137,12 @@
                'exePostStep (lookup 'POST_LINKER)))
 
   (define (add-scheme-boot-config config)
+    (define keyed-config (if session-key (hash-set config 'sessionKey session-key) config))
     (if (equal? (lookup 'ENABLE_EXTRA_CHECKS "no") "yes")
-        (hash-set* config
+        (hash-set* keyed-config
                    'o "2"
                    'd "1")
-        config))
+        keyed-config))
 
   (define (add-windows-config config)
     (hash-set* config

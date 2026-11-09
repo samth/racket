@@ -20,6 +20,7 @@
                                    'launcher (hash-ref vars 'LAUNCHER)
                                    'manifest (hash-ref vars 'SDK)
                                    'stdin-file (hash-ref vars 'STDIN #f)
+                                   'entropy-seed (hash-ref vars 'ENTROPY #f)
                                    'extra-outputs (if (equal? (hash-ref vars 'OUTPUTS "report") "error")
                                                       'error 'report)
                                    'unused-inputs (if (equal? (hash-ref vars 'UNUSED "error") "report")

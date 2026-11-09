@@ -760,6 +760,24 @@ content input and is delivered on stdin, separately from the environment pipe.
 Environment values travel through a pipe, not command-line arguments or
 cache metadata.
 
+Optional @racket['entropy-seed] names a regular file that becomes a content
+input. In this mode, @filepath{/dev/urandom} supplies a deterministic SHA-256
+counter stream derived from the seed, the action's explicit environment and
+command identity, and its input snapshot. Different actions get different
+streams with the same base seed. One stream advances across opens and action
+descendants, so repeatedly opening the device does not repeat its initial
+bytes. A cache hit reuses the declared stream's result; changing the seed
+invalidates that result. The stream algorithm is versioned in the identity.
+
+This explicit build-input mode requires Strace syscall injection: @exec{getrandom}
+returns @tt{ENOSYS}, permitting a program's device fallback without allowing
+unrecorded kernel entropy. @filepath{/dev/random} remains undeclared. Reports
+record the seed path, algorithm and number of bytes consumed, not seed values.
+The stream uses a FIFO and does not emulate all random-device operations.
+Concurrent readers consume bytes in scheduling order; declaring entropy alone
+does not establish determinism for concurrent programs. Normal builds and
+sandbox actions without this option retain their existing behavior.
+
 Optional @racket['manifest] names a JSON SDK declaration, for example:
 @verbatim["{\"version\":1,\"files\":[\"/lib64/ld-linux-x86-64.so.2\"],\"absent\":[\"/etc/ld.so.preload\"],\"directories\":[]}"]
 @tt{files} lists exact regular-file inputs, including shared libraries,
@@ -819,7 +837,8 @@ review, not an automatically inferred output declaration.
 This is opt-in filesystem enforcement for explicit commands, not a proof of
 semantic minimality for all builds. Rule evaluation and sandbox support tools
 remain trusted, with their runtime covered by the caller's toolchain identity.
-Time, randomness, kernel behavior and other non-file inputs are not made
-deterministic. Executing newly generated tools, directory discovery, and
+Time, kernel behavior, entropy outside the explicit stream, and other non-file
+inputs are not made deterministic. Executing newly generated tools, directory
+discovery, and
 several less common system calls are unsupported and fail closed. Normal Zuo
 rules and Racket's default CI remain unchanged.

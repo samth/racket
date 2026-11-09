@@ -23,6 +23,9 @@
               '())
           (if (hash-ref s 'stdin-file #f)
               (list "--stdin-file" (path->complete-path (hash-ref s 'stdin-file)))
+              '())
+          (if (hash-ref s 'entropy-seed #f)
+              (list "--entropy-seed" (path->complete-path (hash-ref s 'entropy-seed)))
               '())))
 
 (define (sandbox-support-inputs s)
@@ -54,7 +57,8 @@
   (if s
       (filter (lambda (p) (not (equal? p "")))
               (append (string-split (helper description (append (sandbox-prefix s) (list "--manifest-inputs")) #t) "\n")
-                      (if (hash-ref s 'stdin-file #f) (list (hash-ref s 'stdin-file)) '())))
+                      (if (hash-ref s 'stdin-file #f) (list (hash-ref s 'stdin-file)) '())
+                      (if (hash-ref s 'entropy-seed #f) (list (hash-ref s 'entropy-seed)) '())))
       '()))
 
 (define (attach-command-sandbox description s runtime-inputs)
@@ -64,7 +68,10 @@
           (error "command sandbox requires Linux"))
         (unless (member (hash-ref s 'unused-inputs 'error) '(error report))
           (error "sandbox unused-inputs must be 'error or 'report"))
-        (append description (list (list (sandbox-prefix s)
+        (append description (list (list (append (sandbox-prefix s)
+                                               (if (hash-ref s 'entropy-seed #f)
+                                                   (list "--entropy-context" (string-sha256 (~s description)))
+                                                   '()))
                                        (sort (map path->complete-path runtime-inputs) string<?)))))
       description))
 

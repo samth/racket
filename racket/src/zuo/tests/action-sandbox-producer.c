@@ -1,12 +1,14 @@
 /* A static producer exercises real child processes, file probes, and writes. */
 #define _GNU_SOURCE
 #include <fcntl.h>
+#include <errno.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/random.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -79,6 +81,19 @@ int main(int argc, char **argv) {
   if (!in || !out) return 3;
   int c;
   while ((c = fgetc(in)) != EOF) fputc(c, out);
+  if (!strcmp(mode, "entropy")) {
+    unsigned char bytes[64];
+    if (getrandom(bytes, 1, 0) != -1 || errno != ENOSYS) return 15;
+    for (int part = 0; part < 2; part++) {
+      int fd = open("/dev/urandom", O_RDONLY);
+      struct stat stream_stat;
+      if (fd < 0 || fstat(fd, &stream_stat) || !S_ISFIFO(stream_stat.st_mode)) return 18;
+      if (fd < 0 || read(fd, bytes + part * 32, 32) != 32) return 16;
+      close(fd);
+    }
+    if (!memcmp(bytes, bytes + 32, 32)) return 17;
+    for (int i = 0; i < 64; i++) fprintf(out, "%02x", bytes[i]);
+  }
   if (!strcmp(mode, "stdin"))
     while ((c = fgetc(stdin)) != EOF) fputc(c, out);
   if (!strcmp(mode, "retained")) {

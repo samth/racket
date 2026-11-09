@@ -7,21 +7,27 @@ checked on every lookup, including cache hits. Trace reports are diagnostics,
 never declarations. This is a build correctness tool, not a hostile-code service.
 """
 import argparse
+import array
 import ast
+import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import select
 import shutil
 import stat
 import struct
 import subprocess
 import sys
 import tempfile
+import termios
+import threading
 
 VERSION = 1
 EPOCH = 946684800
+ENTROPY_VERSION = 'zuo-entropy-sha256-stream-v1'
 
 
 def fail(message):
@@ -98,7 +104,12 @@ def interpreter(filename):
 def plan(args):
     sdk, absent, directories, metadata = manifest(args.manifest)
     stdin_file = path(args.stdin_file) if args.stdin_file else None
-    inputs = sorted(set(map(path, args.input)) | set(sdk) | ({stdin_file} if stdin_file else set()))
+    entropy_seed = path(args.entropy_seed) if args.entropy_seed else None
+    if entropy_seed and not args.entropy_context:
+        fail('declared entropy requires an explicit action context')
+    inputs = sorted(set(map(path, args.input)) | set(sdk)
+                    | ({stdin_file} if stdin_file else set())
+                    | ({entropy_seed} if entropy_seed else set()))
     outputs = sorted(set(map(path, args.output)))
     cwd = path(args.cwd)
     if cwd in ('/', '/tmp') or inside(cwd, '/dev'):
@@ -146,6 +157,7 @@ def plan(args):
     signature = hashlib.sha256(json.dumps(
         [VERSION, records, absent, directories, metadata, stdin_file, cwd, outputs, args.command,
          args.unused, args.extra_outputs,
+         ENTROPY_VERSION if entropy_seed else None, entropy_seed, args.entropy_context,
          digest(args.launcher)],
         separators=(',', ':')).encode()).hexdigest()
     return signature, records, absent, directories, metadata, cwd, outputs
@@ -176,7 +188,12 @@ def trace_calls(filename):
                 fail('truncated or unsupported trace record')
             yield int(match[1]), match[2], match[3], match[4]
         elif re.match(r'^\d+\s+\+\+\+ killed by .+ \+\+\+$', raw):
-            yield int(raw.split()[0]), '__killed__', '', ''
+            pid = raw.split()[0]
+            # A PID-namespace reaper can be killed while it is exiting. This
+            # cancels a process-control call, not a missing file operation.
+            if re.match(r'^(exit|exit_group|wait4|waitid)\(', pending.get(pid, '')):
+                pending.pop(pid)
+            yield int(pid), '__killed__', '', ''
         elif re.match(r'^\d+\s+(\+\+\+ exited with \d+ \+\+\+|--- .+ ---)$', raw):
             continue
         else:
@@ -186,7 +203,7 @@ def trace_calls(filename):
 
 
 def audit(filename, inputs, absent, extra_directories, cwd, outputs, command,
-          presence=(), stdin_file=None):
+          presence=(), stdin_file=None, entropy_seed=None):
     declared = set(inputs)
     directories = {'/', '/tmp', '/dev', '/proc', cwd, *extra_directories}
     for p in list(inputs) + list(outputs) + list(presence) + [cwd]:
@@ -212,6 +229,12 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command,
         return path(os.path.join(base, value))
 
     def access(p, reading, success, writing=False):
+        if p == '/dev/urandom' and entropy_seed:
+            if writing:
+                problems.add('write to declared entropy stream')
+            elif success:
+                used.add(entropy_seed)
+            return
         if writing:
             if p in declared or p in presence or not (inside(p, cwd) or inside(p, '/tmp')):
                 problems.add('write outside scratch/outputs: ' + p)
@@ -287,6 +310,12 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command,
             exited.add(pid)
             continue
         if name in ('wait4', 'waitid', 'kill', 'tkill', 'tgkill'):
+            continue
+        if name == 'getrandom':
+            if success:
+                problems.add('getrandom bypasses declared entropy stream')
+            elif 'ENOSYS' not in result:
+                problems.add('unexpected getrandom result')
             continue
         if name in ('socket', 'socketpair', 'connect', 'bind', 'sendto', 'sendmsg',
                     'recvfrom', 'recvmsg', 'listen', 'accept', 'accept4',
@@ -375,6 +404,67 @@ def audit(filename, inputs, absent, extra_directories, cwd, outputs, command,
             'violations': sorted(problems)}
 
 
+class EntropyStream:
+    """One deterministic byte stream across all opens and action descendants.
+
+    Holding O_RDWR on the FIFO keeps queued bytes alive between reader opens.
+    A regular-file substitution would restart at byte zero on every open.
+    """
+    def __init__(self, filename, seed, context):
+        self.key = hashlib.sha256(ENTROPY_VERSION.encode() + b'\0' + seed
+                                  + b'\0' + context.encode()).digest()
+        os.mkfifo(filename, 0o600)
+        self.fd = os.open(filename, os.O_RDWR | os.O_NONBLOCK)
+        os.chmod(filename, 0o444)
+        os.utime(filename, (EPOCH, EPOCH))
+        self.stop = threading.Event()
+        self.ready = threading.Event()
+        self.written = 0
+        self.error = None
+        self.thread = threading.Thread(target=self.feed)
+        self.thread.start()
+        if not self.ready.wait(5):
+            self.close()
+            fail('declared entropy stream did not start')
+        if self.error:
+            self.close()
+            raise self.error
+
+    def feed(self):
+        counter = 0
+        pending = b''
+        try:
+            while not self.stop.is_set():
+                if not select.select([], [self.fd], [], 0.05)[1]:
+                    continue
+                if not pending:
+                    blocks = []
+                    for _ in range(128):
+                        blocks.append(hashlib.sha256(self.key + counter.to_bytes(16, 'big')).digest())
+                        counter += 1
+                    pending = b''.join(blocks)
+                try:
+                    count = os.write(self.fd, pending)
+                except BlockingIOError:
+                    continue
+                self.written += count
+                pending = pending[count:]
+                self.ready.set()
+        except Exception as error:
+            self.error = error
+            self.ready.set()
+
+    def close(self):
+        self.stop.set()
+        self.thread.join()
+        queued = array.array('i', [0])
+        try:
+            fcntl.ioctl(self.fd, termios.FIONREAD, queued, True)
+            return self.written - queued[0]
+        finally:
+            os.close(self.fd)
+
+
 def run(args, expected):
     environment = sys.stdin.buffer.read()
     signature, records, absent, extra_directories, presence, cwd, outputs = plan(args)
@@ -412,7 +502,8 @@ def run(args, expected):
             os.utime(directory, (EPOCH, EPOCH))
         trace = Path(temp) / 'trace'
         command = [args.strace, '-f', '-qq', '-s', '65536', '-yy', '--decode-pids=pidns', '-e',
-                   'trace=%file,%process,%network,getdents64,io_uring_setup', '-o', str(trace),
+                   'trace=%file,%process,%network,getdents64,io_uring_setup' + (',getrandom' if args.entropy_seed else ''),
+                   *(['-e', 'inject=getrandom:error=ENOSYS'] if args.entropy_seed else []), '-o', str(trace),
                    args.bubblewrap, '--unshare-all', '--new-session', '--die-with-parent',
                    '--cap-drop', 'ALL', '--hostname', 'zuo-action', '--ro-bind', str(root), '/',
                    '--bind', str(staged(cwd)), cwd, '--bind', str(staged('/tmp')), '/tmp',
@@ -424,12 +515,25 @@ def run(args, expected):
             if inside(p, cwd):
                 command.extend(['--ro-bind', str(staged(p)), p])
         command.extend(['--', '/.zuo-launcher', args.stdin_file or '/dev/null', *args.command])
-        result = subprocess.run(command, input=environment, env={})
+        entropy = None
+        if args.entropy_seed:
+            # Use the verified snapshot, never reread mutable host seed bytes.
+            entropy = EntropyStream(staged('/dev/urandom'), staged(args.entropy_seed).read_bytes(), signature)
+            os.utime(staged('/dev'), (EPOCH, EPOCH))
+        try:
+            result = subprocess.run(command, input=environment, env={})
+        finally:
+            entropy_bytes = entropy.close() if entropy else None
+        if entropy and entropy.error:
+            raise entropy.error
         if args.trace_report:
             shutil.copyfile(trace, args.trace_report)
         report = audit(trace, [r[0] for r in records], absent, extra_directories, cwd, outputs,
-                       args.command, presence, args.stdin_file)
+                       args.command, presence, args.stdin_file, args.entropy_seed)
         report['exit_status'] = result.returncode
+        if entropy:
+            report['entropy'] = {'algorithm': ENTROPY_VERSION, 'seed_file': args.entropy_seed,
+                                 'bytes_consumed': entropy_bytes}
         # Scratch intermediates are allowed, but retained files are reported as
         # output-contract candidates. Never silently add them to the output set.
         staged_inputs = {p for p, _, _ in records} | set(presence)
@@ -485,6 +589,8 @@ def main():
     parser.add_argument('--cwd')
     parser.add_argument('--input', action='append', default=[])
     parser.add_argument('--stdin-file', help='declared regular file delivered as action stdin')
+    parser.add_argument('--entropy-seed', help='declared seed for a deterministic /dev/urandom stream')
+    parser.add_argument('--entropy-context', help='stable action identity, including its explicit environment')
     parser.add_argument('--output', action='append', default=[])
     parser.add_argument('--unused', choices=('error', 'report'), default='error')
     parser.add_argument('--extra-outputs', choices=('error', 'report'), default='report')

@@ -8,6 +8,7 @@ Missing sandbox capabilities are test failures, never an unsandboxed fallback.
 from pathlib import Path
 import json
 import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,19 @@ STRACE = shutil.which('strace')
 assert sys.platform == 'linux' and BWRAP and STRACE, 'Linux, bubblewrap and strace required'
 with tempfile.TemporaryDirectory(prefix='.zuo-sandbox-test-', dir=Path.cwd()) as temp:
     root = Path(temp)
+    # Bubblewrap's private PID-namespace reaper may be killed during exit.
+    # Accept a cancelled exit, but never discard an unfinished file syscall.
+    parse_trace = runpy.run_path(str(RUNNER))['trace_calls']
+    terminal = root / 'terminal.trace'
+    terminal.write_text('1 exit_group(0 <unfinished ...>\n1 +++ killed by SIGKILL +++\n')
+    assert list(parse_trace(terminal)) == [(1, '__killed__', '', '')]
+    terminal.write_text('1 openat(AT_FDCWD, "hidden", O_RDONLY <unfinished ...>\n1 +++ killed by SIGKILL +++\n')
+    try:
+        list(parse_trace(terminal))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('unfinished file access was accepted')
     work = root / 'work'
     work.mkdir()
     producer = root / 'producer'
@@ -150,6 +164,31 @@ with tempfile.TemporaryDirectory(prefix='.zuo-sandbox-test-', dir=Path.cwd()) as
     fresh()
     run('MODE=clone-exec')
     sdk.write_text(json.dumps({'version': 1, 'files': [], 'absent': []}))
+    # Entropy is an explicit input. Repeated opens advance one stream, the
+    # cache can reuse that stream's result, and seed changes invalidate it.
+    entropy = work / 'entropy-seed'
+    entropy.write_bytes(b'first explicit build seed')
+    fresh()
+    assert 'stored' in run('MODE=entropy', 'ENTROPY=' + str(entropy))
+    first_entropy_output = (work / 'a').read_bytes()
+    assert report()['entropy']['bytes_consumed'] == 64
+    assert str(entropy) in report()['used']
+    assert 'hit' in run('MODE=entropy', 'ENTROPY=' + str(entropy))
+    fresh()
+    assert 'hit' in run('MODE=entropy', 'ENTROPY=' + str(entropy))
+    assert (work / 'a').read_bytes() == first_entropy_output
+    entropy.write_bytes(b'second explicit build seed')
+    assert 'stored' in run('MODE=entropy', 'ENTROPY=' + str(entropy))
+    assert (work / 'a').read_bytes() != first_entropy_output
+    # Reexecution, not cache restoration, must reproduce the same bytes too.
+    saved_cache = env.pop('ZUO_ACTION_CACHE')
+    fresh()
+    run('MODE=entropy', 'ENTROPY=' + str(entropy))
+    second_entropy_output = (work / 'a').read_bytes()
+    fresh()
+    run('MODE=entropy', 'ENTROPY=' + str(entropy))
+    assert (work / 'a').read_bytes() == second_entropy_output
+    env['ZUO_ACTION_CACHE'] = saved_cache
     # Disabling caching still enforces the boundary.
     env.pop('ZUO_ACTION_CACHE')
     fresh()

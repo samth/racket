@@ -47,7 +47,11 @@
 
 (struct table-with-bulk-bindings (syms
                                   syms/serialize ; copy of `syms`, but maybe with less nominal info
-                                  bulk-bindings)
+                                  bulk-bindings
+                                  ;; A fixnum count of lookup work, or (after enough work) a
+                                  ;; mutable hasheq from each symbol to the elements of
+                                  ;; `bulk-bindings` that provide it; see `bulk-bindings-for`
+                                  [index #:mutable])
   #:property prop:serialize
   (lambda (twbb ser-push! state)
     (ser-push! 'tag '#:table-with-bulk-bindings)
@@ -56,7 +60,7 @@
   #:authentic)
 
 (define (deserialize-table-with-bulk-bindings syms bulk-bindings)
-  (table-with-bulk-bindings syms syms bulk-bindings))
+  (table-with-bulk-bindings syms syms bulk-bindings 0))
 
 ;; ----------------------------------------
 
@@ -167,9 +171,45 @@
     (table-with-bulk-bindings new-syms
                               new-syms/serialize
                               (cons (bulk-binding-at scopes bulk)
-                                    (table-with-bulk-bindings-bulk-bindings bt)))]
+                                    (table-with-bulk-bindings-bulk-bindings bt))
+                              0)]
    [else
-    (binding-table-add-bulk (table-with-bulk-bindings bt bt null) scopes bulk)]))
+    (binding-table-add-bulk (table-with-bulk-bindings bt bt null 0) scopes bulk)]))
+
+;; The bulk bindings of `table` that may provide `sym`, in order.
+;; Checking each bulk binding costs a hash-table lookup, and most
+;; lookups are for a symbol that none provides, so a table with several
+;; bulk bindings can build an index from each provided symbol to its
+;; bulk bindings. Building costs one insertion per provided symbol, so
+;; a table builds its index only after the lookups it has done (one per
+;; bulk binding per search) exceed that cost; until then, `index` counts
+;; those lookups. Bulk bindings and their provided symbols don't change,
+;; so the index stays valid, and racing threads build equivalent indexes.
+(define (bulk-bindings-for table sym s extra-shifts)
+  (define bbs (table-with-bulk-bindings-bulk-bindings table))
+  (cond
+    [(or (null? bbs) (null? (cdr bbs))) bbs]
+    [else
+     (define index (table-with-bulk-bindings-index table))
+     (cond
+       [(hash? index) (hash-ref index sym null)]
+       [else
+        (define work (+ index (length bbs)))
+        (cond
+          [(and (> work 1024)
+                ;; check the build cost only when `work` crosses a power of 2
+                (not (= (integer-length work) (integer-length index)))
+                (>= work (for/sum ([bba (in-list bbs)])
+                           (hash-count (bulk-binding-symbols (bulk-binding-at-bulk bba) s extra-shifts)))))
+           (define new-index (make-hasheq))
+           (for ([bba (in-list (reverse bbs))])
+             (for ([sym (in-hash-keys (bulk-binding-symbols (bulk-binding-at-bulk bba) s extra-shifts))])
+               (hash-set! new-index sym (cons bba (hash-ref new-index sym null)))))
+           (set-table-with-bulk-bindings-index! table new-index)
+           (hash-ref new-index sym null)]
+          [else
+           (set-table-with-bulk-bindings-index! table work)
+           bbs])])]))
 
 ;; The bindings of `bulk` at `scopes` should shadow any existing
 ;; mappings in `sym-bindings`, except one for `except` or a like-ambigious-binding
@@ -217,14 +257,16 @@
        (identifier? #'sym)
        #'[(scopes-id binding-id)
           (:do-in
-           ([(ht bulk-bindings)
-             (let ([table table-expr])
+           ([(ht bulk-bindings s extra-shifts)
+             (let ([table table-expr]
+                   [s s-expr]
+                   [extra-shifts extra-shifts-expr])
                (if (hash? table)
-                   (values (hash-ref table sym #hash()) null)
+                   (values (hash-ref table sym #hash()) null s extra-shifts)
                    (values (hash-ref (table-with-bulk-bindings-syms table) sym #hash())
-                           (table-with-bulk-bindings-bulk-bindings table))))]
-            [(s) s-expr]
-            [(extra-shifts) extra-shifts-expr])
+                           (bulk-bindings-for table sym s extra-shifts)
+                           s
+                           extra-shifts)))])
            #t
            ;; The current index is either a number index for a hash table
            ;; (extracted from the symbol-keyed hash table) or it is a pair
@@ -400,7 +442,7 @@
                              [scopes (intern-scopes (bulk-binding-at-scopes bba) state)]))))
         (define new-bt
           (if (pair? new-bulk-bindings)
-              (table-with-bulk-bindings new-syms new-syms new-bulk-bindings)
+              (table-with-bulk-bindings new-syms new-syms new-bulk-bindings 0)
               new-syms))
         (hash-set! (serialize-state-bulk-bindings-intern state) bt new-bt)
         new-bt)))

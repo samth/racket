@@ -4,6 +4,7 @@
          "serialize-property.rkt"
          "serialize-state.rkt"
          "../common/set.rkt"
+         "../common/scope-set.rkt"
          "../syntax/syntax.rkt"
          "../syntax/binding-table.rkt"
          "../syntax/scope.rkt"
@@ -878,8 +879,22 @@
                  [(#:seteq) (seteq)]
                  [(#:seteqv) (seteqv)]))
      (define len (vector*-ref vec (add1 pos)))
-     (for/fold ([s s] [pos (+ pos 2)]) ([i (in-range len)])
-       (decodes #:pos pos (k) (set-add s k)))]
+     (define-values (rev-elems new-pos)
+       (for/fold ([r null] [pos (+ pos 2)]) ([i (in-range len)])
+         (decodes #:pos pos (k) (cons k r))))
+     ;; A scope set is serialized the same way as a `seteq` of scopes,
+     ;; so a non-empty `seteq` that contains only scopes is decoded as
+     ;; a scope set. No other serialized value is a `seteq` of scopes.
+     ;; (An empty scope set is decoded as an empty `seteq`, and
+     ;; `deserialize-syntax` converts it.) Scopes get fresh ids when
+     ;; they are deserialized, so the elements are sorted again here.
+     (values (if (and (pair? rev-elems)
+                      (eq? s (seteq))
+                      (andmap scope? rev-elems))
+                 (list->scope-set rev-elems)
+                 (for/fold ([s s]) ([k (in-list rev-elems)])
+                   (set-add s k)))
+             new-pos)]
     [(#:prefab)
      (define-values (key next-pos) (decodes #:pos (add1 pos) (k) k))
      (define len (vector*-ref vec next-pos))

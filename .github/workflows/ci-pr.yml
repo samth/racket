@@ -5,6 +5,9 @@ on: [pull_request]
 permissions:
   contents: read
 
+env:
+  RACKET_CI_SESSION_KEY: racket-chez-ci-v1
+
 jobs:
 
   buildtest-linux-x86:
@@ -17,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - name: Build
-      run: make CPUS="$(nproc)" PKGS=""
+      run: make CPUS="$(nproc)" PKGS="" CONFIGURE_ARGS="--enable-sessionkey=${RACKET_CI_SESSION_KEY}"
     - name: Extend PATH with Racket executable
       run: echo "${GITHUB_WORKSPACE}/racket/bin" >> $GITHUB_PATH
     - name: Test
@@ -30,7 +33,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - name: Build
-      run: make CPUS="$(sysctl -n hw.physicalcpu)" PKGS=""
+      run: make CPUS="$(sysctl -n hw.physicalcpu)" PKGS="" CONFIGURE_ARGS="--enable-sessionkey=${RACKET_CI_SESSION_KEY}"
     - name: Extend PATH with Racket executable
       run: echo "${GITHUB_WORKSPACE}/racket/bin" >> $GITHUB_PATH
     - name: Test
@@ -61,6 +64,7 @@ jobs:
         mkdir -p racket/src/build-ios
         pushd racket/src/build-ios
         ../configure \
+          --enable-sessionkey="${RACKET_CI_SESSION_KEY}" \
           --host=aarch64-apple-darwin \
           --enable-ios=iPhoneOS \
           --enable-racket=${{ github.workspace }}/host-racket/bin/racket \
@@ -93,6 +97,7 @@ jobs:
         cd racket/src/build
         env PKG_CONFIG_PATH="${GITHUB_WORKSPACE}/libffi-ios/lib/pkgconfig" \
           ../configure \
+            --enable-sessionkey="${RACKET_CI_SESSION_KEY}" \
             --host=aarch64-apple-darwin \
             --enable-ios=iPhoneOS \
             --enable-pb \

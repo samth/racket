@@ -438,6 +438,15 @@
   (intptr_t len)
   ((*ref char) is_converted)
   (intptr_t converted_start)))
+(define-function/errno
+ RKTIO_WRITE_ERROR
+ ()
+ intptr_t
+ rktio_copy_fd
+ (((ref rktio_t) rktio)
+  ((ref rktio_fd_t) src)
+  ((ref rktio_fd_t) dest)
+  (intptr_t amt)))
 (define-function
  ()
  intptr_t

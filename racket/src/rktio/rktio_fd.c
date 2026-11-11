@@ -15,6 +15,9 @@
 #ifdef HAVE_POLL_SYSCALL
 # include <poll.h>
 #endif
+#if defined(RKTIO_SYSTEM_UNIX) && defined(__linux__)
+# include <sys/sendfile.h>
+#endif
 
 /*========================================================================*/
 /* fd struct                                                              */
@@ -1943,6 +1946,56 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
     rktio_set_windows_error(err, errsaved);
     return RKTIO_WRITE_ERROR;
   }
+#endif
+}
+
+intptr_t rktio_copy_fd(rktio_t *rktio, rktio_fd_t *src, rktio_fd_t *dest, intptr_t amt)
+{
+#if defined(RKTIO_SYSTEM_UNIX) && defined(__linux__)
+  ssize_t r;
+  int dest_regular = rktio_fd_is_regular_file(rktio, dest);
+
+  if (!rktio_fd_is_regular_file(rktio, src)
+      || (src->modes & RKTIO_OPEN_SOCKET)) {
+    rktio_set_racket_error(&rktio->err, RKTIO_ERROR_UNSUPPORTED);
+    return RKTIO_WRITE_ERROR;
+  }
+
+  if (!dest_regular && !(dest->modes & RKTIO_OPEN_SOCKET)) {
+    /* `sendfile` would block on a blocking pipe, so require
+       non-blocking mode */
+    int flags = fcntl(dest->fd, F_GETFL, 0);
+    if ((flags == -1) || !(flags & RKTIO_NONBLOCKING)) {
+      rktio_set_racket_error(&rktio->err, RKTIO_ERROR_UNSUPPORTED);
+      return RKTIO_WRITE_ERROR;
+    }
+  }
+
+  amt = LIMIT_REQUEST_SIZE(amt);
+  if (amt <= 0)
+    return 0;
+
+  do {
+    r = sendfile(dest->fd, src->fd, NULL, amt);
+  } while ((r == -1) && (errno == EINTR));
+
+  if (r == -1) {
+    if (errno == EAGAIN)
+      return 0;
+    else if ((errno == EINVAL) || (errno == ENOSYS) || (errno == EOPNOTSUPP)) {
+      rktio_set_racket_error(&rktio->err, RKTIO_ERROR_UNSUPPORTED);
+      return RKTIO_WRITE_ERROR;
+    } else {
+      rktio_get_posix_error(&rktio->err);
+      return RKTIO_WRITE_ERROR;
+    }
+  } else if (r == 0)
+    return RKTIO_READ_EOF;
+  else
+    return r;
+#else
+  rktio_set_racket_error(&rktio->err, RKTIO_ERROR_UNSUPPORTED);
+  return RKTIO_WRITE_ERROR;
 #endif
 }
 

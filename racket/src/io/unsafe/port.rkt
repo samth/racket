@@ -15,7 +15,9 @@
          unsafe-port->socket
          unsafe-socket->semaphore
 
-         unsafe-poll-fd)
+         unsafe-poll-fd
+
+         unsafe-fd-port-copy)
 
 (define/who (unsafe-file-descriptor->port system-fd name mode)
   (check who exact-integer? system-fd)
@@ -90,3 +92,10 @@
        [else #f]))
    (rktio_forget rktio fd)
    ready?))
+
+;; Returns number of bytes copied, `eof`, or #f if the fast path
+;; does not apply; see `fd-port-copy`
+(define/who (unsafe-fd-port-copy in out amt)
+  ;; non-port arguments just make the fast path not apply
+  (check who exact-nonnegative-integer? amt)
+  (fd-port-copy in out (min amt (* 1024 1024 1024))))

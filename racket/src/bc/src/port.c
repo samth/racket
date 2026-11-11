@@ -219,6 +219,7 @@ static void block_timer_signals(int block);
 
 static Scheme_Object *unsafe_fd_to_port(int, Scheme_Object *[]);
 static Scheme_Object *unsafe_port_to_fd(int, Scheme_Object *[]);
+static Scheme_Object *unsafe_fd_port_copy(int, Scheme_Object *[]);
 static Scheme_Object *unsafe_fd_to_semaphore(int, Scheme_Object *[]);
 static Scheme_Object *unsafe_socket_to_port(int, Scheme_Object *[]);
 static Scheme_Object *unsafe_port_to_socket(int, Scheme_Object *[]);
@@ -406,6 +407,7 @@ void scheme_init_unsafe_port (Scheme_Startup_Env *env)
 {
   ADD_PRIM_W_ARITY("unsafe-file-descriptor->port", unsafe_fd_to_port, 3, 3, env);
   ADD_PRIM_W_ARITY("unsafe-port->file-descriptor", unsafe_port_to_fd, 1, 1, env);
+  ADD_PRIM_W_ARITY("unsafe-fd-port-copy", unsafe_fd_port_copy, 3, 3, env);
   ADD_PRIM_W_ARITY("unsafe-file-descriptor->semaphore", unsafe_fd_to_semaphore, 2, 2, env);
 
   ADD_PRIM_W_ARITY("unsafe-socket->port", unsafe_socket_to_port, 3, 3, env);
@@ -3694,6 +3696,13 @@ static Scheme_Object *unsafe_port_to_fd(int argc, Scheme_Object *argv[])
       scheme_wrong_contract("unsafe-port->file-descriptor", "port?", 0, argc, argv);
     return scheme_false;
   }
+}
+
+static Scheme_Object *unsafe_fd_port_copy(int argc, Scheme_Object *argv[])
+{
+  /* OS-level copying is not implemented for BC; `#f` means that
+     the caller should copy normally */
+  return scheme_false;
 }
 
 static Scheme_Object *unsafe_port_to_socket(int argc, Scheme_Object *argv[])

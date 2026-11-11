@@ -160,6 +160,7 @@
   [unsafe-poll-fd (known-procedure 12)]
   [unsafe-poller (known-constant)]
   [unsafe-port->file-descriptor (known-procedure 2)]
+  [unsafe-fd-port-copy (known-procedure 8)]
   [unsafe-port->socket (known-procedure 2)]
   [unsafe-register-process-global (known-procedure 4)]
   [unsafe-remove-collect-callbacks (known-procedure 2)]

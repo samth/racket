@@ -41,6 +41,24 @@
      (set! peeked-eof? #f))]
 
   ;; with lock held
+  ;; Returns #t if no bytes are buffered and nothing else (such as a
+  ;; progress evt) depends on bytes passing through the buffer, in
+  ;; which case bytes can be transferred directly from the underlying
+  ;; source (e.g., by the OS)
+  [prepare-for-direct-transfer
+   (lambda ()
+     (slow-mode!)
+     (cond
+       [(and (fx= pos end-pos)
+             (not peeked-eof?)
+             (not progress-sema)
+             (not commit-manager))
+        (set! pos 0)
+        (set! end-pos 0)
+        #t]
+       [else #f]))]
+
+  ;; with lock held
   [close-peek-buffer
    (lambda ()
      (purge-buffer)

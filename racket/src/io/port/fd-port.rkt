@@ -30,7 +30,8 @@
          terminal-port?
          port-waiting-peer?
          fd-port-fd
-         prop:fd-place-message-opener)
+         prop:fd-place-message-opener
+         fd-port-copy)
 
 ;; lock on `p` held, in rktio and rktio-sleep-relevant mode,
 ;; and with custodian lock unless errors are being discarded
@@ -497,6 +498,77 @@
     [(input-port? p) #f]
     [else
      (raise-argument-error who "port?" p)]))
+
+;; ----------------------------------------
+
+;; Copies up to `amt` bytes from `in` to `out` within the OS kernel
+;; when both are fd ports, `in` has no buffered (peeked) bytes, `out`
+;; has no buffered bytes, and the OS supports it for the pair (see
+;; `rktio_copy_fd`). Returns the number of bytes copied, `eof`, or #f
+;; when the fast path doesn't apply right now, in which case the
+;; caller should transfer at least one chunk normally before trying
+;; again. Blocks if `out` is not ready for writing.
+;; Not in atomic mode, no locks held.
+(define (fd-port-copy in out amt)
+  (define cin (->core-input-port in #:default #f))
+  (define cout (->core-output-port out #:default #f))
+  (cond
+    [(not (and (fd-input-port? cin)
+               (fd-output-port? cout)
+               (not (core-port-count cin))
+               (not (core-port-count cout))))
+     #f]
+    [else
+     ;; Check that `out` has nothing buffered
+     (define out-empty?
+       (with-lock cout
+         (and (fd-output-port-bstr cout)
+              (begin
+                (send fd-output-port cout slow-mode!)
+                (fx= (fd-output-port-start-pos cout)
+                     (fd-output-port-end-pos cout))))))
+     (cond
+       [(not out-empty?) #f]
+       [else
+        (let loop ()
+          (port-lock cin)
+          (cond
+            [(or (core-port-closed? cin)
+                 (not (send peek-via-read-input-port cin prepare-for-direct-transfer)))
+             (port-unlock cin)
+             #f]
+            [else
+             (define n
+               (rktioly
+                (if (fd-output-port-bstr cout) ; still open?
+                    (rktio_copy_fd rktio
+                                   (fd-input-port-fd cin)
+                                   (fd-output-port-fd cout)
+                                   amt)
+                    #f)))
+             (cond
+               [(not n) (port-unlock cin) #f]
+               [(rktio-error? n)
+                (port-unlock cin)
+                (cond
+                  [(racket-error? n RKTIO_ERROR_UNSUPPORTED)
+                   #f]
+                  [else
+                   (send fd-output-port cout raise-write-error n)])]
+               [(eqv? n RKTIO_READ_EOF)
+                (port-unlock cin)
+                eof]
+               [(eqv? n 0)
+                (port-unlock cin)
+                (sync (core-output-port-evt cout))
+                (loop)]
+               [else
+                (port-count! cin n #"" 0)
+                (port-unlock cin)
+                (with-lock cout
+                  (send fd-output-port cout slow-mode!)
+                  (port-count! cout n #"" 0))
+                n])]))])]))
 
 ;; ----------------------------------------
 

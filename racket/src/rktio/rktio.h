@@ -629,6 +629,18 @@ RKTIO_EXTERN_RESULT(rktio_result_integer) rktio_result_t *rktio_read_converted_i
    rktio_t *rktio, rktio_fd_t *rfd, char *buffer, intptr_t start, intptr_t len, char *is_converted, intptr_t converted_start);
 
 /**
+ * Copies up to `amt` bytes from `src` to `dest` within the OS kernel,
+ * without passing them through a user-space buffer, using the current
+ * file position of `src` (which is advanced). Currently supported only
+ * on Linux when `src` is a regular file and `dest` is a regular file,
+ * a socket, or a file descriptor in non-blocking mode; otherwise, the
+ * result is `RKTIO_WRITE_ERROR` with `RKTIO_ERROR_UNSUPPORTED`. The
+ * result is the number of bytes copied, 0 if `dest` is not ready for
+ * writing, or `RKTIO_READ_EOF` if `src` is at its end.
+ */
+RKTIO_EXTERN_ERR(RKTIO_WRITE_ERROR) intptr_t rktio_copy_fd(rktio_t *rktio, rktio_fd_t *src, rktio_fd_t *dest, intptr_t amt);
+
+/**
  * Reports the number of bytes that are buffered from the file descriptor.
  * The result is normally zero, but text-mode conversion and the rare
  * uncooperative corner of an OS can make the result 1 byte.

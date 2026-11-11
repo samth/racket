@@ -31,6 +31,7 @@ Sforeign_symbol("rktio_read_converted_in", (void *)rktio_read_converted_in);
 Sforeign_symbol("rktio_read_in_r", (void *)rktio_read_in_r);
 Sforeign_symbol("rktio_write_in_r", (void *)rktio_write_in_r);
 Sforeign_symbol("rktio_read_converted_in_r", (void *)rktio_read_converted_in_r);
+Sforeign_symbol("rktio_copy_fd", (void *)rktio_copy_fd);
 Sforeign_symbol("rktio_buffered_byte_count", (void *)rktio_buffered_byte_count);
 Sforeign_symbol("rktio_poll_read_ready", (void *)rktio_poll_read_ready);
 Sforeign_symbol("rktio_poll_write_ready", (void *)rktio_poll_write_ready);

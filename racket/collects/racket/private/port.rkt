@@ -7,6 +7,8 @@
 ;;  racket/place.rkt, which we want to load without loading contracts
 ;;  --- so copy port is place in this module.
 
+(require (only-in '#%unsafe unsafe-fd-port-copy))
+
 (provide copy-port
          open-output-nowhere
          open-input-nowhere
@@ -128,22 +130,40 @@
   (define s (make-bytes sz))
   (define dests (cons dest dests*))
 
-  (let loop ()
-    (define c (read-bytes-avail! s src))
-    (cond
-      [(number? c)
-       (for ([dest (in-list dests)])
-         (let write-loop ([bytes-written 0])
-           (unless (= bytes-written c)
-             (define c2 (write-bytes-avail s dest bytes-written c))
-             (write-loop (+ bytes-written c2)))))
-       (loop)]
-      [(procedure? c)
-       (define-values (l col p) (port-next-location src))
-       (define v (c (object-name src) l col p))
-       (for ([dest (in-list dests)])
-         (write-special v dest))
-       (loop)]
-      [else
-       ;; Must be EOF
-       (void)])))
+  ;; When copying from a file-stream port to a single file-stream
+  ;; port, try to let the OS copy directly (e.g., with `sendfile`).
+  ;; If that's not possible at first, it may be because `src` has
+  ;; buffered bytes, so try once more after a normal chunk.
+  (define (try-os-copy)
+    (and (null? dests*)
+         (begin
+           (flush-output dest)
+           (let os-loop ([any? #f])
+             (define r (unsafe-fd-port-copy src dest (* 1024 1024)))
+             (cond
+               [(eof-object? r) 'done]
+               [(not r) (if any? 'again 'no)]
+               [else (os-loop #t)])))))
+
+  (let loop ([os-tries 2])
+    (define os (if (eqv? os-tries 0) 'no (try-os-copy)))
+    (unless (eq? os 'done)
+      (define next-os-tries (if (eq? os 'again) os-tries (max 0 (sub1 os-tries))))
+      (define c (read-bytes-avail! s src))
+      (cond
+        [(number? c)
+         (for ([dest (in-list dests)])
+           (let write-loop ([bytes-written 0])
+             (unless (= bytes-written c)
+               (define c2 (write-bytes-avail s dest bytes-written c))
+               (write-loop (+ bytes-written c2)))))
+         (loop next-os-tries)]
+        [(procedure? c)
+         (define-values (l col p) (port-next-location src))
+         (define v (c (object-name src) l col p))
+         (for ([dest (in-list dests)])
+           (write-special v dest))
+         (loop next-os-tries)]
+        [else
+         ;; Must be EOF
+         (void)]))))

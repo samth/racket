@@ -31,6 +31,7 @@ rktio_read_converted_in
 rktio_read_in_r
 rktio_write_in_r
 rktio_read_converted_in_r
+rktio_copy_fd
 rktio_buffered_byte_count
 rktio_poll_read_ready
 rktio_poll_write_ready

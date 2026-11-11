@@ -15,6 +15,9 @@
 
 (provide
  (struct-out syntax) ; includes `syntax?`
+ syntax-shifted-multi-scopes
+ syntax-mpi-shifts
+ syntax-inspector
  syntax-content
  syntax-taintness
  empty-syntax
@@ -50,13 +53,41 @@
 (struct modified-content (content scope-propagations+taint)
   #:authentic)
 
+(provide (struct-out stx-context)
+         syntax-ctx
+         empty-context
+         ctx-with-shifted-multi-scopes
+         ctx-with-mpi-shifts+inspector)
+
+;; The parts of a syntax object other than its scopes that change
+;; rarely and that sibling syntax objects almost always share.
+;; Immutable, so it is shared freely among syntax objects.
+(struct stx-context (shifted-multi-scopes ; scopes with a distinct identity at each phase; maybe a fallback search
+                     mpi-shifts ; chain of module-path-index substitutions
+                     inspector) ; inspector for access to protected bindings
+  #:authentic
+  #:sealed)
+
+(define (ctx-with-shifted-multi-scopes ctx smss)
+  (if (eq? smss (stx-context-shifted-multi-scopes ctx))
+      ctx
+      (stx-context smss
+                   (stx-context-mpi-shifts ctx)
+                   (stx-context-inspector ctx))))
+
+(define (ctx-with-mpi-shifts+inspector ctx mss insp)
+  (if (and (eq? mss (stx-context-mpi-shifts ctx))
+           (eq? insp (stx-context-inspector ctx)))
+      ctx
+      (stx-context (stx-context-shifted-multi-scopes ctx)
+                   mss
+                   insp)))
+
 (struct syntax ([content* #:mutable] ; datum and nested syntax objects; mutated for lazy propagation
                 scopes  ; scopes that apply at all phases
-                shifted-multi-scopes ; scopes with a distinct identity at each phase; maybe a fallback search
-                mpi-shifts ; chain of module-path-index substitutions
+                ctx     ; `stx-context`: shifted multi-scopes, mpi shifts, inspector
                 srcloc  ; source location
-                props   ; properties
-                inspector) ; inspector for access to protected bindings
+                props)  ; properties
   #:authentic
   #:sealed
   ;; Custom printer:
@@ -224,14 +255,19 @@
 (define empty-mpi-shifts null)
 (define empty-props #hasheq())
 
+(define empty-context
+  (stx-context empty-shifted-multi-scopes empty-mpi-shifts #f))
+
+(define (syntax-shifted-multi-scopes s) (stx-context-shifted-multi-scopes (syntax-ctx s)))
+(define (syntax-mpi-shifts s) (stx-context-mpi-shifts (syntax-ctx s)))
+(define (syntax-inspector s) (stx-context-inspector (syntax-ctx s)))
+
 (define empty-syntax
   (syntax #f
           empty-scopes
-          empty-shifted-multi-scopes
-          empty-mpi-shifts
+          empty-context
           #f   ; srcloc
-          empty-props
-          #f)) ; inspector
+          empty-props))
 
 (define (identifier? s)
   (and (syntax? s) (symbol? (syntax-content s))))
@@ -244,35 +280,43 @@
 
 (define-place-local known-syntax-pairs (make-weak-hasheq))
 
+;; The context for a new syntax object in the context of `stx-c`
+;; and with code inspector `insp`
+(define (context-for stx-c insp)
+  (cond
+    [(not stx-c) empty-context]
+    [else
+     (define ctx (syntax-ctx stx-c))
+     (define new-insp (and insp (weaker-inspector insp (stx-context-inspector ctx))))
+     (if (eq? new-insp (stx-context-inspector ctx))
+         ctx
+         (stx-context (stx-context-shifted-multi-scopes ctx)
+                      (stx-context-mpi-shifts ctx)
+                      new-insp))]))
+
 (define (immediate-datum->syntax stx-c content stx-l props insp)
+  (immediate-datum->syntax/ctx stx-c content stx-l props (context-for stx-c insp)))
+
+(define (immediate-datum->syntax/ctx stx-c content stx-l props ctx)
   (syntax (if (and stx-c
                    (syntax-taintness stx-c))
               (modified-content content
                                 (tainted-for-content content))
               content)
-          (if stx-c
-              (syntax-scopes stx-c)
-              empty-scopes)
-          (if stx-c
-              (syntax-shifted-multi-scopes stx-c)
-              empty-shifted-multi-scopes)
-          (if stx-c
-              (syntax-mpi-shifts stx-c)
-              empty-mpi-shifts)
+          (if stx-c (syntax-scopes stx-c) empty-scopes)
+          ctx
           (and stx-l (syntax-srcloc stx-l))
-          props
-          (and insp
-               stx-c
-               (weaker-inspector insp (syntax-inspector stx-c)))))
+          props))
 
 (define (datum->syntax stx-c s [stx-l #f] [stx-p #f])
   (cond
    [(syntax? s) s]
    [else
     (define insp (current-module-code-inspector))
+    (define ctx (context-for stx-c insp))
     (define (wrap content)
       (let ([content (datum-intern-literal content)])
-        (immediate-datum->syntax stx-c content stx-l empty-props insp)))
+        (immediate-datum->syntax/ctx stx-c content stx-l empty-props ctx)))
     (define result-s
       (non-syntax-map s
                       (lambda (tail? x) (cond
@@ -364,19 +408,37 @@
 
 ;; Called by the deserializer
 
+;; Consecutive deserialized syntax objects usually share a context
+;; triple, so remember the most recent conversion. Threads in a place
+;; share the memo, so it is a single immutable value that is read
+;; once; a lost update only costs a conversion.
+(define-place-local last-context-conversion #f) ; #f or (vector context-triple inspector stx-context)
+
+(define (context-triple->context context-triple inspector)
+  (define last last-context-conversion)
+  (cond
+    [(and last
+          (eq? context-triple (vector*-ref last 0))
+          (eq? inspector (vector*-ref last 1)))
+     (vector*-ref last 2)]
+    [else
+     (define ctx (stx-context (vector*-ref context-triple 1)
+                              (vector*-ref context-triple 2)
+                              inspector))
+     (set! last-context-conversion (vector-immutable context-triple inspector ctx))
+     ctx]))
+
 (define (deserialize-syntax content context-triple srcloc props taint inspector)
   (syntax (if taint
               (modified-content content taint)
               content)
           (vector*-ref context-triple 0)
-          (vector*-ref context-triple 1)
-          (vector*-ref context-triple 2)
+          (context-triple->context context-triple inspector)
           srcloc
           (if props
               (for/hasheq ([(k v) (in-immutable-hash props)])
                 (values k (preserved-property-value v)))
-              empty-props)
-          inspector))
+              empty-props)))
 
 (define (deserialize-datum->syntax content context-triple srcloc inspector)
   (define s (deserialize-syntax #f context-triple srcloc #f #f inspector))

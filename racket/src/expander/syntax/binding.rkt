@@ -180,9 +180,10 @@
                         (modified-content-content content*)
                         content*))
     (struct-copy syntax s
-                 [mpi-shifts (shift-cons shift (syntax-mpi-shifts s))]
-                 [inspector (or (syntax-inspector s)
-                                inspector)]
+                 [ctx (ctx-with-mpi-shifts+inspector (syntax-ctx s)
+                                                     (shift-cons shift (syntax-mpi-shifts s))
+                                                     (or (syntax-inspector s)
+                                                         inspector))]
                  [content* (if (datum-has-elements? content)
                                (modified-content
                                 content
@@ -191,8 +192,7 @@
                                                        (lambda (s) (shift-cons shift s))
                                                        inspector
                                                        (syntax-scopes s)
-                                                       (syntax-shifted-multi-scopes s)
-                                                       (syntax-mpi-shifts s)))
+                                                       (syntax-ctx s)))
                                content*)])]))
 
 (define (shift-cons shift shifts)
@@ -330,8 +330,10 @@
                       (modified-content-content content*)
                       content*))
   (struct-copy syntax s
-               [inspector (or (syntax-inspector s)
-                              insp)]
+               [ctx (ctx-with-mpi-shifts+inspector (syntax-ctx s)
+                                                   (syntax-mpi-shifts s)
+                                                   (or (syntax-inspector s)
+                                                       insp))]
                [content* (if (datum-has-elements? content)
                              (modified-content
                               content
@@ -340,8 +342,7 @@
                                                      #f
                                                      insp
                                                      (syntax-scopes s)
-                                                     (syntax-shifted-multi-scopes s)
-                                                     (syntax-mpi-shifts s)))
+                                                     (syntax-ctx s)))
                              content*)]))
 
 ;; ----------------------------------------
@@ -374,5 +375,8 @@
 (define (identifier-prune-to-source-module id)
   (unless (identifier? id)
     (raise-argument-error 'identifier-prune-to-source-module "identifier?" id))
-  (struct-copy syntax (datum->syntax #f (syntax-e id) id id)
-               [mpi-shifts (syntax-mpi-shifts id)]))
+  (let ([s (datum->syntax #f (syntax-e id) id id)])
+    (struct-copy syntax s
+                 [ctx (ctx-with-mpi-shifts+inspector (syntax-ctx s)
+                                                     (syntax-mpi-shifts id)
+                                                     (syntax-inspector s))])))

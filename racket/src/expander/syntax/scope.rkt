@@ -448,16 +448,17 @@
                       content*))
   (if (shifted-multi-scope? sc)
       (struct-copy syntax s
-                   [shifted-multi-scopes (fallback-update-first (syntax-shifted-multi-scopes s)
-                                                                (lambda (smss)
-                                                                  (sms-op (fallback-first smss) sc)))]
+                   [ctx (ctx-with-shifted-multi-scopes
+                         (syntax-ctx s)
+                         (fallback-update-first (syntax-shifted-multi-scopes s)
+                                                (lambda (smss)
+                                                  (sms-op (fallback-first smss) sc))))]
                    [content* (if (datum-has-elements? content)
                                  (let ([prop (prop-op (and (modified-content? content*)
                                                            (modified-content-scope-propagations+taint content*))
                                                       sc
                                                       (syntax-scopes s)
-                                                      (syntax-shifted-multi-scopes s)
-                                                      (syntax-mpi-shifts s))])
+                                                      (syntax-ctx s))])
                                    (if prop
                                        (modified-content content prop)
                                        content))
@@ -469,8 +470,7 @@
                                                            (modified-content-scope-propagations+taint content*))
                                                       sc
                                                       (syntax-scopes s)
-                                                      (syntax-shifted-multi-scopes s)
-                                                      (syntax-mpi-shifts s))])
+                                                      (syntax-ctx s))])
                                    (if prop
                                        (modified-content content prop)
                                        content))
@@ -494,6 +494,8 @@
              ;; share the result of propagating to it; remember the most
              ;; recent one. That sharing matters for memory use in deep
              ;; expansions, such as nested `let`s from a many-argument `or`.
+             ;; Sibling syntax objects usually have the same scopes and
+             ;; context, so remember the most recent conversions
              (define last-scs #f)
              (define last-new-scs #f)
              (define (apply-to-scopes scs)
@@ -504,6 +506,16 @@
                   (set! last-scs scs)
                   (set! last-new-scs new-scs)
                   new-scs]))
+             (define last-ctx #f)
+             (define last-new-ctx #f)
+             (define (apply-to-ctx ctx)
+               (cond
+                 [(eq? ctx last-ctx) last-new-ctx]
+                 [else
+                  (define new-ctx (propagation-apply-ctx prop ctx s))
+                  (set! last-ctx ctx)
+                  (set! last-new-ctx new-ctx)
+                  new-ctx]))
              (non-syntax-map content
                              (lambda (tail? x) x)
                              (lambda (sub-s)
@@ -518,21 +530,10 @@
                                   (and (modified-content? sub-content*)
                                        (modified-content-scope-propagations+taint sub-content*))
                                   (syntax-scopes sub-s)
-                                  (syntax-shifted-multi-scopes sub-s)
-                                  (syntax-mpi-shifts sub-s)))
+                                  (syntax-ctx sub-s)))
                                (struct-copy syntax sub-s
                                             [scopes (apply-to-scopes (syntax-scopes sub-s))]
-                                            [shifted-multi-scopes (propagation-apply-shifted
-                                                                   prop
-                                                                   (syntax-shifted-multi-scopes sub-s)
-                                                                   s)]
-                                            [mpi-shifts (propagation-apply-mpi-shifts
-                                                         prop
-                                                         (syntax-mpi-shifts sub-s)
-                                                         s)]
-                                            [inspector (propagation-apply-inspector
-                                                        prop
-                                                        (syntax-inspector sub-s))]
+                                            [ctx (apply-to-ctx (syntax-ctx sub-s))]
                                             [content* (if scope-propagations+taint
                                                           (modified-content sub-content scope-propagations+taint)
                                                           sub-content)])))]
@@ -613,8 +614,7 @@
                                                                (modified-content-scope-propagations+taint content*))
                                                           ops
                                                           (syntax-scopes s)
-                                                          (syntax-shifted-multi-scopes s)
-                                                          (syntax-mpi-shifts s))])
+                                                          (syntax-ctx s))])
                                (if prop
                                    (modified-content content prop)
                                    content))
@@ -642,25 +642,25 @@
      [(set-member? smss sms) smss/maybe-fallbacks]
      [else (fallback-push (set-add smss sms)
                           smss/maybe-fallbacks)]))
+  (define-memo-lite (push-ctx ctx)
+    (ctx-with-shifted-multi-scopes ctx (push (stx-context-shifted-multi-scopes ctx))))
   (syntax-map s
               (lambda (tail? x) x)
               (lambda (s d)
                 (struct-copy syntax s
                              [content* (re-modify-content s d)]
-                             [shifted-multi-scopes
-                              (push (syntax-shifted-multi-scopes s))]))
+                             [ctx (push-ctx (syntax-ctx s))]))
               syntax-e))
 
 ;; ----------------------------------------
 
 (struct propagation (prev-scs   ; owner's scopes before ops
-                     prev-smss  ; owner's shifted multi scopes before ops
+                     prev-ctx   ; owner's context (shifted multi scopes, mpi shifts, inspector) before ops
                      scope-ops  ; list of (cons scope (or/c 'add 'remove 'flip)); see "scope-set.rkt"
                      sms-ops    ; shifted-multi-scope -> (or/c 'add 'remove 'flip)
                      ;; mpi-shifts and inspectors are mostly
                      ;; implemented at the "binding.rkt" layer,
                      ;; but we accommodate them here
-                     prev-mss   ; owner's mpi-shifts before adds
                      add-mpi-shifts ; #f or (mpi-shifts -> mpi-shifts)
                      inspector  ; #f or inspector
                      taint)    ; see "taint-object.rkt"
@@ -691,7 +691,7 @@
       (propagation-taint prop)
       prop))
 
-(define (propagation-op prop sc op prev-scs prev-smss prev-mss)
+(define (propagation-op prop sc op prev-scs prev-ctx)
   (cond
     [(propagation? prop)
      (define new-prop
@@ -702,15 +702,15 @@
                         [scope-ops (scope-ops-update (propagation-scope-ops prop) sc op)])))
      (propagation-simplify new-prop)]
     [(shifted-multi-scope? sc)
-     (propagation prev-scs prev-smss null (hasheq sc op)
-                  prev-mss #f #f
+     (propagation prev-scs prev-ctx null (hasheq sc op)
+                  #f #f
                   prop)]
     [else
-     (propagation prev-scs prev-smss (list (cons sc op)) #hasheq()
-                  prev-mss #f #f
+     (propagation prev-scs prev-ctx (list (cons sc op)) #hasheq()
+                  #f #f
                   prop)]))
 
-(define (propagation-ops prop ops prev-scs prev-smss prev-mss)
+(define (propagation-ops prop ops prev-scs prev-ctx)
   (cond
     [(propagation? prop)
      (define new-prop
@@ -718,20 +718,20 @@
                     [scope-ops (scope-ops-compose (propagation-scope-ops prop) ops)]))
      (propagation-simplify new-prop)]
     [else
-     (propagation prev-scs prev-smss ops #hasheq()
-                  prev-mss #f #f
+     (propagation prev-scs prev-ctx ops #hasheq()
+                  #f #f
                   prop)]))
 
-(define (propagation-add prop sc prev-scs prev-smss prev-mss)
-  (propagation-op prop sc 'add prev-scs prev-smss prev-mss))
+(define (propagation-add prop sc prev-scs prev-ctx)
+  (propagation-op prop sc 'add prev-scs prev-ctx))
 
-(define (propagation-remove prop sc prev-scs prev-smss prev-mss)
-  (propagation-op prop sc 'remove prev-scs prev-smss prev-mss))
+(define (propagation-remove prop sc prev-scs prev-ctx)
+  (propagation-op prop sc 'remove prev-scs prev-ctx))
 
-(define (propagation-flip prop sc prev-scs prev-smss prev-mss)
-  (propagation-op prop sc 'flip prev-scs prev-smss prev-mss))
+(define (propagation-flip prop sc prev-scs prev-ctx)
+  (propagation-op prop sc 'flip prev-scs prev-ctx))
 
-(define (propagation-mpi-shift prop add inspector prev-scs prev-smss prev-mss)
+(define (propagation-mpi-shift prop add inspector prev-scs prev-ctx)
   (if (propagation? prop)
       (struct-copy propagation prop
                    [add-mpi-shifts (let ([base-add (propagation-add-mpi-shifts prop)])
@@ -740,9 +740,32 @@
                                          (or add base-add)))]
                    [inspector (or (propagation-inspector prop)
                                   inspector)])
-      (propagation prev-scs prev-smss null #hasheq()
-                   prev-mss add inspector
+      (propagation prev-scs prev-ctx null #hasheq()
+                   add inspector
                    prop)))
+
+;; Apply a propagation to a child's context. The child's context is
+;; usually the owner's old context, in which case the result is the
+;; owner's new context.
+(define (propagation-apply-ctx prop ctx parent-s)
+  (cond
+    [(eq? (propagation-prev-ctx prop) ctx) (syntax-ctx parent-s)]
+    [else
+     (define new-smss (propagation-apply-shifted prop (stx-context-shifted-multi-scopes ctx) parent-s))
+     (define new-mss (propagation-apply-mpi-shifts prop (stx-context-mpi-shifts ctx) parent-s))
+     (define new-insp (propagation-apply-inspector prop (stx-context-inspector ctx)))
+     (define parent-ctx (syntax-ctx parent-s))
+     (cond
+       [(and (eq? new-smss (stx-context-shifted-multi-scopes parent-ctx))
+             (eq? new-mss (stx-context-mpi-shifts parent-ctx))
+             (eq? new-insp (stx-context-inspector parent-ctx)))
+        parent-ctx]
+       [(and (eq? new-smss (stx-context-shifted-multi-scopes ctx))
+             (eq? new-mss (stx-context-mpi-shifts ctx))
+             (eq? new-insp (stx-context-inspector ctx)))
+        ctx]
+       [else
+        (stx-context new-smss new-mss new-insp)])]))
 
 (define (propagation-apply prop scs parent-s)
   (cond
@@ -759,7 +782,7 @@
 
 (define (propagation-apply-shifted prop smss parent-s)
   (cond
-   [(eq? (propagation-prev-smss prop) smss)
+   [(eq? (stx-context-shifted-multi-scopes (propagation-prev-ctx prop)) smss)
     (syntax-shifted-multi-scopes parent-s)]
    [(zero? (hash-count (propagation-sms-ops prop))) smss]
    [else
@@ -782,7 +805,7 @@
 
 (define (propagation-apply-mpi-shifts prop mss parent-s)
   (cond
-   [(eq? (propagation-prev-mss prop) mss)
+   [(eq? (stx-context-mpi-shifts (propagation-prev-ctx prop)) mss)
     (syntax-mpi-shifts parent-s)]
    [else
     (define add (propagation-add-mpi-shifts prop))
@@ -799,7 +822,7 @@
                    [taint t])
       t))
 
-(define (propagation-merge content prop base-prop prev-scs prev-smss prev-mss)
+(define (propagation-merge content prop base-prop prev-scs prev-ctx)
   (cond
    [(not (datum-has-elements? content))
     (if (propagation-taint prop)
@@ -808,16 +831,14 @@
    [(not (propagation? base-prop))
     (cond
      [(and (eq? (propagation-prev-scs prop) prev-scs)
-           (eq? (propagation-prev-smss prop) prev-smss)
-           (eq? (propagation-prev-mss prop) prev-mss)
+           (eq? (propagation-prev-ctx prop) prev-ctx)
            (eq? (propagation-taint prop) base-prop))
       prop]
      [else
       (propagation prev-scs
-                   prev-smss
+                   prev-ctx
                    (propagation-scope-ops prop)
                    (propagation-sms-ops prop)
-                   prev-mss
                    (propagation-add-mpi-shifts prop)
                    (propagation-inspector prop)
                    (if (propagation-taint prop)
@@ -900,13 +921,14 @@
                           [new-sms (in-value (shift-multi-scope sms phase))]
                           #:when new-sms)
                new-sms))))
+        (define-memo-lite (shift-ctx ctx)
+          (ctx-with-shifted-multi-scopes ctx (shift-all (stx-context-shifted-multi-scopes ctx))))
         (syntax-map s
                     (lambda (tail? d) d)
                     (lambda (s d)
                       (struct-copy syntax s
                                    [content* (re-modify-content s d)]
-                                   [shifted-multi-scopes
-                                    (shift-all (syntax-shifted-multi-scopes s))]))
+                                   [ctx (shift-ctx (syntax-ctx s))]))
                     syntax-e))))
 
 
@@ -949,14 +971,15 @@
              (if (subset? src-smss smss)
                  (set-union (set-subtract smss src-smss) dest-smss)
                  smss))))
+        (define-memo-lite (swap-ctx ctx)
+          (ctx-with-shifted-multi-scopes ctx (swap-smss (stx-context-shifted-multi-scopes ctx))))
         (syntax-map s
                     (lambda (tail? d) d)
                     (lambda (s d)
                       (struct-copy syntax s
                                    [content* (re-modify-content s d)]
                                    [scopes (swap-scs (syntax-scopes s))]
-                                   [shifted-multi-scopes
-                                    (swap-smss (syntax-shifted-multi-scopes s))]))
+                                   [ctx (swap-ctx (syntax-ctx s))]))
                     syntax-e))))
 
 ;; Splits a `seteq` of scopes into a `seteq` of shifted multi-scopes

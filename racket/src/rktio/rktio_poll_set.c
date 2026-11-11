@@ -1265,10 +1265,46 @@ static void finish_windows_sleep(DWORD msec)
 
 /* FIXME: don't forget SIGCHILD_DOESNT_INTERRUPT_SELECT handling in Racket */
 
+static void do_rktio_sleep(rktio_t *rktio, float nsecs, rktio_poll_set_t *fds, rktio_ltps_t *lt);
+
 void rktio_sleep(rktio_t *rktio, float nsecs, rktio_poll_set_t *fds, rktio_ltps_t *lt)
+{
+#ifdef RKTIO_USE_IO_URING
+  if (rktio_uring_get_fd(rktio) >= 0) {
+    if (fds && fdset_has_nosleep(fds))
+      return;
+    /* Submit queued I/O before sleeping; if something completed in
+       the meantime, return so that the scheduler can see it */
+    if (rktio_uring_submit_and_reap(rktio))
+      return;
+    if (((nsecs <= 0) || (nsecs > 0.001)) && rktio_uring_spin(rktio))
+      return;
+    /* from here, a reap in another OS thread that consumes
+       completions wakes this sleep */
+    if (rktio_uring_prepare_sleep(rktio))
+      return;
+    do_rktio_sleep(rktio, nsecs, fds, lt);
+    rktio_uring_end_sleep(rktio);
+    return;
+  }
+#endif
+  do_rktio_sleep(rktio, nsecs, fds, lt);
+}
+
+static void do_rktio_sleep(rktio_t *rktio, float nsecs, rktio_poll_set_t *fds, rktio_ltps_t *lt)
 {
   if (fds && fdset_has_nosleep(fds))
     return;
+
+#ifdef RKTIO_USE_IO_URING
+  if (rktio_uring_get_fd(rktio) >= 0) {
+    if (fds) {
+      int ufd = rktio_uring_get_fd(rktio);
+      RKTIO_FD_SET(ufd, fds);
+      RKTIO_FD_SET(ufd, RKTIO_GET_FDSET(fds, 2));
+    }
+  }
+#endif
 
   if (fds && lt) {
 #if defined(HAVE_KQUEUE_SYSCALL) || defined(HAVE_EPOLL_SYSCALL)

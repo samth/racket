@@ -77,8 +77,18 @@ struct rktio_result_t {
 /* Globals, as gathered into `rktio_t`                                    */
 /*========================================================================*/
 
+#if defined(__linux__) && defined(__has_include)
+# if __has_include(<linux/io_uring.h>)
+#  define RKTIO_USE_IO_URING
+# endif
+#endif
+
 struct rktio_t {
   rktio_err_t err;
+#ifdef RKTIO_USE_IO_URING
+  struct rktio_uring_t *uring; /* NULL until a socket uses it */
+  pthread_t uring_owner;       /* thread that called rktio_init */
+#endif
 #ifdef RKTIO_SYSTEM_WINDOWS
   char *last_err_str;
 #endif
@@ -363,6 +373,29 @@ intptr_t rktio_hash_string(const char *s);
    2GB. Use 32MB as a limit that is very large, but still likely small
    enough for all OSes. */
 #define MAX_READ_WRITE_REQUEST_BYTES (32 * 1048576)
+#ifdef RKTIO_USE_IO_URING
+/* Experimental io_uring-based socket I/O; see "rktio_fd.c" */
+int rktio_uring_shutdown_wr(rktio_t *rktio, rktio_fd_t *rfd);
+struct rktio_uring_watch_t;
+struct rktio_uring_watch_t *rktio_uring_watch_new(rktio_t *rktio, intptr_t fd);
+int rktio_uring_watch_check(rktio_t *rktio, struct rktio_uring_watch_t *w);
+void rktio_uring_watch_ready(rktio_t *rktio, struct rktio_uring_watch_t *w);
+void rktio_uring_watch_poll_add(rktio_t *rktio, struct rktio_uring_watch_t *w, rktio_poll_set_t *fds);
+void rktio_uring_watch_free(rktio_t *rktio, struct rktio_uring_watch_t *w);
+void rktio_fd_enable_uring(rktio_t *rktio, rktio_fd_t *rfd);
+int rktio_fd_uses_uring(rktio_fd_t *rfd);
+int rktio_uring_submit_and_reap(rktio_t *rktio);
+int rktio_uring_spin(rktio_t *rktio);
+int rktio_uring_prepare_sleep(rktio_t *rktio);
+void rktio_uring_end_sleep(rktio_t *rktio);
+int rktio_uring_get_fd(rktio_t *rktio);
+void rktio_uring_ltps_watch(rktio_t *rktio, rktio_ltps_t *lt, rktio_fd_t *rfd, int is_write);
+int rktio_ltps_signal_fd(rktio_ltps_t *lt, intptr_t fd, int is_write);
+void rktio_uring_destroy(rktio_t *rktio);
+int rktio_uring_ltps_skip(rktio_t *rktio, int lt_fd);
+void rktio_uring_ltps_rearm(rktio_t *rktio, int lt_fd);
+#endif
+
 #define LIMIT_REQUEST_SIZE(n) (((n) > MAX_READ_WRITE_REQUEST_BYTES) ? MAX_READ_WRITE_REQUEST_BYTES : (n))
 
 void rktio_get_posix_error(rktio_err_t *err);

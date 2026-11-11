@@ -274,6 +274,45 @@ rktio_ltps_handle_t *rktio_ltps_add(rktio_t *rktio, rktio_ltps_t *lt, rktio_fd_t
     ltps_hash_set(lt, fd, v);
   }
 
+#ifdef RKTIO_USE_IO_URING
+  if (rktio_fd_uses_uring(rfd)) {
+    /* Readiness comes from io_uring completions, not epoll */
+    if ((mode == RKTIO_LTPS_REMOVE) || (mode == RKTIO_LTPS_REMOVE_VNODE)) {
+      s = v->read_handle;
+      if (s) ltps_signal_handle(lt, s);
+      s = v->write_handle;
+      if (s) ltps_signal_handle(lt, s);
+      ltps_hash_remove(lt, fd);
+      free(v);
+      set_racket_error(RKTIO_ERROR_LTPS_REMOVED); /* success, not failure */
+      return NULL;
+    } else if ((mode == RKTIO_LTPS_CHECK_READ) || (mode == RKTIO_LTPS_CREATE_READ)) {
+      s = v->read_handle;
+      if (!s && (mode == RKTIO_LTPS_CREATE_READ)) {
+        s = make_ltps_handle();
+        v->read_handle = s;
+        rktio_uring_ltps_watch(rktio, lt, rfd, 0); /* may signal (and free `v`) */
+      }
+      return s;
+    } else if ((mode == RKTIO_LTPS_CHECK_WRITE) || (mode == RKTIO_LTPS_CREATE_WRITE)) {
+      s = v->write_handle;
+      if (!s && (mode == RKTIO_LTPS_CREATE_WRITE)) {
+        s = make_ltps_handle();
+        v->write_handle = s;
+        rktio_uring_ltps_watch(rktio, lt, rfd, 1);
+      }
+      return s;
+    } else {
+      if (!v->read_handle && !v->write_handle) {
+        ltps_hash_remove(lt, fd);
+        free(v);
+      }
+      set_racket_error(RKTIO_ERROR_UNSUPPORTED);
+      return NULL;
+    }
+  }
+#endif
+
 # if !defined(HAVE_KQUEUE_SYSCALL) && !defined(HAVE_EPOLL_SYSCALL)
   r = RKTIO_GET_FDSET(lt->fd_set, 0);
   w = RKTIO_GET_FDSET(lt->fd_set, 1);
@@ -433,6 +472,29 @@ rktio_ltps_handle_t *rktio_ltps_add(rktio_t *rktio, rktio_ltps_t *lt, rktio_fd_t
 #endif
 }
 
+#ifdef RKTIO_USE_IO_URING
+int rktio_ltps_signal_fd(rktio_ltps_t *lt, intptr_t fd, int is_write)
+{
+  rktio_ltps_handle_pair_t *v;
+  rktio_ltps_handle_t *s;
+
+  v = ltps_hash_get(lt, fd);
+  if (!v) return 0;
+  s = (is_write ? v->write_handle : v->read_handle);
+  if (!s) return 0;
+  ltps_signal_handle(lt, s);
+  if (is_write)
+    v->write_handle = NULL;
+  else
+    v->read_handle = NULL;
+  if (!v->read_handle && !v->write_handle) {
+    ltps_hash_remove(lt, fd);
+    free(v);
+  }
+  return 1;
+}
+#endif
+
 int rktio_ltps_poll(rktio_t *rktio, rktio_ltps_t *lt)
 {
 #ifdef RKTIO_SYSTEM_WINDOWS
@@ -493,8 +555,20 @@ int rktio_ltps_poll(rktio_t *rktio, rktio_ltps_t *lt)
   struct epoll_event ev;
   memset(&ev, 0, sizeof(ev));
 
+# ifdef RKTIO_USE_IO_URING
+  /* submit I/O queued since the last poll, and signal handles for
+     completed I/O */
+  if (rktio_uring_submit_and_reap(rktio))
+    hit = 1;
+# endif
+
   if (lt->fd < 0)
-    return 0;
+    return hit;
+
+# ifdef RKTIO_USE_IO_URING
+  if (rktio_uring_ltps_skip(rktio, lt->fd))
+    return hit;
+# endif
 
   while (1) {
     
@@ -540,6 +614,10 @@ int rktio_ltps_poll(rktio_t *rktio, rktio_ltps_t *lt)
     } else
       break;
   }
+
+# ifdef RKTIO_USE_IO_URING
+  rktio_uring_ltps_rearm(rktio, lt->fd);
+# endif
 
   return hit;
 #elif defined(HAVE_POLL_SYSCALL)

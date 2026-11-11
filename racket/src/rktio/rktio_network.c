@@ -976,6 +976,11 @@ void rktio_socket_forget_owned(rktio_t *rktio, rktio_fd_t *rfd)
 int rktio_socket_shutdown(rktio_t *rktio, rktio_fd_t *rfd, int mode)
 {
   rktio_socket_t s = rktio_fd_socket(rktio, rfd);
+
+#ifdef RKTIO_USE_IO_URING
+  if ((mode != RKTIO_SHUTDOWN_READ) && rktio_uring_shutdown_wr(rktio, rfd))
+    return 1;
+#endif
   
   if (shutdown(s, ((mode == RKTIO_SHUTDOWN_READ) ? RKTIO_SHUT_RD : RKTIO_SHUT_WR))) {
     get_socket_error();
@@ -1363,6 +1368,10 @@ rktio_fd_t *rktio_connect_finish(rktio_t *rktio, rktio_connect_t *conn)
 
   conn_free(conn);
 
+#ifdef RKTIO_USE_IO_URING
+  rktio_fd_enable_uring(rktio, rfd);
+#endif
+
   return rfd;
 }
 
@@ -1386,6 +1395,9 @@ struct rktio_listener_t {
   int count;
 # ifdef HAVE_POLL_SYSCALL
   struct pollfd *pfd;
+# endif
+# ifdef RKTIO_USE_IO_URING
+  struct rktio_uring_watch_t **uw; /* NULL unless io_uring mode */
 # endif
   rktio_socket_t s[];
 };
@@ -1541,6 +1553,19 @@ rktio_listener_t *rktio_listen_opt(rktio_t *rktio, rktio_addrinfo_t *src, int ba
               REGISTER_SOCKET(s);
 
               if (pos == count) {
+# ifdef RKTIO_USE_IO_URING
+                {
+                  int i;
+                  struct rktio_uring_watch_t *w;
+                  l->uw = NULL;
+                  for (i = 0; i < count; i++) {
+                    w = rktio_uring_watch_new(rktio, l->s[i]);
+                    if (!w) break;
+                    if (!l->uw) l->uw = calloc(count, sizeof(struct rktio_uring_watch_t *));
+                    l->uw[i] = w;
+                  }
+                }
+# endif
                 return l;
               }
             } else {
@@ -1629,9 +1654,16 @@ void rktio_listen_stop(rktio_t *rktio, rktio_listener_t *l)
   
   for (i = 0; i < l->count; i++) {
     s = l->s[i];
+# ifdef RKTIO_USE_IO_URING
+    if (l->uw && l->uw[i])
+      rktio_uring_watch_free(rktio, l->uw[i]);
+# endif
     UNREGISTER_SOCKET(s);
     closesocket(s);
   }
+# ifdef RKTIO_USE_IO_URING
+  if (l->uw) free(l->uw);
+# endif
 
 #ifdef HAVE_POLL_SYSCALL
   free(l->pfd);
@@ -1711,6 +1743,24 @@ static int do_poll_accept_ready(rktio_t *rktio, rktio_listener_t *listener, int 
 
 int rktio_poll_accept_ready(rktio_t *rktio, rktio_listener_t *listener)
 {
+# ifdef RKTIO_USE_IO_URING
+  if (listener->uw) {
+    /* skip the poll() unless the ring reported activity */
+    int i, maybe = 0, r;
+    for (i = 0; i < listener->count; i++)
+      if (listener->uw[i] && rktio_uring_watch_check(rktio, listener->uw[i]))
+        maybe = 1;
+    if (!maybe)
+      return 0;
+    r = do_poll_accept_ready(rktio, listener, 0);
+    if (r == RKTIO_POLL_READY) {
+      for (i = 0; i < listener->count; i++)
+        if (listener->uw[i])
+          rktio_uring_watch_ready(rktio, listener->uw[i]);
+    }
+    return r;
+  }
+# endif
   return do_poll_accept_ready(rktio, listener, 0);
 }
 
@@ -1721,6 +1771,15 @@ void rktio_poll_add_accept(rktio_t *rktio, rktio_listener_t *listener, rktio_pol
   rktio_poll_set_t *fds2;
   
   fds2 = RKTIO_GET_FDSET(fds, 2);
+
+# ifdef RKTIO_USE_IO_URING
+  if (listener->uw) {
+    for (i = 0; i < listener->count; i++)
+      if (listener->uw[i])
+        rktio_uring_watch_poll_add(rktio, listener->uw[i], fds);
+    return;
+  }
+# endif
   
   for (i = 0; i < listener->count; i++) {
     s = listener->s[i];
@@ -1765,8 +1824,13 @@ rktio_fd_t *rktio_accept(rktio_t *rktio, rktio_listener_t *listener)
     RKTIO_WHEN_SET_SOCKBUF_SIZE(setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *)&size, sizeof(int)));
 #  endif
 
-    return rktio_system_fd(rktio, s, (RKTIO_OPEN_SOCKET | RKTIO_OPEN_INIT | RKTIO_OPEN_OWN
-				      | RKTIO_OPEN_READ | RKTIO_OPEN_WRITE)); 
+    rktio_fd_t *rfd;
+    rfd = rktio_system_fd(rktio, s, (RKTIO_OPEN_SOCKET | RKTIO_OPEN_INIT | RKTIO_OPEN_OWN
+                                     | RKTIO_OPEN_READ | RKTIO_OPEN_WRITE));
+# ifdef RKTIO_USE_IO_URING
+    rktio_fd_enable_uring(rktio, rfd);
+# endif
+    return rfd;
   } else {
     return NULL;
   }

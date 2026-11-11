@@ -35,6 +35,9 @@ struct rktio_fd_t {
 # ifdef RKTIO_USE_PENDING_OPEN
   struct open_in_thread_t *pending;
 # endif
+# ifdef RKTIO_USE_IO_URING
+  struct rktio_uring_fd_t *u; /* non-NULL => socket I/O via io_uring */
+# endif
 #endif
   
 #ifdef RKTIO_SYSTEM_WINDOWS
@@ -60,6 +63,1001 @@ struct rktio_fd_t {
 struct rktio_fd_transfer_t {
   rktio_fd_t fd;
 };
+
+/*========================================================================*/
+/* Experimental io_uring socket I/O                                       */
+/*========================================================================*/
+
+/* When the PLT_RKTIO_URING environment variable is set, connected TCP
+   sockets do their reads and writes through an io_uring that is
+   private to the `rktio_t` (i.e., per place). A read or write does not
+   call into the kernel; it copies to or from a C-side buffer owned by
+   the socket and queues an SQE. Queued SQEs are submitted all at once
+   by `rktio_uring_submit_and_reap`, which the long-term poll set calls
+   on each scheduler poll, and by `rktio_sleep` before sleeping, so all
+   the I/O that Racket threads start in one scheduler round costs one
+   `io_uring_enter`. Completions signal long-term poll set handles,
+   just like epoll readiness does, and the ring's fd is added to the
+   sleep poll set so that a sleep ends when an operation completes. */
+
+#ifdef RKTIO_USE_IO_URING
+
+#include <linux/io_uring.h>
+#include <pthread.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+#include <string.h>
+
+#define URING_ENTRIES 1024
+#define URING_RBUF_SIZE 16384
+#define URING_POOL_BUFS 1024 /* power of 2 */
+#define URING_WBUF_MAX (1024 * 1024)
+#define URING_WBUF_KEEP 65536 /* free a bigger buffer when idle */
+
+#define U_IDLE 0
+#define U_INFLIGHT 1
+#define U_READY 2
+
+typedef struct rktio_uring_fd_t {
+  intptr_t fd;
+  int closed;      /* rktio_fd_t is gone; free when no ops in flight */
+  int owns_fd;     /* closed while a send was in flight: close fd when done */
+  /* ltps signals found while reaping, deferred to a context that
+     holds the sleep-relevant lock (see uring_flush_signals_locked) */
+  int sig_r, sig_w, on_sig;
+  struct rktio_uring_fd_t *sig_next;
+  int shut_wr;     /* shutdown(SHUT_WR) requested while a send was in flight */
+  int in_flight;   /* number of SQEs queued or submitted */
+  rktio_ltps_t *lt;
+  /* reading: */
+  char *rbuf;       /* from the ring's buffer pool, if it has one */
+  int r_bid;        /* pool buffer id, or -1 */
+  int r_state;
+  intptr_t r_res, r_pos;
+  /* writing: */
+  char *wbuf;
+  intptr_t wbuf_size;
+  int w_state;
+  intptr_t w_off, w_len;
+  int w_err;
+} rktio_uring_fd_t;
+
+/* A multishot poll watching a listening socket, so that checking
+   whether a connection is waiting needs no system call until the
+   kernel reports activity */
+typedef struct rktio_uring_watch_t {
+  intptr_t fd;
+  int armed, maybe_ready, closed;
+} rktio_uring_watch_t;
+#define TAG_WATCH_BIT 2
+
+typedef struct rktio_uring_t {
+  int fd;
+  unsigned *sq_tail, *sq_mask, *sq_array, *sq_head;
+  unsigned *cq_head, *cq_tail, *cq_mask, *sq_flags;
+  int coop;            /* IORING_SETUP_COOP_TASKRUN | TASKRUN_FLAG */
+  int n_ops;           /* socket recvs and sends in flight */
+  /* Reaping can happen in any rktio context, including a Racket
+     parallel thread holding only the rktio lock, while the long-term
+     poll set (ltps) may be used only with the sleep-relevant lock;
+     so reaping records signals here, and they are delivered by
+     contexts with that lock (ltps poll, ltps add, sleep) */
+  struct rktio_uring_fd_t *sig_list;
+  int deferred_hits;   /* listener activity not yet reported */
+  int sleeping;        /* a sleep is waiting on the ring */
+  rktio_t *rktio;
+  int spin_credit, spin_skips; /* see rktio_uring_spin */
+  /* Receive buffer pool shared by all sockets (a "provided buffer
+     ring"): the kernel picks a buffer when data arrives, so a
+     connection that is waiting for data holds no buffer */
+  struct io_uring_buf_ring *br;
+  char *pool;
+  unsigned br_tail;
+  struct io_uring_sqe *sqes;
+  struct io_uring_cqe *cqes;
+  unsigned sq_entries;
+  unsigned local_tail; /* SQEs filled but not yet published+submitted */
+  int pending;
+  pthread_mutex_t lock;
+  struct rktio_uring_t *next_global;
+  /* one-shot poll on the long-term poll set's epoll fd, so that
+     checking the long-term poll set can skip epoll_wait() */
+  int lt_fd, lt_armed, lt_fired;
+} rktio_uring_t;
+
+#define TAG_LT_POLL 2
+
+struct rktio_uring_fd_t;
+#define UFD(rfd) ((rktio_uring_fd_t *)(rfd)->u)
+
+static int uring_mode = -1;
+static rktio_uring_t *all_rings = NULL;
+static pthread_mutex_t all_rings_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void uring_flush_at_exit(void);
+
+/* lock held, or ring not yet shared */
+static void uring_pool_return(rktio_uring_t *u, int bid)
+{
+  struct io_uring_buf *b = &u->br->bufs[u->br_tail & (URING_POOL_BUFS - 1)];
+  b->addr = (uintptr_t)(u->pool + (size_t)bid * URING_RBUF_SIZE);
+  b->len = URING_RBUF_SIZE;
+  b->bid = bid;
+  u->br_tail++;
+  __atomic_store_n(&u->br->tail, (unsigned short)u->br_tail, __ATOMIC_RELEASE);
+}
+
+/* lock held */
+static void uring_release_rbuf(rktio_uring_t *u, rktio_uring_fd_t *ufd)
+{
+  if (ufd->r_bid >= 0) {
+    uring_pool_return(u, ufd->r_bid);
+    ufd->r_bid = -1;
+    ufd->rbuf = NULL;
+  }
+}
+
+static rktio_uring_t *get_uring(rktio_t *rktio)
+{
+  rktio_uring_t *u;
+  struct io_uring_params p;
+  void *sq;
+  size_t sz, cq_sz;
+  int fd;
+
+  if (rktio->uring)
+    return (rktio->uring->fd >= 0) ? rktio->uring : NULL;
+
+  u = calloc(1, sizeof(rktio_uring_t));
+  u->fd = -1;
+  rktio->uring = u;
+
+  memset(&p, 0, sizeof(p));
+  {
+    /* Cooperative task running avoids interrupting the thread when
+       an operation completes asynchronously; the kernel instead
+       sets IORING_SQ_TASKRUN, and we enter the kernel to finish
+       completions when we look for them */
+    const char *s = getenv("PLT_RKTIO_URING_COOP");
+    if (!s || strcmp(s, "0"))
+      p.flags = IORING_SETUP_COOP_TASKRUN | IORING_SETUP_TASKRUN_FLAG;
+  }
+  fd = syscall(__NR_io_uring_setup, URING_ENTRIES, &p);
+  if ((fd < 0) && p.flags) {
+    memset(&p, 0, sizeof(p));
+    fd = syscall(__NR_io_uring_setup, URING_ENTRIES, &p);
+  }
+  if (fd < 0) return NULL;
+  u->coop = (p.flags & IORING_SETUP_TASKRUN_FLAG) ? 1 : 0;
+  if (!(p.features & IORING_FEAT_SINGLE_MMAP)) { close(fd); return NULL; }
+
+  sz = p.sq_off.array + p.sq_entries * sizeof(unsigned);
+  cq_sz = p.cq_off.cqes + p.cq_entries * sizeof(struct io_uring_cqe);
+  if (cq_sz > sz) sz = cq_sz;
+  sq = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_SQ_RING);
+  if (sq == MAP_FAILED) { close(fd); return NULL; }
+  u->sqes = mmap(NULL, p.sq_entries * sizeof(struct io_uring_sqe), PROT_READ | PROT_WRITE,
+                 MAP_SHARED | MAP_POPULATE, fd, IORING_OFF_SQES);
+  if (u->sqes == MAP_FAILED) { close(fd); return NULL; }
+
+  u->sq_head = (unsigned *)((char *)sq + p.sq_off.head);
+  u->sq_tail = (unsigned *)((char *)sq + p.sq_off.tail);
+  u->sq_mask = (unsigned *)((char *)sq + p.sq_off.ring_mask);
+  u->sq_array = (unsigned *)((char *)sq + p.sq_off.array);
+  u->sq_flags = (unsigned *)((char *)sq + p.sq_off.flags);
+  u->cq_head = (unsigned *)((char *)sq + p.cq_off.head);
+  u->cq_tail = (unsigned *)((char *)sq + p.cq_off.tail);
+  u->cq_mask = (unsigned *)((char *)sq + p.cq_off.ring_mask);
+  u->cqes = (struct io_uring_cqe *)((char *)sq + p.cq_off.cqes);
+  u->sq_entries = p.sq_entries;
+  u->local_tail = *u->sq_tail;
+  u->lt_fd = -1;
+  pthread_mutex_init(&u->lock, NULL);
+  rktio_fd_cloexec(fd);
+  u->fd = fd;
+  u->rktio = rktio;
+
+  {
+    /* register the receive buffer pool; kernels before 5.19 don't
+       support it, and then each socket gets its own buffer */
+    struct io_uring_buf_reg reg;
+    size_t br_sz = URING_POOL_BUFS * sizeof(struct io_uring_buf);
+    void *br = mmap(NULL, br_sz, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    if (br != MAP_FAILED) {
+      memset(&reg, 0, sizeof(reg));
+      reg.ring_addr = (uintptr_t)br;
+      reg.ring_entries = URING_POOL_BUFS;
+      reg.bgid = 0;
+      if (!syscall(__NR_io_uring_register, fd, IORING_REGISTER_PBUF_RING, &reg, 1)) {
+        int i;
+        u->br = br;
+        u->pool = malloc((size_t)URING_POOL_BUFS * URING_RBUF_SIZE);
+        for (i = 0; i < URING_POOL_BUFS; i++)
+          uring_pool_return(u, i);
+      } else
+        munmap(br, br_sz);
+    }
+  }
+
+  pthread_mutex_lock(&all_rings_lock);
+  if (!all_rings)
+    atexit(uring_flush_at_exit);
+  u->next_global = all_rings;
+  all_rings = u;
+  pthread_mutex_unlock(&all_rings_lock);
+
+  return u;
+}
+
+/* The kernel ties each io_uring request to the OS thread that
+   submitted it, and it cancels a thread's pending requests when that
+   thread exits; a Racket parallel thread pool's worker threads can
+   exit at any time, so only the thread that owns the rktio_t (a
+   place's main thread, which runs the scheduler's sleep and polls)
+   submits. Other threads leave SQEs queued and wake the owner if
+   it's sleeping. Returns 1 if the current thread may submit. */
+static int uring_may_submit(rktio_uring_t *u)
+{
+  if (pthread_equal(pthread_self(), u->rktio->uring_owner))
+    return 1;
+  if (u->sleeping) {
+    u->sleeping = 0;
+    rktio_signal_received(u->rktio);
+  }
+  return 0;
+}
+
+/* lock held */
+static int uring_submit_locked(rktio_uring_t *u)
+{
+  int r;
+  if (!u->pending)
+    return 0;
+  if (!uring_may_submit(u)
+      && ((u->local_tail - __atomic_load_n(u->sq_head, __ATOMIC_ACQUIRE)) < u->sq_entries))
+    return 0; /* (if the SQ is full, submit anyway) */
+  __atomic_store_n(u->sq_tail, u->local_tail, __ATOMIC_RELEASE);
+  do {
+    r = syscall(__NR_io_uring_enter, u->fd, u->pending, 0, 0, NULL, 0);
+  } while ((r < 0) && (errno == EINTR));
+  if (r > 0)
+    u->pending -= r;
+  return r;
+}
+
+/* lock held; returns an SQE to fill */
+static struct io_uring_sqe *uring_get_sqe(rktio_uring_t *u)
+{
+  struct io_uring_sqe *sqe;
+  unsigned idx;
+
+  if ((u->local_tail - __atomic_load_n(u->sq_head, __ATOMIC_ACQUIRE)) >= u->sq_entries)
+    uring_submit_locked(u);
+
+  idx = u->local_tail & *u->sq_mask;
+  sqe = &u->sqes[idx];
+  memset(sqe, 0, sizeof(*sqe));
+  u->sq_array[idx] = idx;
+  u->local_tail++;
+  u->pending++;
+  /* a non-owner thread can't submit, so make sure the owner wakes
+     up to submit this */
+  if (u->sleeping && !pthread_equal(pthread_self(), u->rktio->uring_owner)) {
+    u->sleeping = 0;
+    rktio_signal_received(u->rktio);
+  }
+  return sqe;
+}
+
+static void uring_queue_recv(rktio_uring_t *u, rktio_uring_fd_t *ufd)
+{
+  struct io_uring_sqe *sqe = uring_get_sqe(u);
+  sqe->opcode = IORING_OP_RECV;
+  sqe->fd = ufd->fd;
+  if (u->br) {
+    sqe->flags = IOSQE_BUFFER_SELECT;
+    sqe->buf_group = 0;
+  } else {
+    if (!ufd->rbuf) ufd->rbuf = malloc(URING_RBUF_SIZE);
+    sqe->addr = (uintptr_t)ufd->rbuf;
+  }
+  sqe->len = URING_RBUF_SIZE;
+  sqe->user_data = (uintptr_t)ufd;
+  ufd->r_state = U_INFLIGHT;
+  ufd->in_flight++;
+  u->n_ops++;
+}
+
+static void uring_queue_send(rktio_uring_t *u, rktio_uring_fd_t *ufd)
+{
+  struct io_uring_sqe *sqe = uring_get_sqe(u);
+  sqe->opcode = IORING_OP_SEND;
+  sqe->fd = ufd->fd;
+  sqe->addr = (uintptr_t)(ufd->wbuf + ufd->w_off);
+  sqe->len = ufd->w_len;
+  sqe->msg_flags = MSG_NOSIGNAL;
+  sqe->user_data = (uintptr_t)ufd | 1;
+  ufd->w_state = U_INFLIGHT;
+  ufd->in_flight++;
+  u->n_ops++;
+}
+
+static void uring_queue_cancel(rktio_uring_t *u, uintptr_t target)
+{
+  struct io_uring_sqe *sqe = uring_get_sqe(u);
+  sqe->opcode = IORING_OP_ASYNC_CANCEL;
+  sqe->fd = -1;
+  sqe->addr = target;
+  sqe->user_data = 0; /* ignored */
+}
+
+/* lock held; returns number of ltps handles signaled */
+static int uring_reap_locked(rktio_uring_t *u)
+{
+  unsigned head, tail;
+  int hits = 0;
+
+  if (u->coop && (__atomic_load_n(u->sq_flags, __ATOMIC_ACQUIRE) & IORING_SQ_TASKRUN)) {
+    /* run deferred completion work so that its CQEs are posted */
+    syscall(__NR_io_uring_enter, u->fd, 0, 0, IORING_ENTER_GETEVENTS, NULL, 0);
+  }
+
+  head = *u->cq_head;
+
+  tail = __atomic_load_n(u->cq_tail, __ATOMIC_ACQUIRE);
+  while (head != tail) {
+    struct io_uring_cqe *cqe = &u->cqes[head & *u->cq_mask];
+    uintptr_t ud = cqe->user_data;
+    int res = cqe->res;
+    head++;
+    if (ud == TAG_LT_POLL) {
+      u->lt_armed = 0;
+      u->lt_fired = 1;
+    } else if (ud & TAG_WATCH_BIT) {
+      rktio_uring_watch_t *w = (rktio_uring_watch_t *)(ud & ~(uintptr_t)15);
+      if (!(cqe->flags & IORING_CQE_F_MORE)) {
+        w->armed = 0;
+        if (w->closed) {
+          free(w);
+          continue;
+        }
+      }
+      w->maybe_ready = 1;
+      /* report as a hit, so that a sleep that reaps this doesn't
+         start waiting with the listener's activity unreported */
+      u->deferred_hits++;
+    } else if (ud) {
+      rktio_uring_fd_t *ufd = (rktio_uring_fd_t *)(ud & ~(uintptr_t)15);
+      int is_write = (int)(ud & 1);
+      ufd->in_flight--;
+      u->n_ops--;
+      if (!is_write && (cqe->flags & IORING_CQE_F_BUFFER)) {
+        ufd->r_bid = cqe->flags >> IORING_CQE_BUFFER_SHIFT;
+        ufd->rbuf = u->pool + (size_t)ufd->r_bid * URING_RBUF_SIZE;
+      }
+      if (ufd->closed) {
+        if (!is_write) uring_release_rbuf(u, ufd);
+        if (is_write && (res > 0) && (res < ufd->w_len)) {
+          /* finish sending data written before the port was closed */
+          ufd->w_off += res;
+          ufd->w_len -= res;
+          uring_queue_send(u, ufd);
+          continue;
+        }
+        if (is_write && ufd->shut_wr) {
+          ufd->shut_wr = 0;
+          shutdown(ufd->fd, SHUT_WR);
+        }
+        if (!ufd->in_flight) {
+          if (ufd->owns_fd) rktio_reliably_close(ufd->fd);
+          if (ufd->rbuf && !u->br) free(ufd->rbuf);
+          if (ufd->wbuf) free(ufd->wbuf);
+          free(ufd);
+        }
+        continue;
+      }
+      if ((res == -ECANCELED) && is_write) {
+        /* The kernel cancels a thread's pending operations when the
+           OS thread that submitted them exits, as a Racket parallel
+           thread pool's worker can; the socket is still open, so try
+           again (the data is still in the buffer) */
+        uring_queue_send(u, ufd);
+        continue;
+      }
+      if (!is_write) {
+        if ((res == -ENOBUFS) || (res == -ECANCELED)) {
+          /* pool exhausted, or canceled by a submitting thread's exit
+             (see above); the reader will try again */
+          ufd->r_state = U_IDLE;
+        } else {
+          ufd->r_state = U_READY;
+          ufd->r_res = res;
+          ufd->r_pos = 0;
+        }
+      } else {
+        if (res < 0) {
+          ufd->w_err = -res;
+          ufd->w_state = U_IDLE;
+        } else if (res < ufd->w_len) {
+          ufd->w_off += res;
+          ufd->w_len -= res;
+          uring_queue_send(u, ufd);
+          continue; /* still in flight */
+        } else {
+          ufd->w_state = U_IDLE;
+          if (ufd->wbuf_size > URING_WBUF_KEEP) {
+            free(ufd->wbuf);
+            ufd->wbuf = NULL;
+            ufd->wbuf_size = 0;
+          }
+        }
+        if (ufd->shut_wr) {
+          ufd->shut_wr = 0;
+          shutdown(ufd->fd, SHUT_WR);
+        }
+      }
+      if (ufd->lt) {
+        if (is_write) ufd->sig_w = 1; else ufd->sig_r = 1;
+        if (!ufd->on_sig) {
+          ufd->on_sig = 1;
+          ufd->sig_next = u->sig_list;
+          u->sig_list = ufd;
+        }
+      }
+    }
+    if (head == tail)
+      tail = __atomic_load_n(u->cq_tail, __ATOMIC_ACQUIRE);
+  }
+  __atomic_store_n(u->cq_head, head, __ATOMIC_RELEASE);
+
+  if (u->sleeping && (u->sig_list || u->deferred_hits)) {
+    /* we consumed completions that a sleeping scheduler (in another
+       OS thread) was waiting for, so wake it up */
+    u->sleeping = 0;
+    rktio_signal_received(u->rktio);
+  }
+
+  return hits;
+}
+
+/* lock held, and caller has the sleep-relevant lock; returns the
+   number of ltps handles signaled plus unreported listener activity */
+static int uring_flush_signals_locked(rktio_uring_t *u)
+{
+  int hits = u->deferred_hits;
+  rktio_uring_fd_t *ufd;
+  u->deferred_hits = 0;
+  while ((ufd = u->sig_list)) {
+    u->sig_list = ufd->sig_next;
+    ufd->on_sig = 0;
+    if (ufd->lt) {
+      if (ufd->sig_r) hits += rktio_ltps_signal_fd(ufd->lt, ufd->fd, 0);
+      if (ufd->sig_w) hits += rktio_ltps_signal_fd(ufd->lt, ufd->fd, 1);
+    }
+    ufd->sig_r = ufd->sig_w = 0;
+  }
+  return hits;
+}
+
+/* lock held */
+static void uring_unlist_signals(rktio_uring_t *u, rktio_uring_fd_t *ufd)
+{
+  if (ufd->on_sig) {
+    rktio_uring_fd_t **p = &u->sig_list;
+    while (*p != ufd) p = &(*p)->sig_next;
+    *p = ufd->sig_next;
+    ufd->on_sig = 0;
+  }
+}
+
+/* For rktio_sleep, with the sleep-relevant lock: returns nonzero if
+   the sleep should be skipped; otherwise, the sleep must be followed
+   by rktio_uring_end_sleep */
+int rktio_uring_prepare_sleep(rktio_t *rktio)
+{
+  rktio_uring_t *u = rktio->uring;
+  int hits;
+  pthread_mutex_lock(&u->lock);
+  uring_submit_locked(u);
+  hits = uring_reap_locked(u);
+  hits += uring_flush_signals_locked(u);
+  if (u->pending)
+    uring_submit_locked(u);
+  if (!hits)
+    u->sleeping = 1;
+  pthread_mutex_unlock(&u->lock);
+  return hits;
+}
+
+void rktio_uring_end_sleep(rktio_t *rktio)
+{
+  rktio_uring_t *u = rktio->uring;
+  pthread_mutex_lock(&u->lock);
+  u->sleeping = 0;
+  pthread_mutex_unlock(&u->lock);
+}
+
+int rktio_uring_submit_and_reap(rktio_t *rktio)
+{
+  rktio_uring_t *u = rktio->uring;
+  int hits;
+  if (!u || (u->fd < 0)) return 0;
+  pthread_mutex_lock(&u->lock);
+  uring_submit_locked(u);
+  hits = uring_reap_locked(u);
+  hits += uring_flush_signals_locked(u);
+  if (u->pending) /* re-sends queued by reaping */
+    uring_submit_locked(u);
+  pthread_mutex_unlock(&u->lock);
+  return hits;
+}
+
+/* Before sleeping, briefly watch the completion queue (shared
+   memory, so no system calls) for operations that finish soon, such
+   as a request--response exchange on a single connection; that avoids
+   a sleep and wakeup in the kernel. Returns nonzero if it found
+   anything. */
+int rktio_uring_spin(rktio_t *rktio)
+{
+  static int spin_usecs = -1;
+  rktio_uring_t *u = rktio->uring;
+  struct timespec start, now;
+  long elapsed;
+  int i;
+
+  if (spin_usecs < 0) {
+    const char *s = getenv("PLT_RKTIO_URING_SPIN");
+    spin_usecs = (s && *s) ? atoi(s) : 50;
+  }
+  if (!spin_usecs || !u || (u->fd < 0) || !u->n_ops)
+    return 0;
+
+  /* Back off when spinning doesn't pay: spin while it recently found
+     completions, and otherwise only on every 32nd sleep, so that a
+     mostly idle process with open connections doesn't burn CPU */
+  if (u->spin_credit <= 0) {
+    if ((++u->spin_skips & 31) != 0)
+      return 0;
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+  while (1) {
+    for (i = 0; i < 64; i++) {
+      if ((*u->cq_head != __atomic_load_n(u->cq_tail, __ATOMIC_ACQUIRE))
+          || (u->coop && (__atomic_load_n(u->sq_flags, __ATOMIC_ACQUIRE) & IORING_SQ_TASKRUN)))
+      {
+        u->spin_credit = 16;
+        return rktio_uring_submit_and_reap(rktio) + 1;
+      }
+#if defined(__x86_64__) || defined(__i386__)
+      __builtin_ia32_pause();
+#elif defined(__aarch64__)
+      __asm__ __volatile__("yield");
+#endif
+    }
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    elapsed = (now.tv_sec - start.tv_sec) * 1000000 + (now.tv_nsec - start.tv_nsec) / 1000;
+    if (elapsed >= spin_usecs) {
+      if (u->spin_credit > 0) u->spin_credit--;
+      return 0;
+    }
+  }
+}
+
+/* lock held */
+static void uring_queue_poll(rktio_uring_t *u, int fd, uintptr_t tag)
+{
+  struct io_uring_sqe *sqe = uring_get_sqe(u);
+  sqe->opcode = IORING_OP_POLL_ADD;
+  sqe->fd = fd;
+  sqe->poll32_events = POLLIN;
+  sqe->user_data = tag;
+}
+
+rktio_uring_watch_t *rktio_uring_watch_new(rktio_t *rktio, intptr_t fd)
+{
+  rktio_uring_watch_t *w;
+  if (uring_mode < 0) {
+    const char *s = getenv("PLT_RKTIO_URING");
+    uring_mode = (s && *s && strcmp(s, "0")) ? 1 : 0;
+  }
+  if (!uring_mode || !get_uring(rktio))
+    return NULL;
+  w = calloc(1, sizeof(rktio_uring_watch_t));
+  w->fd = fd;
+  w->maybe_ready = 1;
+  return w;
+}
+
+/* lock held */
+static void uring_watch_arm(rktio_uring_t *u, rktio_uring_watch_t *w)
+{
+  if (!w->armed) {
+    struct io_uring_sqe *sqe = uring_get_sqe(u);
+    sqe->opcode = IORING_OP_POLL_ADD;
+    sqe->fd = w->fd;
+    sqe->poll32_events = POLLIN;
+    sqe->len = IORING_POLL_ADD_MULTI;
+    sqe->user_data = (uintptr_t)w | TAG_WATCH_BIT;
+    w->armed = 1;
+    /* we can't know the state between now and the poll's start */
+    w->maybe_ready = 1;
+  }
+}
+
+/* Returns 0 if the watched fd is known not to be ready; 1 means that
+   the caller must check (and report back via rktio_uring_watch_ready) */
+int rktio_uring_watch_check(rktio_t *rktio, rktio_uring_watch_t *w)
+{
+  rktio_uring_t *u = rktio->uring;
+  int maybe;
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  uring_watch_arm(u, w);
+  maybe = w->maybe_ready;
+  w->maybe_ready = 0;
+  pthread_mutex_unlock(&u->lock);
+  return maybe;
+}
+
+void rktio_uring_watch_ready(rktio_t *rktio, rktio_uring_watch_t *w)
+{
+  /* stays ready (e.g., more connections may be waiting) until a check
+     finds otherwise */
+  w->maybe_ready = 1;
+}
+
+/* Adds the ring's fd to a poll set in place of the watched fd */
+void rktio_uring_watch_poll_add(rktio_t *rktio, rktio_uring_watch_t *w, rktio_poll_set_t *fds)
+{
+  rktio_uring_t *u = rktio->uring;
+  pthread_mutex_lock(&u->lock);
+  uring_watch_arm(u, w);
+  pthread_mutex_unlock(&u->lock);
+  RKTIO_FD_SET(u->fd, fds);
+}
+
+/* The watched fd is about to be closed */
+void rktio_uring_watch_free(rktio_t *rktio, rktio_uring_watch_t *w)
+{
+  rktio_uring_t *u = rktio->uring;
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  if (w->armed) {
+    struct io_uring_sqe *sqe = uring_get_sqe(u);
+    sqe->opcode = IORING_OP_POLL_REMOVE;
+    sqe->fd = -1;
+    sqe->addr = (uintptr_t)w | TAG_WATCH_BIT;
+    sqe->user_data = 0;
+    w->closed = 1; /* freed when the poll's final CQE arrives */
+    uring_submit_locked(u);
+  } else
+    free(w);
+  pthread_mutex_unlock(&u->lock);
+}
+
+/* Called by the long-term poll set before epoll_wait(); returns 1 if
+   the epoll fd is known to have no events, so epoll_wait() can be skipped */
+int rktio_uring_ltps_skip(rktio_t *rktio, int lt_fd)
+{
+  rktio_uring_t *u = rktio->uring;
+  int skip;
+  if (!u || (u->fd < 0)) return 0;
+  pthread_mutex_lock(&u->lock);
+  skip = ((u->lt_fd == lt_fd) && u->lt_armed && !u->lt_fired);
+  pthread_mutex_unlock(&u->lock);
+  return skip;
+}
+
+/* Called by the long-term poll set after draining epoll */
+void rktio_uring_ltps_rearm(rktio_t *rktio, int lt_fd)
+{
+  rktio_uring_t *u = rktio->uring;
+  if (!u || (u->fd < 0)) return;
+  pthread_mutex_lock(&u->lock);
+  if ((u->lt_fd != lt_fd) || !u->lt_armed) {
+    u->lt_fd = lt_fd;
+    u->lt_armed = 1;
+    uring_queue_poll(u, lt_fd, TAG_LT_POLL);
+  }
+  u->lt_fired = 0;
+  pthread_mutex_unlock(&u->lock);
+}
+
+int rktio_uring_get_fd(rktio_t *rktio)
+{
+  return (rktio->uring ? rktio->uring->fd : -1);
+}
+
+static void uring_flush_at_exit(void)
+{
+  /* Make sure that queued sends reach the kernel and finish */
+  rktio_uring_t *u;
+  for (u = all_rings; u; u = u->next_global) {
+    int tries;
+    if (u->fd < 0) continue;
+    pthread_mutex_lock(&u->lock);
+    uring_submit_locked(u);
+    for (tries = 0; tries < 100; tries++) {
+      struct pollfd pfd;
+      uring_reap_locked(u);
+      if (u->pending) uring_submit_locked(u);
+      if (*u->cq_head == __atomic_load_n(u->cq_tail, __ATOMIC_ACQUIRE)) {
+        /* wait a little for outstanding completions (e.g., sends) */
+        pfd.fd = u->fd;
+        pfd.events = POLLIN;
+        if (poll(&pfd, 1, 20) <= 0)
+          break;
+      }
+    }
+    pthread_mutex_unlock(&u->lock);
+  }
+}
+
+void rktio_uring_destroy(rktio_t *rktio)
+{
+  /* Prototype: ring stays allocated (and listed for exit flushing) */
+}
+
+void rktio_fd_enable_uring(rktio_t *rktio, rktio_fd_t *rfd)
+{
+  rktio_uring_fd_t *ufd;
+
+  if (uring_mode < 0) {
+    const char *s = getenv("PLT_RKTIO_URING");
+    uring_mode = (s && *s && strcmp(s, "0")) ? 1 : 0;
+  }
+  if (!uring_mode)
+    return;
+  if (!get_uring(rktio))
+    return;
+
+  ufd = calloc(1, sizeof(rktio_uring_fd_t));
+  ufd->fd = rfd->fd;
+  ufd->r_bid = -1;
+  rfd->u = ufd;
+}
+
+int rktio_fd_uses_uring(rktio_fd_t *rfd)
+{
+  return rfd->u != NULL;
+}
+
+static int uring_direct_recv = -1;
+
+static intptr_t uring_read(rktio_t *rktio, rktio_fd_t *rfd, char *buffer, intptr_t len, rktio_err_t *err)
+{
+  rktio_uring_t *u = rktio->uring;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  intptr_t n;
+  int tried = 0, mode = 0;
+
+  if (uring_direct_recv < 0) {
+    const char *s = getenv("PLT_RKTIO_URING_DIRECT");
+    uring_direct_recv = (s && *s) ? atoi(s) : 3;
+  }
+
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+ again:
+  switch (ufd->r_state) {
+  case U_READY:
+    if (ufd->r_res > 0) {
+      n = ufd->r_res - ufd->r_pos;
+      if (n > len) n = len;
+      memcpy(buffer, ufd->rbuf + ufd->r_pos, n);
+      ufd->r_pos += n;
+      if (ufd->r_pos == ufd->r_res) {
+        ufd->r_state = U_IDLE;
+        uring_release_rbuf(u, ufd);
+      }
+    } else if (ufd->r_res == 0)
+      n = RKTIO_READ_EOF; /* stays at EOF */
+    else {
+      errno = -ufd->r_res;
+      rktio_get_posix_error(err);
+      ufd->r_state = U_IDLE;
+      n = RKTIO_READ_ERROR;
+    }
+    break;
+  case U_IDLE:
+    if (!tried) {
+      /* Choose how to start the read. Mode 3 (the default) picks:
+         when this socket's own send is the only other operation in
+         flight, as for a single busy connection, submit the recv
+         together with that send (mode 1); otherwise, keep batching,
+         but try a direct recv when little is queued (mode 2) */
+      if (uring_direct_recv == 3)
+        mode = (u->n_ops <= ufd->in_flight + 1) ? 1 : 2;
+      else
+        mode = uring_direct_recv;
+    }
+    if ((mode == 2) && (u->pending <= 1)) {
+      /* Little to batch with: submit now (including this socket's
+         queued send, if any) and try a direct recv */
+      uring_submit_locked(u);
+      do {
+        n = recv(ufd->fd, buffer, len, MSG_DONTWAIT);
+      } while ((n == -1) && (errno == EINTR));
+      if (n > 0)
+        break;
+      else if (n == 0) {
+        ufd->r_state = U_READY; /* sticky EOF */
+        ufd->r_res = 0;
+        n = RKTIO_READ_EOF;
+        break;
+      } else if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+        rktio_get_posix_error(err);
+        n = RKTIO_READ_ERROR;
+        break;
+      }
+    }
+    uring_queue_recv(u, ufd);
+    if ((mode == 1) && (u->pending <= 2) && !tried) {
+      /* Little to batch with: submit the recv now, together with
+         this socket's queued send (if any). If data is already
+         there, the kernel completes the recv during submission, so
+         the read finishes without blocking the Racket thread, and
+         a request--response exchange costs one system call */
+      tried = 1;
+      uring_submit_locked(u);
+      uring_reap_locked(u);
+      if (ufd->r_state == U_READY)
+        goto again;
+    }
+    n = 0;
+    break;
+  default:
+    n = 0;
+    break;
+  }
+  pthread_mutex_unlock(&u->lock);
+  return n;
+}
+
+static intptr_t uring_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, intptr_t len, rktio_err_t *err)
+{
+  rktio_uring_t *u = rktio->uring;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  intptr_t n;
+
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  if (ufd->w_err) {
+    errno = ufd->w_err;
+    ufd->w_err = 0;
+    rktio_get_posix_error(err);
+    n = RKTIO_WRITE_ERROR;
+  } else if (ufd->w_state == U_INFLIGHT)
+    n = 0;
+  else {
+    /* size the buffer to the write, so that idle connections and
+       small writes stay small, but a large write is one send */
+    n = (len > URING_WBUF_MAX) ? URING_WBUF_MAX : len;
+    if (ufd->wbuf_size < n) {
+      intptr_t sz = (n + 4095) & ~(intptr_t)4095;
+      if (ufd->wbuf) free(ufd->wbuf);
+      ufd->wbuf = malloc(sz);
+      ufd->wbuf_size = sz;
+    }
+    memcpy(ufd->wbuf, buffer, n);
+    ufd->w_off = 0;
+    ufd->w_len = n;
+    if (n > 0)
+      uring_queue_send(u, ufd);
+  }
+  pthread_mutex_unlock(&u->lock);
+  return n;
+}
+
+static int uring_poll_read_ready(rktio_t *rktio, rktio_fd_t *rfd)
+{
+  rktio_uring_t *u = rktio->uring;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  int r;
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  if (ufd->r_state == U_IDLE)
+    uring_queue_recv(u, ufd);
+  r = (ufd->r_state == U_READY) ? RKTIO_POLL_READY : RKTIO_POLL_NOT_READY;
+  pthread_mutex_unlock(&u->lock);
+  return r;
+}
+
+static int uring_poll_write_ready(rktio_t *rktio, rktio_fd_t *rfd)
+{
+  rktio_uring_t *u = rktio->uring;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  int r;
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  r = ((ufd->w_state == U_IDLE) ? RKTIO_POLL_READY : RKTIO_POLL_NOT_READY);
+  pthread_mutex_unlock(&u->lock);
+  return r;
+}
+
+void rktio_uring_ltps_watch(rktio_t *rktio, rktio_ltps_t *lt, rktio_fd_t *rfd, int is_write)
+{
+  rktio_uring_t *u = rktio->uring;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  int ready;
+  pthread_mutex_lock(&u->lock);
+  ufd->lt = lt;
+  uring_reap_locked(u);
+  (void)uring_flush_signals_locked(u);
+  if (!is_write) {
+    if (ufd->r_state == U_IDLE)
+      uring_queue_recv(u, ufd);
+    ready = (ufd->r_state == U_READY);
+  } else
+    ready = (ufd->w_state == U_IDLE);
+  if (ready)
+    rktio_ltps_signal_fd(lt, ufd->fd, is_write);
+  pthread_mutex_unlock(&u->lock);
+}
+
+/* Returns 1 if a shutdown for writing is deferred until the
+   in-flight send completes */
+int rktio_uring_shutdown_wr(rktio_t *rktio, rktio_fd_t *rfd)
+{
+  rktio_uring_t *u = rktio->uring;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  int deferred = 0;
+  if (!ufd || !u) return 0;
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  if (ufd->w_state == U_INFLIGHT) {
+    ufd->shut_wr = 1;
+    deferred = 1;
+  }
+  pthread_mutex_unlock(&u->lock);
+  return deferred;
+}
+
+/* rfd is about to be closed (`closing`) or forgotten; returns 1 if
+   the ring takes over closing the fd, because a send is still in
+   flight and the data written to the port must still be delivered */
+static int uring_release(rktio_t *rktio, rktio_fd_t *rfd, int closing)
+{
+  rktio_uring_t *u = rktio ? rktio->uring : NULL;
+  rktio_uring_fd_t *ufd = UFD(rfd);
+  int owns = 0;
+
+  rfd->u = NULL;
+  if (!u) return 0; /* shouldn't happen */
+
+  pthread_mutex_lock(&u->lock);
+  uring_reap_locked(u);
+  ufd->closed = 1;
+  uring_unlist_signals(u, ufd);
+  uring_release_rbuf(u, ufd);
+  ufd->lt = NULL;
+  if (ufd->r_state == U_INFLIGHT)
+    uring_queue_cancel(u, (uintptr_t)ufd);
+  if (closing
+      && ((ufd->w_state == U_INFLIGHT)
+          /* a non-owner thread can't submit (see uring_may_submit),
+             so queued SQEs may still refer to the fd: */
+          || (ufd->in_flight && !pthread_equal(pthread_self(), rktio->uring_owner)))) {
+    ufd->owns_fd = 1;
+    owns = 1;
+  }
+  /* SQEs must be submitted before the fd is closed, since the
+     kernel resolves the fd at submission */
+  uring_submit_locked(u);
+  if (!ufd->in_flight) {
+    owns = 0; /* nothing in flight, so the caller closes */
+    if (ufd->rbuf && !u->br) free(ufd->rbuf);
+    if (ufd->wbuf) free(ufd->wbuf);
+    free(ufd);
+  }
+  pthread_mutex_unlock(&u->lock);
+  return owns;
+}
+
+#endif
 
 /*========================================================================*/
 /* Windows I/O helper structs                                             */
@@ -513,10 +1511,23 @@ static rktio_ok_t do_close(rktio_t *rktio /* maybe NULL */, rktio_fd_t *rfd, int
 
 #ifdef RKTIO_SYSTEM_UNIX
   int cr;
+#endif
+#ifdef RKTIO_USE_IO_URING
+  int ring_closes = 0;
+  if (rfd->u)
+    ring_closes = uring_release(rktio, rfd, 1);
+#endif
+
+#ifdef RKTIO_SYSTEM_UNIX
 
 # ifdef RKTIO_USE_PENDING_OPEN
   if (rfd->pending)
     cr = rktio_pending_open_release(rktio, rfd->pending);
+  else
+# endif
+# ifdef RKTIO_USE_IO_URING
+  if (ring_closes)
+    cr = 0;
   else
 # endif
     cr = rktio_reliably_close_err(rfd->fd);
@@ -572,6 +1583,10 @@ rktio_ok_t rktio_internal_close(rktio_t *rktio /* may be NULL */, rktio_fd_t *rf
 
 void rktio_forget(rktio_t *rktio, rktio_fd_t *rfd)
 {
+#ifdef RKTIO_USE_IO_URING
+  if (rfd->u)
+    uring_release(rktio, rfd, 0);
+#endif
 #ifdef RKTIO_WINDOWS_SYSTEM
   deinit_fd(rfd, 1);
 #endif
@@ -584,6 +1599,11 @@ void rktio_forget(rktio_t *rktio, rktio_fd_t *rfd)
 
 rktio_fd_transfer_t *rktio_fd_detach(rktio_t *rktio, rktio_fd_t *rfd)
 {
+#ifdef RKTIO_USE_IO_URING
+  /* prototype: any data buffered by io_uring is lost */
+  if (rfd->u)
+    uring_release(rktio, rfd, 0);
+#endif
 #ifdef RKTIO_USE_PENDING_OPEN
   if (rfd->pending)
     rktio_pending_open_detach(rktio, rfd->pending);
@@ -645,6 +1665,11 @@ static int do_poll_read_ready(rktio_t *rktio, rktio_fd_t *rfd, rktio_err_t *err)
 {
   if (rktio_fd_is_regular_file(rktio, rfd))
     return RKTIO_POLL_READY;
+
+#ifdef RKTIO_USE_IO_URING
+  if (rfd->u)
+    return uring_poll_read_ready(rktio, rfd);
+#endif
 
 #ifdef RKTIO_SYSTEM_UNIX
   {
@@ -748,6 +1773,10 @@ rktio_result_t *rktio_poll_read_ready_r(rktio_t *rktio, rktio_fd_t *rfd)
 
 static int poll_write_ready_or_flushed(rktio_t *rktio, rktio_fd_t *rfd, int check_flushed, rktio_err_t *err)
 {
+#ifdef RKTIO_USE_IO_URING
+  if (rfd->u)
+    return uring_poll_write_ready(rktio, rfd);
+#endif
 #ifdef RKTIO_SYSTEM_UNIX
   if (check_flushed)
     return RKTIO_POLL_READY;
@@ -888,6 +1917,16 @@ void rktio_poll_add(rktio_t *rktio, rktio_fd_t *rfd, rktio_poll_set_t *fds, int 
 #ifdef RKTIO_SYSTEM_UNIX
   rktio_poll_set_t *fds2;
 
+# ifdef RKTIO_USE_IO_URING
+  if (rfd->u) {
+    /* completions make the ring's fd readable */
+    if (modes & RKTIO_POLL_READ)
+      (void)uring_poll_read_ready(rktio, rfd); /* make sure a recv is queued */
+    RKTIO_FD_SET(rktio->uring->fd, fds);
+    return;
+  }
+# endif
+
 # ifdef RKTIO_USE_PENDING_OPEN
   if (rfd->pending) {
     rktio_poll_add_pending_open(rktio, rfd, rfd->pending, fds);
@@ -988,6 +2027,11 @@ static intptr_t do_read_converted(rktio_t *rktio, rktio_fd_t *rfd, char *buffer,
 {
 #ifdef RKTIO_SYSTEM_UNIX
   intptr_t bc;
+
+# ifdef RKTIO_USE_IO_URING
+  if (rfd->u)
+    return uring_read(rktio, rfd, buffer, len, err);
+# endif
 
   if (rfd->modes & RKTIO_OPEN_SOCKET)
     return rktio_socket_read(rktio, rfd, buffer, len, err);
@@ -1562,6 +2606,11 @@ static intptr_t do_write(rktio_t *rktio, rktio_fd_t *rfd, const char *buffer, in
 #ifdef RKTIO_SYSTEM_UNIX
   int flags, errsaved;
   intptr_t amt;
+
+# ifdef RKTIO_USE_IO_URING
+  if (rfd->u)
+    return uring_write(rktio, rfd, buffer, len, err);
+# endif
 
   if (rfd->modes & RKTIO_OPEN_SOCKET)
     return rktio_socket_write(rktio, rfd, buffer, len, err);

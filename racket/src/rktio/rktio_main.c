@@ -21,6 +21,10 @@ rktio_t *rktio_init(void)
   rktio = malloc(sizeof(rktio_t));
   memset(rktio, 0, sizeof(rktio_t));
 
+#ifdef RKTIO_USE_IO_URING
+  rktio->uring_owner = pthread_self();
+#endif
+
 #ifdef RKTIO_SYSTEM_WINDOWS
   if (!global_cs_created) {
     InitializeCriticalSectionEx(&rktio_global_cs, CS_SPINCOUNT, CRITICAL_SECTION_NO_DEBUG_INFO);

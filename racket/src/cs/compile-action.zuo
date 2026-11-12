@@ -1,0 +1,9 @@
+#lang zuo
+(require "../lib.zuo")
+;; The stamp orders the output group; consumers depend on each output's bytes.
+;; Run the compiler before creating it, so failed actions cannot publish a stamp.
+(define args (hash-ref (runtime-env) 'args))
+(unless (>= (length args) 3) (error "expected stamp, compiler, and arguments"))
+(apply process/wait (cdr args))
+(unless (equal? (car args) "")
+  (fd-close (fd-open-output (car args) :truncate)))

@@ -1,0 +1,112 @@
+name: Zuo GitHub cache comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [prototype/gha-zuo-cache]
+    paths:
+      - .github/workflows/zuo-cache-benchmark.yml
+      - .github/scripts/zuo-cache-benchmark.py
+      - racket/src/cs/main.zuo
+      - racket/src/cs/compile-action.zuo
+
+permissions:
+  contents: read
+
+env:
+  RACKET_CI_SESSION_KEY: racket-chez-ci-v1
+
+jobs:
+  current:
+    name: Current build (${{ matrix.sample }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch PB payload
+        run: make fetch-pb
+      - name: Prepare Zuo and record runner identity
+        run: python3 .github/scripts/zuo-cache-benchmark.py prepare
+      - name: Build without action caching
+        run: python3 .github/scripts/zuo-cache-benchmark.py current
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: current-${{ matrix.sample }}
+          path: ${{ runner.temp }}/zuo-cache-evidence
+          retention-days: 7
+
+  seed:
+    name: Seed and local cache (${{ matrix.sample }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch PB payload
+        run: make fetch-pb
+      - name: Prepare Zuo and record runner identity
+        id: prepare
+        run: python3 .github/scripts/zuo-cache-benchmark.py prepare
+      - name: Populate the Zuo cache with a fresh build
+        run: python3 .github/scripts/zuo-cache-benchmark.py seed
+      - name: Save Zuo cache snapshot
+        id: save
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: ${{ runner.temp }}/racket-zuo-cache-benchmark/cache
+          key: zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.sample }}
+      - name: Rebuild from empty build tree with local storage
+        run: python3 .github/scripts/zuo-cache-benchmark.py local
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: seed-local-${{ matrix.sample }}
+          path: ${{ runner.temp }}/zuo-cache-evidence
+          retention-days: 7
+
+  github:
+    name: GitHub cache (${{ matrix.sample }})
+    needs: seed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch PB payload
+        run: make fetch-pb
+      - name: Prepare Zuo and record runner identity
+        id: prepare
+        run: python3 .github/scripts/zuo-cache-benchmark.py prepare
+      - name: Restore Zuo cache snapshot
+        id: restore
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: ${{ runner.temp }}/racket-zuo-cache-benchmark/cache
+          key: zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.sample }}
+          fail-on-cache-miss: true
+      - name: Rebuild from empty build tree with restored storage
+        id: build
+        run: python3 .github/scripts/zuo-cache-benchmark.py github
+      - name: Save new Zuo entries after cache misses
+        if: steps.build.outputs.stored != '0'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: ${{ runner.temp }}/racket-zuo-cache-benchmark/cache
+          key: zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.sample }}-updated
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: github-${{ matrix.sample }}
+          path: ${{ runner.temp }}/zuo-cache-evidence
+          retention-days: 7

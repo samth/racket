@@ -19,6 +19,7 @@ parser.add_argument('--zuo', type=Path, required=True)
 parser.add_argument('--source', type=Path, required=True, help='racket/src directory')
 parser.add_argument('--makefile', type=Path, required=True, help='configured cs/c/Makefile')
 parser.add_argument('--output', type=Path, required=True, help='new isolated test directory')
+parser.add_argument('--actions', action='store_true', help='exercise the opt-in command rules')
 args = parser.parse_args()
 root = args.output.resolve()
 root.mkdir(parents=True)
@@ -70,11 +71,17 @@ driver.write_text('#lang zuo\n(build/command-line* (dynamic-require '
 
 template = (build / 'Makefile').read_text()
 
-def run(label, key=None, override=None, changed=True):
+def run(label, key=None, override=None, changed=True, cache=False, expected_calls=None):
     before = len(calls.read_text().splitlines()) if calls.exists() else 0
     env = dict(os.environ)
     # Configuration supplies the value; the old environment adapter is ignored.
     env['RACKET_CHEZ_SESSION_KEY'] = 'obsolete adapter value'
+    env.pop('ZUO_ACTION_CACHE', None)
+    env['ZUO_CS_ACTIONS'] = '1' if args.actions and (override if override is not None else key) else '0'
+    env['ZUO_CS_TOOLCHAIN_ID'] = 'session-key-fixture-v1'
+    if cache:
+        env['ZUO_ACTION_CACHE'] = str(root / 'cache')
+        env['ZUO_ACTION_CACHE_LOG'] = '1'
     configured = key or ''
     text, count = re.subn(r'(?m)^SESSION_KEY[ \t]*=.*$',
                           lambda m: 'SESSION_KEY = ' + configured, template)
@@ -88,7 +95,8 @@ def run(label, key=None, override=None, changed=True):
     (root / (label + '.stderr')).write_text(result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     new = [json.loads(line) for line in calls.read_text().splitlines()[before:]]
-    assert len(new) == (11 if changed else 0), (label, new)
+    count = (11 if changed else 0) if expected_calls is None else expected_calls
+    assert len(new) == count, (label, new)
     effective = key if override is None else override
     expected = {}
     if effective and new:
@@ -111,6 +119,7 @@ def run(label, key=None, override=None, changed=True):
         if row['script'] == 'compile-file.ss':
             assert row['key'] == expected.get(row['dest']), (label, row)
     print(label, 'passed', flush=True)
+    return result.stdout + result.stderr
 
 run('unset')
 run('unset-warm', changed=False)
@@ -120,4 +129,11 @@ run('changed-key', key='second build base')
 run('explicit-override', key='configured base', override='explicit base')
 run('explicit-empty', key='configured base', override='')
 run('empty-configuration-warm', key='', changed=False)
+if args.actions:
+    run('cache-prime', key='cache base', cache=True)
+    for pattern in ['*.so', '*.wpo', '*.compile-stamp', 'racket.boot', 'compiled/_zuo*.db']:
+        for path in build.glob(pattern):
+            path.unlink()
+    log = run('cache-restore', key='cache base', cache=True, expected_calls=1)
+    assert log.count('action cache hit ') == 10, log
 print('Session-key forwarding and dependency checks passed')

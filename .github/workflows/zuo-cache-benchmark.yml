@@ -79,7 +79,7 @@ jobs:
   github:
     name: GitHub cache (${{ matrix.sample }})
     needs: seed
-    if: always() && (needs.seed.result == 'success' || inputs.cache_run != '')
+    if: ${{ !cancelled() && (needs.seed.result == 'success' || inputs.cache_run != '') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -99,6 +99,8 @@ jobs:
         with:
           path: ${{ runner.temp }}/racket-zuo-cache-benchmark/cache
           key: zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ inputs.cache_run || github.run_id }}-${{ inputs.cache_run && inputs.cache_attempt || github.run_attempt }}-${{ matrix.sample }}
+          restore-keys: |
+            zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ inputs.cache_run || github.run_id }}-${{ inputs.cache_run && inputs.cache_attempt || github.run_attempt }}-${{ matrix.sample }}-
       - name: Rebuild from empty build tree with restored storage
         id: build
         run: python3 .github/scripts/zuo-cache-benchmark.py github

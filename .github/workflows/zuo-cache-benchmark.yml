@@ -11,6 +11,11 @@ on:
         description: Attempt that saved the snapshots
         default: '1'
         type: string
+      samples:
+        description: Samples to run
+        type: choice
+        default: '[1, 2]'
+        options: ['[1, 2]', '[1]', '[2]']
 
 permissions:
   contents: read
@@ -27,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sample: [1, 2]
+        sample: ${{ fromJSON(inputs.samples || '[1, 2]') }}
     steps:
       - uses: actions/checkout@v7
       - name: Fetch PB payload
@@ -51,7 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sample: [1, 2]
+        sample: ${{ fromJSON(inputs.samples || '[1, 2]') }}
     steps:
       - uses: actions/checkout@v7
       - name: Fetch PB payload
@@ -85,7 +90,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sample: [1, 2]
+        sample: ${{ fromJSON(inputs.samples || '[1, 2]') }}
     steps:
       - uses: actions/checkout@v7
       - name: Fetch PB payload

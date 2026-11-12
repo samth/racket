@@ -1,0 +1,43 @@
+name: Collect Zuo cache comparison
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Completed Zuo cache comparison run
+        required: true
+        type: string
+  push:
+    branches: [prototype/gha-zuo-cache]
+    paths: [.github/workflows/collect-zuo-cache.yml]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          run-id: ${{ inputs.run_id || '43221674028' }}
+          github-token: ${{ github.token }}
+          path: results
+      - name: Export structured measurements to the job log
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          count = 0
+          for path in sorted(Path('results').rglob('*.json')):
+              if path.stem not in ['runner', 'current', 'seed', 'local', 'github']:
+                  continue
+              row = dict(artifact=path.parent.name, file=path.name,
+                         data=json.loads(path.read_text()))
+              print('ZUO_BENCHMARK_RESULT ' + json.dumps(row), flush=True)
+              count += path.stem != 'runner'
+          # Failed benchmark arms can still provide useful runner diagnostics.
+          print('Exported', count, 'completed or partial measurements')
+          PY

@@ -51,7 +51,9 @@ def prepare():
                     packages_sha256=hashlib.sha256(packages.encode()).hexdigest(),
                     source_root=str(REPO), build_root=str(BUILD))
     key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
-    write(EVIDENCE / 'runner.json', dict(identity, toolchain=key))
+    runner = dict(identity, toolchain=key)
+    write(EVIDENCE / 'runner.json', runner)
+    print('ZUO_RUNNER_RESULT ' + json.dumps(runner), flush=True)
     subprocess.run(['cc', '-O2', '-DZUO_LIB_PATH=' + json.dumps(str(SRC / 'zuo/lib')),
                     '-o', str(ZUO), str(SRC / 'zuo/zuo.c')], check=True)
     output = os.environ.get('GITHUB_OUTPUT')
@@ -76,8 +78,9 @@ def measure(mode):
         assert not CACHE.exists(), 'seed must start with empty storage'
     reference = CACHE / 'benchmark-reference.json'
     previous = json.loads(reference.read_text()) if reference.exists() else None
-    if mode in ['local', 'github']:
+    if mode == 'local':
         assert previous, 'expected a seeded action cache'
+    if previous:
         assert previous['toolchain'] == runner['toolchain'], 'runner image changed'
     if BUILD.exists():
         assert not BUILD.is_symlink()
@@ -85,7 +88,7 @@ def measure(mode):
     BUILD.mkdir()
     result = dict(mode=mode, toolchain=runner['toolchain'],
                   source_commit=capture('git', '-C', str(REPO), 'rev-parse', 'HEAD'),
-                  session_key=key, phases=[])
+                  session_key=key, cache_available=previous is not None, phases=[])
     write(EVIDENCE / (mode + '.json'), result)
 
     def run(label, command):
@@ -133,12 +136,17 @@ def measure(mode):
     if mode == 'seed':
         assert result['cache_events']['stored'] == 10, result['cache_events']
         write(reference, result)
+    elif mode == 'github' and not previous:
+        # GitHub cache misses are ordinary cold builds, including image changes.
+        # Make the new image's snapshot useful to subsequent runs.
+        write(reference, result)
     write(EVIDENCE / (mode + '.json'), result)
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.write('stored=' + str(result['cache_events']['stored']) + '\n')
     print(json.dumps({k: result[k] for k in ['mode', 'cache_events', 'compiler_invocations',
                                             'cache_bytes']}), flush=True)
+    print('ZUO_BUILD_RESULT ' + json.dumps(result), flush=True)
 
 
 parser = argparse.ArgumentParser(description=__doc__)

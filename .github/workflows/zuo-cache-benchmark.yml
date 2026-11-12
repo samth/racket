@@ -2,13 +2,15 @@ name: Zuo GitHub cache comparison
 
 on:
   workflow_dispatch:
-  push:
-    branches: [prototype/gha-zuo-cache]
-    paths:
-      - .github/workflows/zuo-cache-benchmark.yml
-      - .github/scripts/zuo-cache-benchmark.py
-      - racket/src/cs/main.zuo
-      - racket/src/cs/compile-action.zuo
+    inputs:
+      cache_run:
+        description: Optional completed run whose snapshots should be reused; empty seeds a fresh comparison
+        required: false
+        type: string
+      cache_attempt:
+        description: Attempt that saved the snapshots
+        default: '1'
+        type: string
 
 permissions:
   contents: read
@@ -18,6 +20,7 @@ env:
 
 jobs:
   current:
+    if: inputs.cache_run == ''
     name: Current build (${{ matrix.sample }})
     runs-on: ubuntu-22.04
     timeout-minutes: 25
@@ -41,6 +44,7 @@ jobs:
           retention-days: 7
 
   seed:
+    if: inputs.cache_run == ''
     name: Seed and local cache (${{ matrix.sample }})
     runs-on: ubuntu-22.04
     timeout-minutes: 40
@@ -75,6 +79,7 @@ jobs:
   github:
     name: GitHub cache (${{ matrix.sample }})
     needs: seed
+    if: always() && (needs.seed.result == 'success' || inputs.cache_run != '')
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -93,8 +98,7 @@ jobs:
         uses: actions/cache/restore@v6.1.0
         with:
           path: ${{ runner.temp }}/racket-zuo-cache-benchmark/cache
-          key: zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.sample }}
-          fail-on-cache-miss: true
+          key: zuo-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.toolchain }}-${{ inputs.cache_run || github.run_id }}-${{ inputs.cache_run && inputs.cache_attempt || github.run_attempt }}-${{ matrix.sample }}
       - name: Rebuild from empty build tree with restored storage
         id: build
         run: python3 .github/scripts/zuo-cache-benchmark.py github

@@ -5,7 +5,10 @@
          racket/string
          "uri-codec.rkt"
          "url-exception.rkt"
-         "url-structs.rkt")
+         "url-structs.rkt"
+         (only-in (submod "url-structs.rkt" unchecked)
+                  [make-url unchecked:make-url]
+                  [make-path/param unchecked:make-path/param]))
 
 ;; To do:
 ;;   Handle HTTP/file errors.
@@ -215,50 +218,125 @@
 ;; string->url : str -> url
 ;; Original version by Neil Van Dyke
 (define (string->url str)
-  (apply
-   (lambda (scheme user ipv6host host port path query fragment)
-     (when (and scheme (not (regexp-match? #rx"^[a-zA-Z][a-zA-Z0-9+.-]*$"
-                                           scheme)))
-       (url-error "invalid URL string; bad scheme\n  scheme: ~e\n  in: ~e" scheme str))
-     ;; Windows => "file://xxx:/...." specifies a "xxx:/..." path
-     (let ([win-file? (and (or (equal? "" port) (not port))
-                           (equal? "file" (and scheme (string-downcase scheme)))
-                           (eq? 'windows (file-url-path-convention-type))
-                           (not (equal? host ""))
-                           (or (regexp-match? "^[fF][iI][lL][eE]://[a-zA-Z]:" str)
-                               (regexp-match? "^[fF][iI][lL][eE]:\\\\" str)))])
-       (when win-file?
-         (set! path (cond [(equal? "" port) (string-append host ":" path)]
-                          [(and path host) (string-append host "/" path)]
-                          [else (or path host)]))
-         (set! port #f)
-         (set! host ""))
-       (define win-file-url (and win-file?
-                                 (path->url (bytes->path (string->bytes/utf-8 path) 'windows))))
-       (let* ([scheme   (and scheme (string-downcase scheme))]
-              [host     (cond  [win-file-url (url-host win-file-url)]
-                               [ipv6host (and ipv6host (string-downcase ipv6host))]
-                               [else (and host (string-downcase host))])]
-              [user     (uri-decode/maybe user)]
-              [port     (and port (string->number port))]
-              [abs?     (or (equal? "file" scheme)
-                            (regexp-match? #rx"^/" path))]
-              [use-abs? (or abs?
-                            ;; If an authority part is provided, the (empty) path must be
-                            ;; absolute, even if it isn't written with a "/":
-                            (and (or host user port) #t))]
-              [path     (if win-file?
-                            (url-path win-file-url)
-                            (separate-path-strings path))]
-              [query    (if query (form-urlencoded->alist query) '())]
-              [fragment (uri-decode/maybe fragment)])
-         (when (and (not abs?) (pair? path) host)
-           (url-error (string-append "invalid URL string;\n"
-                                     " host provided with non-absolute path (i.e., missing a slash)\n"
-                                     "  in: ~e")
-                      str))
-         (make-url scheme user host port use-abs? path query fragment))))
-   (cdr (regexp-match url-regexp str))))
+  (define-values (scheme user ipv6host host port path query fragment)
+    (split-url str))
+  (when (and scheme (not (valid-scheme? scheme)))
+    (url-error "invalid URL string; bad scheme\n  scheme: ~e\n  in: ~e" scheme str))
+  ;; Windows => "file://xxx:/...." specifies a "xxx:/..." path
+  (let ([win-file? (and (or (equal? "" port) (not port))
+                        (equal? "file" (and scheme (string-downcase scheme)))
+                        (eq? 'windows (file-url-path-convention-type))
+                        (not (equal? host ""))
+                        (or (regexp-match? "^[fF][iI][lL][eE]://[a-zA-Z]:" str)
+                            (regexp-match? "^[fF][iI][lL][eE]:\\\\" str)))])
+    (when win-file?
+      (set! path (cond [(equal? "" port) (string-append host ":" path)]
+                       [(and path host) (string-append host "/" path)]
+                       [else (or path host)]))
+      (set! port #f)
+      (set! host ""))
+    (define win-file-url (and win-file?
+                              (path->url (bytes->path (string->bytes/utf-8 path) 'windows))))
+    (let* ([scheme   (and scheme (string-downcase scheme))]
+           [host     (cond  [win-file-url (url-host win-file-url)]
+                            [ipv6host (and ipv6host (string-downcase ipv6host))]
+                            [else (and host (string-downcase host))])]
+           [user     (uri-decode/maybe user)]
+           [port     (and port (string->number port))]
+           [abs?     (or (equal? "file" scheme)
+                         (and (positive? (string-length path))
+                              (eqv? #\/ (string-ref path 0))))]
+           [use-abs? (or abs?
+                         ;; If an authority part is provided, the (empty) path must be
+                         ;; absolute, even if it isn't written with a "/":
+                         (and (or host user port) #t))]
+           [path     (if win-file?
+                         (url-path win-file-url)
+                         (separate-path-strings path))]
+           [query    (if query (form-urlencoded->alist query) '())]
+           [fragment (uri-decode/maybe fragment)])
+      (when (and (not abs?) (pair? path) host)
+        (url-error (string-append "invalid URL string;\n"
+                                  " host provided with non-absolute path (i.e., missing a slash)\n"
+                                  "  in: ~e")
+                   str))
+      (unchecked:make-url scheme user host port use-abs? path query fragment))))
+
+;; split-url : string -> (values (or/c #f string?) ...)
+;; Returns the same eight parts as the groups of `url-regexp', but scans the
+;; string directly. Every string matches `url-regexp', and each part of the
+;; regexp is a greedy run of characters that is never undone, so a single
+;; left-to-right scan finds the same parts.
+(define (split-url str)
+  (define len (string-length str))
+  ;; Find the first position at or after `i' whose character satisfies
+  ;; `stop?', or `len'.
+  (define-syntax-rule (scan-until i c stop?)
+    (let loop ([j i])
+      (if (= j len)
+          j
+          (let ([c (string-ref str j)])
+            (if stop? j (loop (add1 j)))))))
+  (define (char-at? i ch) (and (< i len) (eqv? ch (string-ref str i))))
+  ;; #1 scheme: ([^:/?#]*):
+  (define scheme-end (scan-until 0 c (memv c '(#\: #\/ #\? #\#))))
+  (define scheme (and (char-at? scheme-end #\:) (substring str 0 scheme-end)))
+  (define after-scheme (if scheme (add1 scheme-end) 0))
+  ;; //authority
+  (define-values (user ipv6host host port path-start)
+    (cond
+      [(and (char-at? after-scheme #\/) (char-at? (add1 after-scheme) #\/))
+       (define start (+ after-scheme 2))
+       ;; #2 user: ([^/?#@]*)@
+       (define user-end (scan-until start c (memv c '(#\/ #\? #\# #\@))))
+       (define user (and (char-at? user-end #\@) (substring str start user-end)))
+       (define host-start (if user (add1 user-end) start))
+       ;; #3 IPv6 host: \[([0-9a-fA-F:]*:[0-9a-fA-F:]*)\]
+       (define ipv6-end
+         (and (char-at? host-start #\[)
+              (scan-until (add1 host-start) c (not (or (eqv? c #\:) (hex-digit? c))))))
+       (define ipv6host
+         (and ipv6-end
+              (char-at? ipv6-end #\])
+              (let ([s (substring str (add1 host-start) ipv6-end)])
+                (and (for/or ([c (in-string s)]) (eqv? c #\:))
+                     s))))
+       ;; #4 host: ([^/?#:]*)
+       (define host-end
+         (if ipv6host
+             (add1 ipv6-end)
+             (scan-until host-start c (memv c '(#\/ #\? #\# #\:)))))
+       (define host (and (not ipv6host) (substring str host-start host-end)))
+       ;; #5 port: :([0-9]*)
+       (define port-end
+         (and (char-at? host-end #\:)
+              (scan-until (add1 host-end) c (not (char<=? #\0 c #\9)))))
+       (define port (and port-end (substring str (add1 host-end) port-end)))
+       (values user ipv6host host port (or port-end host-end))]
+      [else (values #f #f #f #f after-scheme)]))
+  ;; #6 path: ([^?#]*)
+  (define path-end (scan-until path-start c (or (eqv? c #\?) (eqv? c #\#))))
+  (define path (substring str path-start path-end))
+  ;; #7 query: \?([^#]*)
+  (define query-end (and (char-at? path-end #\?)
+                         (scan-until (add1 path-end) c (eqv? c #\#))))
+  (define query (and query-end (substring str (add1 path-end) query-end)))
+  ;; #8 fragment: #(.*)
+  (define fragment-start (or query-end path-end))
+  (define fragment (and (< fragment-start len) (substring str (add1 fragment-start) len)))
+  (values scheme user ipv6host host port path query fragment))
+
+(define (hex-digit? c)
+  (or (char<=? #\0 c #\9) (char<=? #\a c #\f) (char<=? #\A c #\F)))
+
+;; valid-scheme? : string -> boolean
+;; Like (regexp-match? #rx"^[a-zA-Z][a-zA-Z0-9+.-]*$" s)
+(define (valid-scheme? s)
+  (define (alpha? c) (or (char<=? #\a c #\z) (char<=? #\A c #\Z)))
+  (and (positive? (string-length s))
+       (alpha? (string-ref s 0))
+       (for/and ([c (in-string s 1)])
+         (or (alpha? c) (char<=? #\0 c #\9) (and (memv c '(#\+ #\. #\-)) #t)))))
 
 (define (uri-decode/maybe f) (friendly-decode/maybe f uri-decode))
 
@@ -266,16 +344,40 @@
   ;; If #f, and leave unmolested any % that is followed by hex digit
   ;; if a % is not followed by a hex digit, replace it with %25
   ;; in an attempt to be "friendly"
-  (and f (uri-decode (regexp-replace* #rx"%([^0-9a-fA-F])" f "%25\\1"))))
+  (and f (uri-decode (if (string-index f #\%)
+                         (regexp-replace* #rx"%([^0-9a-fA-F])" f "%25\\1")
+                         f))))
+
+;; string-index : string char [nat] -> (or/c #f nat)
+(define (string-index s ch [start 0])
+  (let loop ([i start])
+    (cond [(= i (string-length s)) #f]
+          [(eqv? ch (string-ref s i)) i]
+          [else (loop (add1 i))])))
+
+;; string-split-at : string char -> (listof string)
+;; Like (regexp-split (regexp (regexp-quote (string ch))) s)
+(define (string-split-at s ch)
+  (let loop ([start 0])
+    (define i (string-index s ch start))
+    (if i
+        (cons (substring s start i) (loop (add1 i)))
+        (list (substring s start)))))
 
 ;; separate-path-strings : string[starting with /] -> (listof path/param)
 (define (separate-path-strings str)
-  (let ([strs (regexp-split #rx"/" str)])
+  (let ([strs (string-split-at str #\/)])
     (map separate-params (if (string=? "" (car strs)) (cdr strs) strs))))
 
 (define (separate-params s)
-  (let ([lst (map path-segment-decode (regexp-split #rx";" s))])
-    (make-path/param (car lst) (cdr lst))))
+  (if (string-index s #\;)
+      (let ([lst (map path-segment-decode (string-split-at s #\;))])
+        (if (andmap string? (cdr lst))
+            (unchecked:make-path/param (car lst) (cdr lst))
+            ;; A "." or ".." parameter decodes to a symbol, which the
+            ;; contract on `make-path/param' rejects
+            (make-path/param (car lst) (cdr lst))))
+      (unchecked:make-path/param (path-segment-decode s) '())))
 
 (define (path-segment-decode p)
   (cond [(string=? p "..") 'up]
@@ -444,7 +546,8 @@
 
 (provide/contract
  (url-regexp regexp?)
- (string->url (-> (and/c string? url-regexp) url?))
+ ;; Every string matches `url-regexp', so there's no need to check it here
+ (string->url (-> string? url?))
  (path->url ((or/c path-string? path-for-some-system?) . -> . url?))
  (relative-path->relative-url-string ((and/c (or/c path-string? path-for-some-system?)
                                              relative-path?)

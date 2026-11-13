@@ -169,36 +169,81 @@ See more in PR8831.
 
 ;; vector string -> string
 (define (decode table str)
-  (define max-ascii (integer->char ascii-size))
-  (define in (open-input-string str))
-  (define out (open-output-bytes))
-  (let loop ()
-    (define c (read-char in))
-    (unless (eof-object? c)
-      (cond [(eqv? c #\%)
-             (define hex (read-string 2 in))
-             (define hex-n (and (string? hex) (string->number hex 16)))
-             (cond [(exact-nonnegative-integer? hex-n) ;; not negative, fractional
-                    ;; Note: write as byte to support multi-byte Unicode chars
-                    (write-byte hex-n out)]
-                   [else
-                    ;; Pass through failed %-escapes as-is, for compatibility with
-                    ;; previous version of code.
-                    (write-char #\% out)
-                    (when (string? hex)
-                      (write-string hex out))])]
-            [(char<? c max-ascii)
-             (write-char (integer->char (vector-ref table (char->integer c))) out)]
-            [else
-             ;; This should probably error, but strings to be decoded might
-             ;; come from misbehaving sources; maybe it's better to add some
-             ;; parameter for a permissive mode; one source of such bad URLs
-             ;; is user-defined strings where the string is entered directly
-             ;; and not properly encoded -- similar justification to
-             ;; browsers accepting unencoded chars in manually entered URLs.
-             (write-char c out)])
-      (loop)))
-  (get-output-string out))
+  ;; First, check for a string with no conversion needed:
+  (if (for/and ([char (in-string str)])
+        (define v (char->integer char))
+        (if (< v ascii-size)
+            (and (not (eqv? char #\%))
+                 (eqv? v (vector-ref table v)))
+            #t))
+      (string-copy str)
+      (decode/slow table str)))
+
+;; Decodes into a byte string, which is then converted from UTF-8 with
+;; #\uFFFD for invalid sequences, as `get-output-string' would.
+(define (decode/slow table str)
+  (define len (string-length str))
+  ;; Each character becomes at most 4 bytes:
+  (define out (make-bytes (* 4 len)))
+  (define (write-char! c pos)
+    (define v (char->integer c))
+    (define n (char-utf-8-length c))
+    (case n
+      [(1) (bytes-set! out pos v)]
+      [(2) (bytes-set! out pos (bitwise-ior #xC0 (arithmetic-shift v -6)))
+           (bytes-set! out (+ pos 1) (bitwise-ior #x80 (bitwise-and v #x3F)))]
+      [(3) (bytes-set! out pos (bitwise-ior #xE0 (arithmetic-shift v -12)))
+           (bytes-set! out (+ pos 1) (bitwise-ior #x80 (bitwise-and (arithmetic-shift v -6) #x3F)))
+           (bytes-set! out (+ pos 2) (bitwise-ior #x80 (bitwise-and v #x3F)))]
+      [else (bytes-set! out pos (bitwise-ior #xF0 (arithmetic-shift v -18)))
+            (bytes-set! out (+ pos 1) (bitwise-ior #x80 (bitwise-and (arithmetic-shift v -12) #x3F)))
+            (bytes-set! out (+ pos 2) (bitwise-ior #x80 (bitwise-and (arithmetic-shift v -6) #x3F)))
+            (bytes-set! out (+ pos 3) (bitwise-ior #x80 (bitwise-and v #x3F)))])
+    (+ pos n))
+  (define (hex-value c)
+    (cond [(char<=? #\0 c #\9) (- (char->integer c) 48)]
+          [(char<=? #\a c #\f) (- (char->integer c) 87)]
+          [(char<=? #\A c #\F) (- (char->integer c) 55)]
+          [else #f]))
+  (let loop ([i 0] [pos 0])
+    (cond
+      [(= i len) (bytes->string/utf-8 out #\uFFFD 0 pos)]
+      [else
+       (define c (string-ref str i))
+       (cond [(eqv? c #\%)
+              (define hex-end (min len (+ i 3)))
+              (define hi (and (< (+ i 1) len) (hex-value (string-ref str (+ i 1)))))
+              (define lo (and (< (+ i 2) len) (hex-value (string-ref str (+ i 2)))))
+              (define hex-n
+                (if (and hi lo)
+                    (+ (* 16 hi) lo)
+                    ;; Rare cases, such as "%+1" or a "%" near the end, which
+                    ;; `string->number' accepts or rejects
+                    (and (< (+ i 1) len)
+                         (string->number (substring str (+ i 1) hex-end) 16))))
+              (cond [(exact-nonnegative-integer? hex-n) ;; not negative, fractional
+                     ;; Note: write as byte to support multi-byte Unicode chars
+                     (bytes-set! out pos hex-n)
+                     (loop hex-end (add1 pos))]
+                    [else
+                     ;; Pass through failed %-escapes as-is, for compatibility with
+                     ;; previous version of code.
+                     (bytes-set! out pos 37) ;; #\%
+                     (let pass ([j (+ i 1)] [pos (add1 pos)])
+                       (if (= j hex-end)
+                           (loop hex-end pos)
+                           (pass (add1 j) (write-char! (string-ref str j) pos))))])]
+             [(< (char->integer c) ascii-size)
+              (bytes-set! out pos (vector-ref table (char->integer c)))
+              (loop (add1 i) (add1 pos))]
+             [else
+              ;; This should probably error, but strings to be decoded might
+              ;; come from misbehaving sources; maybe it's better to add some
+              ;; parameter for a permissive mode; one source of such bad URLs
+              ;; is user-defined strings where the string is entered directly
+              ;; and not properly encoded -- similar justification to
+              ;; browsers accepting unencoded chars in manually entered URLs.
+              (loop (add1 i) (write-char! c pos))])])))
 
 ;; Utility for defining codecs
 (define-syntax-rule (define-codecs [encoder decoder mapping] ...)
@@ -233,18 +278,27 @@ See more in PR8831.
 ;; string -> listof (cons string string)
 ;; http://www.w3.org/TR/html401/appendix/notes.html#ampersands-in-uris
 (define (form-urlencoded->alist str)
-  (define sep-regexp
+  (define sep?
     (case (current-alist-separator-mode)
-      [(semi) #rx"[;]"]
-      [(amp) #rx"[&]"]
-      [else #rx"[&;]"]))
+      [(semi) (lambda (c) (eqv? c #\;))]
+      [(amp) (lambda (c) (eqv? c #\&))]
+      [else (lambda (c) (or (eqv? c #\&) (eqv? c #\;)))]))
+  (define len (string-length str))
+  (define (keyval start end)
+    ;; equal-pos = #f => no "=..." part
+    (define equal-pos
+      (for/first ([i (in-range start end)]
+                  #:when (eqv? #\= (string-ref str i)))
+        i))
+    (cons (string->symbol (form-urlencoded-decode
+                           (substring str start (or equal-pos end))))
+          (and equal-pos (form-urlencoded-decode (substring str (add1 equal-pos) end)))))
   (if (equal? "" str) '()
-      (for/list ([keyval (in-list (regexp-split sep-regexp str))])
-        ;; m = #f => no "=..." part
-        (define m (regexp-match-positions #rx"=" keyval))
-        (cons (string->symbol (form-urlencoded-decode
-                               (if m (substring keyval 0 (caar m)) keyval)))
-              (and m (form-urlencoded-decode (substring keyval (cdar m))))))))
+      (let loop ([start 0] [i 0])
+        (cond
+          [(= i len) (list (keyval start i))]
+          [(sep? (string-ref str i)) (cons (keyval start i) (loop (add1 i) (add1 i)))]
+          [else (loop start (add1 i))]))))
 
 (define current-alist-separator-mode
   (make-parameter 'amp-or-semi

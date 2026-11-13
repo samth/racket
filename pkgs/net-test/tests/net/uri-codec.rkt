@@ -7,6 +7,16 @@
   (define sepmode current-alist-separator-mode)
   (test (uri-decode "%Pq") => "%Pq"
         (uri-decode "%P")  => "%P"
+        (uri-decode "%+1") => "\u0001"
+        (uri-decode "%-0") => "\u0000"
+        (uri-decode "%a")  => "\n"
+        (uri-decode "ab%2") => "ab\u0002"
+        (uri-decode "%%41") => "%%41"
+        (uri-decode "%1.") => "%1."
+        (uri-decode "%e9") => "\uFFFD"
+        (uri-decode "%E2%9C%93") => "\u2713"
+        (uri-decode "a+b") => "a+b"
+        (form-urlencoded-decode "a+b") => "a b"
         (uri-decode "λ")   => "λ"
 
         (uri-decode (string-append
@@ -20,6 +30,14 @@
 
         (alist->form-urlencoded '([a . #f])) => "a"
         (form-urlencoded->alist "a") => '([a . #f])
+        (form-urlencoded->alist "a=1&b;c==2&&=d")
+        => '([a . "1"] [b . #f] [c . "=2"] [|| . #f] [|| . "d"])
+        (parameterize ([current-alist-separator-mode 'amp])
+          (form-urlencoded->alist "a=1&b;c==2&&=d"))
+        => '([a . "1"] [|b;c| . "=2"] [|| . #f] [|| . "d"])
+        (parameterize ([current-alist-separator-mode 'semi])
+          (form-urlencoded->alist "a=1&b;c==2&&=d"))
+        => '([a . "1&b"] [c . "=2&&=d"])
 
         (alist->form-urlencoded '([a . ""])) => "a="
         (form-urlencoded->alist "a=") => '([a . ""])

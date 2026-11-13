@@ -9,6 +9,7 @@
   #:transparent)
 
 (provide/contract
+ #:unprotected-submodule unchecked
  (struct url ([scheme (or/c false/c string?)]
               [user (or/c false/c string?)]
               [host (or/c false/c string?)]

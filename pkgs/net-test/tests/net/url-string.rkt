@@ -108,6 +108,26 @@
         url->string
         (string->url "http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]/a/b/c#joe"))
 
+  ;; Corner cases of splitting a string into its parts, which must match
+  ;; the groups of `url-regexp':
+  (test (string->url/vec "http://[abc]/x") => #("http" #f "[abc]" #f #t (#("x")) () #f)
+        (string->url/vec "http://u@[::1]:80/a") => #("http" "u" "::1" 80 #t (#("a")) () #f)
+        (string->url/vec "//host") => #(#f #f "host" #f #t () () #f)
+        (string->url/vec "//") => #(#f #f "" #f #t () () #f)
+        (string->url/vec "a:b:c") => #("a" #f #f #f #f (#("b:c")) () #f)
+        (string->url/vec "x://u@@h/") => #("x" "u" "@h" #f #t (#("")) () #f)
+        (string->url/vec "ftp://h:/") => #("ftp" #f "h" #f #t (#("")) () #f)
+        (string->url/vec "") => #(#f #f #f #f #f () () #f)
+        (string->url/vec "?") => #(#f #f #f #f #f () () #f)
+        (string->url/vec "#") => #(#f #f #f #f #f () () "")
+        (string->url/vec "http://h/a;p1;p2/b?x=1;y=2&z#f#g")
+        => #("http" #f "h" #f #t (#("a" "p1" "p2") #("b")) ((x . "1") (y . "2") (z . #f)) "f#g")
+        (string->url "http://[::1") =error> "host provided with non-absolute path"
+        (string->url "http://[::1]x/y") =error> "host provided with non-absolute path"
+        (string->url "http://host:8x/y") =error> "host provided with non-absolute path"
+        (string->url "1http://host/") =error> "bad scheme"
+        (string->url ":/x") =error> "bad scheme")
+
   ;; test unquoting for %
   (test-s->u #("http" #f "www.drscheme.org" #f #t (#("a") #("b") #("c")) ((ti#m . "")) "jo e")
              "http://www.drscheme.org/a/b/c?ti%23m=#jo%20e")

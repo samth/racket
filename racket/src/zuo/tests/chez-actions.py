@@ -140,7 +140,9 @@ assert hashes(paths) == reference
 # recompile and a cached consumer with a future-dated Nanopass source file.
 helper = source / 'nanopass/nanopass/helpers.ss'
 st = helper.stat()
-os.utime(helper, ns=(st.st_atime_ns, st.st_mtime_ns + 60_000_000_000))
+future = max(path.stat().st_mtime_ns for path in paths) + 60_000_000_000
+os.utime(helper, ns=(st.st_atime_ns, future))
+assert helper.stat().st_mtime_ns > max(path.stat().st_mtime_ns for path in paths)
 env.pop('ZUO_ACTION_CACHE')
 for path in paths:
     path.unlink()

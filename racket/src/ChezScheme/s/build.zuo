@@ -139,6 +139,16 @@
 (define auxiliary-src-names
   '("debug.ss" "layout.ss" "primdata.ss" "patch.ss" "ubify.ss"))
 
+(define rule-src-names
+  '("build.zuo" "machine.zuo" "../makefiles/lib.zuo"))
+
+(define (chez-actions?)
+  (equal? (cdr (or (assoc "ZUO_CHEZ_ACTIONS" (hash-ref (runtime-env) 'env))
+                  '("" . ""))) "1"))
+
+(define (action-rule-src-names)
+  (if (chez-actions?) '("../makefiles/scheme-action.zuo") '()))
+
 ;; used externally as dependencies
 (define all-src-names
   (append base-src-names
@@ -148,7 +158,8 @@
           type-src-names
           cpnanopass-src-names
           unicode-src-names
-          auxiliary-src-names))
+          auxiliary-src-names
+          rule-src-names))
 
 (define nanopass-src-names
   (cons "../nanopass/nanopass.ss"
@@ -158,7 +169,8 @@
   (define machine-files (get-machine-files m (m->arch m)))
   (append (machine-source-names all-src-names m)
           (cons (caar machine-files) (cdr machine-files))
-          nanopass-src-names))
+          nanopass-src-names
+          (action-rule-src-names)))
 
 ;; The `compiler-compiler-options` argument overrides certain `var` and config-file
 ;; options for building preamble files, which is useful for compiling a cross-compiler
@@ -263,7 +275,8 @@
     (append machine-def-inputs (map at-source nanopass-src-names) base-srcs
             compiler-srcs
             included-srcs
-            other-srcs (map at-source auxiliary-src-names)))
+            other-srcs (map at-source auxiliary-src-names)
+            (map at-source (append rule-src-names (action-rule-src-names)))))
 
   (define profile-dump-source "source.pd")
   (define profile-dump-block "block.pd")
@@ -276,8 +289,7 @@
                                  (at-dir ".")))))
 
   (define action-env (hash-ref (runtime-env) 'env))
-  (define action-mode?
-    (equal? (cdr (or (assoc "ZUO_CHEZ_ACTIONS" action-env) '("" . ""))) "1"))
+  (define action-mode? (chez-actions?))
   ;; Active boots are inputs to native fixpoint iteration and then overwritten.
   ;; Only cross compilation has a disjoint, stable compiler/boot input pair.
   (define cross-actions? (and action-mode? (not (equal? m host-m))))

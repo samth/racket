@@ -171,11 +171,13 @@ for machine, included, excluded in [('ta6le', 'x86_64.ss', 'riscv64.ss'),
                       + json.dumps(str(source / 's/build.zuo'))
                       + ' \'all-src-names-for-machine) ' + json.dumps(machine)
                       + '))\n(for-each displayln names)\n')
-    result = subprocess.run([str(a.zuo.resolve()), str(script)], cwd=root,
+    result = subprocess.run([str(a.zuo.resolve()), str(script)], cwd=root, env=env,
                             capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     names = result.stdout.splitlines()
     assert included in names and excluded not in names
     assert all(name in names for name in ['debug.ss', 'layout.ss', 'primdata.ss',
                                          'patch.ss', 'ubify.ss'])
+    assert all(name in names for name in ['build.zuo', 'machine.zuo',
+                                         '../makefiles/lib.zuo', '../makefiles/scheme-action.zuo'])
 print('Chez action input, configuration and complete-output checks passed', flush=True)

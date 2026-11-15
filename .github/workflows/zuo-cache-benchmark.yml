@@ -16,12 +16,17 @@ on:
         type: choice
         default: '[1, 2]'
         options: ['[1, 2]', '[1]', '[2]']
+      chez_actions:
+        description: Also cache supported Chez Scheme compilation stages
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 env:
   RACKET_CI_SESSION_KEY: racket-chez-ci-v1
+  ZUO_BENCHMARK_CHEZ_ACTIONS: ${{ inputs.chez_actions && '1' || '0' }}
 
 jobs:
   current:

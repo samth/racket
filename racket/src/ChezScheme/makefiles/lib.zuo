@@ -13,6 +13,7 @@
          make-lookup
          make-opt-lookup
          make-run-scheme
+         make-scheme-program
          session-key-for
          relevant-config
          source-version
@@ -163,17 +164,8 @@
                                             (fd-open-output 'stderr))
                                 'env env)))
        (define to (hash-ref p 'stdin))
-       (fd-write to (~s `(source-directories '(,(at-dir ".")
-                                               ,(at-source ".")
-                                               ,@extra-source-dirs))))
-       (fd-write to (~s `(library-directories '(,@extra-library-dirs
-                                                ,(cons (at-source ".")
-                                                       (at-dir "."))))))
-       (let ((session-key (session-key-for (lookup 'sessionKey) (at-dir ".") what)))
-         (when session-key
-           (fd-write to (~s `(,(string->symbol "#%$set-top-level-value!")
-                              '$session-key ,session-key)))))
-       (fd-write to (string-join (map ~s script)))
+       (fd-write to (make-scheme-program at-source at-dir lookup what script
+                                        extra-source-dirs extra-library-dirs))
        (fd-close to)
        (thread-process-wait (hash-ref p 'process))
        (process-status (hash-ref p 'process)))))
@@ -185,6 +177,19 @@
   (list call-with-scheme
         run-scheme/status
         run-scheme))
+
+;; The legacy runner and explicit actions execute exactly this program. Include
+;; it in the action's argv so stdin cannot be an untracked recipe dependency.
+(define (make-scheme-program at-source at-dir lookup what script
+                             extra-source-dirs extra-library-dirs)
+  (define key (session-key-for (lookup 'sessionKey) (at-dir ".") what))
+  (~a (~s `(source-directories '(,(at-dir ".") ,(at-source ".") ,@extra-source-dirs)))
+      (~s `(library-directories '(,@extra-library-dirs
+                                  ,(cons (at-source ".") (at-dir ".")))))
+      (if key
+          (~s `(,(string->symbol "#%$set-top-level-value!") '$session-key ,key))
+          "")
+      (string-join (map ~s script))))
 
 (define (relevant-config opt default-options)
   ;; Note options that are non-default:

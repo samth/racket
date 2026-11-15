@@ -68,11 +68,14 @@ def measure(mode):
     runner = json.loads((EVIDENCE / 'runner.json').read_text())
     env = dict(os.environ)
     for name in ['ZUO_ACTION_CACHE', 'ZUO_CS_ACTIONS', 'ZUO_CS_TOOLCHAIN_ID',
+                 'ZUO_CHEZ_ACTIONS', 'ZUO_CHEZ_TOOLCHAIN_ID',
                  'RACKET_CHEZ_SESSION_KEY', 'PLT_CS_COVERAGE_COUNTERS']:
         env.pop(name, None)
     if mode != 'current':
         env.update(ZUO_CS_ACTIONS='1', ZUO_CS_TOOLCHAIN_ID=runner['toolchain'],
                    ZUO_ACTION_CACHE=str(CACHE), ZUO_ACTION_CACHE_LOG='1')
+        if env.get('ZUO_BENCHMARK_CHEZ_ACTIONS') == '1':
+            env.update(ZUO_CHEZ_ACTIONS='1', ZUO_CHEZ_TOOLCHAIN_ID=runner['toolchain'])
     key = env['RACKET_CI_SESSION_KEY']
     if mode == 'seed':
         assert not CACHE.exists(), 'seed must start with empty storage'
@@ -88,7 +91,8 @@ def measure(mode):
     BUILD.mkdir()
     result = dict(mode=mode, toolchain=runner['toolchain'],
                   source_commit=capture('git', '-C', str(REPO), 'rev-parse', 'HEAD'),
-                  session_key=key, cache_available=previous is not None, phases=[])
+                  session_key=key, chez_actions=env.get('ZUO_CHEZ_ACTIONS') == '1',
+                  cache_available=previous is not None, phases=[])
     write(EVIDENCE / (mode + '.json'), result)
 
     def run(label, command):
@@ -134,7 +138,8 @@ def measure(mode):
                                              for name, value in result['native_outputs'].items())
         result['chez_matches_seed'] = result['chez_tools'] == previous['chez_tools']
     if mode == 'seed':
-        assert result['cache_events']['stored'] == 10, result['cache_events']
+        assert (result['cache_events']['stored'] > 10 if result['chez_actions']
+                else result['cache_events']['stored'] == 10), result['cache_events']
         write(reference, result)
     elif mode == 'github' and not previous:
         # GitHub cache misses are ordinary cold builds, including image changes.

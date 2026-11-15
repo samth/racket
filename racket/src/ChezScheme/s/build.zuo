@@ -134,6 +134,11 @@
   '("../unicode/unicode-char-cases.ss"
     "../unicode/unicode-charinfo.ss"))
 
+;; These are also read during bootstrap; the outer build must invalidate before
+;; entering the more detailed s/ graph (and before looking up an action cache).
+(define auxiliary-src-names
+  '("debug.ss" "layout.ss" "primdata.ss" "patch.ss" "ubify.ss"))
+
 ;; used externally as dependencies
 (define all-src-names
   (append base-src-names
@@ -142,7 +147,8 @@
           other-src-names
           type-src-names
           cpnanopass-src-names
-          unicode-src-names))
+          unicode-src-names
+          auxiliary-src-names))
 
 (define nanopass-src-names
   (cons "../nanopass/nanopass.ss"
@@ -189,9 +195,11 @@
       [(not (equal? m host-m)) (build-path host-workarea "boot" host-m)]
       [(directory-exists? incoming-boot-dir) incoming-boot-dir]
       [else (at-source "../boot" seed-m)]))
+  (define bootstrap-compiler-files
+    (or (lookup 'bootstrapCompilerFiles)
+        (scheme-input-files host-scheme host-workarea host-m seed-dir)))
   (define bootstrap-compiler-inputs
-    (append (or (lookup 'bootstrapCompilerFiles)
-                (scheme-input-files host-scheme host-workarea host-m seed-dir))
+    (append bootstrap-compiler-files
             (list (input-data-target 'bootstrap-command
                                      (list host-scheme (path->complete-path host-workarea) host-m
                                            (lookup 'SCHEMEHEAPDIRS) (lookup 'sessionKey))))))
@@ -255,7 +263,7 @@
     (append machine-def-inputs (map at-source nanopass-src-names) base-srcs
             compiler-srcs
             included-srcs
-            other-srcs))
+            other-srcs (map at-source auxiliary-src-names)))
 
   (define profile-dump-source "source.pd")
   (define profile-dump-block "block.pd")
@@ -266,6 +274,70 @@
                      (list (at-source "../unicode"))
                      (list (cons (at-source "../nanopass")
                                  (at-dir ".")))))
+
+  (define action-env (hash-ref (runtime-env) 'env))
+  (define action-mode?
+    (equal? (cdr (or (assoc "ZUO_CHEZ_ACTIONS" action-env) '("" . ""))) "1"))
+  ;; Active boots are inputs to native fixpoint iteration and then overwritten.
+  ;; Only cross compilation has a disjoint, stable compiler/boot input pair.
+  (define cross-actions? (and action-mode? (not (equal? m host-m))))
+  (when action-mode?
+    (unless (and (eq? (system-type) 'unix) (session-key-for (lookup 'sessionKey)))
+      (error "ZUO_CHEZ_ACTIONS requires POSIX and an explicit sessionKey"))
+    (unless (and (equal? (opt 'compile 'raw) "compile-file")
+                 (andmap (lambda (k) (not (opt k)))
+                         '(p xp bp xbp c loadspd dumpspd loadbpd dumpbpd pdhtml)))
+      (error "Chez command actions do not support profiling, covin, or custom compile procedures")))
+
+  (define (scheme-rule deps what script loads [stamp #f] [nanopass? #f])
+    ;; Keep ordinary builds usable with an unextended Zuo installation.
+    (define command-rule (dynamic-require 'zuo/build 'command-rule))
+    (define toolchain (assoc "ZUO_CHEZ_TOOLCHAIN_ID" action-env))
+    (unless (and toolchain (not (equal? (cdr toolchain) "")))
+      (error "ZUO_CHEZ_ACTIONS requires ZUO_CHEZ_TOOLCHAIN_ID"))
+    (call-with-scheme
+     (lambda (exe args env)
+       ;; Bundled builds supply this exact compiler plus its immutable seed pair.
+       ;; For external commands, require explicit -B inputs instead of guessing
+       ;; which executable-relative or SCHEMEHEAPDIRS boot files they will read.
+       (unless (and (= (length bootstrap-compiler-files) 3)
+                    (equal? (path->complete-path exe)
+                            (path->complete-path (car bootstrap-compiler-files)))
+                    (or (null? args)
+                        (equal? args (list "-B" (cadr bootstrap-compiler-files)
+                                           "-B" (list-ref bootstrap-compiler-files 2)))))
+         (error "Chez command actions require a compiler and explicit petite/scheme boot pair"))
+       (define helper (at-source "../makefiles/scheme-action.zuo"))
+       (command-rule
+        ;; Library lookup still probes source presence with timestamp checks
+        ;; disabled. Source contents belong to the Nanopass producer's inputs.
+        (append deps bootstrap-compiler-inputs
+                (if nanopass?
+                    (list (input-data-target
+                           'nanopass-source-presence
+                           (map (lambda (name)
+                                  (define path (at-source name))
+                                  (list path (file-exists? path)))
+                                nanopass-src-names)))
+                    '()))
+        (hash 'argv (append (list (path->complete-path (hash-ref (runtime-env) 'exe)))
+                            (let ([root (hash-ref (runtime-env) 'library-root #f)])
+                              (if root (list "-X" root) '()))
+                            (list helper (or stamp "")
+                                  (make-scheme-program at-source at-dir lookup what script
+                                                       (list (at-source "../unicode"))
+                                                       (list (cons (at-source "../nanopass") (at-dir "."))))
+                                  (path->complete-path exe)
+                                  "-B" (cadr bootstrap-compiler-files)
+                                  "-B" (list-ref bootstrap-compiler-files 2)
+                                  "--disable-library-timestamps" "-q")
+                            loads)
+              'tools (list exe)
+              'environment '(("PATH" . "/usr/bin:/bin") ("LANG" . "C")
+                             ("LC_ALL" . "C") ("TZ" . "UTC"))
+              'toolchain (cdr toolchain)
+              'rule-files (list helper (at-source "build.zuo")
+                                (at-source "../makefiles/lib.zuo")))))))
 
   (define (cp0+gc-control)
     `((run-cp0 (lambda (cp0 x)
@@ -304,7 +376,7 @@
       ,@(cp0+gc-control)
       ,@(map (lambda (dest)
                `(begin (delete-file ,(path-replace-extension dest ".covin")) (void)))
-             dests)
+             (if cross-actions? '() dests))
       (time (let ()
               ,@(map (lambda (src dest)
                        `(begin
@@ -326,11 +398,12 @@
     (make-final-compile-script
      (append base-srcs compiler-srcs) (append base-dests compiler-dests) #f
      `((when ,(opt 'pps) (,(string->symbol "#%$print-pass-stats")))
-       ,@(make-bootfile-step-script petite.boot '() base-dests)
+      ,@(make-bootfile-step-script petite.boot '() base-dests)
        ,@(make-bootfile-step-script scheme.boot '("petite") compiler-dests))))
 
   (define (make-bootfile-step-script .boot pre-boots dests)
-    `((begin (delete-file ,(path-replace-extension .boot ".covin")) (void))
+    `(,@(if cross-actions? '()
+            `((begin (delete-file ,(path-replace-extension .boot ".covin")) (void))))
       (,(string->symbol "#%$make-boot-file") ,.boot ',(string->symbol m) ',pre-boots ,@dests)))
 
   (define (make-bootfile-script .boot pre-boots dests)
@@ -370,10 +443,12 @@
   (define (compilation-preamble-target .so deps loads)
     (define .ss (at-source (path-replace-extension (file-name-from-path .so) ".ss")))
     `[:target ,.so (,.ss ,@bootstrap-compiler-inputs ,@deps ,@loads)
-              ,(lambda (path token)
-                 (run-scheme path
-                             (make-compiler-compile-script .ss path 'normal)
-                             loads))])
+              ,(if action-mode?
+                   (lambda (path token deps)
+                     (scheme-rule deps path (make-compiler-compile-script .ss path 'normal) loads))
+                   (lambda (path token)
+                     (run-scheme path (make-compiler-compile-script .ss path 'normal) loads)))
+              ,@(if action-mode? '(:rule) '())])
 
   ;; Create a `:depend` line for a file that `include`s other files
   (define (include-dep name src-names)
@@ -485,18 +560,30 @@
      `(;; The default target builds object files individually:
        [:target default (,petite.boot ,scheme.boot ,@output-headers) ,void]
 
-       ;; These targets rebuild boot files in all-at-once mode, but
-       ;; independent of whether dependencies changed:
+       ;; Native fixpoint iteration rebuilds in all-at-once mode. The opt-in
+       ;; cross action gives that stage an atomic, cacheable output group.
        [:target all (bootall ,@output-headers)
                 ,void]
-       [:target bootall (,@all-srcs ,@(add-patchfile macro-objs) ,nanopass.so)
+       ,@(if cross-actions?
+             (let ([stamp (at-dir "bootall-stamp")])
+               `([:target bootall (,stamp) ,void :quiet]
+                 [:target ,(append (list stamp petite.boot scheme.boot) base-objs compiler-objs)
+                          (,@all-srcs ,@(add-patchfile macro-objs) ,nanopass.so)
+                          ,(lambda (path token deps)
+                             (mkdir-p (at-boot "."))
+                             (scheme-rule deps "all at once"
+                                          (make-compile-at-once-script base-srcs base-objs petite.boot
+                                                                      compiler-srcs compiler-objs scheme.boot)
+                                          (add-patchfile macro-objs) stamp))
+                          :rule]))
+             `([:target bootall (,@all-srcs ,@(add-patchfile macro-objs) ,nanopass.so)
                 ,(lambda (token)
                    (mkdir-p (at-boot "."))
                    (run-scheme "all at once"
                                (make-compile-at-once-script base-srcs base-objs petite.boot
                                                             compiler-srcs compiler-objs scheme.boot)
                                (add-patchfile macro-objs)))
-                :quiet]
+                :quiet]))
 
        ;; The `bootstrap` target uses a "bootstrap" stamp file to trigger a separate `build` run,
        ;; and it iterates up to three times to find a fixpoint
@@ -591,7 +678,7 @@
        ,(compilation-preamble-target setup.so (list (at-source "primref.ss") (at-source "debug.ss"))
                                      (list cmacros.so priminfo.so))
 
-       ,(compilation-preamble-target mkheader.so type-srcs
+       ,(compilation-preamble-target mkheader.so (cons (at-source "layout.ss") type-srcs)
                                      (list cmacros.so priminfo.so primvars.so env.so))
 
        ,(compilation-preamble-target mkgc.so type-srcs
@@ -600,31 +687,42 @@
                                     (cons nanopass.ss
                                     (let ([np-dir (at-source "../nanopass/nanopass")])
                                       (map (lambda (p) (build-path np-dir p)) (ls np-dir)))))
-                ,(lambda (path token)
+                ,(if action-mode?
+                     (lambda (path token deps)
+                       (scheme-rule deps path (make-compiler-compile-script nanopass.ss path 'library)
+                                    (list "--compile-imported-libraries")))
+                     (lambda (path token)
                    ;; Chez's imported-library timestamp checks do not track the
                    ;; compiler or its boot inputs. Rebuild the complete output group.
                    (for-each rm* nanopass-outputs)
                    (run-scheme path
                                (make-compiler-compile-script nanopass.ss path 'library)
-                               (list "--compile-imported-libraries")))]
+                               (list "--compile-imported-libraries"))))
+                ,@(if action-mode? '(:rule) '())]
 
-       ,@(map (lambda (src obj)
+       ,@(if cross-actions? '()
+             (map (lambda (src obj)
                 `[:target ,obj ,(list* src nanopass.so (append macro-objs type-srcs))
                           ,(lambda (obj token)
                              (run-scheme obj
                                          (make-compile-single-script src obj #f)
                                          macro-objs))])
               (append base-srcs compiler-srcs)
-              (append base-objs compiler-objs))
+              (append base-objs compiler-objs)))
 
        ,@(map (lambda (name)
                 (let ([src (at-source (path-replace-extension name ".ss"))]
                       [obj (at-dir name)])
                   `[:target ,obj ,(list* src nanopass.so (append macro-objs type-srcs))
-                            ,(lambda (obj token)
+                            ,(if cross-actions?
+                                 (lambda (obj token deps)
+                                   (scheme-rule deps obj (make-compiler-compile-script src obj 'patch)
+                                                macro-objs #f #t))
+                                 (lambda (obj token)
                                (run-scheme obj
                                            (make-compiler-compile-script src obj 'patch)
-                                           macro-objs))]))
+                                           macro-objs)))
+                            ,@(if cross-actions? '(:rule) '())]))
               patch-names)
 
        [:target ,(at-dir "xpatch") ,(map at-dir patch-names)
@@ -634,24 +732,28 @@
        ,(include-dep "cptypes" (list "fxmap.ss" "cptypes-lattice.ss"))
        ,(include-dep "5_4" unicode-src-names)
        ,(include-dep "strip" (list "strip-types.ss"))
+       ,(include-dep "fasl" (list "layout.ss"))
+       ,(include-dep "cpcheck" (list "layout.ss"))
        ,(include-dep "vfasl" (list "strip-types.ss"))
        ,(include-dep "pbchunk" (list "strip-types.ss"))
        ,(include-dep "cpnanopass" machine-cpnanopass-src-names)
        ,(include-dep "cpprim" machine-cpnanopass-src-names)
 
-       [:target ,petite.boot ,(add-patchfile base-objs)
+       ,@(if cross-actions? '()
+             (list
+       `[:target ,petite.boot ,(add-patchfile base-objs)
                 ,(lambda (petite.boot token)
                    (run-scheme petite.boot
                                (make-bootfile-script petite.boot '() base-objs)
                                (add-patchfile macro-objs)))
                 :precious]
 
-       [:target ,scheme.boot ,(add-patchfile compiler-objs)
+       `[:target ,scheme.boot ,(add-patchfile compiler-objs)
                 ,(lambda (scheme.boot token)
                    (run-scheme scheme.boot
                                (make-bootfile-script scheme.boot '("petite") compiler-objs)
                                (add-patchfile macro-objs)))
-                :precious]
+                :precious]))
 
        [:target ,scheme.h (,mkheader.so ,@macro-objs)
                 ,(lambda (scheme.h token)

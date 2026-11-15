@@ -1,0 +1,13 @@
+#lang zuo
+;; argv: stamp-or-empty, literal stdin program, compiler, compiler arguments...
+;; The parent command-rule hashes the program, the compiler, and all files read.
+(define args (hash-ref (runtime-env) 'args))
+(unless (>= (length args) 3) (error "expected stamp, program, and compiler"))
+(define p (apply process (append (cddr args) (list (hash 'stdin 'pipe)))))
+(fd-write (hash-ref p 'stdin) (cadr args))
+(fd-close (hash-ref p 'stdin))
+(process-wait (hash-ref p 'process))
+(unless (equal? (process-status (hash-ref p 'process)) 0)
+  (error "Chez command action failed"))
+(unless (equal? (car args) "")
+  (fd-close (fd-open-output (car args) :truncate)))

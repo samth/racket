@@ -1,0 +1,7 @@
+master 1 exit 0
+sets 1 exit 0
+sets 2 exit 0
+master 2 exit 0
+master 3 exit 0
+sets 3 exit 0
+done

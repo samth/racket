@@ -1,0 +1,14 @@
+# started on Mon Nov 16 21:37:24 2026
+
+
+ Performance counter stats for 'env PLT_EXPANDER_TIMES=1 PLT_LINKLET_TIMES=1 /tmp/scopesets/hv/tree-master/racket/bin/racket -l- raco make /tmp/scopesets/rhagg/tree-master/all.rkt':
+
+     2640892290185      cpu_core/instructions/u                                               
+     1130577300428      cpu_core/cycles/u                                                     
+
+     230.524903569 seconds time elapsed
+
+     223.478466000 seconds user
+       6.591600000 seconds sys
+
+

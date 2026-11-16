@@ -1,0 +1,40 @@
+master run1 vs run2: 756 common, 755 identical, 1 differ
+    /tmp/scopesets/buildplot/master/racket/share/pkgs/syntax-color-lib/syntax-color/compiled/racket-lexer_rkt.zo
+master run1 vs installed: 756 common, 473 identical, 283 differ
+    /tmp/scopesets/buildplot/master/racket/collects/compiler/private/compiled/cm-minimal_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/compiler/private/compiled/dep_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/data/compiled/integer-set_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/compiled/unsafe_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/unsafe/compiled/define_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/unsafe/compiled/objc_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/unsafe/private/compiled/ffi-lib_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/net/compiled/head_rkt.zo
+master run2 vs installed: 757 common, 474 identical, 283 differ
+    /tmp/scopesets/buildplot/master/racket/collects/compiler/private/compiled/cm-minimal_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/compiler/private/compiled/dep_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/data/compiled/integer-set_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/compiled/unsafe_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/unsafe/compiled/define_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/unsafe/compiled/objc_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/ffi/unsafe/private/compiled/ffi-lib_rkt.zo
+    /tmp/scopesets/buildplot/master/racket/collects/net/compiled/head_rkt.zo
+sets run1 vs run2: 756 common, 755 identical, 1 differ
+    /tmp/scopesets/buildplot/sets/racket/share/pkgs/syntax-color-lib/syntax-color/compiled/racket-lexer_rkt.zo
+sets run1 vs installed: 756 common, 473 identical, 283 differ
+    /tmp/scopesets/buildplot/sets/racket/collects/compiler/private/compiled/cm-minimal_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/compiler/private/compiled/dep_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/data/compiled/integer-set_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/compiled/unsafe_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/unsafe/compiled/define_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/unsafe/compiled/objc_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/unsafe/private/compiled/ffi-lib_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/net/compiled/head_rkt.zo
+sets run2 vs installed: 757 common, 474 identical, 283 differ
+    /tmp/scopesets/buildplot/sets/racket/collects/compiler/private/compiled/cm-minimal_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/compiler/private/compiled/dep_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/data/compiled/integer-set_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/compiled/unsafe_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/unsafe/compiled/define_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/unsafe/compiled/objc_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/ffi/unsafe/private/compiled/ffi-lib_rkt.zo
+    /tmp/scopesets/buildplot/sets/racket/collects/net/compiled/head_rkt.zo

@@ -1,0 +1,14 @@
+# started on Wed Nov 11 13:09:01 2026
+
+
+ Performance counter stats for 'env PLT_EXPANDER_TIMES=1 PLT_LINKLET_TIMES=1 racket/bin/racket -W debug@GC error -l- raco setup -j 1':
+
+    17436310906342      cpu_core/instructions/u                                               
+     8471401961979      cpu_core/cycles/u                                                     
+
+    1800.626900860 seconds time elapsed
+
+    1738.601071000 seconds user
+      52.680063000 seconds sys
+
+

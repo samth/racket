@@ -1,0 +1,77 @@
+raco setup: package depends on newer version:
+raco setup:   package: "base"
+raco setup:   depends on package: "racket"
+raco setup:   depends on version: "9.4.0.5"
+raco setup:   current package version: "9.4.0.4"
+raco setup: --- summary of package problems ---                    [13:39:01]
+raco setup: package depends on newer version:
+raco setup:   package: "base"
+raco setup:   needed package versions:
+raco setup:    "racket" version "9.4.0.5"
+REGION                     MSECS      +GC          MEMK      COUNT
+  eval                 476817.41   216621   649,451,099          0
+    instantiate        192486.77   108614   310,155,186    9366622
+    resolver           104566.61    28707   109,844,588   10229343
+    requires           104034.52    62098   122,421,010   52204252
+    top                 47905.98     7885    78,960,752      53416
+    module              27440.89     9130    27,811,283     218737
+    transformer           382.61      187       258,278      46226
+
+  expand               350941.65   103167   440,506,272          0
+    form-in-module/2   127937.68    40672   151,218,741     283640
+      macro             52953.52    14113    67,940,264    7181262
+    module-begin        88765.06    18229   127,882,214      44561
+      macro             78728.93    14359   118,818,586      25826
+    local-expand        69133.16    25380    89,614,735     514473
+      macro             32131.29    11420    43,565,333    2565722
+    transformer         19587.19     6108    19,670,162     419466
+      macro              6529.92     1714     7,749,234     831573
+    require             16635.95     6311    16,878,987     329789
+    top                 12747.46     2155    13,561,150     255783
+      macro              9585.13     1565    11,179,766     250570
+    form-in-module/1    10903.51     2730    17,144,341     713314
+      macro              6938.41     1466    14,231,871     502528
+    provide              4556.13     1482     4,086,491      22874
+      macro              3417.30      854     2,681,178      28600
+    module                675.48      100       449,446       8048
+      scopes              248.34       46       117,026      46939
+
+  compile              257195.55   114814   532,690,182          0
+    module             233826.32   108696   500,404,865      22183
+      linklet          220331.25   104788   486,950,189      82306
+      serialize          7051.16     1915     6,058,687       7388
+    top                 18065.99     4506    26,524,262      53882
+      linklet           17179.73     4402    25,848,365      53892
+      serialize             0.00        0             3         10
+    transformer          4667.60     1394     4,202,367      46226
+      linklet            3080.06      887     2,323,919      45615
+    resolver              634.32      218     1,556,775          0
+      linklet             634.32      218     1,556,775        142
+    form-in-module/2        1.02        0         1,531          0
+      linklet               1.02        0         1,531          4
+    module-begin            0.28        0           380          0
+      linklet               0.28        0           380          2
+
+  read                  41580.07    11594    38,465,703     997102
+;; boot                       50 [+     0] ms
+;; comp-ffi                  254 [+   344] ms
+;;   comp-ffi-back             0 [+     0] ms
+;;   comp-ffi-call           254 [+   344] ms ; 981 times
+;; on-demand                1379 [+   985] ms ; 196086 times
+;; jitify                   3632 [+   367] ms ; 443 times
+;; schemify                27045 [+  6139] ms ; 182719 times
+;; read                    40356 [+ 13010] ms
+;;   faslin-literals        6155 [+   827] ms ; 1010139 times
+;;   read-bundle           11171 [+  6892] ms ; 220360 times
+;;   faslin-code           23030 [+  5291] ms ; 891805 times
+;; compile                211946 [+104183] ms
+;;   compile-nested        76664 [+ 22587] ms ; 128805 times
+;;   compile-linklet      135282 [+ 81596] ms ; 182719 times
+;; run                    254525 [+120903] ms
+;;   instantiate          254525 [+120903] ms ; 16433524 times
+;; compile-pass           282549 [+ 97150] ms
+;;   regalloc              93289 [+ 30768] ms ; 1363442 times
+;;   other                189260 [+ 66382] ms ; 1332022 times
+;; total                  821736 [+343081] ms
+;;
+;; faslin-code              3517 MB

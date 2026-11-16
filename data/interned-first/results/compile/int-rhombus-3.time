@@ -1,0 +1,23 @@
+	Command being timed: "taskset -c 3 perf stat -e cpu_core/instructions/u,cpu_core/cycles/u -o /tmp/scopesets/ifirst/compile/int-rhombus-3.perf env PLT_EXPANDER_TIMES=1 /tmp/scopesets/hv/lane1/racket/bin/racket -l- raco make /tmp/scopesets/rhagg/lane1/all.rkt"
+	User time (seconds): 201.93
+	System time (seconds): 5.36
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:27.50
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1371476
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3
+	Minor (reclaiming a frame) page faults: 773099
+	Voluntary context switches: 1902
+	Involuntary context switches: 468
+	Swaps: 0
+	File system inputs: 62728
+	File system outputs: 271960
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

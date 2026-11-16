@@ -1,0 +1,381 @@
+| metric | master | sets | ctx | bix |
+|---|---|---|---|---|
+| wall (s) | 1,801 | 1,717 | 1,730 | 1,733 |
+| user+sys (s) | 1,791 | 1,706 | 1,722 | 1,718 |
+| user (s) | 1,739 | 1,652 | 1,672 | 1,667 |
+| instructions/u | 17,436,310,906,342 | 16,541,119,400,895 | 16,568,850,535,007 | 16,490,229,644,114 |
+| cycles/u | 8,471,401,961,979 | 8,012,060,275,565 | 7,999,831,292,781 | 8,115,902,500,052 |
+| peak RSS (MB) | 1,049 | 1,036 | 1,042 | 1,017 |
+| GC-log peak mem (MB) | 820.9 | 836.4 | 840.6 | 801.1 |
+| GC-log peak mem+admin (MB) | 987.1 | 977.3 | 981.4 | 948.2 |
+| total GC time (s) | 544.3 | 520.8 | 529.2 | 537.0 |
+| # GCs | 214,829 | 200,743 | 200,026 | 200,925 |
+
+Percent change vs master:
+| metric | sets | ctx | bix |
+|---|---|---|---|
+| wall (s) | -4.64% | -3.90% | -3.77% |
+| user+sys (s) | -4.79% | -3.87% | -4.09% |
+| user (s) | -4.96% | -3.83% | -4.11% |
+| instructions/u | -5.13% | -4.98% | -5.43% |
+| cycles/u | -5.42% | -5.57% | -4.20% |
+| peak RSS (MB) | -1.18% | -0.69% | -2.99% |
+| GC-log peak mem (MB) | +1.88% | +2.40% | -2.42% |
+| GC-log peak mem+admin (MB) | -0.99% | -0.57% | -3.94% |
+| total GC time (s) | -4.32% | -2.78% | -1.34% |
+| # GCs | -6.56% | -6.89% | -6.47% |
+
+Percent change vs sets:
+| metric | master | ctx | bix |
+|---|---|---|---|
+| wall (s) | +4.86% | +0.78% | +0.91% |
+| user+sys (s) | +5.03% | +0.96% | +0.73% |
+| user (s) | +5.22% | +1.19% | +0.90% |
+| instructions/u | +5.41% | +0.17% | -0.31% |
+| cycles/u | +5.73% | -0.15% | +1.30% |
+| peak RSS (MB) | +1.20% | +0.50% | -1.83% |
+| GC-log peak mem (MB) | -1.84% | +0.51% | -4.21% |
+| GC-log peak mem+admin (MB) | +1.00% | +0.43% | -2.98% |
+| total GC time (s) | +4.52% | +1.61% | +3.12% |
+| # GCs | +7.02% | -0.36% | +0.09% |
+
+Phase durations (s, from setup.log timestamps; a phase runs until the next header):
+| phase | master | sets | ctx | bix |
+|---|---|---|---|---|
+| updating info-domain tables | 0 | 0 | 0 | 0 |
+| pre-installing collections | 0 | 0 | 0 | 0 |
+| installing foreign libraries | 0 | 0 | 0 | 0 |
+| installing shared files | 0 | 0 | 0 | 0 |
+| compiling collections | 1323 | 1235 | 1248 | 1250 |
+| creating launchers | 0 | 0 | 0 | 0 |
+| installing man pages | 0 | 0 | 0 | 0 |
+| building documentation | 472 | 476 | 477 | 477 |
+| installing collections | 0 | 0 | 0 | 0 |
+| post-installing collections | 0 | 0 | 0 | 0 |
+
+== master: exit 1, error-ish setup.log lines: 9
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/private
+   raco setup:  in <pkgs>/errortrace-doc/errortrace/scribblings
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/lang
+   raco setup:  in <pkgs>/errortrace-test/tests/errortrace
+   raco setup: running: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+   raco setup: rendering: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+-- master: non-GC stderr (77 lines):
+   raco setup: package depends on newer version:
+   raco setup:   package: "base"
+   raco setup:   depends on package: "racket"
+   raco setup:   depends on version: "9.4.0.5"
+   raco setup:   current package version: "9.4.0.4"
+   raco setup: --- summary of package problems ---                    [13:39:01]
+   raco setup: package depends on newer version:
+   raco setup:   package: "base"
+   raco setup:   needed package versions:
+   raco setup:    "racket" version "9.4.0.5"
+   REGION                     MSECS      +GC          MEMK      COUNT
+     eval                 476817.41   216621   649,451,099          0
+       instantiate        192486.77   108614   310,155,186    9366622
+       resolver           104566.61    28707   109,844,588   10229343
+       requires           104034.52    62098   122,421,010   52204252
+       top                 47905.98     7885    78,960,752      53416
+       module              27440.89     9130    27,811,283     218737
+       transformer           382.61      187       258,278      46226
+   
+     expand               350941.65   103167   440,506,272          0
+       form-in-module/2   127937.68    40672   151,218,741     283640
+         macro             52953.52    14113    67,940,264    7181262
+       module-begin        88765.06    18229   127,882,214      44561
+         macro             78728.93    14359   118,818,586      25826
+       local-expand        69133.16    25380    89,614,735     514473
+         macro             32131.29    11420    43,565,333    2565722
+       transformer         19587.19     6108    19,670,162     419466
+         macro              6529.92     1714     7,749,234     831573
+       require             16635.95     6311    16,878,987     329789
+       top                 12747.46     2155    13,561,150     255783
+         macro              9585.13     1565    11,179,766     250570
+       form-in-module/1    10903.51     2730    17,144,341     713314
+         macro              6938.41     1466    14,231,871     502528
+       provide              4556.13     1482     4,086,491      22874
+         macro              3417.30      854     2,681,178      28600
+       module                675.48      100       449,446       8048
+         scopes              248.34       46       117,026      46939
+   
+     compile              257195.55   114814   532,690,182          0
+       module             233826.32   108696   500,404,865      22183
+         linklet          220331.25   104788   486,950,189      82306
+         serialize          7051.16     1915     6,058,687       7388
+       top                 18065.99     4506    26,524,262      53882
+         linklet           17179.73     4402    25,848,365      53892
+         serialize             0.00        0             3         10
+       transformer          4667.60     1394     4,202,367      46226
+         linklet            3080.06      887     2,323,919      45615
+       resolver              634.32      218     1,556,775          0
+         linklet             634.32      218     1,556,775        142
+       form-in-module/2        1.02        0         1,531          0
+         linklet               1.02        0         1,531          4
+       module-begin            0.28        0           380          0
+         linklet               0.28        0           380          2
+   
+     read                  41580.07    11594    38,465,703     997102
+   ;; boot                       50 [+     0] ms
+   ;; comp-ffi                  254 [+   344] ms
+   ;;   comp-ffi-back             0 [+     0] ms
+   ;;   comp-ffi-call           254 [+   344] ms ; 981 times
+   ;; on-demand                1379 [+   985] ms ; 196086 times
+   ;; jitify                   3632 [+   367] ms ; 443 times
+   ;; schemify                27045 [+  6139] ms ; 182719 times
+   ;; read                    40356 [+ 13010] ms
+   ;;   faslin-literals        6155 [+   827] ms ; 1010139 times
+   ;;   read-bundle           11171 [+  6892] ms ; 220360 times
+   ;;   faslin-code           23030 [+  5291] ms ; 891805 times
+   ;; compile                211946 [+104183] ms
+   ;;   compile-nested        76664 [+ 22587] ms ; 128805 times
+   ;;   compile-linklet      135282 [+ 81596] ms ; 182719 times
+   ;; run                    254525 [+120903] ms
+   ;;   instantiate          254525 [+120903] ms ; 16433524 times
+   ;; compile-pass           282549 [+ 97150] ms
+   ;;   regalloc              93289 [+ 30768] ms ; 1363442 times
+   ;;   other                189260 [+ 66382] ms ; 1332022 times
+   ;; total                  821736 [+343081] ms
+   ;;
+   ;; faslin-code              3517 MB
+
+== sets: exit 0, error-ish setup.log lines: 9
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/private
+   raco setup:  in <pkgs>/errortrace-doc/errortrace/scribblings
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/lang
+   raco setup:  in <pkgs>/errortrace-test/tests/errortrace
+   raco setup: running: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+   raco setup: rendering: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+-- sets: non-GC stderr (67 lines):
+   REGION                     MSECS      +GC          MEMK      COUNT
+     eval                 471710.09   215094   637,033,222          0
+       instantiate        193698.31   108675   308,963,891    9366631
+       requires           104174.58    60768   122,654,651   52204765
+       resolver            96205.07    27060    98,940,063   10033491
+       top                 49555.29     8974    78,480,382      53416
+       module              27720.48     9552    27,743,655     218126
+       transformer           356.33       65       250,577      46226
+   
+     expand               291514.42    80236   341,024,454          0
+       form-in-module/2    91486.28    27033    93,885,174     283640
+         macro             40733.03     9402    52,466,221    7181262
+       module-begin        88597.50    17700   124,349,237      44561
+         macro             79042.93    14261   116,052,490      25826
+       local-expand        52830.73    17143    61,460,236     514473
+         macro             27595.61     9195    37,282,261    2565722
+       require             16579.48     7187    15,952,997     329789
+       transformer         15206.23     5114    13,291,242     419466
+         macro              5194.86     1503     5,602,621     831573
+       top                 12132.37     2199    12,346,980     255783
+         macro              9399.08     1840    10,584,574     250570
+       form-in-module/1     9663.68     2874    15,694,573     713314
+         macro              6246.73     1362    13,520,988     502528
+       provide              4322.76      856     3,480,563      22874
+         macro              3261.12      498     2,242,813      28600
+       module                695.36      130       563,448       8048
+         scopes              248.46       27       116,826      46939
+   
+     compile              259652.71   114306   532,684,306          0
+       module             236057.83   108518   500,418,815      22183
+         linklet          222562.83   104479   486,931,113      82306
+         serialize          6890.55     1702     6,088,350       7388
+       top                 18374.80     4570    26,513,330      53882
+         linklet           17461.53     4523    25,835,999      53892
+         serialize             0.00        0             3         10
+       transformer          4578.00      985     4,193,711      46226
+         linklet            3015.31      580     2,314,248      45615
+       resolver              640.69      233     1,556,539          0
+         linklet             640.69      233     1,556,539        142
+       form-in-module/2        1.08        0         1,529          0
+         linklet               1.08        0         1,529          4
+       module-begin            0.28        0           380          0
+         linklet               0.28        0           380          2
+   
+     read                  42323.53    11147    38,447,707     996576
+   ;; boot                       50 [+     0] ms
+   ;; comp-ffi                  255 [+   178] ms
+   ;;   comp-ffi-back             0 [+     0] ms
+   ;;   comp-ffi-call           255 [+   178] ms ; 982 times
+   ;; on-demand                1442 [+   717] ms ; 195813 times
+   ;; jitify                   3701 [+   404] ms ; 443 times
+   ;; schemify                26998 [+  4818] ms ; 182719 times
+   ;; read                    40791 [+ 12943] ms
+   ;;   faslin-literals        6270 [+  1010] ms ; 1007460 times
+   ;;   read-bundle           11515 [+  6162] ms ; 219749 times
+   ;;   faslin-code           23006 [+  5771] ms ; 889126 times
+   ;; compile                214262 [+105295] ms
+   ;;   compile-nested        77482 [+ 22952] ms ; 128805 times
+   ;;   compile-linklet      136780 [+ 82343] ms ; 182719 times
+   ;; run                    253650 [+121778] ms
+   ;;   instantiate          253650 [+121778] ms ; 16431723 times
+   ;; compile-pass           286885 [+ 99541] ms
+   ;;   regalloc              94333 [+ 31308] ms ; 1363446 times
+   ;;   other                192552 [+ 68233] ms ; 1332026 times
+   ;; total                  828034 [+345674] ms
+   ;;
+   ;; faslin-code              3510 MB
+
+== ctx: exit 0, error-ish setup.log lines: 9
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/private
+   raco setup:  in <pkgs>/errortrace-doc/errortrace/scribblings
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/lang
+   raco setup:  in <pkgs>/errortrace-test/tests/errortrace
+   raco setup: running: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+   raco setup: rendering: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+-- ctx: non-GC stderr (67 lines):
+   REGION                     MSECS      +GC          MEMK      COUNT
+     eval                 472812.45   218292   638,146,825          0
+       instantiate        195472.30   109204   310,199,434    9366633
+       requires           104484.74    62338   122,624,907   52205103
+       resolver            96368.37    26597    98,866,630   10022282
+       top                 48257.46     9936    78,445,438      53416
+       module              27864.13    10127    27,760,369     218172
+       transformer           365.42       90       250,046      46226
+   
+     expand               293096.77    78768   334,522,686          0
+       form-in-module/2    91674.46    26934    90,225,409     283640
+         macro             40721.16    10504    50,195,096    7181262
+       module-begin        89573.78    16563   124,319,115      44561
+         macro             79886.01    13638   115,907,721      25826
+       local-expand        52921.77    17447    59,477,610     514473
+         macro             27549.20     8733    36,089,316    2565722
+       require             16647.42     6894    15,948,186     329789
+       transformer         15273.29     4754    12,840,325     419466
+         macro              5198.04     1077     5,361,137     831573
+       top                 12141.46     2155    12,239,147     255783
+         macro              9414.66     1438    10,501,834     250570
+       form-in-module/1     9756.58     2989    15,500,473     713314
+         macro              6300.97     1311    13,333,719     502528
+       provide              4417.13      924     3,415,643      22874
+         macro              3355.62      530     2,200,625      28600
+       module                690.84      108       556,774       8048
+         scopes              249.27       42       112,324      46939
+   
+     compile              261414.14   118628   532,667,133          0
+       module             237742.27   112014   500,414,067      22183
+         linklet          224143.91   108884   486,935,688      82306
+         serialize          6945.38     1641     6,084,077       7388
+       top                 18398.93     4818    26,505,488      53882
+         linklet           17480.20     4728    25,831,452      53892
+         serialize             0.00        0             3         10
+       transformer          4625.32     1554     4,189,004      46226
+         linklet            3038.12      940     2,312,179      45615
+       resolver              646.26      242     1,556,668          0
+         linklet             646.26      242     1,556,668        142
+       form-in-module/2        1.04        0         1,524          0
+         linklet               1.04        0         1,524          4
+       module-begin            0.29        0           380          0
+         linklet               0.29        0           380          2
+   
+     read                  42857.15    11339    38,316,342     996270
+   ;; boot                       55 [+     0] ms
+   ;; comp-ffi                  258 [+   161] ms
+   ;;   comp-ffi-back             0 [+     0] ms
+   ;;   comp-ffi-call           258 [+   161] ms ; 975 times
+   ;; on-demand                1379 [+   958] ms ; 195813 times
+   ;; jitify                   3729 [+   419] ms ; 443 times
+   ;; schemify                27045 [+  6278] ms ; 182719 times
+   ;; read                    40977 [+ 14356] ms
+   ;;   faslin-literals        6204 [+   963] ms ; 1007673 times
+   ;;   read-bundle           11619 [+  6973] ms ; 219795 times
+   ;;   faslin-code           23154 [+  6420] ms ; 889339 times
+   ;; compile                216338 [+108569] ms
+   ;;   compile-nested        78324 [+ 23643] ms ; 128805 times
+   ;;   compile-linklet      138014 [+ 84926] ms ; 182719 times
+   ;; run                    256740 [+121173] ms
+   ;;   instantiate          256740 [+121173] ms ; 16431857 times
+   ;; compile-pass           291117 [+102133] ms
+   ;;   regalloc              96578 [+ 32852] ms ; 1363406 times
+   ;;   other                194539 [+ 69281] ms ; 1331986 times
+   ;; total                  837638 [+354047] ms
+   ;;
+   ;; faslin-code              3512 MB
+
+== bix: exit 0, error-ish setup.log lines: 9
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/private
+   raco setup:  in <pkgs>/errortrace-doc/errortrace/scribblings
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace
+   raco setup:  in <pkgs>/errortrace-lib/errortrace/lang
+   raco setup:  in <pkgs>/errortrace-test/tests/errortrace
+   raco setup: running: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+   raco setup: rendering: <pkgs>/errortrace-doc/errortrace/scribblings/errortrace.scrbl
+-- bix: non-GC stderr (67 lines):
+   REGION                     MSECS      +GC          MEMK      COUNT
+     eval                 474243.72   219699   637,329,610          0
+       instantiate        195827.35   110805   308,985,787    9366631
+       requires           105495.81    64700   122,566,870   52204765
+       resolver            96773.43    26149    98,938,889   10034559
+       top                 47769.91     9120    78,857,255      53416
+       module              28015.75     8870    27,730,114     218147
+       transformer           361.44       55       250,692      46226
+   
+     expand               282296.13    81151   342,445,685          0
+       form-in-module/2    87619.65    28194    94,293,353     283640
+         macro             40140.45    11494    52,529,002    7181262
+       module-begin        86705.14    17281   124,676,017      44561
+         macro             77233.27    14513   116,334,928      25826
+       local-expand        52031.04    18664    61,689,009     514473
+         macro             27612.01     9610    37,358,437    2565722
+       transformer         14721.67     4521    13,369,816     419466
+         macro              5066.67     1186     5,627,205     831573
+       require             14682.35     6250    16,077,340     329789
+       top                 12080.90     2387    12,453,780     255783
+         macro              9368.70     1698    10,669,104     250570
+       form-in-module/1     9585.86     2364    15,810,361     713314
+         macro              6276.81     1233    13,554,127     502528
+       provide              4153.24     1192     3,511,317      22874
+         macro              3139.42      713     2,265,056      28600
+       module                716.24      298       564,689       8048
+         scopes              264.89      188       121,627      46939
+   
+     compile              262004.98   116950   532,660,045          0
+       module             238375.15   111182   500,403,975      22183
+         linklet          224835.46   107809   486,925,858      82306
+         serialize          6928.63     1778     6,082,429       7388
+       top                 18364.49     4503    26,512,214      53882
+         linklet           17449.15     4420    25,837,201      53892
+         serialize             0.00        0             3         10
+       transformer          4604.56     1021     4,185,567      46226
+         linklet            3026.79      610     2,311,165      45615
+       resolver              658.50      236     1,556,376          0
+         linklet             658.50      236     1,556,376        142
+       form-in-module/2        1.41        8         1,527          0
+         linklet               1.41        8         1,527          4
+       module-begin            0.84        0           384          0
+         linklet               0.84        0           384          2
+   
+     read                  42476.63    11203    38,453,638     996364
+   ;; boot                       56 [+     0] ms
+   ;; comp-ffi                  255 [+   159] ms
+   ;;   comp-ffi-back             0 [+     0] ms
+   ;;   comp-ffi-call           255 [+   159] ms ; 982 times
+   ;; on-demand                1304 [+   710] ms ; 195813 times
+   ;; jitify                   3772 [+   607] ms ; 443 times
+   ;; schemify                27076 [+  5691] ms ; 182719 times
+   ;; read                    41241 [+ 12149] ms
+   ;;   faslin-literals        6284 [+   945] ms ; 1007549 times
+   ;;   read-bundle           11653 [+  6219] ms ; 219770 times
+   ;;   faslin-code           23304 [+  4985] ms ; 889215 times
+   ;; compile                215281 [+107190] ms
+   ;;   compile-nested        77738 [+ 22441] ms ; 128805 times
+   ;;   compile-linklet      137543 [+ 84749] ms ; 182719 times
+   ;; run                    254196 [+123622] ms
+   ;;   instantiate          254196 [+123622] ms ; 16431775 times
+   ;; compile-pass           289219 [+100743] ms
+   ;;   regalloc              95518 [+ 32233] ms ; 1363458 times
+   ;;   other                193701 [+ 68510] ms ; 1332038 times
+   ;; total                  832400 [+350871] ms
+   ;;
+   ;; faslin-code              3511 MB
+

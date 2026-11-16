@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "taskset -c 3 perf stat -e cpu_core/instructions/u,cpu_core/cycles/u -o /tmp/scopesets/buildplot/run-master/perf.txt env PLT_EXPANDER_TIMES=1 PLT_LINKLET_TIMES=1 racket/bin/racket -W debug@GC error -l- raco setup -j 1"
+	User time (seconds): 1738.60
+	System time (seconds): 52.69
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 30:00.65
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1073968
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 950
+	Minor (reclaiming a frame) page faults: 6798044
+	Voluntary context switches: 94453
+	Involuntary context switches: 51318
+	Swaps: 0
+	File system inputs: 1159448
+	File system outputs: 2287216
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

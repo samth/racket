@@ -1,0 +1,13 @@
+as typed 1 exit 0
+as rhombus 1 exit 0
+int typed 1 exit 0
+int rhombus 1 exit 0
+int typed 2 exit 0
+int rhombus 2 exit 0
+as typed 2 exit 0
+as rhombus 2 exit 0
+as typed 3 exit 0
+as rhombus 3 exit 0
+int typed 3 exit 0
+int rhombus 3 exit 0
+done

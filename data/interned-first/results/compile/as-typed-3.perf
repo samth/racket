@@ -1,0 +1,14 @@
+# started on Mon Nov 16 22:34:55 2026
+
+
+ Performance counter stats for 'env PLT_EXPANDER_TIMES=1 PLTCOMPILEDROOTS=/tmp/scopesets/ifirst/root:same /tmp/scopesets/hv/lane1/racket/bin/racket -l- raco make share/pkgs/typed-racket-lib/typed/racket.rkt':
+
+      579920284240      cpu_core/instructions/u                                               
+      244768878369      cpu_core/cycles/u                                                     
+
+      49.164516851 seconds time elapsed
+
+      48.319014000 seconds user
+       0.728909000 seconds sys
+
+

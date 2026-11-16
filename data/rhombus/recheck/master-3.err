@@ -1,0 +1,61 @@
+REGION                    MSECS     +GC          MEMK     COUNT
+  expand               69806.14   13401   101,802,438         0
+    local-expand       27420.64    5661    40,834,972    176831
+      macro            16870.76    3464    27,716,276    998127
+    form-in-module/2   18140.01    3356    32,063,637     27086
+      macro            11536.87    2222    24,480,562    696875
+    module-begin        9968.99    2089    12,497,253      9227
+      macro             7793.17    1768    10,781,912      4904
+    transformer         7995.06    1168     9,175,093    188797
+      macro             3888.52     489     5,466,781    412136
+    form-in-module/1    3156.97     645     4,115,209    138901
+      macro             2288.72     535     3,529,965     98848
+    require             1554.14     304     1,436,722     21781
+    provide             1431.48     155     1,565,238      4303
+      macro             1094.94     117     1,240,921      2969
+    module               103.37      16        76,439      1585
+      scopes              35.99      15        23,448      9054
+    top                   35.44       7        37,873      4768
+      macro                0.03       0            24         3
+
+  eval                 51559.26   20244   127,876,071         0
+    resolver           20630.63    2744    30,654,458   1339905
+    instantiate        15692.60   10798    67,967,398   1437953
+    requires            9812.72    4259    14,723,631   5639895
+    module              5123.81    2369    14,255,121      5761
+    transformer          299.46      74       275,447     76493
+    top                    0.01       0            14         3
+
+  compile              41969.64   28313    93,737,846         0
+    module             19198.86    9126    44,799,842      4303
+      linklet          15754.42    8549    40,659,242      9924
+      serialize         2376.16     368     2,646,891      1799
+    resolver           18657.37   18512    44,103,879         0
+      linklet          18657.37   18512    44,103,879      2658
+    transformer         4103.69     675     4,820,960     76493
+      linklet           2699.28     438     2,892,341     76488
+    module-begin           9.04       0        12,578         0
+      linklet              9.04       0        12,578        66
+    top                    0.65       0           586         3
+      linklet              0.61       0           561         3
+
+  read                  2849.17     466     3,547,875     32889
+;; on-demand                  21 [+   21] ms ; 1791 times
+;; boot                       45 [+    0] ms
+;; jitify                    207 [+   34] ms ; 51 times
+;; read                      879 [+  100] ms
+;;   read-bundle             136 [+   26] ms ; 2777 times
+;;   faslin-literals         153 [+   10] ms ; 47648 times
+;;   faslin-code             590 [+   64] ms ; 21740 times
+;; schemify                 6874 [+  951] ms ; 102836 times
+;; compile                 40715 [+30191] ms
+;;   compile-nested         5490 [+ 1718] ms ; 5321 times
+;;   compile-linklet       35225 [+28473] ms ; 102836 times
+;; compile-pass            65526 [+28924] ms
+;;   regalloc              19971 [+ 7676] ms ; 230068 times
+;;   other                 45555 [+21248] ms ; 224266 times
+;; run                    117414 [+31110] ms
+;;   instantiate          117414 [+31110] ms ; 2439714 times
+;; total                  231681 [+91331] ms
+;;
+;; faslin-code                94 MB

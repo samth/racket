@@ -297,7 +297,9 @@
                 ,(lambda (token)
                    (unless (build-kernel-only?)
                      (build (find-target "bootstrap" (s-targets-at (make-at-dir (at-dir "s"))
-                                                                (hash-set vars 'bootstrapCompilerFiles
+                                                                (hash-set (hash-set vars 'cacheBootstrap
+                                                                                    (if ((dynamic-require 'zuo/action 'action-enabled?)) "yes" "no"))
+                                                                          'bootstrapCompilerFiles
                                                                           (cons (at-dir "bin" m (.exe "scheme"))
                                                                                 (map (lambda (name) (build-path boot-src-dir name))
                                                                                      '("petite.boot" "scheme.boot"))))))

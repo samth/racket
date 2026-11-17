@@ -4,6 +4,10 @@
 (provide-targets targets-at)
 
 (define (targets-at at-dir [vars (hash)])
+  (define action-mode? ((dynamic-require 'zuo/action 'action-enabled?) "ZUO_C_ACTIONS"))
+  (define (c-rule deps operation path ins config)
+    ((dynamic-require 'zuo/c-action 'c-command-rule)
+     deps operation path ins config (list (at-source "build.zuo") (at-source "../lib.zuo"))))
   (define msvc? (eq? 'windows (hash-ref (runtime-env) 'toolchain-type)))
   
   (define config (let ([Makefile (at-dir "Makefile")])
@@ -114,8 +118,8 @@
    `([:target default_rktio (,librktio.a) ,void]
 
      [:target ,librktio.a (,@objs ,archive-input ,@rule-inputs)
-              ,(lambda (path token)
-                 (c-ar path
+              ,(let ([run (lambda (proc path)
+                           (proc path
                        (if standalone?
                            ;; we expect `ar` to be libtool in this case:
                            (append objs
@@ -127,15 +131,26 @@
                                       (hash-ref config 'STATIC_AR #f))])
                          (if ar
                              (hash-set config 'AR (shell-subst ar config))
-                             (shell-subst-value config 'AR)))))]
+                             (shell-subst-value config 'AR)))))])
+                 (if action-mode?
+                     (lambda (path token deps)
+                       (when standalone?
+                         (error "standalone rktio libtool needs its own output contract"))
+                       (run (lambda (path ins config) (c-rule deps 'archive path ins config)) path))
+                     (lambda (path token) (run c-ar path))))
+              ,@(if action-mode? '(:rule) '())]
 
      ,@(map (lambda (name obj)
               (let ([src (at-source name)])
                 `[:target ,obj (,src ,@headers ,compile-input ,@rule-inputs)
-                          ,(lambda (path token)
-                             (c-compile obj src (config-include config
-                                                                (at-dir ".")
-                                                                (at-source "."))))]))
+                          ,(if action-mode?
+                               (lambda (path token deps)
+                                 (c-rule deps 'compile path src
+                                         (config-include config (at-dir ".") (at-source "."))))
+                               (lambda (path token)
+                                 (c-compile path src (config-include config
+                                                                    (at-dir ".") (at-source ".")))))
+                          ,@(if action-mode? '(:rule) '())]))
             src-names
             objs)
 

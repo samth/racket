@@ -1,0 +1,23 @@
+#lang zuo
+(require zuo/c-action)
+(define (targets-at at-dir vars)
+  (define config (hash 'CC (hash-ref vars 'CC "cc")
+                       'CFLAGS (hash-ref vars 'CFLAGS "-O2")
+                       'CPPFLAGS (hash-ref vars 'CPPFLAGS "")
+                       'AR "ar" 'ARFLAGS "rc"))
+  (define rules (list (at-source "c-actions-driver.zuo")))
+  (make-targets
+   `([:target all (,(at-dir "main")) ,void]
+     [:target ,(at-dir "value.o") (,(at-dir "value.c") ,(at-dir "value.h"))
+              ,(lambda (out token deps)
+                 (c-command-rule deps 'compile out (at-dir "value.c") config rules)) :rule]
+     [:target ,(at-dir "libvalue.a") (,(at-dir "value.o"))
+              ,(lambda (out token deps)
+                 (c-command-rule deps 'archive out (list (at-dir "value.o")) config rules)) :rule]
+     [:target ,(at-dir "main.o") (,(at-dir "main.c"))
+              ,(lambda (out token deps)
+                 (c-command-rule deps 'compile out (at-dir "main.c") config rules)) :rule]
+     [:target ,(at-dir "main") (,(at-dir "main.o") ,(at-dir "libvalue.a"))
+              ,(lambda (out token deps)
+                 (c-command-rule deps 'link out (list (at-dir "main.o") (at-dir "libvalue.a")) config rules)) :rule])))
+(provide-targets targets-at)

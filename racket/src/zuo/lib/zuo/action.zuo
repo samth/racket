@@ -1,0 +1,21 @@
+#lang zuo/base
+
+;; Shared opt-in for the action-cache prototype. Per-component switches remain
+;; available for comparisons, but the unified switch uses the same cache/SDK.
+(provide action-enabled?
+         action-toolchain)
+
+(define (env name)
+  (cdr (or (assoc name (hash-ref (runtime-env) 'env)) '("" . ""))))
+
+(define (action-enabled? [component #f])
+  (or (equal? (env "ZUO_CACHE_ACTIONS") "1")
+      (and component (equal? (env component) "1"))))
+
+(define (action-toolchain [component #f])
+  (define unified (env "ZUO_ACTION_TOOLCHAIN_ID"))
+  (define specific (if component (env component) ""))
+  (define id (if (equal? unified "") specific unified))
+  (when (equal? id "")
+    (error "explicit actions require ZUO_ACTION_TOOLCHAIN_ID (immutable SDK identity)"))
+  id)

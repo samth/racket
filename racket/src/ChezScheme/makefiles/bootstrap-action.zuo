@@ -1,0 +1,45 @@
+#lang zuo
+(require "lib.zuo")
+
+;; A native fixpoint build has in-place boot updates. Execute that existing
+;; algorithm in an empty private workarea, seeded only by immutable input boots,
+;; then export its complete declared product group. No build databases travel
+;; through the artifact cache.
+(define args (hash-ref (runtime-env) 'args))
+(unless (= (length args) 6) (error "bootstrap-action: expected six arguments"))
+(define source (list-ref args 0))
+(define scratch (list-ref args 1))
+(define config-pairs (car (string-read (list-ref args 2))))
+(define compiler-files (car (string-read (list-ref args 3))))
+(define products (car (string-read (list-ref args 4))))
+(define parent-config (list-ref args 5))
+(define config (foldl (lambda (p config) (hash-set config (car p) (cadr p))) (hash) config-pairs))
+(define m (hash-ref config 'm))
+(define s-dir (build-path scratch "s"))
+(define boot-dir (build-path scratch "boot" m))
+(rm* scratch)
+(mkdir-p s-dir)
+(mkdir-p boot-dir)
+(cp parent-config (build-path scratch "Mf-config"))
+(cp (cadr compiler-files) (build-path boot-dir "petite.boot"))
+(cp (list-ref compiler-files 2) (build-path boot-dir "scheme.boot"))
+(define worker-config
+  (hash-set* config
+             'cacheBootstrap "no"
+             'hostscheme (string->shell (car compiler-files))
+             'hostm m
+             'hostworkarea "."
+             'SCHEMEHEAPDIRS (path->complete-path boot-dir)
+             'bootstrapSessionKeyContext
+             (string-sha256 (~s (map (lambda (p) (string-sha256 (file->string p))) compiler-files)))
+             'bootstrapCompilerFiles compiler-files))
+(define targets ((dynamic-require source 'targets-at) (make-at-dir s-dir) worker-config))
+(define result (build (find-target (build-path s-dir "bootstrap") targets)))
+(for-each (lambda (p)
+            (define src (build-path scratch (cadr p)))
+            (define dest (car p))
+            (unless (file-exists? src) (error "native bootstrap omitted a declared output" src))
+            (mkdir-p (path-only dest))
+            (cp src dest))
+          products)
+(rm* scratch)

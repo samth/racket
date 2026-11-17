@@ -20,6 +20,10 @@ on:
         description: Also cache supported Chez Scheme compilation stages
         type: boolean
         default: false
+      all_actions:
+        description: Enable the unified cache for all currently declared action families
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -27,6 +31,7 @@ permissions:
 env:
   RACKET_CI_SESSION_KEY: racket-chez-ci-v1
   ZUO_BENCHMARK_CHEZ_ACTIONS: ${{ inputs.chez_actions && '1' || '0' }}
+  ZUO_BENCHMARK_ALL_ACTIONS: ${{ inputs.all_actions && '1' || '0' }}
 
 jobs:
   current:

@@ -4,6 +4,9 @@
 (provide c-compile
          c-link
          c-ar
+         c-compile-command
+         c-link-command
+         c-ar-command
 
          .c->.o
          .exe
@@ -14,6 +17,9 @@
          config-merge)
 
 (define (c-compile .o .c config)
+  (shell/wait (c-compile-command .o .c config) (hash 'desc "compile")))
+
+(define (c-compile-command .o .c config)
   (unless (path-string? .o) (arg-error 'c-compile "path string" .o))
   (unless (or (path-string? .c)
               (and (list? .c) (andmap path-string? .c)))
@@ -36,9 +42,12 @@
                      ""
                      (build-shell (or (lookup 'LDFLAGS) "")
                                   (or (lookup 'LIBS) "")))))
-  (shell/wait command (hash 'desc "compile")))
+  command)
 
 (define (c-link .exe ins config)
+  (shell/wait (c-link-command .exe ins config) (hash 'desc "link")))
+
+(define (c-link-command .exe ins config)
   (unless (path-string? .exe) (arg-error 'c-link "path string" .exe))
   (unless (and (list? ins) (andmap path-string? ins)) (arg-error 'c-link "list of path strings" ins))
   (unless (hash? config) (arg-error 'c-link "hash table" config))
@@ -54,24 +63,24 @@
                  (string-join (map string->shell ins))
                  (or (lookup 'LDFLAGS) "")
                  (or (lookup 'LIBS) "")))
-  (shell/wait command (hash 'desc "link")))
+  command)
 
 (define (c-ar .a ins config)
-  (unless (path-string? .a) (arg-error 'c-ar "path string" .exe))
+  (shell/wait (c-ar-command .a ins config) (hash 'desc "library creation")))
+
+(define (c-ar-command .a ins config)
+  (unless (path-string? .a) (arg-error 'c-ar "path string" .a))
   (unless (and (list? ins) (andmap path-string? ins)) (arg-error 'c-ar "list of path strings" ins))
   (unless (hash? config) (arg-error 'c-ar "hash table" config))
   (define windows? (eq? (hash-ref (runtime-env) 'toolchain-type) 'windows))
   (define lookup (make-lookup config))
-  (shell/wait
-   (build-shell (or (lookup 'AR)
+  (build-shell (or (lookup 'AR)
                     (if windows?
                         "lib.exe"
                         "ar"))
                 (or (lookup 'ARFLAGS) "")
                 (string->shell (if windows? (~a "/OUT:" .a) .a))
-                (string-join (map string->shell ins)))
-   (hash 'desc
-         "library creation")))
+                (string-join (map string->shell ins))))
 
 (define (make-lookup config)
   (lambda (key) (hash-ref config key #f)))

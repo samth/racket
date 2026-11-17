@@ -224,8 +224,7 @@
   ;; keys; the caller identifies the complete runner image and toolchain.
   (define action-mode?
     (and (not xpatch)
-         (equal? (cdr (or (assoc "ZUO_CS_ACTIONS" (hash-ref (runtime-env) 'env))
-                         '("ZUO_CS_ACTIONS" . ""))) "1")))
+         ((dynamic-require 'zuo/action 'action-enabled?) "ZUO_CS_ACTIONS")))
   (when (and action-mode? (not (session-key-for session-key-base)))
     (error "ZUO_CS_ACTIONS requires configure --enable-sessionkey=<key>"))
 
@@ -273,9 +272,7 @@
 
   (define (compile-rule deps src dest loads whole-program? stamp)
     (define env (hash-ref (runtime-env) 'env))
-    (define toolchain (assoc "ZUO_CS_TOOLCHAIN_ID" env))
-    (unless (and toolchain (not (equal? (cdr toolchain) "")))
-      (error "ZUO_CS_ACTIONS requires ZUO_CS_TOOLCHAIN_ID"))
+    (define toolchain ((dynamic-require 'zuo/action 'action-toolchain) "ZUO_CS_TOOLCHAIN_ID"))
     (command-rule
      deps
      (hash 'argv (append (list (path->complete-path (hash-ref (runtime-env) 'exe))
@@ -288,7 +285,7 @@
                                 (filter (lambda (p) (not (assoc (car p) config-env-vars)))
                                         (list '("PATH" . "/usr/bin:/bin")
                                               '("LANG" . "C") '("LC_ALL" . "C") '("TZ" . "UTC"))))
-           'toolchain (cdr toolchain)
+           'toolchain toolchain
            'rule-files (list (at-source "compile-action.zuo") (at-source "main.zuo")
                              (at-source "../lib.zuo")
                              (at-source "../ChezScheme/makefiles/lib.zuo")))))

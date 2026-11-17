@@ -242,9 +242,8 @@
 
   (define preload-files (get-preload-files config at-dir mboot))
 
-  (define (compile-one .c .o)
-    (c-compile .o .c
-               (let* ([config (config-define config cpu)]
+  (define compile-config
+    (let* ([config (config-define config cpu)]
                       [config (config-merge config 'CPPFLAGS (or (lookup 'mdinclude) ""))]
                       [config (config-merge config 'CFLAGS (or (lookup 'warningFlags) ""))]
                       [config (config-include config
@@ -259,7 +258,48 @@
                                   (config-include config
                                                   (build-path lz4-dir "lib"))
                                   config)])
-                 config)))
+                 config))
+
+  (define action-mode?
+    ((dynamic-require 'zuo/action 'action-enabled?) "ZUO_CHEZ_C_ACTIONS"))
+  (when (and action-mode? (or msvc? (for-windows? config)))
+    (error "Chez C command actions currently require a POSIX target"))
+  (when (and action-mode? (not (equal? (or (lookup 'exePostStep) "") "")))
+    (error "Chez C command actions require an explicit action for exePostStep"))
+  (define (c-rule deps operation path ins config)
+    ((dynamic-require 'zuo/c-action 'c-command-rule)
+     deps operation path ins config rule-files))
+  (define (compile-recipe src)
+    (if action-mode?
+        (lambda (path token deps) (c-rule deps 'compile path src compile-config))
+        (lambda (path token) (c-compile path src compile-config))))
+
+  (define (library-rule deps archive headers)
+    (define helper (at-source "../makefiles/library-action.zuo"))
+    (define products (cons archive headers))
+    (define tools
+      (map (lambda (command)
+             (define exe (find-executable-path (car (shell->strings command))))
+             (unless exe (error "nested library action tool not found" command))
+             (path->complete-path exe))
+           (list (or (lookup 'CC) "cc") (or (lookup 'AR) "ar")
+                 (or (lookup 'RANLIB) "ranlib") (or (lookup 'STRIP) "strip")
+                 (lookup-make))))
+    ((dynamic-require 'zuo/build 'command-rule)
+     (cons (at-dir "../Mf-config") deps)
+     (hash 'argv (append (list (path->complete-path (hash-ref (runtime-env) 'exe)))
+                         (let ([root (hash-ref (runtime-env) 'library-root #f)])
+                           (if root (list "-X" root) '()))
+                         (list helper (at-source "build.zuo")
+                               (at-dir (~a ".library-action-" (file-name-from-path archive)))
+                               (~s (map (lambda (k) (list k (hash-ref config k))) (hash-keys config)))
+                               (~s (map (lambda (p) (list p (find-relative-path (at-dir "..") p))) products))
+                               (at-dir "../Mf-config") (find-relative-path (at-dir "..") archive)))
+           'tools tools
+           'environment (list (or (assoc "PATH" (hash-ref (runtime-env) 'env)) '("PATH" . "/usr/bin:/bin"))
+                              '("LANG" . "C") '("LC_ALL" . "C") '("TZ" . "UTC") '("ZERO_AR_DATE" . "1"))
+           'toolchain ((dynamic-require 'zuo/action 'action-toolchain) "ZUO_CHEZ_TOOLCHAIN_ID")
+           'rule-files (cons helper rule-files))))
 
   (define (config-to-env)
     (let ([config
@@ -299,8 +339,17 @@
               ,void
               :recur]
 
-     [:target ,exe (,kernel-dep ,@main-objs ,@res-deps ,@preload-files ,@link-inputs)
-              ,(lambda (path token)
+     [:target ,exe (,kernel-dep ,@main-objs ,@res-deps ,@preload-files ,@lib-deps ,@link-inputs)
+              ,(if action-mode?
+                   (lambda (path token deps)
+                     (c-rule deps 'link path (append main-objs res-deps (list kernel-dep) lib-deps)
+                             (exe-config arch
+                              (let* ([c (config-merge (add-preloads config preload-files) 'LDFLAGS
+                                                      (or (lookup 'mdlinkflags) ""))]
+                                     [c (if zlib-system-lib (config-merge c 'LIBS zlib-system-lib) c)]
+                                     [c (if lz4-system-lib (config-merge c 'LIBS lz4-system-lib) c)])
+                                c))))
+                   (lambda (path token)
                  (mkdir-p (path-only path))
                  (c-link path
                          (append main-objs
@@ -341,7 +390,8 @@
                     (define post (lookup 'exePostStep))
                     (when (and post
                                (not (equal? "" post)))
-                      (shell/wait post (string->shell exe)))]))]
+                      (shell/wait post (string->shell exe)))])))
+              ,@(if action-mode? '(:rule) '())]
 
      [:target ,petite-exe (,exe)
               ,(lambda (path token)
@@ -357,7 +407,9 @@
 
      [:target ,kernel-lib (,@(if (and msvc? (as-scheme-dll? config)) (append res-deps lib-deps) '())
                            ,@kernel-objs ,@archive-inputs)
-              ,(lambda (path token)
+              ,(if action-mode?
+                   (lambda (path token deps) (c-rule deps 'archive path kernel-objs config))
+                   (lambda (path token)
                  (cond
                    [(and msvc?
                          (as-scheme-dll? config))
@@ -371,7 +423,8 @@
                     (rm* path) ; in case an object needs to be removed
                     (c-ar path
                           kernel-objs
-                          config)]))]
+                          config)])))
+              ,@(if action-mode? '(:rule) '())]
 
      [:target ,kernel.o (,@kernel-objs ,@lib-deps ,@relocatable-inputs ,@rule-files)
               ,(lambda (path token)
@@ -386,7 +439,9 @@
                              (string->shell (or lz4-system-lib lz4-lib))))]
 
      [:target (,zlib-lib ,@zlib-headers) ,(append zlib-files library-inputs)
-              ,(lambda (path token)
+              ,(if action-mode?
+                   (lambda (path token deps) (library-rule deps zlib-lib zlib-headers))
+                   (lambda (path token)
                  (copy-library (at-source "../zlib") zlib-dir zlib-files)
 		 (cond
 		  [msvc?
@@ -418,10 +473,13 @@
                                         'desc "libz configure"))])
                    (shell/wait (lookup-make) "static"
                                (hash 'dir zlib-dir
-                                     'desc "zlib make"))]))]
+                                     'desc "zlib make"))])))
+              ,@(if action-mode? '(:rule) '())]
 
      [:target (,lz4-lib ,@lz4-headers) (,@lz4-files ,@library-inputs)
-              ,(lambda (path token)
+              ,(if action-mode?
+                   (lambda (path token deps) (library-rule deps lz4-lib lz4-headers))
+                   (lambda (path token)
                  (define lz4-lib-dir (build-path lz4-dir "lib"))
                  (copy-library (at-source "../lz4") lz4-dir lz4-files)
 		 (cond
@@ -431,12 +489,13 @@
                    (shell/wait (lookup-make) "liblz4.a"
                                (hash 'dir lz4-lib-dir
                                      'env (config-to-env)
-                                     'desc "lz4 make"))]))]
+                                     'desc "lz4 make"))])))
+              ,@(if action-mode? '(:rule) '())]
 
      ,@(map (lambda (.c .o)
               `[:target ,.o (,.c ,@kernel-hdrs ,@compile-inputs)
-                        ,(lambda (.o target)
-                           (compile-one .c .o))])
+                        ,(compile-recipe .c)
+                        ,@(if action-mode? '(:rule) '())])
             kernel-srcs kernel-srcobjs)
 
      ,@(map (lambda (.asm .o)
@@ -460,8 +519,8 @@
 
      ,@(map (lambda (.c .o)
               `[:target ,.o (,.c ,@main-hdrs ,@compile-inputs)
-                        ,(lambda (.o target)
-                           (compile-one .c .o))])
+                        ,(compile-recipe .c)
+                        ,@(if action-mode? '(:rule) '())])
             main-srcs main-objs)
 
      ;; Only the compression consumers need these generated headers. Kernel

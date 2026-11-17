@@ -143,11 +143,12 @@
   '("build.zuo" "machine.zuo" "../makefiles/lib.zuo"))
 
 (define (chez-actions?)
-  (equal? (cdr (or (assoc "ZUO_CHEZ_ACTIONS" (hash-ref (runtime-env) 'env))
-                  '("" . ""))) "1"))
+  ((dynamic-require 'zuo/action 'action-enabled?) "ZUO_CHEZ_ACTIONS"))
 
 (define (action-rule-src-names)
-  (if (chez-actions?) '("../makefiles/scheme-action.zuo") '()))
+  (if (chez-actions?) '("../makefiles/scheme-action.zuo"
+                        "../makefiles/bootstrap-action.zuo"
+                        "../makefiles/library-action.zuo") '()))
 
 ;; used externally as dependencies
 (define all-src-names
@@ -281,8 +282,17 @@
   (define profile-dump-source "source.pd")
   (define profile-dump-block "block.pd")
 
+  ;; Only the isolated native action uses staged keys. A later fixpoint pass
+  ;; loads the previous pass's boot, so it must not reuse that boot's gensym
+  ;; namespace. Salt with the immutable incoming compiler/boots and pass index.
+  (define (run-lookup key)
+    (define value (lookup key))
+    (define context (lookup 'bootstrapSessionKeyContext))
+    (if (and (eq? key 'sessionKey) context)
+        (session-key-for value context (or (lookup 'bootstrapKeyStage) "0"))
+        value))
   (define-values (call-with-scheme run-scheme/status run-scheme)
-    (make-run-scheme at-source at-dir lookup
+    (make-run-scheme at-source at-dir run-lookup
                      host-scheme host-workarea host-m
                      (list (at-source "../unicode"))
                      (list (cons (at-source "../nanopass")
@@ -304,9 +314,7 @@
   (define (scheme-rule deps what script loads [stamp #f] [nanopass? #f])
     ;; Keep ordinary builds usable with an unextended Zuo installation.
     (define command-rule (dynamic-require 'zuo/build 'command-rule))
-    (define toolchain (assoc "ZUO_CHEZ_TOOLCHAIN_ID" action-env))
-    (unless (and toolchain (not (equal? (cdr toolchain) "")))
-      (error "ZUO_CHEZ_ACTIONS requires ZUO_CHEZ_TOOLCHAIN_ID"))
+    (define toolchain ((dynamic-require 'zuo/action 'action-toolchain) "ZUO_CHEZ_TOOLCHAIN_ID"))
     (call-with-scheme
      (lambda (exe args env)
        ;; Bundled builds supply this exact compiler plus its immutable seed pair.
@@ -347,7 +355,7 @@
               'tools (list exe)
               'environment '(("PATH" . "/usr/bin:/bin") ("LANG" . "C")
                              ("LC_ALL" . "C") ("TZ" . "UTC"))
-              'toolchain (cdr toolchain)
+              'toolchain toolchain
               'rule-files (list helper (at-source "build.zuo")
                                 (at-source "../makefiles/lib.zuo")))))))
 
@@ -482,6 +490,13 @@
         (mv tmp dest))
     (cleanable-cancel tmp-h))
 
+  (define (header-recipe dest make-script mk.so*)
+    (if cross-actions?
+        (lambda (path token deps)
+          (scheme-rule deps dest `((reset-handler abort) ,@(make-script dest))
+                       (append macro-objs mk.so*)))
+        (lambda (path token) (run-scheme-header-script dest make-script mk.so*))))
+
   (define (look-for-fixpoint n rebuild)
     (define sbb (build-path (path-only petite.boot) "sbb"))
     (define scb (build-path (path-only scheme.boot) "scb"))
@@ -494,7 +509,7 @@
          (mv scheme.boot scb)
          (cp sbb petite.boot)
          (cp scb scheme.boot)
-         (rebuild)
+         (rebuild i)
          (define result
            (run-scheme/status "fixpoint check"
                               `((reset-handler abort)
@@ -514,7 +529,7 @@
             (rm scb)
             (loop (+ i 1))])]
         [else
-         (rebuild)
+         (rebuild i)
          (loop (+ i 1))])))
 
   (define (pretty-clean)
@@ -601,7 +616,13 @@
        ;; and it iterates up to three times to find a fixpoint
        [:target ,(at-dir "bootstrap") (,options-t ,machine.def ,@bootstrap-compiler-inputs ,@all-srcs)
                 ,(lambda (path token)
-                   (look-for-fixpoint 3 (lambda () (build (find-target "bootall" the-targets) token)))
+                   (look-for-fixpoint
+                    3 (lambda (iteration)
+                        (define pass-targets
+                          (if (lookup 'bootstrapSessionKeyContext)
+                              (targets-at at-dir (hash-set vars 'bootstrapKeyStage (~a iteration)))
+                              the-targets))
+                        (build (find-target "bootall" pass-targets) token)))
                    (build (map (lambda (file) (find-target file the-targets))
                                (list scheme.h equates.h gc-ocd.inc gc-oce.inc gc-par.inc heapcheck.inc))
                           token)
@@ -768,23 +789,18 @@
                 :precious]))
 
        [:target ,scheme.h (,mkheader.so ,@macro-objs)
-                ,(lambda (scheme.h token)
-                   (run-scheme-header-script scheme.h
-                                             (lambda (tmp)
-                                               `((mkscheme.h ,tmp ',(string->symbol m))))
-                                             (list mkheader.so)))]
+                ,(header-recipe scheme.h
+                                (lambda (tmp) `((mkscheme.h ,tmp ',(string->symbol m))))
+                                (list mkheader.so))
+                ,@(if cross-actions? '(:rule) '())]
        [:target ,equates.h (,mkheader.so ,@macro-objs)
-                ,(lambda (equates.h token)
-                   (run-scheme-header-script equates.h
-                                             (lambda (tmp) `((mkequates.h ,tmp)))
-                                             (list mkheader.so)))]
+                ,(header-recipe equates.h (lambda (tmp) `((mkequates.h ,tmp))) (list mkheader.so))
+                ,@(if cross-actions? '(:rule) '())]
        ,@(map (lambda (gc.inc mkgc.inc)
                 `[:target ,gc.inc (,mkgc.so ,@macro-objs)
-                          ,(lambda (gc.inc token)
-                             (rm* gc.inc)
-                             (run-scheme-header-script gc.inc
-                                                       (lambda (tmp) `((,mkgc.inc ,tmp)))
-                                                       (list mkheader.so mkgc.so)))])
+                          ,(header-recipe gc.inc (lambda (tmp) `((,mkgc.inc ,tmp)))
+                                          (list mkheader.so mkgc.so))
+                          ,@(if cross-actions? '(:rule) '())])
               (list gc-ocd.inc gc-oce.inc gc-par.inc heapcheck.inc)
               (list 'mkgc-ocd.inc 'mkgc-oce.inc 'mkgc-par.inc 'mkheapcheck.inc))
 
@@ -806,4 +822,43 @@
 
        #;(end-make-targets))))
 
-  the-targets)
+  (cond
+    [(and action-mode? (equal? (lookup 'cacheBootstrap) "yes"))
+     (unless (and (equal? m host-m) (= (length bootstrap-compiler-files) 3)
+                  (= (length (hash-keys compiler-compiler-options)) 0)
+                  (not host-scheme)
+                  (not (equal? (lookup 'cross) "t"))
+                  (or (not (lookup 'PETITE_BOOT)) (equal? (lookup 'PETITE_BOOT) "petite.boot"))
+                  (or (not (lookup 'SCHEME_BOOT)) (equal? (lookup 'SCHEME_BOOT) "scheme.boot"))
+                  (not (equal? (path->complete-path (at-dir "."))
+                               (path->complete-path (at-source ".")))))
+       (error "cached native bootstrap requires an out-of-source native workarea, default boot names, and an immutable boot pair"))
+     (define stamp (at-dir "bootstrap"))
+     (define products
+       (append (list stamp machine.def petite.boot scheme.boot)
+               output-headers base-objs compiler-objs
+               (list cmacros.so primvars.so priminfo.so env.so setup.so mkheader.so mkgc.so)
+               nanopass-outputs))
+     (define helper (at-source "../makefiles/bootstrap-action.zuo"))
+     (define input-config (at-dir "../Mf-config"))
+     (list
+      (target
+       stamp
+       (lambda (path token)
+         ((dynamic-require 'zuo/build 'command-rule)
+          (append (list options-t input-config) bootstrap-compiler-inputs all-srcs machine-def-inputs)
+          (hash 'argv (append (list (path->complete-path (hash-ref (runtime-env) 'exe)))
+                              (let ([root (hash-ref (runtime-env) 'library-root #f)])
+                                (if root (list "-X" root) '()))
+                              (list helper (at-source "build.zuo") (at-dir ".bootstrap-action")
+                                    (~s (map (lambda (k) (list k (hash-ref config k))) (hash-keys config)))
+                                    (~s (map path->complete-path bootstrap-compiler-files))
+                                    (~s (map (lambda (p) (list p (find-relative-path (at-dir "..") p))) products))
+                                    input-config))
+                'tools (list (car bootstrap-compiler-files))
+                'environment '(("PATH" . "/usr/bin:/bin") ("LANG" . "C")
+                               ("LC_ALL" . "C") ("TZ" . "UTC"))
+                'toolchain ((dynamic-require 'zuo/action 'action-toolchain) "ZUO_CHEZ_TOOLCHAIN_ID")
+                'rule-files (list helper (at-source "build.zuo") (at-source "../makefiles/lib.zuo")))))
+       (hash 'co-outputs (cdr products))))]
+    [else the-targets]))

@@ -153,7 +153,9 @@ run('consumer-prime', 'cprep.patch')
 reference_patch = (work / 'cprep.patch').read_bytes()
 (work / 'cprep.patch').unlink()
 row, _ = run('consumer-cache-restore', 'cprep.patch')
-assert row['hits'] == 1 and row['stored'] == 0
+# Explicit actions recheck content on incremental calls; the six prerequisites
+# are validated/restored along with the requested consumer.
+assert row['hits'] == 7 and row['stored'] == 0
 assert (work / 'cprep.patch').read_bytes() == reference_patch
 
 config.write_text(template.replace('fixture-session', ''))

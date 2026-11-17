@@ -18,6 +18,10 @@
         "regexp" "schemify" "linklet" "expander"))
 
 (define (targets-at at-dir [vars (hash)])
+  (define action-mode? ((dynamic-require 'zuo/action 'action-enabled?) "ZUO_C_ACTIONS"))
+  (define (c-rule deps operation path ins config)
+    ((dynamic-require 'zuo/c-action 'c-command-rule)
+     deps operation path ins config (list (at-source "build.zuo") (at-source "../../lib.zuo"))))
   (define config (config-file->hash (at-dir "Makefile") vars))
   (define (lookup k [default ""]) (hash-ref config k default))
 
@@ -278,10 +282,20 @@
   (define (scheme . args)
     (scheme/options (hash) args))
 
-  (define (compile-main main.o main.c)
-    (c-compile main.o
-               main.c
-               (let* ([config (config-include config
+  (define boot-action-mode?
+    ((dynamic-require 'zuo/action 'action-enabled?) "ZUO_CS_BOOT_ACTIONS"))
+  (define (scheme-rule deps args)
+    (when xpatch? (error "CS boot command actions need an explicit cross-patch input contract"))
+    ((dynamic-require 'zuo/build 'command-rule)
+     (append deps (list scheme.exe petite.boot scheme.boot))
+     (hash 'argv (append (list (path->complete-path scheme.exe)) scheme-args args)
+           'environment '(("PATH" . "/usr/bin:/bin") ("LANG" . "C")
+                          ("LC_ALL" . "C") ("TZ" . "UTC"))
+           'toolchain ((dynamic-require 'zuo/action 'action-toolchain) "ZUO_CS_TOOLCHAIN_ID")
+           'rule-files (list (at-source "build.zuo") (at-source "../../lib.zuo")))))
+
+  (define main-compile-config
+    (let* ([config (config-include config
                                               (at-dir ".")
                                               (at-source "."))]
                       [config (if windows?
@@ -303,7 +317,12 @@
                                                       (~s
                                                        (path->complete-path
                                                         (at-source "../../../etc"))))))))])
-                 config)))
+                 config))
+
+  (define (main-recipe src)
+    (if (and action-mode? (not windows?))
+        (lambda (path token deps) (c-rule deps 'compile path src main-compile-config))
+        (lambda (path token) (c-compile path src main-compile-config))))
 
   (define (config-bootstrap-racket)
     (let ([config
@@ -538,7 +557,14 @@
                                               (list MemoryModule.o dll_via_temp.o res.o)
                                               '())
                                         ,link-config ,c-link-input)
-                      ,(lambda (path token)
+                      ,(if (and action-mode? (not windows?) (not mac?))
+                           (lambda (path token deps)
+                             (unless (equal? (lookup 'POST_LINKER) "")
+                               (error "CS link command action requires an explicit POST_LINKER action"))
+                             (c-rule deps 'link path (cons main.o (map target->path boot-objs))
+                                     (config-merge (adjust-linking-config config)
+                                                   'LDFLAGS (lookup 'LINK_DYNAMIC))))
+                           (lambda (path token)
                          (define dest_exe (cond
                                             [(and mac-fw? (not gui?) codesign-via-racket? (not cross?))
                                              (~a raw_exe "_tmp")]
@@ -578,7 +604,8 @@
                              (mv dest_exe raw_exe)))
                          (define post (lookup 'POST_LINKER))
                          (unless (equal? post "")
-                           (shell/wait post raw_racketcs)))])
+                           (shell/wait post raw_racketcs))))
+                      ,@(if (and action-mode? (not windows?) (not mac?)) '(:rule) '())])
           (cons raw_racketcs (if mac? '() (list raw_gracketcs)))
           (cons #f (if mac? '() (list #t)))
           (cons main.o (if mac? '() (list grmain.o)))
@@ -676,12 +703,12 @@
                                    "-lpsapi"))))]
 
        [:target ,main.o (,@main-deps)
-                ,(lambda (main.o token)
-                   (compile-main main.o (at-source "main.c")))]
+                ,(main-recipe (at-source "main.c"))
+                ,@(if (and action-mode? (not windows?)) '(:rule) '())]
 
        [:target ,grmain.o (,@main-deps ,(at-source "grmain.c") ,(at-source "../../start/gui_filter.inc"))
-                ,(lambda (grmain.o token)
-                   (compile-main grmain.o (at-source "grmain.c")))]
+                ,(main-recipe (at-source "grmain.c"))
+                ,@(if (and action-mode? (not windows?)) '(:rule) '())]
 
        [:target ,boot.o (,c-compile-input
                          ,(at-source "api.h")
@@ -694,8 +721,8 @@
                          ,(at-source "path_replace.inc")
                          ,(at-source "boot.h")
                          ,rktio_config.h)
-                ,(lambda (boot.o token)
-                   (c-compile boot.o
+                ,(let ([run (lambda (proc path)
+                              (proc path
                               (at-source "boot.c")
                               (let* ([config (if pbchunk?
                                                  (config-merge config 'CPPFLAGS "-DPBCHUNK_REGISTER")
@@ -704,7 +731,12 @@
                                                              (at-dir CS m "boot" m)
                                                              (at-source "../../rktio")
                                                              rktio-dir)])
-                                config)))]
+                                config)))])
+                   (if (and action-mode? (not windows?))
+                       (lambda (path token deps)
+                         (run (lambda (path ins config) (c-rule deps 'compile path ins config)) path))
+                       (lambda (path token) (run c-compile path))))
+                ,@(if (and action-mode? (not windows?)) '(:rule) '())]
 
        [:target ,MemoryModule.o (,c-compile-input ,(at-source "../../start/MemoryModule.c"))
                 ,(lambda (path token)
@@ -719,13 +751,13 @@
                               config))]
 
        [:target ,racket.boot (,(find-target "racket.so" cs-targets) ,(at-source "convert-to-boot.ss") ,scheme-input)
-                ,(lambda (path token)
-                   (scheme "--script" (at-source "convert-to-boot.ss")
-                           boot-compress-flags
-                           xpatch-args
-                           (at-dir "racket.so")
+                ,(let ([args (append (list "--script" (at-source "convert-to-boot.ss")) boot-compress-flags xpatch-args (list (at-dir "racket.so")
                            (at-dir "racket.boot")
-                           m))]
+                           m))])
+                   (if boot-action-mode?
+                       (lambda (path token deps) (scheme-rule deps args))
+                       (lambda (path token) (apply scheme args))))
+                ,@(if boot-action-mode? '(:rule) '())]
 
        [:target scheme (bootfiles)
                 ,(lambda (token)
@@ -840,19 +872,31 @@
                    (fd-close (fd-open-output check-bootstrap-same-stamp :truncate)))]
 
        [:target ,petite-v.boot (,petite-chunked.boot ,(at-source "to-vfasl.ss") ,scheme-input)
-                ,(lambda (path target)
-                   (scheme "--script" (at-source "to-vfasl.ss") boot-compress-flags xpatch-args
-                           petite-chunked.boot petite-v.boot))]
+                ,(let ([args (append (list "--script" (at-source "to-vfasl.ss"))
+                                     boot-compress-flags xpatch-args
+                                     (list petite-chunked.boot petite-v.boot))])
+                   (if boot-action-mode?
+                       (lambda (path token deps) (scheme-rule deps args))
+                       (lambda (path token) (apply scheme args))))
+                ,@(if boot-action-mode? '(:rule) '())]
+
        [:target ,scheme-v.boot (,scheme-chunked.boot ,(at-source "to-vfasl.ss") ,scheme-input)
-                ,(lambda (path target)
-                   (scheme "--script" (at-source "to-vfasl.ss") boot-compress-flags xpatch-args
-                           scheme-chunked.boot scheme-v.boot
-                           "petite"))]
+                ,(let ([args (append (list "--script" (at-source "to-vfasl.ss"))
+                                     boot-compress-flags xpatch-args
+                                     (list scheme-chunked.boot scheme-v.boot "petite"))])
+                   (if boot-action-mode?
+                       (lambda (path token deps) (scheme-rule deps args))
+                       (lambda (path token) (apply scheme args))))
+                ,@(if boot-action-mode? '(:rule) '())]
+
        [:target ,racket-v.boot (,racket-chunked.boot ,(at-source "to-vfasl.ss") ,scheme-input)
-                ,(lambda (path target)
-                   (scheme "--script" (at-source "to-vfasl.ss") boot-compress-flags xpatch-args
-                           racket-chunked.boot racket-v.boot
-                           "petite" "scheme"))]
+                ,(let ([args (append (list "--script" (at-source "to-vfasl.ss"))
+                                     boot-compress-flags xpatch-args
+                                     (list racket-chunked.boot racket-v.boot "petite" "scheme"))])
+                   (if boot-action-mode?
+                       (lambda (path token deps) (scheme-rule deps args))
+                       (lambda (path token) (apply scheme args))))
+                ,@(if boot-action-mode? '(:rule) '())]
 
        [:target ,rres.o (,(at-source "../../worksp/racket/racket.rc")
                          ,(at-source "../../worksp/racket/racket.ico")

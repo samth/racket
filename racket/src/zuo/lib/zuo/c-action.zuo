@@ -1,0 +1,50 @@
+#lang zuo/base
+(require "build.zuo"
+         "c.zuo"
+         "action.zuo")
+
+(provide c-command-rule)
+
+;; Use the same command construction as the uncached helpers, but execute argv
+;; directly. Shell expansion, command substitutions, and multi-command recipes
+;; need their own explicit action instead of an incomplete compiler contract.
+(define (c-command-rule deps operation out ins config rule-files)
+  (unless (eq? (hash-ref (runtime-env) 'system-type) 'unix)
+    (error "C command actions currently require POSIX"))
+  (define command
+    ((cond
+       [(eq? operation 'compile) c-compile-command]
+       [(eq? operation 'link) c-link-command]
+       [(eq? operation 'archive) c-ar-command]
+       [else (error "unknown C action" operation)])
+     out ins config))
+  (when (let loop ([i 0])
+          (and (< i (string-length command))
+               (or (member (string-ref command i)
+                           (map (lambda (s) (string-ref s 0))
+                                '("$" "`" "\n" "\r" ";" "|" "&" "<" ">")))
+                   (loop (+ i 1)))))
+    (error "C command action does not support shell expansion or control operators" command))
+  (define argv (shell->strings command))
+  ;; These flags create additional persistent outputs or read implicit local
+  ;; response/include files. Their producer must declare a separate contract.
+  (when (ormap (lambda (arg)
+                 (or (and (> (string-length arg) 0) (= (string-ref arg 0) (char "@")))
+                     (ormap (lambda (prefix)
+                              (and (>= (string-length arg) (string-length prefix))
+                                   (equal? (substring arg 0 (string-length prefix)) prefix)))
+                            '("-M" "-save-temps" "-gsplit-dwarf" "--coverage"
+                              "-fprofile" "-ftest-coverage" "-include" "-imacros"))))
+               (cdr argv))
+    (error "C command action needs an explicit contract for extra input/output flags" command))
+  (define exe (find-executable-path (car argv)))
+  (unless exe (error "C action executable not found" (car argv)))
+  (define inherited (hash-ref (runtime-env) 'env))
+  (command-rule
+   deps
+   (hash 'argv (cons (path->complete-path exe) (cdr argv))
+         'environment (list (or (assoc "PATH" inherited) '("PATH" . "/usr/bin:/bin"))
+                            '("LANG" . "C") '("LC_ALL" . "C") '("TZ" . "UTC")
+                            '("ZERO_AR_DATE" . "1"))
+         'toolchain (action-toolchain "ZUO_CHEZ_TOOLCHAIN_ID")
+         'rule-files rule-files)))

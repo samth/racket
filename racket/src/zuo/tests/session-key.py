@@ -123,8 +123,11 @@ def run(label, key=None, override=None, changed=True, cache=False, expected_call
 
 run('unset')
 run('unset-warm', changed=False)
-run('configured', key="build base with 'quotes' = value")
-run('configured-warm', key="build base with 'quotes' = value", changed=False)
+# Explicit actions revalidate bytes and consult storage on every invocation.
+# Exercise their warm behavior with the cache enabled, independently of the
+# legacy rule's timestamp-based incremental shortcut.
+run('configured', key="build base with 'quotes' = value", cache=args.actions)
+run('configured-warm', key="build base with 'quotes' = value", changed=False, cache=args.actions)
 run('changed-key', key='second build base')
 run('explicit-override', key='configured base', override='explicit base')
 run('explicit-empty', key='configured base', override='')

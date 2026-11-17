@@ -515,9 +515,10 @@
   ;; compare to recorded result, and rebuild if different
   (cond
     [(and same-so-far?
-          ;; Strict actions revalidate SDK absence contracts and file snapshots
-          ;; before every cache lookup, including incremental invocations.
-          (not (sandboxed-command? (rule-action r)))
+          ;; Explicit actions revalidate file contents before every lookup.
+          ;; The timestamp cache may have only whole-second precision, or a
+          ;; source checkout may preserve timestamps. Neither proves identity.
+          (not (rule-action r))
           (andmap (lambda (dep-key)
                     (log-changed (equal? (hash-ref all-dep-sha256s dep-key #f)
                                          (hash-ref prev-dep-sha256s dep-key #f))
@@ -547,11 +548,20 @@
      (unless to-build
        (error "build: out-of-date target has no build procedure" (target-name t)))
      (define (build-one finish)
+       (define started (current-time))
        (define action (rule-action r))
        (when (and action (not (string? path)))
          (error "command-rule requires a file target"))
        (define outputs (cons path co-outputs))
-       (define snapshot (and action (action-input-snapshot deps)))
+       ;; Accumulated dependencies can also come from build/dep in get-rule.
+       ;; File identity comes from bytes here, never the timestamp hash cache.
+       (define snapshot-deps
+         (and action
+              (append deps
+                      (map (lambda (k) (input-file-target (symbol->string k)))
+                           (filter (lambda (k) (not (symbol-key? k)))
+                                   (hash-keys all-dep-sha256s))))))
+       (define snapshot (and action (action-input-snapshot snapshot-deps)))
        (define sandbox-state (and action (sandbox-plan action outputs)))
        (define root (and action (cache-directory)))
        (define key
@@ -562,7 +572,9 @@
                                                 (~s (symbol-key->symbol k))
                                                 (path->complete-path (symbol->string k)))
                                             (hash-ref all-dep-sha256s k)))
-                                    (hash-keys all-dep-sha256s))
+                                    ;; File and co-output digests are already
+                                    ;; in the fresh snapshot. Keep data targets.
+                                    (filter symbol-key? (hash-keys all-dep-sha256s)))
                                (lambda (a b) (string<? (car a) (car b))))
                          snapshot outputs)))
        (when (and action
@@ -572,20 +584,27 @@
          (error "command-rule inputs and outputs must be disjoint"))
        (define hit? (and root (cache-restore root key outputs)))
        (when (and action (not hit?))
+         (for-each (lambda (out) (mkdir-p (or (car (split-path out)) "."))) outputs)
          ;; A successful command must create the complete group in THIS run.
          ;; Otherwise an omitted co-output could reuse stale bytes.
          (for-each (lambda (out) (when (file-exists? out) (rm out))) outputs))
        (define (still-valid?)
-         (and (equal? snapshot (action-input-snapshot deps))
+         (and (equal? snapshot (action-input-snapshot snapshot-deps))
               (equal? sandbox-state (and action (sandbox-plan action outputs)))))
        (let* ([maybe-sha256 (cond [hit? #f]
                                  [sandbox-state (run-sandbox-command action outputs sandbox-state)]
                                  [else (to-build)])] ; restore or execute
               [sha256 (if build-to-sha256?
                           maybe-sha256
-                          (if (pair? co-outputs)
-                              (files-sha256 (cons path co-outputs) tok)
-                              (file-sha256 path tok)))])
+                          (if action
+                              ;; A just-built/restored file can have the same
+                              ;; timestamp as the old output. Publish its bytes.
+                              (if (andmap file-exists? outputs)
+                                  (apply ~a (map (lambda (out) (string-sha256 (file->string out))) outputs))
+                                  no-sha256)
+                              (if (pair? co-outputs)
+                                  (files-sha256 (cons path co-outputs) tok)
+                                  (file-sha256 path tok))))])
          (unless (sha256? sha256)
            (error "build: target-build result is not a sha256" sha256))
          (when (equal? sha256 no-sha256)
@@ -596,6 +615,15 @@
            (unless (still-valid?) (error "command inputs changed while building" path))
            (when (and root (not hit?))
              (cache-store root key outputs still-valid?)))
+         (when (and (string? path)
+                    (assoc "ZUO_ACTION_COVERAGE_LOG" (hash-ref (runtime-env) 'env)))
+           (define ended (current-time))
+           (define milliseconds
+             (+ (* 1000 (- (car ended) (car started)))
+                (quotient (- (cdr ended) (cdr started)) 1000000)))
+           (alert (~a "action coverage " (if action "explicit" "procedural")
+                      " " (if hit? "hit" "executed") " " milliseconds " "
+                      (~s (path->complete-path path)))))
          (when path-handle (cleanable-cancel path-handle))
          (finish
           (lambda (state)
@@ -868,23 +896,23 @@
 ;; contents and modes are part of identity; generated dependencies have already
 ;; completed here. Data-target identity is carried by all-dep-sha256s above.
 (define (action-input-snapshot deps)
-  (sort
-   (apply append
-          (map (lambda (t)
-                 (if (symbol? (target-name t))
-                     '()
-                     (map (lambda (path)
-                            (define s (stat path #t #t))
-                            (unless (and s (eq? (hash-ref s 'type) 'file))
-                              (error "command-rule requires regular-file inputs" path))
-                            (list (path->complete-path path)
-                                  (string-sha256 (file->string path))
-                                  (bitwise-and (hash-ref s 'mode) 511)
-                                  (let ([st (stat path #f)])
-                                    (and (eq? (hash-ref st 'type) 'link) (readlink path)))))
-                          (cons (target-name t) (hash-ref (target-options t) 'co-outputs '())))))
-               deps))
-   (lambda (a b) (string<? (car a) (car b)))))
+  (define paths
+    (foldl (lambda (t paths)
+             (if (symbol? (target-name t))
+                 paths
+                 (foldl (lambda (path paths) (hash-set paths (string->symbol (path->complete-path path)) #t))
+                        paths
+                        (cons (target-name t) (hash-ref (target-options t) 'co-outputs '())))))
+           (hash) deps))
+  (map (lambda (path)
+         (define s (stat path #t #t))
+         (unless (and s (eq? (hash-ref s 'type) 'file))
+           (error "command-rule requires regular-file inputs" path))
+         (list path (string-sha256 (file->string path))
+               (bitwise-and (hash-ref s 'mode) 511)
+               (let ([st (stat path #f)])
+                 (and (eq? (hash-ref st 'type) 'link) (readlink path)))))
+       (sort (map symbol->string (hash-keys paths)) string<?)))
 
 (define (ensure-consistent state t)
   (let* ([saw (build-state-saw-targets state)]

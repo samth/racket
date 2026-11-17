@@ -1,0 +1,26 @@
+#lang zuo
+
+;; Run the existing nested-library recipe in a clean private workarea. Export
+;; only its archive/header contract; never cache mutable configure/make state.
+(define args (hash-ref (runtime-env) 'args))
+(unless (= (length args) 6) (error "library-action: expected six arguments"))
+(define source (list-ref args 0))
+(define scratch (list-ref args 1))
+(define config-pairs (car (string-read (list-ref args 2))))
+(define products (car (string-read (list-ref args 3))))
+(define parent-config (list-ref args 4))
+(define relative-target (list-ref args 5))
+(define config (foldl (lambda (p config) (hash-set config (car p) (cadr p))) (hash) config-pairs))
+(rm* scratch)
+(mkdir-p (build-path scratch "c"))
+(cp parent-config (build-path scratch "Mf-config"))
+(define targets ((dynamic-require source 'targets-at) (make-at-dir (build-path scratch "c")) config))
+(define result (build (find-target (build-path scratch relative-target) targets)))
+(for-each (lambda (p)
+            (define src (build-path scratch (cadr p)))
+            (define dest (car p))
+            (unless (file-exists? src) (error "nested library omitted a declared output" src))
+            (mkdir-p (path-only dest))
+            (cp src dest))
+          products)
+(rm* scratch)

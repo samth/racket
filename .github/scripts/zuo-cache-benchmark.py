@@ -38,6 +38,12 @@ def capture(*command):
     return subprocess.check_output(command, text=True).strip()
 
 
+def source_changes():
+    changed = capture('git', '-C', str(REPO), 'diff', '--name-only', 'HEAD').splitlines()
+    changed += capture('git', '-C', str(REPO), 'ls-files', '--others', '--exclude-standard').splitlines()
+    return {name: digest(REPO / name) if (REPO / name).is_file() else None for name in sorted(set(changed))}
+
+
 def prepare():
     ROOT.mkdir(parents=True, exist_ok=True)
     EVIDENCE.mkdir(parents=True, exist_ok=True)
@@ -69,6 +75,8 @@ def measure(mode):
     env = dict(os.environ)
     for name in ['ZUO_ACTION_CACHE', 'ZUO_CS_ACTIONS', 'ZUO_CS_TOOLCHAIN_ID',
                  'ZUO_CHEZ_ACTIONS', 'ZUO_CHEZ_TOOLCHAIN_ID',
+                 'ZUO_CACHE_ACTIONS', 'ZUO_ACTION_TOOLCHAIN_ID',
+                 'ZUO_C_ACTIONS', 'ZUO_CHEZ_C_ACTIONS', 'ZUO_CS_BOOT_ACTIONS',
                  'RACKET_CHEZ_SESSION_KEY', 'PLT_CS_COVERAGE_COUNTERS']:
         env.pop(name, None)
     if mode != 'current':
@@ -76,6 +84,9 @@ def measure(mode):
                    ZUO_ACTION_CACHE=str(CACHE), ZUO_ACTION_CACHE_LOG='1')
         if env.get('ZUO_BENCHMARK_CHEZ_ACTIONS') == '1':
             env.update(ZUO_CHEZ_ACTIONS='1', ZUO_CHEZ_TOOLCHAIN_ID=runner['toolchain'])
+        if env.get('ZUO_BENCHMARK_ALL_ACTIONS') == '1':
+            env.update(ZUO_CACHE_ACTIONS='1', ZUO_ACTION_TOOLCHAIN_ID=runner['toolchain'])
+    env['ZUO_ACTION_COVERAGE_LOG'] = '1'
     key = env['RACKET_CI_SESSION_KEY']
     if mode == 'seed':
         assert not CACHE.exists(), 'seed must start with empty storage'
@@ -91,7 +102,9 @@ def measure(mode):
     BUILD.mkdir()
     result = dict(mode=mode, toolchain=runner['toolchain'],
                   source_commit=capture('git', '-C', str(REPO), 'rev-parse', 'HEAD'),
+                  source_changes=source_changes(),
                   session_key=key, chez_actions=env.get('ZUO_CHEZ_ACTIONS') == '1',
+                  all_actions=env.get('ZUO_CACHE_ACTIONS') == '1',
                   cache_available=previous is not None, phases=[])
     write(EVIDENCE / (mode + '.json'), result)
 
@@ -117,6 +130,11 @@ def measure(mode):
     log = ''.join((EVIDENCE / (mode + '-build.' + s)).read_text() for s in ['stdout', 'stderr'])
     result['cache_events'] = {event: len(re.findall(r'action cache ' + event + r' [0-9a-f]{64}', log))
                               for event in ['hit', 'miss', 'stored', 'rejected']}
+    result['action_coverage'] = [dict(kind=kind, outcome=outcome, milliseconds=int(ms),
+                                    target=json.loads(target))
+                                 for kind, outcome, ms, target in re.findall(
+                                     r'^action coverage (explicit|procedural) (hit|executed) (\d+) (".*")$',
+                                     log, re.M)]
     result['compiler_invocations'] = sum('/cs/compile-file.ss ' in line and
                                          'compile-action.zuo' not in line
                                          for line in log.splitlines())
@@ -130,6 +148,16 @@ def measure(mode):
     tools = [chez / 'bin' / machine / 'scheme']
     tools += [chez / 'boot' / machine / (name + '.boot') for name in ['petite', 'scheme']]
     result['chez_tools'] = {p.name: digest(p) for p in tools}
+    suffixes = {'.o', '.a', '.so', '.wpo', '.boot', '.h', '.inc', '.patch', '.' + machine}
+    result['build_artifacts'] = {str(p.relative_to(BUILD)): digest(p)
+                                 for p in sorted(BUILD.rglob('*'))
+                                 if p.is_file() and (p.suffix in suffixes or p.name in
+                                     {'scheme', 'petite', 'raw_racketcs', 'raw_gracketcs', 'racketcs', 'gracketcs'})}
+    # Bootstrap collection compilation still uses setup's separate compiled
+    # directory. Inventory it explicitly instead of claiming it is in the CAS.
+    result['collection_compilation_artifacts'] = {
+        str(p.relative_to(BUILD)): digest(p) for p in sorted(BUILD.rglob('*'))
+        if p.is_file() and p.suffix in {'.zo', '.dep'}}
     result['zuo_sha256'] = digest(ZUO)
     result['cache_bytes'] = sum(p.stat().st_size for p in CACHE.rglob('*') if p.is_file())
     result['cache_actions'] = len(list((CACHE / 'actions').glob('*')))
@@ -137,8 +165,10 @@ def measure(mode):
         result['native_matches_seed'] = sum(value == previous['native_outputs'][name]
                                              for name, value in result['native_outputs'].items())
         result['chez_matches_seed'] = result['chez_tools'] == previous['chez_tools']
+        result['artifacts_match_seed'] = (result['build_artifacts'] == previous['build_artifacts']
+                                          if 'build_artifacts' in previous else None)
     if mode == 'seed':
-        assert (result['cache_events']['stored'] > 10 if result['chez_actions']
+        assert (result['cache_events']['stored'] > 10 if result['chez_actions'] or result['all_actions']
                 else result['cache_events']['stored'] == 10), result['cache_events']
         write(reference, result)
     elif mode == 'github' and not previous:

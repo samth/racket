@@ -378,9 +378,10 @@
 
 (define (make-interned-scope sym)
   (define (make)
-    ;; since interned scopes are reused by unmarshalled code, and because they’re generally unlikely
-    ;; to be a good target for bindings, always create them with a negative id
-    (define id (- (new-scope-id!)))
+    ;; interned scopes are reused by unmarshalled code and are generally unlikely to be a good
+    ;; target for bindings, so `scope-set-max` skips them; they sort as newer than all other
+    ;; scopes, which keeps adding and removing them cheap
+    (define id (+ interned-scope-id-base (new-scope-id!)))
     (interned-scope id (make-scope-key id) 'interned empty-binding-table sym))
   (cond
     [(hash-ref interned-scopes-table sym #f)

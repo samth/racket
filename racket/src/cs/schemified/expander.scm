@@ -7130,6 +7130,7 @@
          (let ((app_0
                 (fx*/wraparound (mix (fixnum-bits (numerator id_0))) 31)))
            (fx+/wraparound app_0 (fixnum-bits (denominator id_0)))))))))
+(define interned-scope-id-base 576460752303423488)
 (define finish_2167
   (make-struct-type-install-properties
    '(scope-set)
@@ -7220,7 +7221,20 @@
   (lambda (l_0 count_0 code_0)
     (if (null? l_0) empty-scope-set (scope-set2.1 l_0 count_0 code_0))))
 (define scope-set-empty? (lambda (s_0) (null? (scope-set-elems s_0))))
-(define scope-set-max (lambda (s_0) (car (scope-set-elems s_0))))
+(define scope-set-max
+  (lambda (s_0)
+    (let ((l_0 (scope-set-elems s_0)))
+      (letrec*
+       ((loop_0
+         (|#%name|
+          loop
+          (lambda (p_0)
+            (if (null? p_0)
+              (car l_0)
+              (if (< (scope-base-id (car p_0)) 576460752303423488)
+                (car p_0)
+                (loop_0 (cdr p_0))))))))
+       (loop_0 l_0)))))
 (define scope-set-member?
   (lambda (s_0 sc_0)
     (letrec*
@@ -11762,7 +11776,7 @@
            (|#%name|
             make
             (lambda ()
-              (let ((id_0 (- (new-scope-id!))))
+              (let ((id_0 (+ 576460752303423488 (new-scope-id!))))
                 (interned-scope2.1
                  id_0
                  (make-scope-key id_0)
@@ -13513,7 +13527,7 @@
       (if (null? (scope-set-elems scopes_0))
         (error "cannot bind in empty scope set")
         (void))
-      (car (scope-set-elems scopes_0)))))
+      (scope-set-max scopes_0))))
 (define add-binding-in-scopes!.1
   (|#%name|
    add-binding-in-scopes!
@@ -16017,7 +16031,7 @@
 (define extract-scope
   (lambda (stx_0)
     (let ((s_0 (syntax-scope-set stx_0 0)))
-      (generalize-scope (car (scope-set-elems s_0))))))
+      (generalize-scope (scope-set-max s_0)))))
 (define extract-shifts (lambda (stx_0) (syntax-mpi-shifts stx_0)))
 (define unpack-defined-syms
   (lambda (v_0)
@@ -20060,7 +20074,7 @@
                   (lambda (s_0) (error "bad syntax:" s_0)))))
             (lambda (t_0) v_0))))))))
 (define 1/make-set!-transformer
-  (let ((finish944
+  (let ((finish942
          (make-struct-type-install-properties
           '(set!-transformer)
           1
@@ -20082,11 +20096,11 @@
             #f
             '(1 . 0)
             'make-struct-type
-            (finish944 'proc)
-            (finish944 'arity)
+            (finish942 'proc)
+            (finish942 'arity)
             #f
             |#%system-inspector|)))
-      (let ((effect945 (finish944 struct:set!-transformer_0)))
+      (let ((effect943 (finish942 struct:set!-transformer_0)))
         (let ((set!-transformer1_0
                (|#%name|
                 set!-transformer

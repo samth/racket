@@ -35,6 +35,7 @@
 
 (provide (struct-out scope-base)
          make-scope-key
+         interned-scope-id-base
 
          scope-set?
          empty-scope-set
@@ -103,8 +104,16 @@
      (mix (fx+/wraparound (fx*/wraparound (mix (fixnum-bits (numerator id))) 31)
                           (fixnum-bits (denominator id))))]))
 
+;; Interned scopes get ids above this base, so they sort as the
+;; newest scopes and sit at the front of every set. Code that adds and
+;; removes an interned scope, such as a Rhombus space, then touches
+;; only the front of a set instead of copying all of it. A fixnum on
+;; 64-bit platforms; on a 32-bit platform these ids are bignums.
+(define interned-scope-id-base (expt 2 59))
+
 ;; Scope ids are fixnums, except for the representatives of
-;; multi-scopes (and, on a 32-bit platform, very new scopes)
+;; multi-scopes (and, on a 32-bit platform, very new scopes and
+;; interned scopes)
 (define-syntax-rule (sc> a b)
   (> (scope-base-id a) (scope-base-id b)))
 
@@ -139,8 +148,16 @@
 
 (define (scope-set-empty? s) (null? (scope-set-elems s)))
 
-;; The most recent scope in a non-empty set
-(define (scope-set-max s) (car (scope-set-elems s)))
+;; The most recent scope in a non-empty set that is not interned, or
+;; the most recent interned scope if all are interned; this is the
+;; scope that holds bindings for the set
+(define (scope-set-max s)
+  (define l (scope-set-elems s))
+  (let loop ([p l])
+    (cond
+      [(null? p) (car l)]
+      [(< (scope-base-id (car p)) interned-scope-id-base) (car p)]
+      [else (loop (cdr p))])))
 
 (define (scope-set-member? s sc)
   (let loop ([l (scope-set-elems s)])
@@ -440,7 +457,12 @@
                   (for/fold ([code 0]) ([sc (in-hash-keys ref)])
                     (fxxor code (scope-base-key sc)))))
     (unless (scope-set-empty? s)
-      (check who (eq? (scope-set-max s) (car (ref-list ref))))))
+      (check who (eq? (scope-set-max s)
+                      (let ([l (ref-list ref)])
+                        (or (for/first ([sc (in-list l)]
+                                        #:when (< (scope-base-id sc) interned-scope-id-base))
+                              sc)
+                            (car l)))))))
 
   ;; pool of (cons scope-set reference)
   (define POOL 64)

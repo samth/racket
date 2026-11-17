@@ -12273,18 +12273,45 @@
                     (raise-argument-error 'struct-copy "syntax?" s_0)))))))))))
 (define add-scopes
   (lambda (s_0 scs_0)
-    (letrec*
-     ((for-loop_0
-       (|#%name|
-        for-loop
-        (lambda (s_1 lst_0)
-          (if (pair? lst_0)
-            (let ((sc_0 (unsafe-car lst_0)))
-              (let ((rest_0 (unsafe-cdr lst_0)))
-                (let ((s_2 (let ((s_2 (add-scope s_1 sc_0))) (values s_2))))
-                  (for-loop_0 s_2 rest_0))))
-            s_1)))))
-     (for-loop_0 s_0 scs_0))))
+    (if (null? scs_0)
+      s_0
+      (if (null? (cdr scs_0))
+        (add-scope s_0 (car scs_0))
+        (if (letrec*
+             ((for-loop_0
+               (|#%name|
+                for-loop
+                (lambda (result_0 lst_0)
+                  (if (pair? lst_0)
+                    (let ((sc_0 (unsafe-car lst_0)))
+                      (let ((rest_0 (unsafe-cdr lst_0)))
+                        (let ((result_1
+                               (if (scope? sc_0)
+                                 (not (representative-scope? sc_0))
+                                 #f)))
+                          (let ((result_2 (values result_1)))
+                            (if (if (not
+                                     (let ((x_0 (list sc_0))) (not result_2)))
+                                  #t
+                                  #f)
+                              (for-loop_0 result_2 rest_0)
+                              result_2)))))
+                    result_0)))))
+             (for-loop_0 #t scs_0))
+          (apply-scope-ops s_0 (list->scope-ops scs_0 'add))
+          (letrec*
+           ((for-loop_0
+             (|#%name|
+              for-loop
+              (lambda (s_1 lst_0)
+                (if (pair? lst_0)
+                  (let ((sc_0 (unsafe-car lst_0)))
+                    (let ((rest_0 (unsafe-cdr lst_0)))
+                      (let ((s_2
+                             (let ((s_2 (add-scope s_1 sc_0))) (values s_2))))
+                        (for-loop_0 s_2 rest_0))))
+                  s_1)))))
+           (for-loop_0 s_0 scs_0)))))))
 (define remove-scope
   (lambda (s_0 sc_0)
     (let ((sc_1 (generalize-scope sc_0)))

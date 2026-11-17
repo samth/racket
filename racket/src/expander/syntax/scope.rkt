@@ -580,8 +580,17 @@
   (apply-scope s (generalize-scope sc) scope-set-add set-add propagation-add))
 
 (define (add-scopes s scs)
-  (for/fold ([s s]) ([sc (in-list scs)])
-    (add-scope s sc)))
+  (cond
+    [(null? scs) s]
+    [(null? (cdr scs)) (add-scope s (car scs))]
+    [(for/and ([sc (in-list scs)])
+       (and (scope? sc) (not (representative-scope? sc))))
+     ;; Like `remove-scopes`, apply all at once; adding one at a time
+     ;; would copy the set for each scope older than the newest
+     (apply-scope-ops s (list->scope-ops scs 'add))]
+    [else
+     (for/fold ([s s]) ([sc (in-list scs)])
+       (add-scope s sc))]))
 
 (define (remove-scope s sc)
   (apply-scope s (generalize-scope sc) scope-set-remove set-remove propagation-remove))

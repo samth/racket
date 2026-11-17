@@ -429,16 +429,34 @@
                                   (lambda (for-whom dest-c offset s)
                                     (ftype-any-set! ftype-pointer () (cptr->fptr for-whom dest-c) offset (s->c/whom for-whom s)))))]))
 
+;; When `m` refers to a byte string that is managed by the GC (e.g., a
+;; `_bytes` value read back from nonatomic memory), the end of the byte
+;; string counts as a terminator, since a byte string is not
+;; necessarily followed by a nul byte; otherwise, scanning could run
+;; past the byte string. A pointer read from memory as a potential
+;; Scheme-object pointer may be a foreign address, so check that the
+;; address is in the GC's space before trusting the object's length.
+(define (fptr-byte-limit m)
+  (and (ftype-scheme-object-pointer? m)
+       (let ([o (ftype-scheme-object-pointer-object m)])
+         (and (not (integer? (reference*-address->object (object->reference-address o))))
+              (bytevector? o)
+              (fx- (bytevector-length o) (ftype-scheme-object-pointer-offset m))))))
+
+(define-syntax-rule (scan-for-nul m unit ref-type)
+  (let ([limit (fptr-byte-limit m)])
+    (let loop ([i 0])
+      (if (or (and limit (fx> (fx+ i unit) limit))
+              (eqv? 0 (ftype-any-ref ref-type () m i)))
+          (let ([bstr (make-bytes i)])
+            (memcpy* (cptr->fptr 'bv bstr) 0 m 0 i #f)
+            bstr)
+          (loop (fx+ i unit))))))
+
 (define (fptr->bytevector/nul m)
   (cond
     [(ftype-pointer-null? m) #f]
-    [else
-     (let loop ([i 0])
-       (if (fx= 0 (ftype-any-ref unsigned-8 () m i))
-           (let ([bstr (make-bytes i)])
-             (memcpy* (cptr->fptr 'bv bstr) 0 m 0 i #f)
-             bstr)
-           (loop (fx+ i 1))))]))
+    [else (scan-for-nul m 1 unsigned-8)]))
     
 ;; Unlike Racket BC, copies when converting from C:
 (define-ctype/promote-pointer _bytes 'bytes
@@ -452,13 +470,7 @@
 (define (fptr->bytevector/two-nuls m)
   (cond
     [(ftype-pointer-null? m) #f]
-    [else
-     (let loop ([i 0])
-       (if (fx= 0 (ftype-any-ref unsigned-16 () m i))
-           (let ([bstr (make-bytes i)])
-             (memcpy* (cptr->fptr 'bv bstr) 0 m 0 i #f)
-             bstr)
-           (loop (+ i 2))))]))
+    [else (scan-for-nul m 2 unsigned-16)]))
 
 (define-ctype/promote-pointer _short_bytes 'bytes
   (lambda (x) (fptr->bytevector/two-nuls x))
@@ -485,13 +497,7 @@
 (define (fptr->bytevector/four-nuls m)
   (cond
     [(ftype-pointer-null? m) #f]
-    [else
-     (let loop ([i 0])
-       (if (fx= 0 (ftype-any-ref unsigned-32 () m i))
-           (let ([bstr (make-bytes i)])
-             (memcpy* (cptr->fptr 'bv bstr) 0 m 0 i #f)
-             bstr)
-           (loop (+ i 4))))]))
+    [else (scan-for-nul m 4 unsigned-32)]))
 
 (define-ctype/promote-pointer _string/ucs-4 'string/ucs-4
   (lambda (m)

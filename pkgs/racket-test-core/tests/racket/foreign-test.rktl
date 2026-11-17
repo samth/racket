@@ -1210,6 +1210,15 @@
        (check-equal? (array-ref (MISC-ad d) i) (exact->inexact (+ i (* i .1))))
        (check-equal? (array-ref (MISC-ai d) i) (+ i 5)))))
 
+  ;; Reading back a `_bytes` field that refers to a byte string stops at
+  ;; the end of the byte string, even if no nul byte follows it
+  (define-cstruct _BPTR ([b _bytes]) #:malloc-mode 'nonatomic)
+  (for ([len (in-range 1 33)])
+    (define bstrs (for/list ([j 4]) (make-bytes len (char->integer #\x))))
+    (define p (make-BPTR (car bstrs)))
+    (collect-garbage 'minor)
+    (check-equal? (BPTR-b p) (car bstrs)))
+
   (for ([i num-runs])
     (define m (ptr-ref (malloc _MISCPTR 'nonatomic) _MISCPTR))
     (set-MISCPTR-s! m "str")

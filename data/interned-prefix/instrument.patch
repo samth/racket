@@ -1,0 +1,88 @@
+diff --git a/racket/src/expander/common/scope-set.rkt b/racket/src/expander/common/scope-set.rkt
+index 068915f..a5ddd9b 100644
+--- a/racket/src/expander/common/scope-set.rkt
++++ b/racket/src/expander/common/scope-set.rkt
+@@ -111,6 +111,39 @@
+ ;; 64-bit platforms; on a 32-bit platform these ids are bignums.
+ (define interned-scope-id-base (expt 2 59))
+ 
++;; ---- instrumentation for the interned-prefix measurement ----
++(define stats-table (make-hasheq))
++(define (stat! kind metric n)
++  (define h (hash-ref stats-table kind #f))
++  (define h2 (or h (let ([h (make-hasheq)]) (hash-set! stats-table kind h) h)))
++  (define m (or (hash-ref h2 metric #f) (let ([m (make-hasheqv)]) (hash-set! h2 metric m) m)))
++  (hash-set! m n (add1 (hash-ref m n 0))))
++(define (interned-prefix l)
++  (let loop ([l l] [n 0])
++    (if (and (pair? l) (>= (scope-base-id (car l)) interned-scope-id-base))
++        (loop (cdr l) (add1 n))
++        n)))
++;; interned scopes in `l` that come before where `sc` is or would be
++(define (interned-walked l sc)
++  (let loop ([l l] [n 0])
++    (if (and (pair? l)
++             (>= (scope-base-id (car l)) interned-scope-id-base)
++             (> (scope-base-id (car l)) (scope-base-id sc)))
++        (loop (cdr l) (add1 n))
++        n)))
++(define (record! kind l sc)
++  (define held (interned-prefix l))
++  (stat! kind 'held held)
++  (define target-interned? (>= (scope-base-id sc) interned-scope-id-base))
++  (stat! kind (if target-interned? 'walked-to-interned 'walked-to-normal) (interned-walked l sc)))
++(void (plumber-add-flush! (current-plumber)
++                          (lambda (h)
++                            (eprintf "PREFIX-STATS ~s\n"
++                                     (for/list ([(k h) (in-hash stats-table)])
++                                       (cons k (for/list ([(m hist) (in-hash h)])
++                                                 (cons m (for/list ([(n c) (in-hash hist)])
++                                                           (cons n c))))))))))
++
+ ;; Scope ids are fixnums, except for the representatives of
+ ;; multi-scopes (and, on a 32-bit platform, very new scopes and
+ ;; interned scopes)
+@@ -160,6 +193,7 @@
+       [else (loop (cdr p))])))
+ 
+ (define (scope-set-member? s sc)
++  (record! 'member (scope-set-elems s) sc)
+   (let loop ([l (scope-set-elems s)])
+     (cond
+       [(null? l) #f]
+@@ -184,6 +218,7 @@
+                       #:absent absent-expr)
+   (define (name s sc)
+     (define l (scope-set-elems s))
++    (record! 'update l sc)
+     (let loop ([p l])
+       (cond
+         [(or (null? p) (sc> sc (car p))) absent-expr]
+@@ -216,6 +251,9 @@
+   (or (eq? a b)
+       (and (fx= (scope-set-code a) (scope-set-code b))
+            (fx= (scope-set-count a) (scope-set-count b))
++           (begin (stat! 'equal 'held (+ (interned-prefix (scope-set-elems a))
++                                         (interned-prefix (scope-set-elems b))))
++                  #t)
+            ;; The lists have the same length, and they may share a tail
+            (let loop ([la (scope-set-elems a)] [lb (scope-set-elems b)])
+              (or (eq? la lb)
+@@ -226,6 +264,9 @@
+ ;; few scopes left; `na` and `nb` are the lengths of `la` and `lb`
+ (define (scope-set-subset? a b)
+   (or (eq? a b)
++      (begin (stat! 'subset 'held (+ (interned-prefix (scope-set-elems a))
++                                     (interned-prefix (scope-set-elems b))))
++             #f)
+       (let loop ([la (scope-set-elems a)] [na (scope-set-count a)]
+                  [lb (scope-set-elems b)] [nb (scope-set-count b)])
+         (cond
+@@ -381,6 +422,7 @@
+        [(remove) (scope-set-remove s sc)]
+        [else (scope-set-flip s sc)])]
+     [else
++     (record! 'apply (scope-set-elems s) (caar ops))
+      (define count (scope-set-count s))
+      (define code (scope-set-code s))
+      (define (changed! sc delta)

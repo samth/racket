@@ -1,0 +1,6 @@
+rhombus exit 0
+shrubbery exit 0
+rhm-fun-300 exit 0
+rhm-block-300 exit 0
+typed-racket exit 0
+done

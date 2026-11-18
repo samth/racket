@@ -1,0 +1,1 @@
+PREFIX-STATS ((subset (held (0 . 100204))) (apply (walked-to-normal (0 . 891122)) (held (0 . 891122))) (update (walked-to-normal (0 . 1978312)) (held (0 . 1978312))) (equal (held (0 . 1799262))))

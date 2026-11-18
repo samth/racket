@@ -114,3 +114,7 @@ per tree alternated on one P-core:
 | expander `compile` | 63.4 s | 62.2 s | −2.0% |
 
 `rhombus/summary.md` has min and median for every metric.
+
+## Interned-scope prefix lengths (`interned-prefix/`)
+
+How many interned scopes a scope set holds, and how many an operation on a normal scope walks past, with interned scopes sorted first. See `interned-prefix/README.md`.

@@ -1187,7 +1187,10 @@
                                       [i _int] [ai (_array _int 10)])
     #:malloc-mode malloc/register)
   (define-serializable-cstruct _MISCPTR ([s _string] [as (_array _string 4)]
-                                         [b _bytes] [ab (_array _bytes 4)])
+                                         ;; `_bytes/nul-terminated`, since a `_bytes`
+                                         ;; value must be nul-terminated to be read back
+                                         [b _bytes/nul-terminated]
+                                         [ab (_array _bytes/nul-terminated 4)])
     #:malloc-mode 'nonatomic)
 
   (for ([i num-runs])

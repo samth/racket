@@ -1203,34 +1203,43 @@ lines like @racket[read-bytes-line].}
                           [path path-string?]
                       [#:mode mode-flag (or/c 'binary 'text) 'binary]
                       [#:exists exists-flag (or/c 'error 'append 'update
-                                                  'replace 'truncate 'truncate/replace) 'error])
+                                                  'replace 'truncate 'truncate/replace
+                                                  'atomic-replace) 'error])
          void?]{
 
 Uses @racket[display] to print @racket[v] to @racket[path]. The @racket[mode-flag] and
-@racket[exists-flag] arguments are the same as for
-@racket[open-output-file].}
+@racket[exists-flag] arguments are passed to
+@racket[call-with-output-file*].
+
+@history[#:changed "9.4.0.6" @elem{Added the @racket['atomic-replace] mode.}]}
 
 @defproc[(write-to-file [v any/c]
                         [path path-string?]
                       [#:mode mode-flag (or/c 'binary 'text) 'binary]
                       [#:exists exists-flag (or/c 'error 'append 'update
-                                                  'replace 'truncate 'truncate/replace) 'error])
+                                                  'replace 'truncate 'truncate/replace
+                                                  'atomic-replace) 'error])
          void?]{
 
-Like @racket[display-to-file], but using @racket[write] instead of @racket[display].}
+Like @racket[display-to-file], but using @racket[write] instead of @racket[display].
+
+@history[#:changed "9.4.0.6" @elem{Added the @racket['atomic-replace] mode.}]}
 
 @defproc[(display-lines-to-file [lst list?]
                                 [path path-string?]
                        [#:separator separator any/c #"\n"]
                        [#:mode mode-flag (or/c 'binary 'text) 'binary]
                        [#:exists exists-flag (or/c 'error 'append 'update
-                                                   'replace 'truncate 'truncate/replace) 'error])
+                                                   'replace 'truncate 'truncate/replace
+                                                   'atomic-replace) 'error])
          void?]{
 
 Displays each element of @racket[lst] to @racket[path], adding
 @racket[separator] after each element. The @racket[mode-flag] and
-@racket[exists-flag] arguments are the same as for
-@racket[open-output-file].}
+@racket[exists-flag] arguments are passed to
+@racket[call-with-output-file*].
+
+@history[#:changed "9.4.0.6" @elem{Added the @racket['atomic-replace] mode.}]}
 
 @defproc[(copy-directory/files [src path-string?] [dest path-string?]
                                [#:keep-modify-seconds? keep-modify-seconds? any/c #f]

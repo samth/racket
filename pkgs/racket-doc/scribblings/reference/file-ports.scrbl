@@ -299,13 +299,23 @@ when @racket[proc] returns.
                                 [#:mode mode-flag (or/c 'binary 'text) 'binary]
                                 [#:exists exists-flag (or/c 'error 'append 'update 'can-update
                                                             'replace 'truncate 
-                                                            'must-truncate 'truncate/replace) 'error]
+                                                            'must-truncate 'truncate/replace
+                                                            'atomic-replace) 'error]
                                 [#:permissions permissions (integer-in 0 65535) @#,default-permissions]
                                 [#:replace-permissions? replace-permissions? any/c #f])
          any]{
-Analogous to @racket[call-with-input-file], but passing @racket[path],
+Except for @racket['atomic-replace], analogous to @racket[call-with-input-file],
+but passing @racket[path],
 @racket[mode-flag], @racket[exists-flag], @racket[permissions], and @racket[replace-permissions?] to
 @racket[open-output-file].
+
+With @racket['atomic-replace], the procedure opens a temporary file in
+the same directory as @racket[path] with the requested mode and
+permissions. If @racket[proc] returns normally and the port is closed
+successfully, the temporary file replaces @racket[path]. If control
+escapes before then, the port is closed and the temporary file is
+discarded. Replacement has the same platform guarantees as
+@racket[call-with-atomic-output-file].
 
 @file-examples[
 (call-with-output-file some-file
@@ -317,7 +327,8 @@ Analogous to @racket[call-with-input-file], but passing @racket[path],
 ]
 
 @history[#:changed "8.1.0.3" @elem{Added the @racket[#:permissions] argument.}
-         #:changed "8.7.0.10" @elem{Added the @racket[#:replace-permissions?] argument.}]}
+         #:changed "8.7.0.10" @elem{Added the @racket[#:replace-permissions?] argument.}
+         #:changed "9.4.0.6" @elem{Added the @racket['atomic-replace] mode.}]}
 
 @defproc[(call-with-input-file* [path path-string?]
                                 [proc (input-port? . -> . any)]
@@ -333,7 +344,8 @@ return, a continuation application, or a prompt-based abort.}
                                  [#:mode mode-flag (or/c 'binary 'text) 'binary]
                                  [#:exists exists-flag (or/c 'error 'append 'update 'can-update
                                                              'replace 'truncate
-                                                             'must-truncate 'truncate/replace) 'error]
+                                                             'must-truncate 'truncate/replace
+                                                             'atomic-replace) 'error]
                                  [#:permissions permissions (integer-in 0 65535) @#,default-permissions]
                                  [#:replace-permissions? replace-permissions? any/c #f])
          any]{
@@ -343,7 +355,8 @@ closed whenever control escapes the dynamic extent of the
 return, a continuation application, or a prompt-based abort.
 
 @history[#:changed "8.1.0.3" @elem{Added the @racket[#:permissions] argument.}
-         #:changed "8.7.0.10" @elem{Added the @racket[#:replace-permissions?] argument.}]}
+         #:changed "8.7.0.10" @elem{Added the @racket[#:replace-permissions?] argument.}
+         #:changed "9.4.0.6" @elem{Added the @racket['atomic-replace] mode.}]}
 
 @defproc[(with-input-from-file [path path-string?]
                                [thunk (-> any)]

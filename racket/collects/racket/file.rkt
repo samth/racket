@@ -1,5 +1,6 @@
 #lang racket/base
 (require "path.rkt"
+         "private/atomic-output.rkt"
          setup/dirs
          setup/cross-system
          (for-syntax racket/base
@@ -189,52 +190,14 @@
 ;; If the tests pass, it tail-calls `internal-make-temporary-file/directory`.
 
 (define (internal-make-temporary-file/directory who copy-from base-dir make-name)
-  (define tmpdir (find-system-path 'temp-dir))
-  (let loop ([s (current-seconds)]
-             [ms (inexact->exact (truncate (current-inexact-milliseconds)))]
-             [tries 0])
-    (define pth
-      (path->complete-path
-       (let ([n (make-name
-                 ;; docs promise argument will be a string containing only digits
-                 (format "~a~a" s ms))])
-         (cond [base-dir (build-path base-dir n)]
-               [(relative-path? n) (build-path tmpdir n)]
-               [else n]))))
-    (with-handlers ([(lambda (exn)
-                       ;; FIXME: There should probably be a maximum number of
-                       ;; tries for other cases, too.
-                       ;; See: https://github.com/racket/racket/pull/3870#discussion_r741177829
-                       (or (exn:fail:filesystem:exists? exn)
-                           (and (exn:fail:filesystem:errno? exn)
-                                (let ([errno (exn:fail:filesystem:errno-errno exn)])
-                                  (and (eq? 'windows (cdr errno))
-                                       (eqv? (car errno) 5) ; ERROR_ACCESS_DENIED
-                                       ;; On Windows, if the target path refers to a file
-                                       ;; that has been deleted but is still open
-                                       ;; somewhere, then an access-denied error is reported
-                                       ;; instead of a file-exists error; there appears
-                                       ;; to be no way to detect that it was really a
-                                       ;; file-still-exists error. Try again for a while.
-                                       ;; There's still a small chance that this will
-                                       ;; fail, but it's vanishingly small at 32 tries.
-                                       ;; If ERROR_ACCESS_DENIED really is the right
-                                       ;; error (e.g., because the target directory is not
-                                       ;; writable), we'll take longer to get there.
-                                       (tries . < . 32))))))
-                     (lambda (x)
-                       ;; try again with a new name
-                       ;; TODO: should this use `crypto-random-bytes`, like FreeBSD, per SEI CERT?
-                       ;; See: https://github.com/racket/racket/pull/3870#issuecomment-957779099
-                       (loop (- s (random 10))
-                             (+ ms (random 10))
-                             (add1 tries)))])
-      (if copy-from
-          (if (eq? copy-from 'directory)
-              (make-directory pth)
-              (copy-file copy-from pth))
-          (close-output-port (open-output-file pth)))
-      pth)))
+  (create-temporary-path
+   base-dir make-name
+   (lambda (pth)
+     (cond
+       [(eq? copy-from 'directory) (make-directory pth)]
+       [copy-from (copy-file copy-from pth)]
+       [else (close-output-port (open-output-file pth))])
+     pth)))
 
 (define (check-base-dir who base-dir)
   (unless (or (not base-dir) (path-string? base-dir))
@@ -577,53 +540,15 @@
               (procedure? rename-fail-handler)
               (procedure-arity-includes? rename-fail-handler 2))
     (raise-argument-error 'call-with-atomic-output-file "(or/c #f (procedure-arity-includes/c 2))" rename-fail-handler))
-  (define (try-delete-file path [noisy? #t])
-    ;; Attempt to delete, but give up if it doesn't work:
-    (with-handlers ([exn:fail:filesystem? void])
-      (delete-file path)))
-  (let ([bp (current-break-parameterization)]
-        [tmp-path (parameterize ([current-security-guard (or guard (current-security-guard))])
-                    (make-temporary-file* (bytes-append (path-element->bytes (file-name-from-path path)) #"-") #"-atomic-tmp" #:base-dir (or (path-only path) (current-directory))))]
-        [ok? #f])
-    (dynamic-wind
-     void
-     (lambda ()
-       (begin0
-         (let ([out (parameterize ([current-security-guard (or guard (current-security-guard))])
-                      (open-output-file tmp-path #:exists 'truncate/replace))])
-           (dynamic-wind
-            void
-            (lambda ()
-              (call-with-break-parameterization bp (lambda () (proc out tmp-path))))
-            (lambda ()
-              (close-output-port out))))
-         (set! ok? #t)))
-     (lambda ()
-       (parameterize ([current-security-guard (or guard (current-security-guard))])
-         (if ok?
-             (with-handlers ([void (lambda (exn)
-                                     (try-delete-file tmp-path)
-                                     (raise exn))])
-               (if (eq? (system-type) 'windows)
-                   (cond
-                     [rename-fail-handler
-                      (let loop ()
-                        (with-handlers* ([exn:fail:filesystem?
-                                          (lambda (exn)
-                                            (call-with-break-parameterization
-                                             bp
-                                             (lambda () (rename-fail-handler exn tmp-path)))
-                                            (loop))])
-                          (rename-file-or-directory tmp-path path #t)
-                          void))]
-                     [else
-                      (let ([tmp-path2 (make-temporary-file #:base-dir (path-only path))])
-                        (with-handlers ([exn:fail:filesystem? void])
-                          (rename-file-or-directory path tmp-path2 #t))
-                        (rename-file-or-directory tmp-path path #t)
-                        (try-delete-file tmp-path2))])
-                   (rename-file-or-directory tmp-path path #t)))
-             (try-delete-file tmp-path)))))))
+  (call-with-atomic-output-file/prepare
+   path proc guard rename-fail-handler
+   (lambda ()
+     (values (make-temporary-file*
+              (bytes-append (path-element->bytes (file-name-from-path path)) #"-")
+              #"-atomic-tmp"
+              #:base-dir (or (path-only path) (current-directory)))
+             #f))
+   (lambda () (make-temporary-file #:base-dir (path-only path)))))
 
 (define (with-pref-params thunk)
   (parameterize ([read-case-sensitive #f]
@@ -1144,8 +1069,8 @@
     (raise-argument-error who "path-string?" f))
   (unless (memq mode '(binary text))
     (raise-argument-error who "(or/c 'binary 'text)" mode))
-  (unless (memq exists '(error append update replace truncate truncate/replace))
-    (raise-argument-error who "(or/c 'error 'append 'update 'replace 'truncate 'truncate/replace)" exists))
+  (unless (memq exists '(error append update replace truncate truncate/replace atomic-replace))
+    (raise-argument-error who "(or/c 'error 'append 'update 'replace 'truncate 'truncate/replace 'atomic-replace)" exists))
   (call-with-output-file* f #:mode mode #:exists exists write))
 
 (define (display-to-file s f #:mode [mode 'binary] #:exists [exists 'error])

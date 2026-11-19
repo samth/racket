@@ -267,6 +267,64 @@
      (display "test" o)))
   (delete-file fn))
 
+(let* ([dir (make-temporary-directory)]
+       [target (build-path dir "target")])
+  (test '(one two) call-with-values
+        (lambda ()
+          (call-with-output-file
+           target #:exists 'atomic-replace
+           (lambda (out)
+             (write-bytes #"first" out)
+             (test #f file-exists? target)
+             (values 'one 'two))))
+        list)
+  (test #"first" file->bytes target)
+  (call-with-output-file*
+   target #:exists 'atomic-replace #:mode 'text
+   (lambda (out)
+     (display "second\n" out)
+     (flush-output out)
+     (test #"first" file->bytes target)))
+  (test "second\n" file->string target #:mode 'text)
+
+  (err/rt-test (call-with-output-file
+                target #:exists 'atomic-replace
+                (lambda (out)
+                  (display "partial" out)
+                  (error 'atomic-test "cancel")))
+               #rx"atomic-test: cancel")
+  (test "second\n" file->string target #:mode 'text)
+  (test 'escaped
+        (lambda ()
+          (call/ec
+           (lambda (escape)
+             (call-with-output-file*
+              target #:exists 'atomic-replace
+              (lambda (out)
+                (display "partial" out)
+                (escape 'escaped)))))))
+  (test "second\n" file->string target #:mode 'text)
+  (test (list (string->path "target")) directory-list dir)
+
+  (unless (eq? (system-type) 'windows)
+    (call-with-output-file*
+     target #:exists 'atomic-replace #:permissions #o640 #:replace-permissions? #t
+     (lambda (out) (display "permissions" out)))
+    (test #o640 file-or-directory-permissions target 'bits)
+    (define reference (build-path dir "reference"))
+    (call-with-output-file reference #:permissions #o751 void)
+    (call-with-output-file target #:exists 'atomic-replace #:permissions #o751 void)
+    (test (file-or-directory-permissions reference 'bits)
+          file-or-directory-permissions target 'bits))
+  (display-to-file #"\0bytes" target #:exists 'atomic-replace)
+  (test #"\0bytes" file->bytes target)
+  (write-to-file '(one two) target #:exists 'atomic-replace)
+  (test '(one two) file->value target)
+  (display-lines-to-file '(one two) target #:exists 'atomic-replace)
+  (test '("one" "two") file->lines target)
+  (err/rt-test (open-output-file target #:exists 'atomic-replace) exn:fail:contract?)
+  (delete-directory/files dir))
+
 ;; ----------------------------------------
 
 (let ([dir (make-temporary-file "pathlist~a" 'directory)])

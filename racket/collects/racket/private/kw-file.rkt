@@ -1,7 +1,8 @@
 (module kw-file "pre-base.rkt" 
 
   (require (prefix-in k: "pre-base.rkt")
-           "sort.rkt")
+           "sort.rkt"
+           "atomic-output.rkt")
 
   (provide (rename-out
             [open-input-file        -open-input-file]
@@ -23,6 +24,10 @@
 
   (define exists-desc
     "(or/c 'error 'append 'update 'can-update 'replace 'truncate 'must-truncate 'truncate/replace)")
+  (define scoped-exists-syms (cons 'atomic-replace exists-syms))
+  (define scoped-exists-desc
+    "(or/c 'error 'append 'update 'can-update 'replace 'truncate 'must-truncate 'truncate/replace 'atomic-replace)")
+
   (define binary-or-text-desc
     "(or/c 'binary 'text)")
 
@@ -91,11 +96,13 @@
       (raise-argument-error 'call-with-output-file "(output-port? . -> . any)" proc))
     (unless (memq mode '(binary text))
       (raise-argument-error 'call-with-output-file binary-or-text-desc mode))
-    (unless (memq exists exists-syms)
-      (raise-argument-error 'call-with-output-file exists-desc exists))
+    (unless (memq exists scoped-exists-syms)
+      (raise-argument-error 'call-with-output-file scoped-exists-desc exists))
     (unless (permissions? perms)
       (raise-argument-error 'call-with-output-file perms-desc perms))
-    (k:call-with-output-file path proc mode exists perms (and replace-permissions? 'replace-permissions)))
+    (if (eq? exists 'atomic-replace)
+        (call-with-atomic-replacement path proc mode perms replace-permissions?)
+        (k:call-with-output-file path proc mode exists perms (and replace-permissions? 'replace-permissions))))
 
   (define (with-input-from-file path proc #:mode [mode 'binary])
     (unless (path-string? path)
@@ -151,15 +158,17 @@
         (raise-argument-error 'call-with-output-file* "(output-port? . -> . any)" proc))
       (unless (memq mode '(binary text))
         (raise-argument-error 'call-with-output-file* binary-or-text-desc mode))
-      (unless (memq exists exists-syms)
-        (raise-argument-error 'call-with-output-file* exists-desc exists))
+      (unless (memq exists scoped-exists-syms)
+        (raise-argument-error 'call-with-output-file* scoped-exists-desc exists))
       (unless (permissions? perms)
         (raise-argument-error 'call-with-output-file* perms-desc perms))
-      (let ([p (k:open-output-file path mode exists perms (and replace-permissions? 'replace-permissions))])
-        (dynamic-wind
-            void
-            (lambda () (proc p))
-            (lambda () (close-output-port p)))))
+      (if (eq? exists 'atomic-replace)
+          (call-with-atomic-replacement path proc mode perms replace-permissions?)
+          (let ([p (k:open-output-file path mode exists perms (and replace-permissions? 'replace-permissions))])
+            (dynamic-wind
+              void
+              (lambda () (proc p))
+              (lambda () (close-output-port p))))))
 
   (define directory-list
     (lambda ([dir (current-directory)] #:build? [build? #f])

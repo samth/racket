@@ -24,7 +24,8 @@
 ;;
 ;;  * Distinct scopes have distinct ids, so that the sorted list for
 ;;    a set is unique. (The id counter in "../syntax/scope.rkt" is
-;;    shared by all places and threads.)
+;;    shared by all threads, and on Racket CS also by all places; see
+;;    the comment there.)
 ;;
 ;;  * A scope's id and key never change.
 ;;

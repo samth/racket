@@ -1,6 +1,6 @@
 # Scope set representations for the Racket expander
 
-Sam Tobin-Hochstadt · branch [`scope-sets-r4`](https://github.com/samth/racket/tree/scope-sets-r4) · [racket/racket#5669](https://github.com/racket/racket/pull/5669)
+Sam Tobin-Hochstadt · [racket/racket#5669](https://github.com/racket/racket/pull/5669), merged as [f1a34e208d](https://github.com/racket/racket/commit/f1a34e208d1a1103b1cbb5c5a78b200821e345d3)
 
 A companion note, [Interned scopes and long modules](interned-scopes-and-long-modules.md), covers two cases found in review: ordering interned scopes first, and adding a list of scopes in one merge.
 
@@ -10,7 +10,7 @@ This design changes how the expander represents scope sets and pending scope pro
 
 The sections below go from master to the final code in six steps, with the code for each step and what it changes.
 
-The change is three commits on branch `scope-sets-r4` of samth/racket, on master 51c0ade4b1: the representation (df459b17b3), adding a list of scopes in one merge (ae557e7462), and sorting interned scopes first (afcaf895da). The measurements below were taken with the same three commits on master 45ccd1c43a; the upstream commits in between change neither the expander nor its generated code. Each commit includes the regenerated `expander.scm` and BC `startup.inc`, and the branch passes Racket's core tests and a parallel expansion stress test.
+The change was merged into racket/racket as one commit, [f1a34e208d](https://github.com/racket/racket/commit/f1a34e208d1a1103b1cbb5c5a78b200821e345d3), on master 51c0ade4b1. It was developed as three commits: the representation (df459b17b3), adding a list of scopes in one merge (ae557e7462), and sorting interned scopes first (afcaf895da). The measurements below were taken with the same three commits on master 45ccd1c43a; the upstream commits in between change neither the expander nor its generated code. Each commit includes the regenerated `expander.scm` and BC `startup.inc`, and the branch passes Racket's core tests and a parallel expansion stress test.
 
 Against master, with both built as CS:
 

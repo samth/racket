@@ -169,7 +169,11 @@
                                   post-allocated post-allocated+overhead post-time post-cpu-time
                                   (current-inexact-milliseconds) (cpu-time)))
         (when (and (= req-gen (collect-maximum-generation))
-                   (currently-in-engine?))
+                   (currently-in-engine?)
+                   ;; Only if the timer is running: an engine stops its
+                   ;; timer to block or return, and this collection may
+                   ;; run in the event check of that `set-timer`
+                   (#%$tc-field 'timer-ticks (#%$tc)))
           ;; This `set-timer` doesn't necessarily penalize the right thread,
           ;; but it's likely to penalize a thread that is allocating quickly:
           (set-timer 1))

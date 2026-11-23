@@ -98,7 +98,7 @@ Both trees also have the `rhombus` package and its dependencies (28 more package
 one snapshot of pkgs.racket-lang.org; `rhombus/pkgshow.txt`). The workload compiles every
 module of the Rhombus `-lib` packages (820 files, tests and docs excluded;
 `rhombus/rh-lib-files.txt`) from scratch with `raco make` in one process, writing to a
-fresh `PLTCOMPILEDROOTS` root so the installed trees stay unchanged. Modules that raco
+fresh `PLTCOMPILEDROOTS` root (but see "State of the trees"). Modules that raco
 itself has not loaded are compiled again too, so each run writes 1,549 .zo files. Three runs
 per tree alternated on one P-core:
 
@@ -113,8 +113,31 @@ per tree alternated on one P-core:
 | expander `eval` | 99.9 s | 96.8 s | −3.1% |
 | expander `compile` | 63.4 s | 62.2 s | −2.0% |
 
-`rhombus/summary.md` has min and median for every metric.
+`rhombus/summary.md` has min and median for every metric. This workload does not compile
+the same modules every run; `rhombus/recheck/` replaces it.
 
 ## Interned-scope prefix lengths (`interned-prefix/`)
 
 How many interned scopes a scope set holds, and how many an operation on a normal scope walks past, with interned scopes sorted first. See `interned-prefix/README.md`.
+
+## State of the trees
+
+The sets tree was modified between measurements. An earlier version of this README said
+that the installed trees stayed unchanged, which was wrong for sets.
+
+- 2026-11-11, after the full-build runs and before the startup and .zo measurements: a test
+  of an unrelated `raco pkg` change recompiled part of the `setup` and `raco` collections of
+  the sets tree against a modified `pkg` collection. `raco make` and `raco setup -D` then
+  recompiled them. The same test swapped `pkg/commands.rkt` and `tests/pkg` in the master
+  tree and restored them.
+- 2026-11-14, before the first Rhombus runs: `raco setup -c --pkgs` on the 28 Rhombus
+  packages of the sets tree removed 1,782 compiled files, 656 of them outside those
+  packages. `raco setup -D` rebuilt the tree, to 10,762 .zo files instead of the previous
+  10,771. The difference was not investigated. Only the sets tree went through this.
+- 2026-11-16: a script deleted Rhombus's demodularizer cache in both trees before runs that
+  were then discarded.
+
+These runs used the sets tree, or copies of it, after 2026-11-14: both rounds of Rhombus
+measurements, the hash-variant, interned-first and add-scopes runs, the teaching-language
+and interned-introducer runs, and the interned-prefix counts. Whether the rebuild affects
+them has not been checked.

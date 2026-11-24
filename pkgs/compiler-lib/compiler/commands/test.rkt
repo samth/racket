@@ -57,6 +57,9 @@
                              (and (real? n)
                                   n))
                            (* 4 60 60))) ; default: wait at most 4 hours
+;; Longest sleep between attempts to take a lock, so that a test starts
+;; soon after the lock is released:
+(define max-lock-retry-delay 1.0)
 
 (define test-exe-name (string->symbol (short-program+command-name)))
 ;; The *absolute* module path of errortrace
@@ -334,12 +337,17 @@
 
     ;; Serialize the above with a lock, if any:
     (if lock-name
-        (call-with-file-lock/timeout
-         #:max-delay max-lock-delay 
-         (build-path lock-file-dir lock-name)
-         'exclusive
-         go
-         (lambda () (error test-exe-name "could not obtain lock: ~s" lock-name)))
+        (let ([deadline (+ (current-inexact-milliseconds) (* 1000 max-lock-delay))])
+          (let loop ()
+            (call-with-file-lock/timeout
+             #:max-delay max-lock-retry-delay
+             (build-path lock-file-dir lock-name)
+             'exclusive
+             go
+             (lambda ()
+               (if ((current-inexact-milliseconds) . < . deadline)
+                   (loop)
+                   (error test-exe-name "could not obtain lock: ~s" lock-name))))))
         (go))))
 
 ;; For recording stderr while also propagating to the original stderr:

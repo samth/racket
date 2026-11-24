@@ -668,7 +668,8 @@
       (define quick-mode? (and (not just-expand?)
                                (or default-compile-quick?
                                    (and (not serializable?)
-                                        (#%memq 'quick options)))))
+                                        (or (#%memq 'quick options)
+                                            (not (|#%app| eval-jit-enabled)))))))
       (define serializable?-box (and serializable? (box #f)))
       (define sfd-cache (if serializable?
                             ;; For determinism: a fresh, non-weak cache per linklet

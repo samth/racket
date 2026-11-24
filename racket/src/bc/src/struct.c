@@ -6186,9 +6186,22 @@ static char *mutability_data_to_immutability_data(int icnt, int ucnt, Scheme_Obj
     if (mutables) {
       int i;
       int len;
+      intptr_t max_val = 0;
+      char *seen;
       len = SCHEME_VEC_SIZE(mutables);
       if ((len > icnt) && !_min_cnt)
         return NULL;
+
+      /* bit set for detecting duplicates, sized by the largest index */
+      for (i = 0; i < len; i++) {
+        Scheme_Object *a = SCHEME_VEC_ELS(mutables)[i];
+        if (SCHEME_INTP(a)
+            && (SCHEME_INT_VAL(a) > max_val)
+            && (SCHEME_INT_VAL(a) < MAX_STRUCT_FIELD_COUNT))
+          max_val = SCHEME_INT_VAL(a);
+      }
+      seen = (char *)scheme_malloc_atomic((max_val >> 3) + 1);
+      memset(seen, 0, (max_val >> 3) + 1);
 
       for (i = 0; i < len; i++) {
         int a_val;
@@ -6201,6 +6214,9 @@ static char *mutability_data_to_immutability_data(int icnt, int ucnt, Scheme_Obj
                 && !_min_cnt))
           return NULL;
         a_val = SCHEME_INT_VAL(a);
+        if (seen[a_val >> 3] & (1 << (a_val & 7)))
+          return NULL;
+        seen[a_val >> 3] |= (1 << (a_val & 7));
         if (_min_cnt && ((a_val+ucnt) >= *_min_cnt)) {
           *_min_cnt = a_val+ucnt+1;
         }

@@ -742,7 +742,16 @@ platforms, unless it is disabled through the
 @Flag{j}/@DFlag{no-jit} command-line flag to stand-alone Racket (or
 GRacket), and unless it is disabled through the
 @as-index{@envvar{PLTNOMZJIT}} environment variable (set to any
-value).}
+value).
+
+On @tech{CS}, the parameter's value is used when code is compiled
+instead of when it is run: when the value is @racket[#f], code that
+is compiled for immediate evaluation, as opposed to serializable
+code such as a module compiled to a @filepath{.zo} file, is compiled in
+interpreted mode (see @secref["cs-compiler-modes"]).
+
+@history[#:changed "9.4.0.7" @elem{Changed @tech{CS} to use interpreted
+                                    mode when the value is @racket[#f].}]}
 
 @defboolparam[load-on-demand-enabled on?]{
 

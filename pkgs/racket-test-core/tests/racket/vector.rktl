@@ -60,6 +60,14 @@
 (test (quote #(0 0 0)) 'vector-fill! v)
 (arity-test vector-fill! 2 2)
 (err/rt-test (vector-fill! '(1 2 3) 0))
+(let* ([v (vector 1 2 3)]
+       [cv (chaperone-vector v (lambda (v i x) x) (lambda (v i x) x))])
+  (vector-fill! cv 0)
+  (test '#(0 0 0) values v)
+  (vector-fill! (impersonate-vector v #f #f) 1)
+  (test '#(1 1 1) values v)
+  (err/rt-test (vector-fill! (chaperone-vector (vector-immutable 1 2) #f #f) (vector))
+               exn:fail:contract? #rx"vector-fill!"))
 
 
 ;; ---------- vector-empty? ----------

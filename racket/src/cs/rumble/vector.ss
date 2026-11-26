@@ -547,7 +547,7 @@
    [(#%vector? vec)
     (#3%vector-fill! vec v)]
    [(vector? vec)
-    (check who mutable-vector? :contract "(and/c vector? (not immutable?))" v)
+    (check who mutable-vector? :contract "(and/c vector? (not/c immutable?))" vec)
     (let ([len (vector-length vec)])
       (let loop ([i 0])
         (unless (= i len)

@@ -199,10 +199,10 @@
       [(?) #t]
       [(positions)
        (define positions (byte-positions->byte-positions ms-pos me-pos state))
-       (add-end-bytes positions end-bytes-count in me-pos)]
+       (add-end-bytes positions end-bytes-count in me-pos start-pos)]
       [(strings)
        (define bytess (byte-positions->bytess in ms-pos me-pos state))
-       (add-end-bytes bytess end-bytes-count in me-pos)])]
+       (add-end-bytes bytess end-bytes-count in me-pos start-pos)])]
 
    ;; Sufficiently small string input, no provided prefix: --------------------
    [(and (string? in)

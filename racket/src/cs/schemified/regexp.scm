@@ -6478,14 +6478,34 @@
       (let ((app_0 (- (string-length str_0) start-pos_0)))
         (min app_0 (* pos_0 6)))))))
 (define add-end-bytes
-  (lambda (results_0 end-bytes-count_0 bstr_0 me-pos_0)
-    (if end-bytes-count_0
-      (values
+  (let ((add-end-bytes_0
+         (|#%name|
+          add-end-bytes
+          (lambda (results33_0
+                   end-bytes-count34_0
+                   bstr35_0
+                   me-pos36_0
+                   start-pos32_0)
+            (if end-bytes-count34_0
+              (values
+               results33_0
+               (if results33_0
+                 (subbytes
+                  bstr35_0
+                  (max start-pos32_0 (- me-pos36_0 end-bytes-count34_0))
+                  me-pos36_0)
+                 #f))
+              results33_0)))))
+    (case-lambda
+     ((results_0 end-bytes-count_0 bstr_0 me-pos_0)
+      (add-end-bytes_0 results_0 end-bytes-count_0 bstr_0 me-pos_0 0))
+     ((results_0 end-bytes-count_0 bstr_0 me-pos_0 start-pos32_0)
+      (add-end-bytes_0
        results_0
-       (if results_0
-         (subbytes bstr_0 (max 0 (- me-pos_0 end-bytes-count_0)) me-pos_0)
-         #f))
-      results_0)))
+       end-bytes-count_0
+       bstr_0
+       me-pos_0
+       start-pos32_0)))))
 (define interp
   (lambda (m_0 s_0 pos_0 start_0 limit/end_0 state_0)
     (|#%app| m_0 s_0 pos_0 start_0 limit/end_0 limit/end_0 state_0 null)))
@@ -7172,7 +7192,8 @@
                                              positions_0
                                              end-bytes-count9_0
                                              in_0
-                                             me-pos_0))
+                                             me-pos_0
+                                             start-offset_0))
                                           (if (eq? tmp_0 'strings)
                                             (let ((bytess_0
                                                    (byte-positions->bytess.1
@@ -7185,7 +7206,8 @@
                                                bytess_0
                                                end-bytes-count9_0
                                                in_0
-                                               me-pos_0))
+                                               me-pos_0
+                                               start-offset_0))
                                             (void)))))))))
                              (if (if (string? in_0)
                                    (if (not out24_0)

@@ -84,9 +84,9 @@
          [else (loop (+ lo-pos len) mid hi)])])))
 
 ;; For functions like `regexp-match/end`:
-(define (add-end-bytes results end-bytes-count bstr me-pos)
+(define (add-end-bytes results end-bytes-count bstr me-pos [start-pos 0])
   (if end-bytes-count
       (values results
               (and results
-                   (subbytes bstr (max 0 (- me-pos end-bytes-count)) me-pos)))
+                   (subbytes bstr (max start-pos (- me-pos end-bytes-count)) me-pos)))
       results))

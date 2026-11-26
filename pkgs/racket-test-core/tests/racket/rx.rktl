@@ -1960,6 +1960,15 @@
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; The end bytes from `regexp-match/end` do not include bytes before
+;; the start position, so later matches of `regexp-match*` do not see them
+(test-values (list '(#"a") #"a")
+             (lambda () (regexp-match/end #px#"a" #"cab" 1 #f #f #"" 2)))
+(test '(#"a" #"b") regexp-match* #px#"a|(?<!ca)b" #"cab" 1)
+(test '((1 . 1) (1 . 2) (2 . 2)) regexp-match-positions* #px#"\\b(a??)" #"ca" 1)
+(test '(#"" #"" #"") regexp-split #px#"a|(?<!ca)b" #"cab" 1)
+(test #"cXX" regexp-replace* #px#"a|(?<!ca)b" #"cab" #"X" 1)
+
 ;; Check that `regexp-match/end` produces the right suffix
 ;; when a string to convert is large enough that its
 ;; conversion is internally streamed

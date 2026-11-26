@@ -966,6 +966,13 @@ We should also test deep continuations.
                 (future (lambda () (g 1 2 3)))))
     (check-true (andmap (lambda (v) (equal? '(1 2 3) v))
                         (for/list ([f (in-list f)]) (touch f)))))
+
+  ;; A large allocation while holding a port lock
+  (let ([out (open-output-bytes)])
+    (write-bytes (make-bytes 5000 65) out)
+    (define f (func (lambda () (bytes-length (get-output-bytes out)))))
+    (sleep 0.1)
+    (check-equal? (touch f) 5000))
     
   )
 

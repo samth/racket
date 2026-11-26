@@ -8873,19 +8873,21 @@
     (begin
       (set! future->thread f->t_0)
       (set! future-swapping-out?$1 swapping-out?_0))))
-(define effect_2329
+(define effect_2721
   (begin
     (void
      (|#%app|
       set-immediate-allocation-check-proc!
       (lambda (n_0)
-        (let ((t_0 (1/current-thread)))
-          (if t_0
-            (let ((mrefs_0 (thread-custodian-references t_0)))
-              (if (null? mrefs_0)
-                (void)
-                (custodian-check-immediate-limit (car mrefs_0) n_0)))
-            (void))))))
+        (if (in-atomic-mode?)
+          (void)
+          (let ((t_0 (1/current-thread)))
+            (if t_0
+              (let ((mrefs_0 (thread-custodian-references t_0)))
+                (if (null? mrefs_0)
+                  (void)
+                  (custodian-check-immediate-limit (car mrefs_0) n_0)))
+              (void)))))))
     (void)))
 (define effect_2552
   (begin

@@ -1306,12 +1306,15 @@
 
 (void (set-immediate-allocation-check-proc!
        ;; Called to check large vector, string, and byte-string allocations
+       ;; Skip the check in atomic or uninterruptible mode, where
+       ;; `current-thread` in a future would try to suspend it
        (lambda (n)
-         (define t (current-thread))
-         (when t
-           (define mrefs (thread-custodian-references t))
-           (unless (null? mrefs)
-             (custodian-check-immediate-limit (car mrefs) n))))))
+         (unless (in-atomic-mode?)
+           (define t (current-thread))
+           (when t
+             (define mrefs (thread-custodian-references t))
+             (unless (null? mrefs)
+               (custodian-check-immediate-limit (car mrefs) n)))))))
 
 (void (set-thread-engine-for-roots!
        (lambda (v)

@@ -13019,8 +13019,29 @@
                            (dependent-on-future f_0)
                            (begin
                              (lock-release (future*-lock f_0))
-                             (1/touch s_0)
-                             (1/touch f_0)))
+                             (begin
+                               (lock-acquire (future*-lock s_0))
+                               (let ((waiting?_0
+                                      (hash-ref
+                                       (future*-dependents s_0)
+                                       f_0
+                                       #f)))
+                                 (begin
+                                   (if waiting?_0
+                                     (set-future*-dependents!
+                                      s_0
+                                      (hash-remove
+                                       (future*-dependents s_0)
+                                       f_0))
+                                     (void))
+                                   (lock-release (future*-lock s_0))
+                                   (if waiting?_0
+                                     (begin
+                                       (lock-acquire (future*-lock f_0))
+                                       (set-future*-state! f_0 #f)
+                                       (run-future.1 #f #f f_0)
+                                       (apply values (future*-results f_0)))
+                                     (1/touch f_0)))))))
                          (if (let ((or-part_0 (box? s_0)))
                                (if or-part_0 or-part_0 (eq? s_0 'fsema)))
                            (if (current-future-in-future-thread)
@@ -13030,23 +13051,23 @@
                                 f_0
                                 (hash-set (future*-dependents f_0) 'place #t))
                                (lock-release (future*-lock f_0))
-                               (let ((temp80_0 (future*-id f_0)))
+                               (let ((temp81_0 (future*-id f_0)))
                                  (log-future.1
                                   #f
                                   #f
                                   #f
                                   unsafe-undefined
                                   'touch-pause
-                                  temp80_0))
+                                  temp81_0))
                                (1/sync (future-evt1.1 f_0 #f))
-                               (let ((temp82_0 (future*-id f_0)))
+                               (let ((temp83_0 (future*-id f_0)))
                                  (log-future.1
                                   #f
                                   #f
                                   #f
                                   unsafe-undefined
                                   'touch-resume
-                                  temp82_0))
+                                  temp83_0))
                                (1/touch f_0)))
                            (begin
                              (lock-release (future*-lock f_0))
@@ -13068,11 +13089,11 @@
               (begin (lock-release (future*-lock f_0)) #f)
               (begin
                 (|#%app|
-                 (let ((temp87_0
+                 (let ((temp88_0
                         (lambda () (lock-release (future*-lock f_0)))))
-                   (let ((temp88_0 (current-thread/in-racket)))
-                     (let ((temp87_1 temp87_0))
-                       (thread-deschedule!.1 temp87_1 temp88_0 #f 'future)))))
+                   (let ((temp89_0 (current-thread/in-racket)))
+                     (let ((temp88_1 temp88_0))
+                       (thread-deschedule!.1 temp88_1 temp89_0 #f 'future)))))
                 (touch-blocked f_0)))))))))
 (define dependent-on-future
   (lambda (f_0)
@@ -13111,14 +13132,14 @@
              authentic
              break-enabled-key
              parallel-break-disabled-cell
-             (let ((temp93_0
+             (let ((temp94_0
                     (lambda ()
                       (begin
                         (1/current-future #f)
                         (unsafe-abort-current-continuation/no-wind
                          future-start-prompt-tag
                          (void))))))
-               (future-suspend.1 temp93_0 #t #f))))
+               (future-suspend.1 temp94_0 #t #f))))
           (void)))
       (void))))
 (define future-suspend.1
@@ -13160,24 +13181,24 @@
                   (if reschedule?12_0 (schedule-future!.1 #f #f me-f_0) (void))
                   (lock-release (future*-lock me-f_0))
                   (if touching-f16_0
-                    (let ((temp96_0 (future*-id me-f_0)))
-                      (let ((temp97_0 (future*-id touching-f16_0)))
-                        (let ((temp98_0
+                    (let ((temp97_0 (future*-id me-f_0)))
+                      (let ((temp98_0 (future*-id touching-f16_0)))
+                        (let ((temp99_0
                                (if timestamp_0
                                  timestamp_0
                                  (current-inexact-milliseconds))))
-                          (let ((temp97_1 temp97_0) (temp96_1 temp96_0))
+                          (let ((temp98_1 temp98_0) (temp97_1 temp97_0))
                             (log-future.1
-                             temp97_1
+                             temp98_1
                              #f
                              #f
-                             temp98_0
+                             temp99_0
                              'touch
-                             temp96_1)))))
+                             temp97_1)))))
                     (void))
                   (if timestamp_0
-                    (let ((temp100_0 (future*-id me-f_0)))
-                      (log-future.1 #f #f #f timestamp_0 'suspend temp100_0))
+                    (let ((temp101_0 (future*-id me-f_0)))
+                      (log-future.1 #f #f #f timestamp_0 'suspend temp101_0))
                     (void))
                   (if reschedule13_0
                     (|#%app| reschedule13_0)
@@ -13776,9 +13797,9 @@
                                                       (future-stop? f_0)))
                                                  (begin
                                                    (set-future*-state! f_0 #f)
-                                                   (let ((temp117_0
+                                                   (let ((temp118_0
                                                           (not stop?_0)))
-                                                     (let ((temp118_0
+                                                     (let ((temp119_0
                                                             (lambda ()
                                                               (begin
                                                                 (|#%app|
@@ -13788,8 +13809,8 @@
                                                                  future-scheduler-prompt-tag
                                                                  (void))))))
                                                        (future-suspend.1
+                                                        temp119_0
                                                         temp118_0
-                                                        temp117_0
                                                         #f)))
                                                    (void)))))
                                            (void))))))
@@ -13806,8 +13827,8 @@
                               (void))
                             (|#%app| done_0 (void))))))))))
                 (loop_0 e_0))))
-            (let ((temp115_0 (future*-id f_0)))
-              (log-future.1 #f #f #f unsafe-undefined 'end-work temp115_0))
+            (let ((temp116_0 (future*-id f_0)))
+              (log-future.1 #f #f #f unsafe-undefined 'end-work temp116_0))
             (1/current-future 'worker)
             (set-box! (worker-current-future-box w_0) #f)
             (if (scheduler-round-robin s_0)

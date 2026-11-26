@@ -966,6 +966,23 @@ We should also test deep continuations.
                 (future (lambda () (g 1 2 3)))))
     (check-true (andmap (lambda (v) (equal? '(1 2 3) v))
                         (for/list ([f (in-list f)]) (touch f)))))
+
+  ;; A nested future uses the prompts of the future that touches it
+  (let ([tag (make-continuation-prompt-tag)])
+    (define f (func (lambda ()
+                      (call-with-continuation-prompt
+                       (lambda ()
+                         (touch (func (lambda ()
+                                        (call-with-composable-continuation (lambda (k) 'ok) tag)))))
+                       tag))))
+    (define g (func (lambda ()
+                      (call-with-continuation-prompt
+                       (lambda () (touch (func (lambda () (abort-current-continuation tag 'aborted)))))
+                       tag
+                       (lambda (v) v)))))
+    (sleep 0.1)
+    (check-equal? (touch f) 'ok)
+    (check-equal? (touch g) 'aborted))
     
   )
 

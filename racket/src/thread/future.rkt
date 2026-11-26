@@ -551,10 +551,22 @@
         ;; Waiting on `s` on, so give up on the current future for now
         (dependent-on-future f)]
        [else
-        ;; Maybe we can start running `s` to get `f` moving...
+        ;; Take `f` from `s`'s dependents and run `f` here, so that it
+        ;; touches `s` in its own continuation, which may have prompts
+        ;; that `s` needs
         (lock-release (future*-lock f))
-        (touch s)
-        (touch f)])]
+        (lock-acquire (future*-lock s))
+        (define waiting? (hash-ref (future*-dependents s) f #f))
+        (when waiting?
+          (set-future*-dependents! s (hash-remove (future*-dependents s) f)))
+        (lock-release (future*-lock s))
+        (cond
+          [waiting?
+           (lock-acquire (future*-lock f))
+           (set-future*-state! f #f)
+           (run-future f)
+           (apply values (future*-results f))]
+          [else (touch f)])])]
     [(or (box? s) (eq? s 'fsema)) ; => dependent on fsemaphore
      (cond
        [(current-future-in-future-thread)
